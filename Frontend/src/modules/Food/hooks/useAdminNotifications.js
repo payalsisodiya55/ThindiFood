@@ -69,28 +69,6 @@ const mapPendingRestaurants = (rows = []) =>
     metaLabel: joinMeta(item?.restaurantName, item?.ownerName, item?.ownerPhone),
   }));
 
-const mapDeliveryJoinRequests = (response) => {
-  const payload = response?.data?.data;
-  const rows =
-    payload?.partners ||
-    payload?.data ||
-    payload?.items ||
-    response?.data?.partners ||
-    [];
-
-  return (Array.isArray(rows) ? rows : []).map((item) => ({
-    id: `approval-delivery-${String(item?._id || item?.id || "")}`,
-    title: "Delivery Partner Approval Pending",
-    message: `${item?.name || "Delivery partner"} submitted a joining request. Phone: ${item?.phone || "N/A"}. Email: ${item?.email || "N/A"}.`,
-    type: "approval",
-    category: "delivery_approval",
-    path: "/admin/food/delivery-partners/join-request",
-    createdAt: item?.createdAt || item?.updatedAt,
-    timeLabel: toDateLabel(item?.createdAt || item?.updatedAt),
-    metaLabel: joinMeta(item?.name, item?.phone, item?.email),
-  }));
-};
-
 const mapFoodApprovals = (response) => {
   const payload = response?.data?.data;
   const rows =
@@ -149,30 +127,6 @@ const mapUserRestaurantSupport = (response) => {
     });
 };
 
-const mapDeliverySupport = (response) => {
-  const payload = response?.data?.data;
-  const rows =
-    payload?.tickets ||
-    payload?.items ||
-    payload?.data ||
-    response?.data?.tickets ||
-    [];
-
-  return (Array.isArray(rows) ? rows : [])
-    .filter((item) => !["resolved", "closed"].includes(String(item?.status || "").toLowerCase()))
-    .map((item) => ({
-      id: `support-delivery-${String(item?._id || item?.id || "")}`,
-      title: "Delivery Support Ticket",
-      message: `${item?.deliveryPartner?.name || "Delivery partner"} raised a support ticket. Subject: ${item?.subject || "N/A"}. Priority: ${item?.priority || "medium"}. Status: ${item?.status || "open"}.`,
-      type: "support",
-      category: "delivery_support",
-      path: "/admin/food/delivery-support-tickets",
-      createdAt: item?.createdAt || item?.updatedAt,
-      timeLabel: toDateLabel(item?.createdAt || item?.updatedAt),
-      metaLabel: joinMeta(item?.deliveryPartner?.name, item?.deliveryPartner?.phone, item?.priority, item?.status),
-    }));
-};
-
 const mapExpiredFssai = (response) => {
   const payload = response?.data?.data;
   const rows = payload?.items || payload?.data || response?.data?.items || [];
@@ -203,17 +157,13 @@ export default function useAdminNotifications(options = {}) {
 
       const [
         restaurantsRes,
-        deliveryJoinRes,
         foodApprovalRes,
         supportRes,
-        deliverySupportRes,
         fssaiExpiredRes,
       ] = await Promise.all([
         adminAPI.getPendingRestaurants(),
-        adminAPI.getDeliveryPartnerJoinRequests({ page: 1, limit: 50 }),
         adminAPI.getPendingFoodApprovals({ page: 1, limit: 50 }),
         adminAPI.getSupportTicketsAdmin({ page: 1, limit: 50, source: "all" }),
-        adminAPI.getDeliverySupportTickets({ page: 1, limit: 50 }),
         adminAPI.getExpiredFssaiNotifications(),
       ]);
 
@@ -224,10 +174,8 @@ export default function useAdminNotifications(options = {}) {
 
       const aggregated = uniqueById([
         ...mapPendingRestaurants(restaurantRows),
-        ...mapDeliveryJoinRequests(deliveryJoinRes),
         ...mapFoodApprovals(foodApprovalRes),
         ...mapUserRestaurantSupport(supportRes),
-        ...mapDeliverySupport(deliverySupportRes),
         ...mapExpiredFssai(fssaiExpiredRes),
       ])
         .filter((item) => !dismissed.has(item.id))

@@ -455,9 +455,6 @@ export async function calculateOrder(userId, dto) {
     .sort({ createdAt: -1 })
     .lean();
   const feeSettings = feeDoc || {
-    deliveryFee: 25,
-    deliveryFeeRanges: [],
-    freeDeliveryThreshold: 149,
     platformFee: 5,
     gstRate: 5,
   };
@@ -465,7 +462,7 @@ export async function calculateOrder(userId, dto) {
   if (orderType === "quick") {
     const packagingFee = 0;
     const platformFee = Number(feeSettings.platformFee || 0);
-    const deliveryFee = Number(feeSettings.deliveryFee || 25);
+    const deliveryFee = 0;
     const gstRate = Number(feeSettings.gstRate || 0);
     const tax =
       Number.isFinite(gstRate) && gstRate > 0
@@ -502,50 +499,7 @@ export async function calculateOrder(userId, dto) {
 
   const packagingFee = 0;
   const platformFee = Number(feeSettings.platformFee || 0);
-
-  // Delivery fee by subtotal range (fallback to flat fee; free above threshold).
-  const freeThreshold = Number(feeSettings.freeDeliveryThreshold || 0);
-  let deliveryFee = 0;
-  if (
-    Number.isFinite(freeThreshold) &&
-    freeThreshold > 0 &&
-    subtotal >= freeThreshold
-  ) {
-    deliveryFee = 0;
-  } else {
-    const ranges = Array.isArray(feeSettings.deliveryFeeRanges)
-      ? [...feeSettings.deliveryFeeRanges]
-      : [];
-    if (ranges.length > 0) {
-      ranges.sort((a, b) => Number(a.min) - Number(b.min));
-      let matched = null;
-      for (let i = 0; i < ranges.length; i += 1) {
-        const r = ranges[i] || {};
-        const min = Number(r.min);
-        const max = Number(r.max);
-        const fee = Number(r.fee);
-        if (
-          !Number.isFinite(min) ||
-          !Number.isFinite(max) ||
-          !Number.isFinite(fee)
-        )
-          continue;
-        const isLast = i === ranges.length - 1;
-        const inRange = isLast
-          ? subtotal >= min && subtotal <= max
-          : subtotal >= min && subtotal < max;
-        if (inRange) {
-          matched = fee;
-          break;
-        }
-      }
-      deliveryFee = Number.isFinite(matched)
-        ? matched
-        : Number(feeSettings.deliveryFee || 0);
-    } else {
-      deliveryFee = Number(feeSettings.deliveryFee || 0);
-    }
-  }
+  const deliveryFee = 0;
 
   const gstRate = Number(feeSettings.gstRate || 0);
   const tax =
@@ -693,7 +647,7 @@ export async function createOrder(userId, dto) {
     subtotal: Number(dto.pricing?.subtotal ?? computedSubtotal),
     tax: Number(dto.pricing?.tax ?? 0),
     packagingFee: Number(dto.pricing?.packagingFee ?? 0),
-    deliveryFee: Number(dto.pricing?.deliveryFee ?? 0),
+    deliveryFee: 0,
     platformFee: Number(dto.pricing?.platformFee ?? 0),
     discount: Number(dto.pricing?.discount ?? 0),
     total: Number(dto.pricing?.total ?? 0),
@@ -707,9 +661,6 @@ export async function createOrder(userId, dto) {
       (Number.isFinite(normalizedPricing.tax) ? normalizedPricing.tax : 0) +
       (Number.isFinite(normalizedPricing.packagingFee)
         ? normalizedPricing.packagingFee
-        : 0) +
-      (Number.isFinite(normalizedPricing.deliveryFee)
-        ? normalizedPricing.deliveryFee
         : 0) +
       (Number.isFinite(normalizedPricing.platformFee)
         ? normalizedPricing.platformFee
@@ -765,8 +716,9 @@ export async function createOrder(userId, dto) {
 
   const platformProfit = Math.max(
     0,
-    (Number.isFinite(normalizedPricing.deliveryFee) ? normalizedPricing.deliveryFee : 0) +
-      (Number.isFinite(normalizedPricing.platformFee) ? normalizedPricing.platformFee : 0) +
+    (Number.isFinite(normalizedPricing.platformFee)
+      ? normalizedPricing.platformFee
+      : 0) +
       restaurantCommission -
       riderEarning,
   );
@@ -800,7 +752,7 @@ export async function createOrder(userId, dto) {
         note: "Order placed",
       },
     ],
-    note: dto.note || "",
+
     sendCutlery: dto.sendCutlery !== false,
     deliveryFleet: orderType === "food" ? dto.deliveryFleet || "standard" : "quick",
     scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
@@ -895,19 +847,7 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  if (
-    orderType === "food" &&
-    dispatchMode === "auto" &&
-    (isCash ||
-      order.payment.status === "paid" ||
-      order.payment.status === "cod_pending")
-  ) {
-    try {
-      await tryAutoAssign(order._id);
-    } catch {
-      // leave unassigned
-    }
-  }
+  // Delivery module disabled: keep new food orders unassigned.
 
   const saved = order.toObject();
   return { order: saved, razorpay: razorpayPayload };
@@ -970,12 +910,7 @@ export async function verifyPayment(userId, dto) {
     },
   });
 
-  const settings = order.orderType === "food" ? await getDispatchSettings() : null;
-  if (settings?.dispatchMode === "auto") {
-    try {
-      await tryAutoAssign(order._id);
-    } catch {}
-  }
+  // Delivery module disabled: payment verification should not trigger assignment.
 
   return { order: order.toObject(), payment: order.payment };
 }
@@ -1520,132 +1455,7 @@ export async function updateOrderStatusRestaurant(
     console.error("[DEBUG] Error emitting status update to restaurant:", err);
   }
 
-  // Real-time: delivery request / ready notifications.
-  try {
-    const io = getIO();
-    if (io) {
-      // On accept (confirmed or preparing) -> request delivery partners.
-      if (
-        (String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && 
-        (String(from) !== "preparing" && String(from) !== "confirmed")
-      ) {
-        console.log(
-          `[DEBUG] Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
-        );
-        // If auto dispatch, try assign now.
-        if (
-          order.dispatch?.status === "unassigned" &&
-          order.dispatch?.modeAtCreation === "auto"
-        ) {
-          try {
-            console.log(`[DEBUG] Auto-assigning order ${order.orderId}`);
-            await tryAutoAssign(order._id);
-            // Refresh order state from DB after auto-assignment
-            order = await FoodOrder.findById(order._id); 
-          } catch (err) {
-            console.error(
-              `[DEBUG] Auto-assign failed for order ${order.orderId}:`,
-              err,
-            );
-          }
-        }
-
-        const restaurant = await FoodRestaurant.findById(order.restaurantId)
-          .select("restaurantName location addressLine1 area city state")
-          .lean();
-        const payload = buildDeliverySocketPayload(order, restaurant);
-
-        // If assigned, notify assigned partner only.
-        const assignedId =
-          order.dispatch?.deliveryPartnerId?.toString?.() ||
-          order.dispatch?.deliveryPartnerId;
-        if (assignedId && order.dispatch?.status === "assigned") {
-          console.log(
-            `[DEBUG] Order ${order.orderId} assigned to ${assignedId}. Notifying.`,
-          );
-          io.to(rooms.delivery(assignedId)).emit("new_order", payload);
-          io.to(rooms.delivery(assignedId)).emit("play_notification_sound", {
-            orderId: payload.orderId,
-            orderMongoId: payload.orderMongoId,
-          });
-          await notifyOwnerSafely(
-            { ownerType: "DELIVERY_PARTNER", ownerId: assignedId },
-            {
-              title: "New delivery task",
-              body: `Order ${payload.orderId} is assigned to you.`,
-              data: {
-                type: "new_order",
-                orderId: payload.orderId,
-                orderMongoId: payload.orderMongoId,
-                link: "/delivery",
-              },
-            },
-          );
-        } else {
-          // Broadcast to nearby online partners so someone can accept/claim.
-          console.log(
-            `[DEBUG] Searching for nearby partners for order ${order.orderId}`,
-          );
-          const { partners } = await listNearbyOnlineDeliveryPartners(
-            order.restaurantId,
-            { maxKm: 15, limit: 25 },
-          );
-          console.log(
-            `[DEBUG] Found ${partners.length} partners: ${JSON.stringify(partners)}`,
-          );
-          for (const p of partners) {
-            const targetRoom = rooms.delivery(p.partnerId);
-            console.log(
-              `[DEBUG] Emitting new_order_available to room: ${targetRoom}`,
-            );
-            io.to(targetRoom).emit("new_order_available", {
-              ...payload,
-              pickupDistanceKm: p.distanceKm,
-            });
-          }
-          await notifyOwnersSafely(
-            partners.slice(0, 5).map((p) => ({
-              ownerType: "DELIVERY_PARTNER",
-              ownerId: p.partnerId,
-            })),
-            {
-              title: "New delivery order available",
-              body: `Order ${payload.orderId} is available near ${restaurant?.restaurantName || "your area"}.`,
-              data: {
-                type: "new_order_available",
-                orderId: payload.orderId,
-                orderMongoId: payload.orderMongoId,
-                link: "/delivery",
-              },
-            },
-          );
-          // Also trigger a generic sound event for the first few partners.
-          for (const p of partners.slice(0, 5)) {
-            io.to(rooms.delivery(p.partnerId)).emit("play_notification_sound", {
-              orderId: payload.orderId,
-              orderMongoId: payload.orderMongoId,
-            });
-          }
-        }
-      }
-
-            // When ready for pickup -> ping assigned delivery partner.
-            if (String(orderStatus) === 'ready_for_pickup' && String(from) !== 'ready_for_pickup') {
-                console.log(`[DEBUG] Order ${order.orderId} changed to 'ready_for_pickup'.`);
-                const assignedId = order.dispatch?.deliveryPartnerId?.toString?.() || order.dispatch?.deliveryPartnerId;
-                if (assignedId) {
-                    console.log(`[DEBUG] Notifying assigned partner ${assignedId} that order is ready.`);
-                    const restaurant = await FoodRestaurant.findById(order.restaurantId).select('restaurantName location addressLine1 area city state').lean();
-                    const payload = buildDeliverySocketPayload(order, restaurant);
-                    io.to(rooms.delivery(assignedId)).emit('order_ready', payload);
-                } else {
-                    console.log(`[DEBUG] Order ${order.orderId} is ready but no partner assigned.`);
-                }
-            }
-        }
-    } catch (err) {
-        console.error('[DEBUG] Error in delivery notification logic:', err);
-    }
+  // Delivery module disabled: restaurant status updates no longer trigger dispatch.
 
     enqueueOrderEvent('restaurant_order_status_updated', {
         orderMongoId: order._id?.toString?.(),
@@ -1701,37 +1511,9 @@ export async function updateOrderStatusRestaurant(
  * Only allowed if status is preparing/ready and no partner has accepted yet.
  */
 export async function resendDeliveryNotificationRestaurant(orderId, restaurantId) {
-    const order = await FoodOrder.findOne({
-        _id: new mongoose.Types.ObjectId(orderId),
-        restaurantId: new mongoose.Types.ObjectId(restaurantId)
-    });
-
-    if (!order) throw new NotFoundError('Order not found');
-
-    // Only allow if order is still active and not already terminal
-    const activeStatuses = ['preparing', 'ready_for_pickup', 'ready'];
-    if (!activeStatuses.includes(order.orderStatus)) {
-        throw new ValidationError(`Cannot resend notification for order in status: ${order.orderStatus}`);
-    }
-
-    // Guard: don't disrupt an active assignment that was already accepted
-    if (order.dispatch?.status === 'accepted') {
-        throw new ValidationError('A delivery partner has already accepted this order.');
-    }
-
-    // Reset dispatch state to unassigned to allow tryAutoAssign to start fresh
-    order.dispatch.status = 'unassigned';
-    order.dispatch.deliveryPartnerId = null;
-    // Clear previously offered partners to give everyone a fresh chance when resending manually.
-    order.dispatch.offeredTo = [];
-    
-    await order.save();
-
-    // Trigger smart dispatch logic immediately
-    const { tryAutoAssign } = await import('./order.service.js');
-    await tryAutoAssign(order._id);
-
-    return { success: true };
+    void orderId;
+    void restaurantId;
+    throw new ValidationError('Delivery module is disabled.');
 }
 
 export async function getCurrentTripDelivery(deliveryPartnerId) {

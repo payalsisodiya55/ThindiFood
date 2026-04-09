@@ -17,7 +17,6 @@ import {
   Loader2,
   Volume2,
 } from "lucide-react"
-import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -697,16 +696,6 @@ export default function OrderDetails() {
                 {orderData.status}
               </span>
               <span className="text-xs text-gray-500">{orderData.date}, {orderData.time}</span>
-              {/* Resend button for order details */}
-              {(orderData.status === "PREPARING" || orderData.status === "READY" || orderData.status === "CONFIRMED") && 
-                orderData.dispatchStatus !== "accepted" && (
-                <div className="mt-2">
-                  <ResendNotificationButton 
-                    orderId={orderId} 
-                    onSuccess={() => window.location.reload()} 
-                  />
-                </div>
-              )}
             </div>
           </div>
 

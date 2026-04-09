@@ -115,7 +115,7 @@ export default function QuickSharedCart() {
   }, [quickCart]);
 
   const subtotal = pricing?.subtotal || quickCart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
-  const deliveryFee = pricing?.deliveryFee || 0;
+  const deliveryFee = 0;
   const platformFee = pricing?.platformFee || 0;
   const tax = pricing?.tax || 0;
   const total = pricing?.total || subtotal + deliveryFee + platformFee + tax;
@@ -154,7 +154,7 @@ export default function QuickSharedCart() {
         },
         pricing: {
           subtotal,
-          deliveryFee,
+          deliveryFee: 0,
           platformFee,
           tax,
           discount: pricing?.discount || 0,
@@ -383,10 +383,6 @@ export default function QuickSharedCart() {
                 <div className="flex justify-between">
                   <span>Subtotal</span>
                   <span>{RUPEE_SYMBOL}{subtotal.toFixed(0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Delivery fee</span>
-                  <span>{RUPEE_SYMBOL}{deliveryFee.toFixed(0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Platform fee</span>

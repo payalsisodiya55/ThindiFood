@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, CheckCircle2, MessageCircle, Send, Mail, Copy } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, MessageCircle, Send, Mail, Copy } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -138,29 +138,6 @@ export default function Cart() {
   const [showPaymentSheet, setShowPaymentSheet] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
-  const [note, setNote] = useState(() => {
-    try {
-      if (typeof window === "undefined") return ""
-      const raw = window.localStorage.getItem(CART_ORDER_NOTE_STORAGE_KEY)
-      if (!raw) return ""
-      const stored = JSON.parse(raw)
-      return String(stored?.note || "")
-    } catch {
-      return ""
-    }
-  })
-  const [showNoteInput, setShowNoteInput] = useState(() => {
-    try {
-      if (typeof window === "undefined") return false
-      const raw = window.localStorage.getItem(CART_ORDER_NOTE_STORAGE_KEY)
-      if (!raw) return false
-      const stored = JSON.parse(raw)
-      const storedNote = String(stored?.note || "")
-      return Boolean(stored?.showNoteInput) || storedNote.trim().length > 0
-    } catch {
-      return false
-    }
-  })
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePayload, setSharePayload] = useState(null)
   const [isEditingRecipient, setIsEditingRecipient] = useState(false)
@@ -229,9 +206,6 @@ export default function Cart() {
 
   // Fee settings from database (used for platform fee and GST fallback only)
   const [feeSettings, setFeeSettings] = useState({
-    deliveryFee: 25,
-    deliveryFeeRanges: [],
-    freeDeliveryThreshold: 149,
     platformFee: 5,
     gstRate: 5,
   })
@@ -451,26 +425,7 @@ export default function Cart() {
     }
   }, [recipientDetails, isEditingRecipient])
 
-  useEffect(() => {
-    hasRestoredNoteRef.current = true
-  }, [])
 
-  useEffect(() => {
-    if (typeof window === "undefined") return
-    if (!hasRestoredNoteRef.current) return
-
-    try {
-      window.localStorage.setItem(
-        CART_ORDER_NOTE_STORAGE_KEY,
-        JSON.stringify({
-          note,
-          showNoteInput,
-        })
-      )
-    } catch {
-      // Ignore storage errors and keep note flow working.
-    }
-  }, [note, showNoteInput])
 
   useEffect(() => {
     if (deliveryAddressMode === "current") {
@@ -959,12 +914,13 @@ export default function Cart() {
   useEffect(() => {
     const fetchFeeSettings = async () => {
       try {
-        const response = await adminAPI.getPublicFeeSettings()
+        const feeSettingsFn =
+          adminAPI?.getPublicFeeSettings || adminAPI?.getFeeSettings
+        if (typeof feeSettingsFn !== "function") return
+
+        const response = await feeSettingsFn()
         if (response.data.success && response.data.data.feeSettings) {
           setFeeSettings({
-            deliveryFee: response.data.data.feeSettings.deliveryFee || 25,
-            deliveryFeeRanges: response.data.data.feeSettings.deliveryFeeRanges || [],
-            freeDeliveryThreshold: response.data.data.feeSettings.freeDeliveryThreshold || 149,
             platformFee: response.data.data.feeSettings.platformFee || 5,
             gstRate: response.data.data.feeSettings.gstRate || 5,
           })
@@ -991,44 +947,7 @@ export default function Cart() {
 
   // Use backend pricing if available, otherwise fallback to database fee settings
   const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
-  const fallbackDeliveryFee = (() => {
-    if (appliedCoupon?.freeDelivery) {
-      return 0
-    }
-
-    const ranges = Array.isArray(feeSettings.deliveryFeeRanges) ? [...feeSettings.deliveryFeeRanges] : []
-    if (ranges.length > 0) {
-      const sortedRanges = ranges.sort((a, b) => Number(a.min) - Number(b.min))
-      for (let i = 0; i < sortedRanges.length; i += 1) {
-        const range = sortedRanges[i]
-        const min = Number(range.min)
-        const max = Number(range.max)
-        const fee = Number(range.fee)
-        const isLastRange = i === sortedRanges.length - 1
-        const inRange = isLastRange
-          ? subtotal >= min && subtotal <= max
-          : subtotal >= min && subtotal < max
-
-        if (inRange) return fee
-      }
-
-      return 0
-    }
-
-    if (subtotal >= feeSettings.freeDeliveryThreshold) {
-      return 0
-    }
-
-    return Number(feeSettings.deliveryFee || 0)
-  })()
-  const deliveryFee = pricing?.deliveryFee || fallbackDeliveryFee
-  const deliveryFeeBreakdown = pricing?.deliveryFeeBreakdown || null
-  const hasDistanceDeliveryBreakdown =
-    deliveryFeeBreakdown?.source === "distance" &&
-    Number.isFinite(Number(deliveryFeeBreakdown?.distanceKm))
-  const deliveryFeeBreakdownText = hasDistanceDeliveryBreakdown
-    ? `Distance ${Number(deliveryFeeBreakdown.distanceKm).toFixed(1)} km: ${RUPEE_SYMBOL}${Number(deliveryFeeBreakdown.basePayout || 0).toFixed(0)} base + ${Number(deliveryFeeBreakdown.extraDistanceKm || 0).toFixed(1)} km x ${RUPEE_SYMBOL}${Number(deliveryFeeBreakdown.commissionPerKm || 0).toFixed(0)}`
-    : null
+  const deliveryFee = 0
   const platformFee = pricing?.platformFee || feeSettings.platformFee
   const gstCharges = pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100))
   const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
@@ -1443,7 +1362,7 @@ export default function Cart() {
       // Ensure couponCode is included in pricing
       const orderPricing = pricing || {
         subtotal,
-        deliveryFee,
+        deliveryFee: 0,
         tax: gstCharges,
         platformFee,
         discount,
@@ -1651,7 +1570,6 @@ export default function Cart() {
         restaurantId: finalRestaurantId,
         restaurantName: finalRestaurantName || undefined,
         pricing: orderPricing,
-        note: note || "",
         sendCutlery: sendCutlery !== false,
         paymentMethod: selectedPaymentMethod,
         // `useZone()` can return `null`. Zod expects string/undefined, not null.
@@ -1688,13 +1606,6 @@ export default function Cart() {
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
         clearCart()
-        setNote("")
-        setShowNoteInput(false)
-        try {
-          window.localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
-        } catch {
-          // ignore
-        }
         setIsPlacingOrder(false)
         return
       }
@@ -1706,13 +1617,6 @@ export default function Cart() {
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
         clearCart()
-        setNote("")
-        setShowNoteInput(false)
-        try {
-          window.localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
-        } catch {
-          // ignore
-        }
         setIsPlacingOrder(false)
         // Refresh wallet balance
         try {
@@ -2030,18 +1934,11 @@ export default function Cart() {
               </div>
 
 
-              {/* Note & Cutlery */}
+              {/* Cutlery */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 flex flex-col sm:flex-row gap-3">
                 <button
-                  onClick={() => setShowNoteInput(!showNoteInput)}
-                  className="flex-1 flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl text-sm md:text-base text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-                >
-                  <FileText className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="truncate">{note || "Add a note for the delivery partner"}</span>
-                </button>
-                <button
                   onClick={() => setSendCutlery(!sendCutlery)}
-                  className={`flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 border rounded-lg md:rounded-xl text-sm md:text-base ${sendCutlery ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300' : 'border-[#E2281B] dark:border-[#E2281B]/50 text-[#E2281B] dark:text-[#E2281B] bg-[#FEF2F2] dark:bg-[#E2281B]/10'}`}
+                  className={`w-full flex items-center justify-center gap-2 px-3 md:px-4 py-2 md:py-3 border rounded-lg md:rounded-xl text-sm md:text-base ${sendCutlery ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300' : 'border-[#E2281B] dark:border-[#E2281B]/50 text-[#E2281B] dark:text-[#E2281B] bg-[#FEF2F2] dark:bg-[#E2281B]/10'}`}
                 >
                   <Utensils className="h-4 w-4 md:h-5 md:w-5" />
                   <span className="whitespace-nowrap">
@@ -2049,30 +1946,6 @@ export default function Cart() {
                   </span>
                 </button>
               </div>
-
-              {/* Note Input */}
-              {showNoteInput && (
-                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-3 md:py-4 rounded-lg md:rounded-xl border border-slate-100 dark:border-gray-800">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
-                    Delivery instructions
-                  </p>
-                  <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    placeholder="Eg. Call when outside, ring bell once, leave at gate"
-                    className="w-full border border-gray-200 dark:border-gray-700 rounded-lg md:rounded-xl p-3 md:p-4 text-sm md:text-base resize-none h-20 md:h-24 focus:outline-none focus:border-[#E2281B] dark:focus:border-[#E2281B] bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100"
-                    maxLength={240}
-                  />
-                  <div className="mt-2 flex items-center justify-between gap-3">
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      Ye note order ke saath save hoga aur assigned delivery partner ko dikh sakta hai.
-                    </p>
-                    <span className="text-[11px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
-                      {note.length}/240
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {/* Complete your meal section - Approved Addons */}
               {addons.length > 0 && (
@@ -2160,13 +2033,6 @@ export default function Cart() {
 
               {/* Coupon Section */}
               <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-slate-100 dark:border-gray-800 shadow-sm flex flex-col">
-                {deliveryFee === 0 && (
-                  <div className="px-4 py-3 md:px-6 md:py-4 border-b border-dashed border-gray-200 dark:border-gray-800 flex items-center gap-3 bg-[#f4fcf7] dark:bg-green-900/10">
-                    <CheckCircle2 className="h-5 w-5 text-green-600 fill-green-600/20" />
-                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">You saved {RUPEE_SYMBOL}{feeSettings.deliveryFee || 25} on delivery</span>
-                  </div>
-                )}
-
                 {/* Applied Coupon View */}
                 {appliedCoupon ? (
                   <div className="px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
@@ -2278,9 +2144,6 @@ export default function Cart() {
                     <Zap className="h-5 w-5 text-green-600 fill-green-600/20" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-base text-gray-800 dark:text-gray-200">
-                      Delivery in <span className="text-green-600 font-bold">{restaurantData?.estimatedDeliveryTime || "15-20 mins"}</span>
-                    </p>
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
                       Want this later?
                       <button onClick={() => setIsScheduled(!isScheduled)} className="border-b border-dashed border-gray-500 font-medium outline-none">
@@ -2550,17 +2413,6 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">Item Total</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
-                      <span className={deliveryFee === 0 ? "text-[#E2281B] font-medium" : "text-gray-800 dark:text-gray-200 font-medium"}>
-                        {deliveryFee === 0 ? "FREE" : `${RUPEE_SYMBOL}${deliveryFee.toFixed(2)}`}
-                      </span>
-                    </div>
-                    {deliveryFeeBreakdownText && (
-                      <div className="text-[11px] text-gray-500 dark:text-gray-400 -mt-1.5 ml-1 border-l-2 border-gray-100 pl-2">
-                        {deliveryFeeBreakdownText}
-                      </div>
-                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{platformFee.toFixed(2)}</span>

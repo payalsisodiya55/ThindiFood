@@ -1714,13 +1714,10 @@ export async function upsertFeeSettings(body) {
         const $set = {};
         const $unset = {};
 
-        if (body.deliveryFee === null) $unset.deliveryFee = 1;
-        else if (body.deliveryFee !== undefined) $set.deliveryFee = body.deliveryFee;
-
-        if (body.deliveryFeeRanges !== undefined) $set.deliveryFeeRanges = body.deliveryFeeRanges;
-
-        if (body.freeDeliveryThreshold === null) $unset.freeDeliveryThreshold = 1;
-        else if (body.freeDeliveryThreshold !== undefined) $set.freeDeliveryThreshold = body.freeDeliveryThreshold;
+        // Force-cleanup legacy delivery fee fields from any existing document.
+        $unset.deliveryFee = 1;
+        $unset.deliveryFeeRanges = 1;
+        $unset.freeDeliveryThreshold = 1;
 
         if (body.platformFee === null) $unset.platformFee = 1;
         else if (body.platformFee !== undefined) $set.platformFee = body.platformFee;
@@ -1740,11 +1737,8 @@ export async function upsertFeeSettings(body) {
     }
 
     const payload = {
-        deliveryFeeRanges: body.deliveryFeeRanges ?? [],
         isActive: body.isActive !== false
     };
-    if (body.deliveryFee !== undefined && body.deliveryFee !== null) payload.deliveryFee = body.deliveryFee;
-    if (body.freeDeliveryThreshold !== undefined && body.freeDeliveryThreshold !== null) payload.freeDeliveryThreshold = body.freeDeliveryThreshold;
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
 

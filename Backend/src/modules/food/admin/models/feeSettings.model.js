@@ -1,20 +1,8 @@
 import mongoose from 'mongoose';
 
-const deliveryFeeRangeSchema = new mongoose.Schema(
-    {
-        min: { type: Number, required: true, min: 0 },
-        max: { type: Number, required: true, min: 0 },
-        fee: { type: Number, required: true, min: 0 }
-    },
-    { _id: false }
-);
-
 const feeSettingsSchema = new mongoose.Schema(
     {
-        // No defaults here; admin must explicitly configure values.
-        deliveryFee: { type: Number, min: 0 },
-        deliveryFeeRanges: { type: [deliveryFeeRangeSchema], default: [] },
-        freeDeliveryThreshold: { type: Number, min: 0 },
+        // Admin-configured platform charge settings.
         platformFee: { type: Number, min: 0 },
         gstRate: { type: Number, min: 0, max: 100 },
         isActive: { type: Boolean, default: true, index: true }

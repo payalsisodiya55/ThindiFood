@@ -82,7 +82,7 @@ export function validateCreateOrderDto(body) {
         customerPhone: z.string().optional(),
         pricing: pricingSchema,
         deliveryFleet: z.string().optional(),
-        note: z.string().optional(),
+
         sendCutlery: z.boolean().optional(),
         // 'razorpay_qr' means COD-style flow, but payment is collected via Razorpay QR at delivery.
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet']),

@@ -20,9 +20,6 @@ const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"))
 const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"))
 const AdminForgotPassword = lazy(() => import("@food/pages/admin/auth/AdminForgotPassword"))
 
-// Delivery Module
-const DeliveryRouter = lazy(() => import("../DeliveryV2"))
-
 // Scroll to top on route change
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -93,12 +90,6 @@ export default function App() {
             element={
               <RestaurantRouter />
             }
-          />
-
-          {/* Delivery Module - Already mapped to /delivery */}
-          <Route
-            path="delivery/*"
-            element={<DeliveryRouter />}
           />
 
           {/* Legacy Redirects & Fallbacks */}

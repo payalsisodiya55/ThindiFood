@@ -1,5 +1,5 @@
 import { Suspense, lazy } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import ProtectedRoute from "./ProtectedRoute";
 import AdminLayout from "./AdminLayout";
 import Loader from "@food/components/Loader";
@@ -11,7 +11,6 @@ const AdminSettings = lazy(() => import("@food/pages/admin/AdminSettings"));
 const NewRefundRequests = lazy(() => import("@food/pages/admin/refunds/NewRefundRequests"));
 const FoodApproval = lazy(() => import("@food/pages/admin/restaurant/FoodApproval"));
 const OrdersPage = lazy(() => import("@food/pages/admin/orders/OrdersPage"));
-const OrderDetectDelivery = lazy(() => import("@food/pages/admin/OrderDetectDelivery"));
 const Category = lazy(() => import("@food/pages/admin/categories/Category"));
 const FeeSettings = lazy(() => import("@food/pages/admin/fee-settings/FeeSettings"));
 const ReferralSettings = lazy(() => import("@food/pages/admin/referral-settings/ReferralSettings"));
@@ -20,7 +19,6 @@ const ZoneSetup = lazy(() => import("@food/pages/admin/restaurant/ZoneSetup"));
 const AddZone = lazy(() => import("@food/pages/admin/restaurant/AddZone"));
 const ViewZone = lazy(() => import("@food/pages/admin/restaurant/ViewZone"));
 const AllZonesMap = lazy(() => import("@food/pages/admin/restaurant/AllZonesMap"));
-const DeliveryBoyViewMap = lazy(() => import("@food/pages/admin/restaurant/DeliveryBoyViewMap"));
 const RestaurantsList = lazy(() => import("@food/pages/admin/restaurant/RestaurantsList"));
 const AddRestaurant = lazy(() => import("@food/pages/admin/restaurant/AddRestaurant"));
 const JoiningRequest = lazy(() => import("@food/pages/admin/restaurant/JoiningRequest"));
@@ -54,28 +52,11 @@ const AddFund = lazy(() => import("@food/pages/admin/wallet/AddFund"));
 const Bonus = lazy(() => import("@food/pages/admin/wallet/Bonus"));
 const LoyaltyPointReport = lazy(() => import("@food/pages/admin/loyalty-point/Report"));
 const SubscribedMailList = lazy(() => import("@food/pages/admin/SubscribedMailList"));
-// Deliveryman Management
-const DeliveryBoyCommission = lazy(() => import("@food/pages/admin/DeliveryBoyCommission"));
-const DeliveryCashLimit = lazy(() => import("@food/pages/admin/DeliveryCashLimit"));
-const CashLimitSettlement = lazy(() => import("@food/pages/admin/CashLimitSettlement"));
-const DeliveryWithdrawal = lazy(() => import("@food/pages/admin/DeliveryWithdrawal"));
-const DeliveryBoyWallet = lazy(() => import("@food/pages/admin/DeliveryBoyWallet"));
-const DeliveryEmergencyHelp = lazy(() => import("@food/pages/admin/DeliveryEmergencyHelp"));
-const DeliverySupportTickets = lazy(() => import("@food/pages/admin/DeliverySupportTickets"));
-const JoinRequest = lazy(() => import("@food/pages/admin/delivery-partners/JoinRequest"));
-const AddDeliveryman = lazy(() => import("@food/pages/admin/delivery-partners/AddDeliveryman"));
-const DeliverymanList = lazy(() => import("@food/pages/admin/delivery-partners/DeliverymanList"));
-const DeliverymanReviews = lazy(() => import("@food/pages/admin/delivery-partners/DeliverymanReviews"));
-const DeliverymanBonus = lazy(() => import("@food/pages/admin/delivery-partners/DeliverymanBonus"));
-const EarningAddon = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddon"));
-const EarningAddonHistory = lazy(() => import("@food/pages/admin/delivery-partners/EarningAddonHistory"));
-const DeliveryEarnings = lazy(() => import("@food/pages/admin/delivery-partners/DeliveryEarnings"));
 // Disbursement Management
 // Report Management
 const TransactionReport = lazy(() => import("@food/pages/admin/reports/TransactionReport"));
 const ExpenseReport = lazy(() => import("@food/pages/admin/reports/ExpenseReport"));
 const DisbursementReportRestaurants = lazy(() => import("@food/pages/admin/reports/DisbursementReportRestaurants"));
-const DisbursementReportDeliverymen = lazy(() => import("@food/pages/admin/reports/DisbursementReportDeliverymen"));
 const RegularOrderReport = lazy(() => import("@food/pages/admin/reports/RegularOrderReport"));
 const CampaignOrderReport = lazy(() => import("@food/pages/admin/reports/CampaignOrderReport"));
 const RestaurantReport = lazy(() => import("@food/pages/admin/reports/RestaurantReport"));
@@ -131,6 +112,12 @@ const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"));
 const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"));
 const AdminForgotPassword = lazy(() => import("@food/pages/admin/auth/AdminForgotPassword"));
 export default function AdminRouter() {
+  const location = useLocation()
+  const normalizedPathname = location.pathname.replace(/\/{2,}/g, "/")
+  if (normalizedPathname !== location.pathname) {
+    return <Navigate to={`${normalizedPathname}${location.search || ""}`} replace />
+  }
+
   return (
     <Suspense fallback={<Loader />}>
       <Routes>
@@ -172,13 +159,11 @@ export default function AdminRouter() {
             <Route path="orders/payment-failed" element={<OrdersPage statusKey="payment-failed" />} />
             <Route path="orders/refunded" element={<OrdersPage statusKey="refunded" />} />
             <Route path="orders/offline-payments" element={<OrdersPage statusKey="offline-payments" />} />
-            <Route path="order-detect-delivery" element={<OrderDetectDelivery />} />
             <Route path="order-refunds/new" element={<NewRefundRequests />} />
 
             {/* RESTAURANT MANAGEMENT */}
             <Route path="zone-setup" element={<ZoneSetup />} />
             <Route path="zone-setup/map" element={<AllZonesMap />} />
-            <Route path="zone-setup/delivery-boy-view" element={<DeliveryBoyViewMap />} />
             <Route path="zone-setup/add" element={<AddZone />} />
             <Route path="zone-setup/edit/:id" element={<AddZone />} />
             <Route path="zone-setup/view/:id" element={<ViewZone />} />
@@ -223,28 +208,10 @@ export default function AdminRouter() {
             <Route path="loyalty-point/report" element={<LoyaltyPointReport />} />
             <Route path="subscribed-mail-list" element={<SubscribedMailList />} />
 
-            <Route path="delivery-boy-commission" element={<DeliveryBoyCommission />} />
-            <Route path="delivery-cash-limit" element={<DeliveryCashLimit />} />
-            <Route path="cash-limit-settlement" element={<CashLimitSettlement />} />
-            <Route path="delivery-withdrawal" element={<DeliveryWithdrawal />} />
-            <Route path="delivery-boy-wallet" element={<DeliveryBoyWallet />} />
-            <Route path="delivery-emergency-help" element={<DeliveryEmergencyHelp />} />
-            <Route path="delivery-support-tickets" element={<DeliverySupportTickets />} />
-            <Route path="delivery-partners" element={<DeliverymanList />} />
-            <Route path="delivery-partners/add" element={<AddDeliveryman />} />
-            <Route path="delivery-partners/join-request" element={<JoinRequest />} />
-            <Route path="delivery-partners/reviews" element={<DeliverymanReviews />} />
-            <Route path="delivery-partners/bonus" element={<DeliverymanBonus />} />
-            <Route path="delivery-partners/earning-addon" element={<EarningAddon />} />
-            <Route path="delivery-partners/earning-addon-history" element={<EarningAddonHistory />} />
-            <Route path="delivery-partners/earnings" element={<DeliveryEarnings />} />
-
-
             {/* REPORTS & SETTINGS */}
             <Route path="transaction-report" element={<TransactionReport />} />
             <Route path="expense-report" element={<ExpenseReport />} />
             <Route path="disbursement-report/restaurants" element={<DisbursementReportRestaurants />} />
-            <Route path="disbursement-report/deliverymen" element={<DisbursementReportDeliverymen />} />
             <Route path="order-report/regular" element={<RegularOrderReport />} />
             <Route path="order-report/campaign" element={<CampaignOrderReport />} />
             <Route path="restaurant-report" element={<RestaurantReport />} />

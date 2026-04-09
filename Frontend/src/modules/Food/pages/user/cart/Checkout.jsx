@@ -37,7 +37,7 @@ export default function Checkout() {
   }, [addresses, selectedAddressId, getDefaultAddress])
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity * 83, 0)
-  const deliveryFee = 2.99 * 83
+  const deliveryFee = 0
   const tax = subtotal * 0.08
   const total = subtotal + deliveryFee + tax
 
@@ -67,7 +67,7 @@ export default function Checkout() {
         address: selectedAddress,
         paymentMethod: defaultPayment,
         subtotal,
-        deliveryFee,
+        deliveryFee: 0,
         tax,
         total,
         restaurant: cart[0]?.restaurant || cart[0]?.name || "Multiple Restaurants"
@@ -284,10 +284,6 @@ export default function Checkout() {
                     <div className="flex justify-between text-sm md:text-base">
                       <span className="text-muted-foreground">Subtotal</span>
                       <span className="dark:text-gray-200">₹{subtotal.toFixed(0)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm md:text-base">
-                      <span className="text-muted-foreground">Delivery Fee</span>
-                      <span className="dark:text-gray-200">₹{deliveryFee.toFixed(0)}</span>
                     </div>
                     <div className="flex justify-between text-sm md:text-base">
                       <span className="text-muted-foreground">Tax</span>

@@ -1,6 +1,5 @@
 import express from 'express';
 import authRoutes from '../core/auth/auth.routes.js';
-import deliveryRoutes from '../modules/food/delivery/routes/delivery.routes.js';
 import restaurantRoutes from '../modules/food/restaurant/routes/restaurant.routes.js';
 import landingRoutes from '../modules/food/landing/routes/landing.routes.js';
 import { getPublicDiningCategories, getPublicDiningRestaurants } from '../modules/food/dining/controllers/diningPublic.controller.js';
@@ -29,7 +28,6 @@ router.use('/v1/food/auth', authRoutes);
 
 // Backward-compatible auth routes (legacy)
 router.use('/v1/auth', authRoutes);
-router.use('/v1/food/delivery', deliveryRoutes);
 router.use('/v1/food/restaurant', restaurantRoutes);
 // Landing & hero-banners for Food user app (paths start with /food/hero-banners/...)
 router.use('/v1/food', landingRoutes);

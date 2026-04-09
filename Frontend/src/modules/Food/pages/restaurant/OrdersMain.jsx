@@ -31,7 +31,6 @@ import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotificatio
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton";
 const debugLog = (...args) => {};
 const debugWarn = (...args) => {};
 const debugError = (...args) => {};
@@ -43,7 +42,6 @@ const filterTabs = [
   { id: "all", label: "All" },
   { id: "preparing", label: "Preparing" },
   { id: "ready", label: "Ready" },
-  { id: "out-for-delivery", label: "Out for delivery" },
   { id: "scheduled", label: "Scheduled" },
   { id: "table-booking", label: "Table Booking" },
   { id: "completed", label: "Completed" },
@@ -1813,13 +1811,6 @@ export default function OrdersMain() {
             refreshToken={ordersRefreshToken}
           />
         );
-      case "out-for-delivery":
-        return (
-          <OutForDeliveryOrders
-            onSelectOrder={handleSelectOrder}
-            refreshToken={ordersRefreshToken}
-          />
-        );
       case "scheduled":
         return <EmptyState message="Scheduled orders will appear here" />;
       case "completed":
@@ -2672,18 +2663,6 @@ export default function OrdersMain() {
                   <span className="text-[11px] text-gray-500">
                     {selectedOrder.timePlaced}
                   </span>
-                  {/* Delivery Resend Button - Only for preparing/ready orders with no partner */}
-                  {(String(selectedOrder.status).toLowerCase() === "preparing" ||
-                    String(selectedOrder.status).toLowerCase() === "ready") &&
-                    !selectedOrder.deliveryPartnerId && (
-                      <div className="mt-1">
-                        <ResendNotificationButton
-                          orderId={selectedOrder.orderId}
-                          mongoId={selectedOrder.mongoId}
-                          onSuccess={() => setIsSheetOpen(false)}
-                        />
-                      </div>
-                    )}
                 </div>
               </div>
 
@@ -2858,31 +2837,6 @@ function OrderCard({
                 {type}
                 {tableOrToken ? ` • ${tableOrToken}` : ""}
               </p>
-              {/* Delivery Assignment Status - Only show for active orders */}
-              {(isPreparing || isReady || normalizedStatus === "confirmed") && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                      deliveryPartnerId
-                        ? "bg-green-100 text-green-700 border border-green-300"
-                        : "bg-orange-100 text-orange-700 border border-orange-300"
-                    }`}>
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        deliveryPartnerId ? "bg-green-500" : "bg-orange-500"
-                      }`}
-                    />
-                    {deliveryPartnerId ? "Assigned" : "Not Assigned"}
-                  </span>
-                  {dispatchStatus !== "accepted" && (
-                    <ResendNotificationButton
-                      orderId={orderId}
-                      mongoId={mongoId}
-                      onSuccess={onSelect}
-                    />
-                  )}
-                </div>
-              )}
             </div>
             <div className="flex items-center gap-2">
               {isPreparing && onMarkReady && (
@@ -3352,124 +3306,6 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0 }) {
     </div>
   );
 }
-
-// Out for Delivery Orders List
-const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0 }) => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchOrders = async () => {
-      try {
-        // Fetch all orders and filter for 'out_for_delivery' status on frontend
-        const response = await restaurantAPI.getOrders();
-
-        if (!isMounted) return;
-
-        if (response.data?.success && response.data.data?.orders) {
-          // Filter orders with 'out_for_delivery' status
-          const outForDeliveryOrders = response.data.data.orders.filter(
-            (order) => order.status === "out_for_delivery",
-          );
-
-          const transformedOrders = outForDeliveryOrders.map((order) => ({
-            orderId: order.orderId || order._id,
-            mongoId: order._id,
-            status: order.status || "out_for_delivery",
-            customerName: order.userId?.name || "Customer",
-            type:
-              order.deliveryFleet === "standard"
-                ? "Home Delivery"
-                : "Express Delivery",
-            tableOrToken: null,
-            timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            eta: null,
-            itemsSummary:
-              order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
-                .join(", ") || "No items",
-            photoUrl: order.items?.[0]?.image || null,
-            photoAlt: order.items?.[0]?.name || "Order",
-            paymentMethod: order.paymentMethod || order.payment?.method || null,
-            deliveryPartnerId: order.deliveryPartnerId || null,
-            dispatchStatus: order.dispatch?.status || null,
-          }));
-
-          if (isMounted) {
-            setOrders(transformedOrders);
-            setLoading(false);
-          }
-        } else {
-          if (isMounted) {
-            setOrders([]);
-            setLoading(false);
-          }
-        }
-      } catch (error) {
-        if (!isMounted) return;
-
-        // Don't log network errors repeatedly - they're expected if backend is down
-        if (error.code !== "ERR_NETWORK" && error.response?.status !== 404) {
-          debugError("Error fetching out for delivery orders:", error);
-        }
-
-        if (isMounted) {
-          setOrders([]);
-          setLoading(false);
-        }
-      }
-    };
-
-    fetchOrders();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [refreshToken]); // Re-fetch only when parent requests it
-
-  if (loading) {
-    return (
-      <div className="pt-4 pb-6">
-        <div className="flex items-baseline justify-between mb-3">
-          <h2 className="text-base font-semibold text-black">
-            Out for delivery
-          </h2>
-          <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-        </div>
-        <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pt-4 pb-6">
-      <div className="flex items-baseline justify-between mb-3">
-        <h2 className="text-base font-semibold text-black">Out for delivery</h2>
-        <span className="text-xs text-gray-500">{orders.length} active</span>
-      </div>
-      {orders.length === 0 ? (
-        <div className="text-center py-8 text-gray-500 text-sm">
-          No orders out for delivery
-        </div>
-      ) : (
-        <div>
-          {orders.map((order) => (
-            <OrderCard
-              key={order.orderId || order.mongoId}
-              {...order}
-              onSelect={onSelectOrder}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 // Empty State Component
 function EmptyState({ message = "Temporarily closed" }) {
