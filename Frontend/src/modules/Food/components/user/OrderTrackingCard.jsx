@@ -87,21 +87,6 @@ const isActiveOrder = (order) => {
   return true;
 };
 
-const getTimeRemaining = (order) => {
-  if (!order) return null;
-
-  const orderTime = new Date(
-    order.createdAt || order.orderDate || order.created_at || order.date || Date.now(),
-  );
-  const estimatedMinutes =
-    order.estimatedDeliveryTime ||
-    order.estimatedTime ||
-    order.estimated_delivery_time ||
-    35;
-  const deliveryTime = new Date(orderTime.getTime() + estimatedMinutes * 60000);
-  return Math.max(0, Math.floor((deliveryTime - new Date()) / 60000));
-};
-
 /** Cheap fingerprint so we skip setState when list content is unchanged (fewer re-renders). */
 function ordersFingerprint(orders) {
   if (!Array.isArray(orders) || orders.length === 0) return "";
@@ -114,7 +99,6 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
   const navigate = useNavigate();
   const { orders: contextOrders } = useOrders();
   const hasCustomerAuth = !!getCustomerToken();
-  const [timeRemaining, setTimeRemaining] = useState(null);
   const [apiOrders, setApiOrders] = useState([]);
   const [hasFetchedApi, setHasFetchedApi] = useState(false);
   const [activeOrderOverride, setActiveOrderOverride] = useState(null);
@@ -268,23 +252,6 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     };
   }, [fetchOrders, hasCustomerAuth]);
 
-  useEffect(() => {
-    if (!activeOrder) {
-      setTimeRemaining((prev) => (prev !== null ? null : prev));
-      return;
-    }
-
-    const tick = () => {
-      const next = getTimeRemaining(activeOrder);
-      setTimeRemaining((prev) => (prev === next ? prev : next));
-    };
-
-    tick();
-    const interval = setInterval(tick, 60000);
-
-    return () => clearInterval(interval);
-  }, [activeOrder]);
-
   // Proactive verification for active orders not found in recent API list
   useEffect(() => {
     if (!hasCustomerAuth) return;
@@ -343,9 +310,9 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     if (s === "preparing" || s === "created" || s === "pending") return "Preparing your order";
     if (s === "ready_for_pickup") return "Ready for pickup";
 
-    if (s === "reached_pickup" || p === "at_pickup") return "Delivery partner reached restaurant";
-    if (s === "picked_up" || p === "en_route_to_delivery") return "On the way";
-    if (s === "reached_drop" || p === "at_drop") return "Arrived near you";
+    if (s === "reached_pickup" || p === "at_pickup") return "Ready for your pickup";
+    if (s === "picked_up" || p === "en_route_to_delivery") return "Pickup completed";
+    if (s === "reached_drop" || p === "at_drop") return "Pickup completed";
 
     if (s === "delivered" || p === "delivered" || p === "completed") return "Delivered";
     return "Preparing your order";
@@ -394,12 +361,10 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
               className="shadow-lg shadow-red-500/20 rounded-xl px-4 py-2 shrink-0 flex flex-col items-center justify-center border border-red-200"
             >
               <p className="text-orange-50 text-[10px] font-bold uppercase tracking-wider opacity-95 leading-tight mb-[2px]">
-                arriving in
+                GO FOR
               </p>
               <p className="text-white text-base md:text-[17px] font-black leading-tight drop-shadow-sm">
-                {timeRemaining !== null
-                  ? `${Math.max(1, timeRemaining)} min`
-                  : "--"}
+                PICKUP
               </p>
             </div>
           </div>

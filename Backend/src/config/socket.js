@@ -352,7 +352,7 @@ export const initSocket = async (server) => {
                 socket.emit('delivery_drop_otp', {
                   orderId: state.activeOrder.orderId,
                   otp: state.activeOrder.handoverOtp,
-                  message: 'Share this OTP with your delivery partner.'
+                  message: 'Share this OTP with your restaurant.'
                 });
               }
             }

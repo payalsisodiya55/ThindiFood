@@ -22,9 +22,7 @@ export default function Orders() {
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePayload, setSharePayload] = useState(null)
   const [selectedRestaurantRating, setSelectedRestaurantRating] = useState(null)
-  const [selectedDeliveryRating, setSelectedDeliveryRating] = useState(null)
   const [restaurantFeedbackText, setRestaurantFeedbackText] = useState("")
-  const [deliveryFeedbackText, setDeliveryFeedbackText] = useState("")
   const [submittingRating, setSubmittingRating] = useState(false)
   const [countdowns, setCountdowns] = useState({})
   // Track orders that have shown rating popup - persist in localStorage
@@ -123,9 +121,7 @@ export default function Orders() {
         transformedStatus.toLowerCase() === 'completed'
 
       const hasRestaurantRating = Number.isFinite(Number(order.restaurantRating))
-      const hasDeliveryPartner = !!(order.deliveryPartnerId || order.deliveryPartnerName)
-      const hasDeliveryRating = Number.isFinite(Number(order.deliveryPartnerRating))
-      const hasRating = hasRestaurantRating && (!hasDeliveryPartner || hasDeliveryRating)
+      const hasRating = hasRestaurantRating
 
       const orderId = order.id || order._id || order.mongoId
       const hasShownPopup = shownRatingForOrders.has(orderId)
@@ -176,9 +172,7 @@ export default function Orders() {
         })
         setRatingModal({ open: true, order: orderToRate })
         setSelectedRestaurantRating(null)
-        setSelectedDeliveryRating(null)
         setRestaurantFeedbackText("")
-        setDeliveryFeedbackText("")
       }, 800) // Show after 0.8 seconds
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,7 +268,6 @@ export default function Orders() {
             // Get original status from backend before transformation
             const originalStatus = backendStatus
             const restaurantRating = order.ratings?.restaurant?.rating || null
-            const deliveryPartnerRating = order.ratings?.deliveryPartner?.rating || null
 
             return {
               id: order._id?.toString() || order.orderId || `ORD-${order._id}`,
@@ -309,7 +302,6 @@ export default function Orders() {
               restaurantImage: order.restaurantId?.profileImage?.url || order.restaurantId?.profileImage || null,
               restaurantLocation: order.restaurantId?.location?.area || order.restaurantId?.location?.city || order.address?.city || order.deliveryAddress?.city || '',
               restaurantRating,
-              deliveryPartnerRating,
               ratings: order.ratings || {},
               rating: restaurantRating || null,
               review: order.review || null,
@@ -335,13 +327,12 @@ export default function Orders() {
           debugLog('? Orders fetched and transformed:', {
             total: transformedOrders.length,
             delivered: transformedOrders.filter(o => o.status === 'delivered' || o.originalStatus === 'delivered').length,
-            withRating: transformedOrders.filter(o => o.restaurantRating && (!o.deliveryPartnerId || o.deliveryPartnerRating)).length,
+            withRating: transformedOrders.filter(o => o.restaurantRating).length,
             sample: transformedOrders.slice(0, 2).map(o => ({
               id: o.id,
               status: o.status,
               originalStatus: o.originalStatus,
               restaurantRating: o.restaurantRating,
-              deliveryPartnerRating: o.deliveryPartnerRating,
               deliveredAt: o.deliveredAt
             }))
           })
@@ -403,10 +394,8 @@ export default function Orders() {
     return restaurantMatch || itemsMatch
   })
 
-  const ratingModalHasDeliveryPartner = !!(ratingModal.order?.deliveryPartnerId || ratingModal.order?.deliveryPartnerName)
   const ratingSubmitDisabled = submittingRating ||
-    selectedRestaurantRating === null ||
-    (ratingModalHasDeliveryPartner && selectedDeliveryRating === null)
+    selectedRestaurantRating === null
 
   // Handle reorder
   const handleReorder = (order) => {
@@ -583,25 +572,19 @@ Order again from this restaurant in the ${companyName} app.`
   const handleOpenRating = (order) => {
     setRatingModal({ open: true, order })
     setSelectedRestaurantRating(order.restaurantRating || null)
-    setSelectedDeliveryRating(order.deliveryPartnerRating || null)
     setRestaurantFeedbackText(order.ratings?.restaurant?.comment || "")
-    setDeliveryFeedbackText(order.ratings?.deliveryPartner?.comment || "")
   }
 
   const handleCloseRating = () => {
     setRatingModal({ open: false, order: null })
     setSelectedRestaurantRating(null)
-    setSelectedDeliveryRating(null)
     setRestaurantFeedbackText("")
-    setDeliveryFeedbackText("")
   }
 
   // Submit rating & feedback to backend
   const handleSubmitRating = async () => {
-    const hasDeliveryPartner = !!(ratingModal.order?.deliveryPartnerId || ratingModal.order?.deliveryPartnerName)
-    const isMissingDeliveryRating = hasDeliveryPartner && selectedDeliveryRating === null
-    if (!ratingModal.order || selectedRestaurantRating === null || isMissingDeliveryRating) {
-      toast.error("Please select all required ratings first")
+    if (!ratingModal.order || selectedRestaurantRating === null) {
+      toast.error("Please select required rating first")
       return
     }
 
@@ -612,9 +595,7 @@ Order again from this restaurant in the ${companyName} app.`
 
       const response = await orderAPI.submitOrderRatings(order.id, {
         restaurantRating: selectedRestaurantRating,
-        deliveryPartnerRating: hasDeliveryPartner ? selectedDeliveryRating : undefined,
         restaurantComment: restaurantFeedbackText || undefined,
-        deliveryPartnerComment: hasDeliveryPartner ? (deliveryFeedbackText || undefined) : undefined,
       })
       const updatedOrder = response?.data?.data?.order || response?.data?.order || null
 
@@ -624,10 +605,8 @@ Order again from this restaurant in the ${companyName} app.`
           o.id === order.id ? {
             ...o,
             restaurantRating: updatedOrder?.ratings?.restaurant?.rating ?? selectedRestaurantRating,
-            deliveryPartnerRating: updatedOrder?.ratings?.deliveryPartner?.rating ?? (hasDeliveryPartner ? selectedDeliveryRating : null),
             ratings: updatedOrder?.ratings || {
-              restaurant: { rating: selectedRestaurantRating, comment: restaurantFeedbackText || "" },
-              deliveryPartner: hasDeliveryPartner ? { rating: selectedDeliveryRating, comment: deliveryFeedbackText || "" } : undefined
+              restaurant: { rating: selectedRestaurantRating, comment: restaurantFeedbackText || "" }
             },
             rating: updatedOrder?.ratings?.restaurant?.rating ?? selectedRestaurantRating
           } : o
@@ -989,18 +968,13 @@ Order again from this restaurant in the ${companyName} app.`
                       </div>
                       <span className="text-xs font-semibold text-red-500">Payment failed</span>
                     </div>
-                  ) : isDelivered && order.restaurantRating && (!order.deliveryPartnerId || order.deliveryPartnerRating) ? (
+                  ) : isDelivered && order.restaurantRating ? (
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm text-gray-800">You rated</span>
                         <div className="flex bg-yellow-400 text-white px-1 rounded text-[10px] items-center gap-0.5 h-4">
                           R {order.restaurantRating}<Star className="w-2 h-2 fill-current" />
                         </div>
-                        {order.deliveryPartnerId && (
-                          <div className="flex bg-blue-500 text-white px-1 rounded text-[10px] items-center gap-0.5 h-4">
-                            D {order.deliveryPartnerRating}<Star className="w-2 h-2 fill-current" />
-                          </div>
-                        )}
                       </div>
                     </div>
                   ) : isDelivered ? (
@@ -1012,7 +986,7 @@ Order again from this restaurant in the ${companyName} app.`
                         className="text-xs font-medium mt-0.5 flex items-center"
                         style={{ color: RED }}
                       >
-                        Rate restaurant & delivery <span className="ml-0.5">&gt;</span>
+                        Rate restaurant <span className="ml-0.5">&gt;</span>
                       </button>
                     </div>
                   ) : (
@@ -1063,7 +1037,7 @@ Order again from this restaurant in the ${companyName} app.`
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <Star className="w-5 h-5 fill-white" />
-                  Rate Your Delivery
+                  Rate Your Restaurant
                 </h2>
                 <button
                   type="button"
@@ -1111,42 +1085,6 @@ Order again from this restaurant in the ${companyName} app.`
                 />
               </div>
 
-              {ratingModalHasDeliveryPartner && (
-                <div className="mb-6">
-                  <p className="text-sm font-semibold text-gray-900 mb-3">
-                    Delivery partner rating (out of 5)
-                  </p>
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    {Array.from({ length: 5 }, (_, i) => i + 1).map((num) => {
-                      const isActive = (selectedDeliveryRating || 0) >= num
-                      return (
-                        <button
-                          key={`delivery-${num}`}
-                          type="button"
-                          onClick={() => setSelectedDeliveryRating(num)}
-                          className="p-2 transition-transform hover:scale-125 active:scale-95"
-                        >
-                          <Star
-                            className={`w-10 h-10 transition-all ${isActive
-                                ? "text-yellow-400 fill-yellow-400 drop-shadow-lg"
-                                : "text-gray-300 hover:text-yellow-200"
-                              }`}
-                          />
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <textarea
-                    rows={2}
-                    value={deliveryFeedbackText}
-                    onChange={(e) => setDeliveryFeedbackText(e.target.value)}
-                    style={{ '--tw-ring-color': RED }}
-                    className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-red-500 resize-none transition-all"
-                    placeholder="Delivery partner feedback (optional)"
-                  />
-                </div>
-              )}
-
               {/* Submit Button */}
               <button
                 type="button"
@@ -1169,7 +1107,7 @@ Order again from this restaurant in the ${companyName} app.`
               </button>
 
               {ratingSubmitDisabled && (
-                <p className="text-xs text-center text-red-500 mt-2">Please select all required ratings to continue</p>
+                <p className="text-xs text-center text-red-500 mt-2">Please select required rating to continue</p>
               )}
             </div>
           </div>

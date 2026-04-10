@@ -2847,7 +2847,8 @@ export default function Home() {
                               {/* Featured Dish Badge - Top Left */}
                               <div className="absolute top-4 left-4 flex items-center z-10 transform transition-transform duration-300 group-hover:scale-105">
                                 <div className="bg-black/70 backdrop-blur-lg text-white px-4 py-1.5 rounded-full text-[11px] font-medium tracking-tight flex items-center shadow-2xl border border-white/20">
-                                  {restaurant.featuredDish} â€¢ â‚¹
+                                  {restaurant.featuredDish}
+                                  {" \u2022 \u20B9"}
                                   {restaurant.featuredPrice}
                                 </div>
                               </div>
@@ -3289,7 +3290,7 @@ export default function Home() {
                           }`}>
                           <span
                             className={`text-sm font-medium ${activeFilters.has("price-under-200") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                            Under â‚¹200
+                            {"Under \u20B9200"}
                           </span>
                         </button>
                         <button
@@ -3301,7 +3302,7 @@ export default function Home() {
                           }`}>
                           <span
                             className={`text-sm font-medium ${activeFilters.has("price-under-500") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                            Under â‚¹500
+                            {"Under \u20B9500"}
                           </span>
                         </button>
                       </div>

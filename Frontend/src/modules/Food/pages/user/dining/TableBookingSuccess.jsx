@@ -4,15 +4,31 @@ import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { motion } from "framer-motion"
 import confetti from "canvas-confetti"
-import { useEffect } from "react"
+import { useEffect, useMemo } from "react"
 import { RED } from "@food/constants/color"
 
 export default function TableBookingSuccess() {
     const location = useLocation()
     const navigate = useNavigate()
-    const { booking } = location.state || {}
+    const booking = useMemo(() => {
+        if (location.state?.booking) return location.state.booking
+        try {
+            const stored = sessionStorage.getItem("latest_dining_booking")
+            return stored ? JSON.parse(stored) : null
+        } catch {
+            return null
+        }
+    }, [location.state])
 
     useEffect(() => {
+        if (!location.state?.booking) return
+        try {
+            sessionStorage.setItem("latest_dining_booking", JSON.stringify(location.state.booking))
+        } catch {}
+    }, [location.state])
+
+    useEffect(() => {
+        if (!booking) return
         // Trigger confetti on mount
         const duration = 3 * 1000
         const animationEnd = Date.now() + duration
@@ -33,11 +49,35 @@ export default function TableBookingSuccess() {
         }, 250)
 
         return () => clearInterval(interval)
-    }, [])
+    }, [booking])
 
     if (!booking) {
-        navigate("/food/user/dining")
-        return null
+        return (
+            <AnimatedPage className="bg-white min-h-screen flex flex-col items-center justify-center p-6">
+                <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-slate-50 p-6 text-center shadow-sm">
+                    <h1 className="text-xl font-bold text-gray-900">Booking details not found</h1>
+                    <p className="mt-2 text-sm text-gray-500">
+                        This page needs booking data. Please open it right after confirming your table.
+                    </p>
+                    <div className="mt-5 space-y-3">
+                        <Button
+                            onClick={() => navigate("/food/user/bookings")}
+                            className="w-full h-11 text-white font-semibold rounded-xl"
+                            style={{ backgroundColor: RED }}
+                        >
+                            View My Bookings
+                        </Button>
+                        <Button
+                            onClick={() => navigate("/food/user/dining")}
+                            variant="outline"
+                            className="w-full h-11 rounded-xl border-slate-200 text-slate-700"
+                        >
+                            Back to Dining
+                        </Button>
+                    </div>
+                </div>
+            </AnimatedPage>
+        )
     }
 
     const formattedDate = new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })

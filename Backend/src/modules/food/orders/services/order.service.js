@@ -82,7 +82,7 @@ function emitDeliveryDropOtpToUser(order, plainOtp) {
       orderId: order.orderId,
       otp: plainOtp,
       message:
-        "Share this OTP with your delivery partner to hand over the order.",
+        "Share this OTP with your restaurant to hand over the order.",
     });
   } catch (e) {
     logger.warn(`emitDeliveryDropOtpToUser failed: ${e?.message || e}`);
@@ -601,6 +601,12 @@ export async function calculateOrder(userId, dto) {
 
 // ----- Create order -----
 export async function createOrder(userId, dto) {
+  const toMoney = (value, fallback = 0) => {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return fallback;
+    return Math.max(0, n);
+  };
+  if (!userId) throw new ValidationError("User authentication required");
   const orderType = dto.orderType === "quick" ? "quick" : "food";
   let restaurant = null;
   if (orderType === "food") {
@@ -644,13 +650,13 @@ export async function createOrder(userId, dto) {
     return sum + Math.max(0, price) * Math.max(0, qty);
   }, 0);
   const normalizedPricing = {
-    subtotal: Number(dto.pricing?.subtotal ?? computedSubtotal),
-    tax: Number(dto.pricing?.tax ?? 0),
-    packagingFee: Number(dto.pricing?.packagingFee ?? 0),
+    subtotal: toMoney(dto.pricing?.subtotal, computedSubtotal),
+    tax: toMoney(dto.pricing?.tax, 0),
+    packagingFee: toMoney(dto.pricing?.packagingFee, 0),
     deliveryFee: 0,
-    platformFee: Number(dto.pricing?.platformFee ?? 0),
-    discount: Number(dto.pricing?.discount ?? 0),
-    total: Number(dto.pricing?.total ?? 0),
+    platformFee: toMoney(dto.pricing?.platformFee, 0),
+    discount: toMoney(dto.pricing?.discount, 0),
+    total: toMoney(dto.pricing?.total, 0),
     currency: String(dto.pricing?.currency || "INR"),
   };
   const computedTotal = Math.max(
@@ -755,7 +761,9 @@ export async function createOrder(userId, dto) {
 
     sendCutlery: dto.sendCutlery !== false,
     deliveryFleet: orderType === "food" ? dto.deliveryFleet || "standard" : "quick",
+    fulfillmentType: dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery",
     scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+    pickupAt: dto.pickupAt ? new Date(dto.pickupAt) : null,
     riderEarning,
     platformProfit,
   });
@@ -787,7 +795,13 @@ export async function createOrder(userId, dto) {
 
   await order.save();
 
-  await foodTransactionService.createInitialTransaction(order);
+  try {
+    await foodTransactionService.createInitialTransaction(order);
+  } catch (err) {
+    logger.error(
+      `Failed to create initial transaction for order ${order.orderId}: ${err?.message || "unknown error"}`,
+    );
+  }
 
   if (paymentMethod === "razorpay" && order.payment?.razorpay?.orderId) {
     // Audit can still happen here or via FinanceService events
@@ -1264,18 +1278,10 @@ export async function submitOrderRatings(orderId, userId, dto) {
     throw new ValidationError("You can rate only delivered orders");
   }
 
-  const hasDeliveryPartner = !!order.dispatch?.deliveryPartnerId;
-  if (hasDeliveryPartner && !dto.deliveryPartnerRating) {
-    throw new ValidationError("Delivery partner rating is required");
-  }
-
   const restaurantAlreadyRated = Number.isFinite(
     Number(order?.ratings?.restaurant?.rating),
   );
-  const deliveryAlreadyRated = Number.isFinite(
-    Number(order?.ratings?.deliveryPartner?.rating),
-  );
-  if (restaurantAlreadyRated || (hasDeliveryPartner && deliveryAlreadyRated)) {
+  if (restaurantAlreadyRated) {
     throw new ValidationError("Ratings already submitted for this order");
   }
 
@@ -1287,28 +1293,11 @@ export async function submitOrderRatings(orderId, userId, dto) {
     ratedAt: now,
   };
 
-  if (hasDeliveryPartner) {
-    order.ratings.deliveryPartner = {
-      rating: dto.deliveryPartnerRating,
-      comment: dto.deliveryPartnerComment || "",
-      ratedAt: now,
-    };
-  }
-
-  await Promise.all([
-    applyAggregateRating(
-      FoodRestaurant,
-      order.restaurantId,
-      dto.restaurantRating,
-    ),
-    hasDeliveryPartner
-      ? applyAggregateRating(
-          FoodDeliveryPartner,
-          order.dispatch.deliveryPartnerId,
-          dto.deliveryPartnerRating,
-        )
-      : Promise.resolve(),
-  ]);
+  await applyAggregateRating(
+    FoodRestaurant,
+    order.restaurantId,
+    dto.restaurantRating,
+  );
 
     await order.save();
     enqueueOrderEvent('order_ratings_submitted', {
@@ -1316,7 +1305,7 @@ export async function submitOrderRatings(orderId, userId, dto) {
         orderId: order.orderId,
         userId,
         restaurantRating: dto.restaurantRating,
-        deliveryPartnerRating: hasDeliveryPartner ? dto.deliveryPartnerRating : null
+        deliveryPartnerRating: null
     });
 }
 
@@ -1352,6 +1341,44 @@ export async function updateOrderStatusRestaurant(
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
   });
   if (!order) throw new NotFoundError("Order not found");
+  const nextStatus = String(orderStatus || "").toLowerCase();
+  if (
+    nextStatus === "delivered" &&
+    order.deliveryVerification?.dropOtp?.required &&
+    !order.deliveryVerification?.dropOtp?.verified
+  ) {
+    throw new ValidationError(
+      "OTP verification is required before marking this order as delivered.",
+    );
+  }
+
+  let generatedDropOtp = "";
+  if (nextStatus === "ready_for_pickup" || nextStatus === "ready") {
+    const isVerified = Boolean(order.deliveryVerification?.dropOtp?.verified);
+    const existingOtp = String(order.deliveryOtp || "").trim();
+
+    if (!isVerified && !existingOtp) {
+      generatedDropOtp = generateFourDigitDeliveryOtp();
+      order.deliveryOtp = generatedDropOtp;
+      order.deliveryVerification = {
+        ...(order.deliveryVerification?.toObject?.() ||
+          order.deliveryVerification ||
+          {}),
+        dropOtp: { required: true, verified: false },
+      };
+    } else if (
+      !isVerified &&
+      !Boolean(order.deliveryVerification?.dropOtp?.required)
+    ) {
+      order.deliveryVerification = {
+        ...(order.deliveryVerification?.toObject?.() ||
+          order.deliveryVerification ||
+          {}),
+        dropOtp: { required: true, verified: false },
+      };
+    }
+  }
+
   const from = order.orderStatus;
   order.orderStatus = orderStatus;
   pushStatusHistory(order, {
@@ -1361,6 +1388,9 @@ export async function updateOrderStatusRestaurant(
     to: orderStatus,
   });
   await order.save();
+  if (generatedDropOtp) {
+    emitDeliveryDropOtpToUser(order, generatedDropOtp);
+  }
 
   // Real-time: status update to restaurant room.
   try {
@@ -1504,6 +1534,58 @@ export async function updateOrderStatusRestaurant(
     }
 
     return order.toObject();
+}
+
+export async function verifyDropOtpRestaurant(orderId, restaurantId, otp) {
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+
+  const order = await FoodOrder.findOne({
+    ...identity,
+    restaurantId: new mongoose.Types.ObjectId(restaurantId),
+  }).select("+deliveryOtp");
+
+  if (!order) throw new NotFoundError("Order not found");
+
+  const otpStr = String(otp || "").replace(/\D/g, "").trim();
+  if (!otpStr) throw new ValidationError("OTP is required");
+
+  if (!order.deliveryVerification?.dropOtp?.required) {
+    throw new ValidationError(
+      "OTP verification is not enabled for this order yet.",
+    );
+  }
+
+  if (order.deliveryVerification?.dropOtp?.verified) {
+    return { order: sanitizeOrderForExternal(order) };
+  }
+
+  const expected = String(order.deliveryOtp || "").trim();
+  if (!expected || expected !== otpStr) {
+    throw new ValidationError("Invalid OTP. Please enter the correct code.");
+  }
+
+  if (!order.deliveryVerification) order.deliveryVerification = { dropOtp: {} };
+  order.deliveryVerification.dropOtp.verified = true;
+  order.markModified("deliveryVerification.dropOtp.verified");
+  order.deliveryOtp = "";
+  await order.save();
+
+  return { order: sanitizeOrderForExternal(order) };
+}
+
+export async function verifyDropOtpAndCompleteRestaurant(
+  orderId,
+  restaurantId,
+  otp,
+) {
+  await verifyDropOtpRestaurant(orderId, restaurantId, otp);
+  const order = await updateOrderStatusRestaurant(
+    orderId,
+    restaurantId,
+    "delivered",
+  );
+  return { order: sanitizeOrderForExternal(order) };
 }
 
 /**

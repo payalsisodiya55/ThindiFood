@@ -153,6 +153,9 @@ export default function Cart() {
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState("")
   const [scheduledTime, setScheduledTime] = useState("")
+  const [isPickupScheduled, setIsPickupScheduled] = useState(false)
+  const [pickupDate, setPickupDate] = useState("")
+  const [pickupTime, setPickupTime] = useState("")
   const [orderProgress, setOrderProgress] = useState(0)
   const [showOrderSuccess, setShowOrderSuccess] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState(null)
@@ -262,6 +265,55 @@ export default function Cart() {
     }
   }, [isScheduled, scheduledDate, restaurantData])
 
+  const availablePickupTimeSlots = useMemo(() => {
+    if (!isPickupScheduled || !pickupDate || !restaurantData) return []
+
+    try {
+      const targetDate = new Date(pickupDate)
+      const status = getRestaurantAvailabilityStatus(restaurantData, targetDate)
+
+      let openingHour = 9
+      let closingHour = 22
+
+      if (status.openingTime) {
+        const [h] = status.openingTime.split(':')
+        openingHour = parseInt(h, 10)
+      }
+
+      if (status.closingTime) {
+        const [h] = status.closingTime.split(':')
+        closingHour = parseInt(h, 10)
+      }
+
+      if (closingHour < openingHour) {
+        closingHour += 24
+      }
+
+      const slots = []
+      const now = new Date()
+      const nowStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0]
+      const targetStr = pickupDate
+      const isToday = targetStr === nowStr
+      const currentHour = now.getHours()
+
+      for (let h = openingHour; h <= closingHour; h++) {
+        const actualHour = h % 24
+        if (isToday && h <= currentHour) continue
+
+        const period = actualHour >= 12 ? 'PM' : 'AM'
+        const display12 = actualHour % 12 || 12
+        const timeString = `${String(actualHour).padStart(2, '0')}:00`
+        const displayString = `${display12}:00 ${period}`
+
+        slots.push({ value: timeString, label: displayString })
+      }
+
+      return slots
+    } catch {
+      return []
+    }
+  }, [isPickupScheduled, pickupDate, restaurantData])
+
   // Reset scheduledTime if it's no longer valid in the new slots
   useEffect(() => {
     if (isScheduled && availableTimeSlots.length > 0) {
@@ -274,6 +326,18 @@ export default function Cart() {
       setScheduledTime("")
     }
   }, [isScheduled, availableTimeSlots, scheduledTime])
+
+  useEffect(() => {
+    if (isPickupScheduled && availablePickupTimeSlots.length > 0) {
+      const isValid = availablePickupTimeSlots.some(slot => slot.value === pickupTime)
+      if (!isValid) {
+        setPickupTime(availablePickupTimeSlots[0].value)
+      }
+    } else if (!isPickupScheduled) {
+      setPickupDate("")
+      setPickupTime("")
+    }
+  }, [isPickupScheduled, availablePickupTimeSlots, pickupTime])
 
   const cartCount = getCartCount()
   const getAddressId = (address) => address?.id || address?._id || null
@@ -1344,6 +1408,19 @@ export default function Cart() {
       }
     }
 
+    if (isPickupScheduled) {
+      if (!pickupDate || !pickupTime) {
+        toast.error("Please select both date and pickup time")
+        return
+      }
+      const pickupDateTimeString = `${pickupDate}T${pickupTime}:00`
+      const pickupDateObj = new Date(pickupDateTimeString)
+      if (pickupDateObj < new Date()) {
+        toast.error("Pickup time must be in the future")
+        return
+      }
+    }
+
     if (cart.length === 0) {
       alert("Your cart is empty")
       return
@@ -1575,6 +1652,8 @@ export default function Cart() {
         // `useZone()` can return `null`. Zod expects string/undefined, not null.
         zoneId: zoneId || undefined,
         scheduledAt: isScheduled ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : undefined,
+        fulfillmentType: isPickupScheduled ? "takeaway" : "delivery",
+        pickupAt: isPickupScheduled ? new Date(`${pickupDate}T${pickupTime}:00`).toISOString() : undefined,
       };
       // Log final order details (including paymentMethod for COD debugging)
       debugLog('?? FINAL: Sending order to backend with:', {
@@ -2146,8 +2225,20 @@ export default function Cart() {
                   <div className="flex-1">
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
                       Want this later?
-                      <button onClick={() => setIsScheduled(!isScheduled)} className="border-b border-dashed border-gray-500 font-medium outline-none">
+                      <button onClick={() => {
+                        setIsScheduled(!isScheduled)
+                        if (!isScheduled) setIsPickupScheduled(false)
+                      }} className="border-b border-dashed border-gray-500 font-medium outline-none">
                         Schedule it
+                      </button>
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
+                      Need takeaway?
+                      <button onClick={() => {
+                        setIsPickupScheduled(!isPickupScheduled)
+                        if (!isPickupScheduled) setIsScheduled(false)
+                      }} className="border-b border-dashed border-gray-500 font-medium outline-none">
+                        Add pickup time
                       </button>
                     </p>
                   </div>
@@ -2184,6 +2275,43 @@ export default function Cart() {
                       ) : (
                         <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
                           {scheduledDate ? "No slots available" : "Select date first"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {isPickupScheduled && (
+                  <div className="mt-5 flex flex-col sm:flex-row gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pickup Date (Up to Tomorrow)</label>
+                      <input
+                        type="date"
+                        min={new Date().toLocaleDateString('en-CA')}
+                        max={new Date(Date.now() + 86400000).toLocaleDateString('en-CA')}
+                        value={pickupDate}
+                        onChange={(e) => setPickupDate(e.target.value)}
+                        className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#E2281B]"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pickup Time</label>
+                      {availablePickupTimeSlots.length > 0 ? (
+                        <div className="relative">
+                          <select
+                            value={pickupTime}
+                            onChange={(e) => setPickupTime(e.target.value)}
+                            className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#E2281B] appearance-none pr-8"
+                          >
+                            {availablePickupTimeSlots.map(slot => (
+                              <option key={slot.value} value={slot.value}>{slot.label}</option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                        </div>
+                      ) : (
+                        <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
+                          {pickupDate ? "No slots available" : "Select pickup date first"}
                         </div>
                       )}
                     </div>

@@ -1255,6 +1255,13 @@ export const restaurantAPI = {
     restaurantAPI.updateOrderStatus(orderId, {
       orderStatus: "ready_for_pickup",
     }),
+  /** Verify customer OTP and mark order delivered (restaurant flow). */
+  verifyDeliveryOtpAndComplete: (orderId, otp) =>
+    apiClient.post(
+      `/food/restaurant/orders/${String(orderId)}/verify-delivery-otp`,
+      { otp: String(otp || "").replace(/\D/g, "").slice(0, 6) },
+      { contextModule: "restaurant" },
+    ),
   /**
    * Get a single order by id for restaurant screens.
    * Prefer direct endpoint; fallback to list+filter for backward compatibility.

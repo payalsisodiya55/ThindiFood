@@ -84,6 +84,8 @@ export function validateCreateOrderDto(body) {
         deliveryFleet: z.string().optional(),
 
         sendCutlery: z.boolean().optional(),
+        fulfillmentType: z.enum(['delivery', 'takeaway']).optional(),
+        pickupAt: z.string().optional(),
         // 'razorpay_qr' means COD-style flow, but payment is collected via Razorpay QR at delivery.
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet']),
         zoneId: z.string().nullable().optional()
@@ -180,9 +182,7 @@ export function validateDispatchSettingsDto(body) {
 export function validateOrderRatingsDto(body) {
     const schema = z.object({
         restaurantRating: z.number().min(1).max(5),
-        deliveryPartnerRating: z.number().min(1).max(5).optional(),
-        restaurantComment: z.string().max(500).optional(),
-        deliveryPartnerComment: z.string().max(500).optional()
+        restaurantComment: z.string().max(500).optional()
     });
     const result = schema.safeParse(body || {});
     if (!result.success) {

@@ -82,8 +82,12 @@ export const AuthProvider = ({ children }) => {
                     );
                     setUser(extractProfilePayload(response));
                 } catch (error) {
-                    console.error('Failed to fetch profile:', error);
-                    // If 401, axios interceptor will handle it
+                    if (error?.response?.status === 401) {
+                        // Expired/invalid token or guest context; keep UI stable without noisy errors.
+                        setUser(null);
+                    } else {
+                        console.error('Failed to fetch profile:', error);
+                    }
                 } finally {
                     setIsLoading(false);
                 }

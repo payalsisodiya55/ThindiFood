@@ -62,7 +62,7 @@ export function emitDeliveryDropOtpToUser(order, plainOtp) {
       orderId: order.order_id || order._id?.toString?.(),
       otp: plainOtp,
       message:
-        "Share this OTP with your delivery partner to hand over the order.",
+        "Share this OTP with your restaurant to hand over the order.",
     });
   } catch (e) {
     logger.warn(`emitDeliveryDropOtpToUser failed: ${e?.message || e}`);

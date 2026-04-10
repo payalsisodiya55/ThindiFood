@@ -178,6 +178,18 @@ export async function updateOrderStatusRestaurantController(req, res, next) {
     }
 }
 
+export async function verifyDeliveryOtpRestaurantController(req, res, next) {
+    try {
+        const restaurantId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const otp = String(req.body?.otp || "").replace(/\D/g, "").trim();
+        const result = await orderService.verifyDropOtpAndCompleteRestaurant(orderId, restaurantId, otp);
+        return sendResponse(res, 200, 'OTP verified and order marked delivered', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function listOrdersAvailableDeliveryController(req, res, next) {
     try {
         const deliveryPartnerId = req.user?.userId;

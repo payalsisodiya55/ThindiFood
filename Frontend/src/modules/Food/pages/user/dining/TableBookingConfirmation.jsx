@@ -94,6 +94,9 @@ export default function TableBookingConfirmation() {
                 try {
                     sessionStorage.removeItem(BOOKING_DRAFT_KEY)
                 } catch {}
+                try {
+                    sessionStorage.setItem("latest_dining_booking", JSON.stringify(response.data.data))
+                } catch {}
                 // Navigate to success page with booking details
                 navigate("/food/user/dining/book-success", { state: { booking: response.data.data } })
             }

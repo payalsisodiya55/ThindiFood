@@ -277,7 +277,9 @@ const orderSchema = new mongoose.Schema(
         },
         sendCutlery: { type: Boolean, default: true },
         deliveryFleet: { type: String, default: 'standard', trim: true },
+        fulfillmentType: { type: String, enum: ['delivery', 'takeaway'], default: 'delivery' },
         scheduledAt: { type: Date, default: null },
+        pickupAt: { type: Date, default: null },
         riderEarning: { type: Number, default: 0, min: 0 },
         platformProfit: { type: Number, default: 0, min: 0 },
         /** Plain 4-digit OTP for handover; cleared after successful verify (never expose to partner in API responses). */

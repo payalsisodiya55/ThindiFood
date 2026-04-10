@@ -11,7 +11,6 @@ import {
   ChevronRight,
   MapPin,
   Home as HomeIcon,
-  MessageSquare,
   X,
   Check,
   Shield,
@@ -449,9 +448,6 @@ export default function OrderTracking() {
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
   const [isCancelling, setIsCancelling] = useState(false)
-  const [isInstructionsModalOpen, setIsInstructionsModalOpen] = useState(false)
-  const [deliveryInstructions, setDeliveryInstructions] = useState("")
-  const [isUpdatingInstructions, setIsUpdatingInstructions] = useState(false)
   const [resolvedLookupId, setResolvedLookupId] = useState("")
   const [timerNow, setTimerNow] = useState(Date.now())
   const handleEtaUpdate = useCallback((newEta) => setEstimatedTime(newEta), [])
@@ -785,6 +781,21 @@ export default function OrderTracking() {
     return code ? String(code) : null
   }, [order?.deliveryVerification?.dropOtp?.code, socketDropOtpCode])
 
+  const orderDetailsStatusLabel = useMemo(() => {
+    const raw = String(order?.status || "").toLowerCase().trim()
+    if (raw === "delivered") return "PICKED UP"
+    return String(order?.status || "").replace(/_/g, " ").toUpperCase()
+  }, [order?.status])
+
+  const billSummaryDisplayTotal = useMemo(() => {
+    const subtotal = Number(order?.subtotal || 0)
+    const packagingFee = Number(order?.packagingFee || 0)
+    const platformFee = Number(order?.platformFee || 0)
+    const gst = Number(order?.gst || 0)
+    const discount = Number(order?.discount || 0)
+    return Math.max(0, subtotal + packagingFee + platformFee + gst - discount)
+  }, [order?.subtotal, order?.packagingFee, order?.platformFee, order?.gst, order?.discount])
+
   useEffect(() => {
     if (!isEditWindowOpen) return
     const interval = setInterval(() => {
@@ -1042,29 +1053,6 @@ export default function OrderTracking() {
     }
   };
 
-  const handleUpdateInstructions = async () => {
-    try {
-      setIsUpdatingInstructions(true);
-      const response = await orderAPI.updateOrderInstructions(resolvedLookupId || orderId, deliveryInstructions);
-      if (response.data?.success) {
-        toast.success("Delivery instructions updated");
-        setIsInstructionsModalOpen(false);
-        const updatedOrder = response.data.data?.order;
-        if (updatedOrder) {
-          setOrder(prev => transformOrderForTracking(updatedOrder, prev));
-        } else {
-          setOrder(prev => ({ ...prev, note: deliveryInstructions }));
-        }
-      } else {
-        toast.error(response.data?.message || "Failed to update instructions");
-      }
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update instructions");
-    } finally {
-      setIsUpdatingInstructions(false);
-    }
-  };
-
   const handleShare = async () => {
     try {
       if (navigator.share) {
@@ -1222,8 +1210,8 @@ export default function OrderTracking() {
       iconType: 'rider'
     },
     delivered: {
-      title: "Order delivered",
-      subtitle: "Enjoy your meal!",
+      title: "Order picked up",
+      subtitle: "Pickup completed successfully",
       color: "bg-[#E2281B]",
       iconType: 'delivered'
     },
@@ -1487,44 +1475,8 @@ export default function OrderTracking() {
                 <Phone className="w-5 h-5 text-blue-600" />
               </motion.button>
             </div>
-            {order?.note && (
-              <div className="bg-blue-50/50 p-3 mx-4 mb-4 rounded-lg flex items-start gap-2 border border-blue-100">
-                <MessageSquare className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-0.5">Instruction for Rider</p>
-                  <p className="text-xs text-gray-700 leading-relaxed font-medium">"{order.note}"</p>
-                </div>
-              </div>
-            )}
           </motion.div>
         )}
-
-        {/* Delivery Partner Safety */}
-        <motion.button
-          className="w-full bg-white rounded-xl p-4 shadow-sm flex items-center gap-3"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          whileTap={{ scale: 0.99 }}
-        >
-          <Shield className="w-6 h-6 text-gray-600" />
-          <span className="flex-1 text-left font-medium text-gray-900">
-            Learn about delivery partner safety
-          </span>
-          <ChevronRight className="w-5 h-5 text-gray-400" />
-        </motion.button>
-
-        {/* Delivery Details Banner */}
-        <motion.div
-          className="bg-yellow-50 rounded-xl p-4 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.65 }}
-        >
-          <p className="text-yellow-800 font-medium">
-            All your delivery details in one place ??
-          </p>
-        </motion.div>
 
         {/* Contact & Address Section */}
         <motion.div
@@ -1559,7 +1511,7 @@ export default function OrderTracking() {
                 className="w-6 h-6 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
               />
             }
-            title="Delivery at Location"
+            title="Order placed from location"
             subtitle={(() => {
               // Priority 1: Use order address formattedAddress (live location address)
               if (order?.address?.formattedAddress && order.address.formattedAddress !== "Select location") {
@@ -1597,18 +1549,9 @@ export default function OrderTracking() {
                 }
               }
 
-              return 'Add delivery address'
+              return 'Order location not available'
             })()}
             showArrow={false}
-          />
-          <SectionItem
-            icon={MessageSquare}
-            title={order?.note ? "Edit delivery instructions" : "Add delivery instructions"}
-            subtitle={order?.note ? order.note.substring(0, 35) + (order.note.length > 35 ? "..." : "") : ""}
-            onClick={() => {
-              setDeliveryInstructions(order?.note || "");
-              setIsInstructionsModalOpen(true);
-            }}
           />
         </motion.div>
 
@@ -1760,24 +1703,11 @@ export default function OrderTracking() {
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wider">Status</p>
                   <span className="text-sm font-bold text-green-600 uppercase">
-                    {order?.status?.replace('_', ' ')}
+                    {orderDetailsStatusLabel}
                   </span>
                 </div>
               </div>
             </div>
-
-            {/* Delivery Instructions Section */}
-            {order?.note && (
-              <div className="bg-red-50/50 rounded-xl p-4 border border-red-100 flex gap-3">
-                <MessageSquare className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs text-red-600 font-bold uppercase tracking-wider mb-1">Delivery Instructions</p>
-                  <p className="text-sm text-gray-800 leading-relaxed font-medium capitalize">
-                    {order.note}
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* Items Section */}
             <div>
@@ -1827,11 +1757,6 @@ export default function OrderTracking() {
               )}
 
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Delivery Fee</span>
-                <span className="text-gray-900 font-medium">₹{Number(order?.deliveryFee || 0).toFixed(2)}</span>
-              </div>
-
-              <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-600">Taxes & Charges (GST)</span>
                 <span className="text-gray-900 font-medium">₹{Number(order?.gst || 0).toFixed(2)}</span>
               </div>
@@ -1845,7 +1770,7 @@ export default function OrderTracking() {
 
               <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
                 <span className="text-base font-bold text-gray-900">Total Amount</span>
-                <span className="text-lg font-bold text-gray-900">₹{Number(order?.totalAmount || 0).toFixed(2)}</span>
+                <span className="text-lg font-bold text-gray-900">₹{billSummaryDisplayTotal.toFixed(2)}</span>
               </div>
             </div>
 
@@ -1874,35 +1799,8 @@ export default function OrderTracking() {
         </DialogContent>
       </Dialog>
 
-      {/* Delivery Instructions Modal */}
-      <Dialog open={isInstructionsModalOpen} onOpenChange={setIsInstructionsModalOpen}>
-        <DialogContent className="sm:max-w-md w-[95vw] rounded-3xl p-6 border-0 shadow-2xl bg-white max-h-[90vh] overflow-y-auto z-[200]">
-          <DialogHeader className="mb-2">
-            <DialogTitle className="text-xl font-bold bg-gradient-to-r from-red-600 to-red-400 bg-clip-text text-transparent">
-              Delivery Instructions
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-              Add instructions for the delivery partner to help them find your address or know where to leave your order.
-            </p>
-            <Textarea
-              value={deliveryInstructions}
-              onChange={(e) => setDeliveryInstructions(e.target.value)}
-              placeholder="E.g. Ring the doorbell, leave at the front desk..."
-              className="min-h-[120px] resize-none border-gray-200 focus:ring-[#E2281B] rounded-xl bg-gray-50 text-base"
-            />
-            <Button 
-              onClick={handleUpdateInstructions} 
-              disabled={isUpdatingInstructions}
-              className="w-full bg-gradient-to-r from-[#E2281B] to-[#E2281B] hover:from-[#c92015] hover:to-[#c92015] text-white font-bold h-12 rounded-xl border-none"
-            >
-              {isUpdatingInstructions ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Save Instructions"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
+
 

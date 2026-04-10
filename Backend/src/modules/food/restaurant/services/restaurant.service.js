@@ -1361,9 +1361,19 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     const restaurantNameNormalized = normalizeName(value);
     if (!restaurantNameNormalized) return null;
 
+    // Backward-compatible lookup for older rows where `restaurantNameNormalized`
+    // may be missing or stale.
+    const normalizedTokens = restaurantNameNormalized.split(' ').filter(Boolean);
+    const restaurantNamePattern = normalizedTokens.length
+        ? new RegExp(`^\\s*${normalizedTokens.map(escapeRegex).join('[-\\s]+')}\\s*$`, 'i')
+        : null;
+
     const doc = await FoodRestaurant.findOne({
         status: 'approved',
-        restaurantNameNormalized
+        $or: [
+            { restaurantNameNormalized },
+            ...(restaurantNamePattern ? [{ restaurantName: restaurantNamePattern }] : [])
+        ]
     }).lean();
     if (!doc) return null;
     return {

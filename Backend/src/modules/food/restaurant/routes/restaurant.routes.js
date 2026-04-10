@@ -187,6 +187,7 @@ router.delete('/addons/:id', authMiddleware, requireRestaurant, deleteAddonContr
 router.get('/orders', authMiddleware, requireRestaurant, orderController.listOrdersRestaurantController);
 router.get('/orders/:orderId', authMiddleware, requireRestaurant, orderController.getOrderByIdRestaurantController);
 router.patch('/orders/:orderId/status', authMiddleware, requireRestaurant, orderController.updateOrderStatusRestaurantController);
+router.post('/orders/:orderId/verify-delivery-otp', authMiddleware, requireRestaurant, orderController.verifyDeliveryOtpRestaurantController);
 
 // Complaints (restaurant dashboard)
 router.get('/complaints', authMiddleware, requireRestaurant, getRestaurantComplaintsController);
