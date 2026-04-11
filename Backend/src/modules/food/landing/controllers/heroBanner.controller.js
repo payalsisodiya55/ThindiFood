@@ -3,7 +3,9 @@ import {
     createHeroBannersFromFiles,
     deleteHeroBanner,
     updateHeroBannerOrder,
-    toggleHeroBannerStatus
+    toggleHeroBannerStatus,
+    getHeroBannerById,
+    linkHeroBannerRestaurants
 } from '../services/heroBanner.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
@@ -53,9 +55,10 @@ export const deleteHeroBannerController = async (req, res, next) => {
 export const updateHeroBannerOrderController = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { sortOrder } = req.body;
-        if (!id || typeof sortOrder !== 'number') {
-            throw new ValidationError('id and numeric sortOrder are required');
+        const value = req.body?.order ?? req.body?.sortOrder;
+        const sortOrder = Number(value);
+        if (!id || Number.isNaN(sortOrder)) {
+            throw new ValidationError('id and numeric order are required');
         }
         const updated = await updateHeroBannerOrder(id, sortOrder);
         return sendResponse(res, 200, 'Hero banner order updated', updated);
@@ -67,12 +70,40 @@ export const updateHeroBannerOrderController = async (req, res, next) => {
 export const toggleHeroBannerStatusController = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const { isActive } = req.body;
-        if (!id || typeof isActive !== 'boolean') {
-            throw new ValidationError('id and boolean isActive are required');
+        if (!id) {
+            throw new ValidationError('Banner id is required');
+        }
+        let { isActive } = req.body || {};
+        if (typeof isActive !== 'boolean') {
+            const banner = await getHeroBannerById(id);
+            if (!banner) {
+                throw new ValidationError('Hero banner not found');
+            }
+            isActive = !banner.isActive;
         }
         const updated = await toggleHeroBannerStatus(id, isActive);
         return sendResponse(res, 200, 'Hero banner status updated', updated);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const linkHeroBannerRestaurantsController = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const { restaurantIds } = req.body || {};
+        if (!id) {
+            throw new ValidationError('Banner id is required');
+        }
+        if (!Array.isArray(restaurantIds)) {
+            throw new ValidationError('restaurantIds must be an array');
+        }
+
+        const updated = await linkHeroBannerRestaurants(id, restaurantIds);
+        if (!updated) {
+            throw new ValidationError('Hero banner not found');
+        }
+        return sendResponse(res, 200, 'Restaurants linked to hero banner', updated);
     } catch (error) {
         next(error);
     }

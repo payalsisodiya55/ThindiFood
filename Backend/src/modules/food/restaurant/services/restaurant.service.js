@@ -1389,7 +1389,15 @@ export const listPublicOffers = async () => {
         status: 'active',
         $and: [
             { $or: [{ startDate: { $exists: false } }, { startDate: null }, { startDate: { $lte: now } }] },
-            { $or: [{ endDate: { $exists: false } }, { endDate: null }, { endDate: { $gt: now } }] }
+            { $or: [{ endDate: { $exists: false } }, { endDate: null }, { endDate: { $gt: now } }] },
+            {
+                $or: [
+                    { usageLimit: { $exists: false } },
+                    { usageLimit: null },
+                    { usageLimit: { $lte: 0 } },
+                    { $expr: { $lt: ['$usedCount', '$usageLimit'] } }
+                ]
+            }
         ]
     };
 

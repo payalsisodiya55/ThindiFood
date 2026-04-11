@@ -2413,7 +2413,7 @@ export default function Home() {
             })}
           </div>
 
-          <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full border border-white/10 z-30">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full border border-white/10 z-30">
             {heroBannerImages.map((_, index) => (
               <button
                 key={index}
@@ -2645,6 +2645,20 @@ export default function Home() {
                         </motion.div>
                       );
                     })}
+                  </div>
+                </motion.section>
+              )}
+
+              {(showBannerSkeleton || heroBannerImages.length > 0) && (
+                <motion.section
+                  className="content-auto pt-3 sm:pt-4"
+                  initial={false}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <div className="px-4">
+                    <div className="h-44 sm:h-48 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+                      {HeroBannerSection}
+                    </div>
                   </div>
                 </motion.section>
               )}

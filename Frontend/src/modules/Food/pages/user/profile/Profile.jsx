@@ -1090,8 +1090,8 @@ export default function Profile() {
       <Dialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
         <DialogContent className="sm:max-w-[425px] rounded-2xl p-0 overflow-hidden border-0 dark:bg-[#1a1a1a]">
           <div className="p-6 text-center">
-            <div className="w-16 h-16 bg-red-50 dark:bg-red-950/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Power className="h-8 w-8 text-red-600" />
+            <div className="w-16 h-16 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Power className="h-8 w-8" style={{ color: RED }} />
             </div>
             <DialogTitle className="text-xl font-bold mb-2 dark:text-white">Log out of {companyName}?</DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400 mb-6">
@@ -1106,7 +1106,8 @@ export default function Profile() {
                 Cancel
               </Button>
               <Button
-                className="flex-1 h-12 rounded-xl text-base font-semibold text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                className="flex-1 h-12 rounded-xl text-base font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                style={{ backgroundColor: RED }}
                 onClick={handleLogout}
                 loading={isLoggingOut}
                 disabled={isLoggingOut}>

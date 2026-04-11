@@ -32,6 +32,7 @@ import { getIO, rooms } from '../../../../config/socket.js';
 import { addOrderJob } from '../../../../queues/producers/order.producer.js';
 import { fetchPolyline } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
+import { invalidateCache } from '../../../../middleware/cache.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 
 const ORDER_ID_PREFIX = "FOD-";
@@ -621,6 +622,24 @@ export async function createOrder(userId, dto) {
   const orderId = await ensureUniqueOrderId();
   const settings = orderType === "food" ? await getDispatchSettings() : null;
   const dispatchMode = settings?.dispatchMode || "manual";
+  const fulfillmentType =
+    dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery";
+  let pickupAt = null;
+  if (fulfillmentType === "takeaway") {
+    if (!dto.pickupAt) {
+      throw new ValidationError(
+        "Pickup time is required for takeaway orders",
+      );
+    }
+    const parsedPickupAt = new Date(dto.pickupAt);
+    if (Number.isNaN(parsedPickupAt.getTime())) {
+      throw new ValidationError("Invalid pickup time");
+    }
+    if (parsedPickupAt <= new Date()) {
+      throw new ValidationError("Pickup time must be in the future");
+    }
+    pickupAt = parsedPickupAt;
+  }
 
   const deliveryAddress = dto.address
     ? {
@@ -761,9 +780,9 @@ export async function createOrder(userId, dto) {
 
     sendCutlery: dto.sendCutlery !== false,
     deliveryFleet: orderType === "food" ? dto.deliveryFleet || "standard" : "quick",
-    fulfillmentType: dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery",
+    fulfillmentType,
     scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
-    pickupAt: dto.pickupAt ? new Date(dto.pickupAt) : null,
+    pickupAt,
     riderEarning,
     platformProfit,
   });
@@ -847,16 +866,62 @@ export async function createOrder(userId, dto) {
   const couponCode = dto.pricing?.couponCode
     ? String(dto.pricing.couponCode).trim().toUpperCase()
     : "";
-  if (orderType === "food" && couponCode) {
-    const offer = await FoodOffer.findOne({ couponCode }).lean();
+  const couponApplied =
+    Number(dto?.pricing?.discount || 0) > 0 &&
+    String(dto?.pricing?.couponCode || "").trim().length > 0;
+  if (orderType === "food" && couponApplied && couponCode) {
+    const now = new Date();
+    const offer = await FoodOffer.findOneAndUpdate(
+      {
+        couponCode,
+        status: "active",
+        $and: [
+          {
+            $or: [
+              { startDate: { $exists: false } },
+              { startDate: null },
+              { startDate: { $lte: now } },
+            ],
+          },
+          {
+            $or: [
+              { endDate: { $exists: false } },
+              { endDate: null },
+              { endDate: { $gt: now } },
+            ],
+          },
+          {
+            $or: [
+              { usageLimit: { $exists: false } },
+              { usageLimit: null },
+              { usageLimit: { $lte: 0 } },
+              { $expr: { $lt: ["$usedCount", "$usageLimit"] } },
+            ],
+          },
+        ],
+      },
+      { $inc: { usedCount: 1 } },
+      { new: true, projection: { _id: 1, usageLimit: 1, usedCount: 1, status: 1 } },
+    ).lean();
     if (offer) {
-      await FoodOffer.updateOne({ _id: offer._id }, { $inc: { usedCount: 1 } });
       if (userId) {
         await FoodOfferUsage.updateOne(
           { offerId: offer._id, userId: new mongoose.Types.ObjectId(userId) },
           { $inc: { count: 1 }, $set: { lastUsedAt: new Date() } },
           { upsert: true },
         );
+      }
+      const limit = Number(offer.usageLimit || 0);
+      if (limit > 0 && Number(offer.usedCount || 0) >= limit) {
+        await FoodOffer.updateOne(
+          { _id: offer._id, status: "active" },
+          { $set: { status: "inactive" } },
+        );
+      }
+      try {
+        await invalidateCache("offers:*");
+      } catch {
+        // Do not block order flow on cache invalidation failure.
       }
     }
   }

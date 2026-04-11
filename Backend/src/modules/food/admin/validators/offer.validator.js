@@ -2,7 +2,7 @@ import { z } from 'zod';
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 
-const createOfferSchema = z.object({
+const offerSchema = z.object({
     couponCode: z.string().min(1, 'Coupon code is required'),
     discountType: z.enum(['percentage', 'flat-price']).default('percentage'),
     discountValue: z.number().positive('Discount value must be greater than 0'),
@@ -18,7 +18,7 @@ const createOfferSchema = z.object({
     isFirstOrderOnly: z.boolean().optional()
 });
 
-export const validateCreateOfferDto = (body) => {
+const parseOfferDto = (body, { requireFutureEndDate = true } = {}) => {
     const normalized = {
         ...body,
         couponCode: typeof body?.couponCode === 'string' ? body.couponCode.trim() : body?.couponCode,
@@ -36,7 +36,7 @@ export const validateCreateOfferDto = (body) => {
         isFirstOrderOnly: body?.isFirstOrderOnly !== undefined ? Boolean(body.isFirstOrderOnly) : undefined
     };
 
-    const result = createOfferSchema.safeParse(normalized);
+    const result = offerSchema.safeParse(normalized);
     if (!result.success) {
         throw new ValidationError(result.error.errors[0].message);
     }
@@ -58,7 +58,7 @@ export const validateCreateOfferDto = (body) => {
     if (endDate && startDate && endDate.getTime() <= startDate.getTime()) {
         throw new ValidationError('endDate must be after startDate');
     }
-    if (endDate && endDate.getTime() <= Date.now()) {
+    if (requireFutureEndDate && endDate && endDate.getTime() <= Date.now()) {
         throw new ValidationError('endDate must be a future date');
     }
     // Business rule: percentage coupon must have maxDiscount; flat ignores it
@@ -88,6 +88,10 @@ export const validateCreateOfferDto = (body) => {
         isFirstOrderOnly: result.data.isFirstOrderOnly
     };
 };
+
+export const validateCreateOfferDto = (body) => parseOfferDto(body, { requireFutureEndDate: true });
+
+export const validateUpdateOfferDto = (body) => parseOfferDto(body, { requireFutureEndDate: false });
 
 const cartVisibilitySchema = z.object({
     itemId: z.string().min(1, 'itemId is required'),

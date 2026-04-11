@@ -1164,61 +1164,61 @@ export default function OrderTracking() {
     placed: {
       title: "Order Placed",
       subtitle: "Waiting for restaurant to accept",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'food'
     },
     confirmed: {
       title: "Order Confirmed",
       subtitle: "Restaurant has accepted your order",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'food'
     },
     preparing: {
       title: "Food is being prepared",
       subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Cooking your meal",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'food'
     },
     assigned: {
       title: "Rider is arriving",
       subtitle: "A delivery partner is arriving at the restaurant",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'rider'
     },
     at_pickup: {
       title: "Rider at restaurant",
       subtitle: "Rider is waiting for your order",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'rider'
     },
     ready: {
       title: "Handover in progress",
       subtitle: "Rider is picking up your order",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'rider'
     },
     on_way: {
       title: "Out for delivery",
       subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Rider is out for delivery",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'rider'
     },
     at_drop: {
       title: "Arrived at location",
       subtitle: "Please come to the door",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'rider'
     },
     delivered: {
       title: "Order picked up",
       subtitle: "Pickup completed successfully",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'delivered'
     },
     cancelled: {
       title: "Order cancelled",
       subtitle: "This order has been cancelled",
-      color: "bg-[#E2281B]",
+      color: "bg-[#00c87e]",
       iconType: 'cancelled'
     }
   }
@@ -1594,7 +1594,7 @@ export default function OrderTracking() {
                   {order?.items?.map((item, index) => (
                     <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
                       <span className="w-4 h-4 rounded border border-green-600 flex items-center justify-center">
-                        <span className="w-2 h-2 rounded-full bg-[#E2281B]" />
+                        <span className="w-2 h-2 rounded-full bg-[#00c87e]" />
                       </span>
                       <span>{item.quantity} x {item.name}{item.variantName ? ` (${item.variantName})` : ""}</span>
                     </div>
@@ -1717,7 +1717,7 @@ export default function OrderTracking() {
                   <div key={index} className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1">
                       <div className="w-5 h-5 rounded border border-green-600 flex items-center justify-center mt-0.5 shrink-0">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#E2281B]" />
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#00c87e]" />
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 leading-tight">{item.name}</p>

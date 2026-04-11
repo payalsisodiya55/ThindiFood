@@ -5,6 +5,10 @@ export const listHeroBanners = async () => {
     return FoodHeroBanner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
 };
 
+export const getHeroBannerById = async (id) => {
+    return FoodHeroBanner.findById(id).lean();
+};
+
 export const createHeroBannersFromFiles = async (files, meta = {}) => {
     if (!files || !files.length) {
         return [];
@@ -76,6 +80,15 @@ export const toggleHeroBannerStatus = async (id, isActive) => {
     const updated = await FoodHeroBanner.findByIdAndUpdate(
         id,
         { isActive },
+        { new: true }
+    ).lean();
+    return updated;
+};
+
+export const linkHeroBannerRestaurants = async (id, restaurantIds = []) => {
+    const updated = await FoodHeroBanner.findByIdAndUpdate(
+        id,
+        { linkedRestaurantIds: restaurantIds },
         { new: true }
     ).lean();
     return updated;

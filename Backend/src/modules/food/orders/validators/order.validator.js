@@ -40,7 +40,12 @@ const pricingSchema = z.object({
     platformFee: z.number().min(0).optional(),
     discount: z.number().min(0).optional(),
     total: z.number().min(0),
-    currency: z.string().optional()
+    currency: z.string().optional(),
+    couponCode: z.string().optional().nullable(),
+    appliedCoupon: z.object({
+        code: z.string().optional(),
+        discount: z.number().optional()
+    }).optional().nullable()
 });
 
 export function validateCalculateOrderDto(body) {
@@ -103,6 +108,32 @@ export function validateCreateOrderDto(body) {
                 path: ['address'],
                 message: 'Address is required'
             });
+        }
+        if (data.fulfillmentType === 'takeaway') {
+            if (!data.pickupAt) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['pickupAt'],
+                    message: 'Pickup time is required for takeaway orders'
+                });
+                return;
+            }
+            const pickupAt = new Date(data.pickupAt);
+            if (Number.isNaN(pickupAt.getTime())) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['pickupAt'],
+                    message: 'Invalid pickup time'
+                });
+                return;
+            }
+            if (pickupAt <= new Date()) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['pickupAt'],
+                    message: 'Pickup time must be in the future'
+                });
+            }
         }
     });
     const result = schema.safeParse(body);
