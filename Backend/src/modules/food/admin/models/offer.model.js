@@ -17,6 +17,8 @@ const foodOfferSchema = new mongoose.Schema(
         isFirstOrderOnly: { type: Boolean, default: false },
         endDate: { type: Date },
         status: { type: String, enum: ['active', 'paused', 'inactive'], default: 'active', index: true },
+        approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending', index: true },
+        rejectionReason: { type: String, trim: true, default: '' },
         showInCart: { type: Boolean, default: true }
     },
     { collection: 'food_offers', timestamps: true }

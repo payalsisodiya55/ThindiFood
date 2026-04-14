@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { Search } from "lucide-react"
+import { Eye, RefreshCw, Search, X } from "lucide-react"
 import { adminAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -20,6 +20,14 @@ export default function Coupons() {
   const [deletingOffer, setDeletingOffer] = useState({})
   const [editingOfferId, setEditingOfferId] = useState("")
   const [errors, setErrors] = useState({})
+  const [pendingCoupons, setPendingCoupons] = useState([])
+  const [pendingLoading, setPendingLoading] = useState(false)
+  const [pendingError, setPendingError] = useState("")
+  const [pendingActionById, setPendingActionById] = useState({})
+  const [viewTarget, setViewTarget] = useState(null)
+  const [rejectTarget, setRejectTarget] = useState(null)
+  const [rejectReason, setRejectReason] = useState("")
+  const [rejectError, setRejectError] = useState("")
   const [formData, setFormData] = useState({
     couponCode: "",
     discountType: "percentage",
@@ -58,6 +66,28 @@ export default function Coupons() {
   useEffect(() => {
     fetchOffers()
   }, [fetchOffers])
+
+  const fetchPendingRestaurantCoupons = useCallback(async () => {
+    try {
+      setPendingLoading(true)
+      setPendingError("")
+      const response = await adminAPI.getPendingRestaurantCoupons({})
+      if (response?.data?.success) {
+        setPendingCoupons(response?.data?.data?.coupons || [])
+      } else {
+        setPendingError("Failed to fetch pending restaurant coupons")
+      }
+    } catch (err) {
+      debugError("Error fetching pending restaurant coupons:", err)
+      setPendingError(err?.response?.data?.message || "Failed to fetch pending restaurant coupons")
+    } finally {
+      setPendingLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchPendingRestaurantCoupons()
+  }, [fetchPendingRestaurantCoupons])
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -308,6 +338,73 @@ export default function Coupons() {
       debugError("Error deleting offer:", err)
     } finally {
       setDeletingOffer((prev) => ({ ...prev, [offerId]: false }))
+    }
+  }
+
+  const formatDateText = (value) => {
+    if (!value) return "-"
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return "-"
+    const day = String(d.getDate()).padStart(2, "0")
+    const month = d.toLocaleString("en-US", { month: "short" })
+    const year = d.getFullYear()
+    return `${day} ${month} ${year}`
+  }
+
+  const handleViewPendingCoupon = (coupon) => {
+    if (!coupon) return
+    setViewTarget(coupon)
+  }
+
+  const closeViewModal = () => {
+    setViewTarget(null)
+  }
+
+  const handleApprovePendingCoupon = async (couponId) => {
+    if (!couponId) return
+    try {
+      setPendingActionById((prev) => ({ ...prev, [couponId]: "approve" }))
+      await adminAPI.approveRestaurantCoupon(couponId)
+      await Promise.all([fetchOffers(), fetchPendingRestaurantCoupons()])
+    } catch (err) {
+      debugError("Error approving restaurant coupon:", err)
+      setPendingError(err?.response?.data?.message || "Failed to approve restaurant coupon")
+    } finally {
+      setPendingActionById((prev) => ({ ...prev, [couponId]: "" }))
+    }
+  }
+
+  const openRejectModal = (coupon) => {
+    setRejectTarget(coupon || null)
+    setRejectReason("")
+    setRejectError("")
+  }
+
+  const closeRejectModal = () => {
+    setRejectTarget(null)
+    setRejectReason("")
+    setRejectError("")
+  }
+
+  const handleConfirmRejectCoupon = async () => {
+    const couponId = rejectTarget?.id
+    const reason = String(rejectReason || "").trim()
+    if (!couponId) return
+    if (!reason) {
+      setRejectError("Reason is required")
+      return
+    }
+
+    try {
+      setPendingActionById((prev) => ({ ...prev, [couponId]: "reject" }))
+      await adminAPI.rejectRestaurantCoupon(couponId, reason)
+      closeRejectModal()
+      await Promise.all([fetchOffers(), fetchPendingRestaurantCoupons()])
+    } catch (err) {
+      debugError("Error rejecting restaurant coupon:", err)
+      setRejectError(err?.response?.data?.message || "Failed to reject restaurant coupon")
+    } finally {
+      setPendingActionById((prev) => ({ ...prev, [couponId]: "" }))
     }
   }
 
@@ -753,8 +850,244 @@ export default function Coupons() {
             </div>
           )}
         </div>
+
+        {/* Pending Restaurant Coupons */}
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <h2 className="text-xl font-bold text-slate-900">Pending Restaurant Coupons</h2>
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-full text-sm font-semibold bg-amber-100 text-amber-700">
+                {pendingCoupons.length} pending
+              </span>
+              <button
+                type="button"
+                onClick={fetchPendingRestaurantCoupons}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200 transition-colors"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          {pendingLoading ? (
+            <div className="text-center py-10">
+              <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-slate-700"></div>
+              <p className="text-sm text-slate-500 mt-3">Loading pending coupons...</p>
+            </div>
+          ) : pendingError ? (
+            <div className="text-center py-10">
+              <p className="text-sm text-red-600">{pendingError}</p>
+            </div>
+          ) : pendingCoupons.length === 0 ? (
+            <div className="text-center py-10">
+              <p className="text-sm text-slate-500">No pending restaurant coupons right now.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Coupon</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Restaurant</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Discount</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Dates</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-slate-100">
+                  {pendingCoupons.map((coupon) => {
+                    const id = String(coupon?.id || coupon?._id || "")
+                    const action = pendingActionById[id]
+                    const isBusy = Boolean(action)
+                    return (
+                      <tr key={id || coupon?.couponCode} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm font-semibold text-blue-700">{coupon?.couponCode || "-"}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-slate-800">{coupon?.restaurantName || "-"}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">
+                            {coupon?.discountType === "flat-price"
+                              ? `₹${Number(coupon?.discountValue || 0)} OFF`
+                              : `${Number(coupon?.discountValue || 0)}% OFF${coupon?.maxDiscount != null ? ` (up to ₹${Number(coupon.maxDiscount)})` : ""}`}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-sm text-slate-700">
+                            {formatDateText(coupon?.startDate)} - {formatDateText(coupon?.endDate)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleViewPendingCoupon(coupon)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-semibold hover:bg-slate-200"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleApprovePendingCoupon(id)}
+                              disabled={isBusy}
+                              className="px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-semibold hover:bg-green-700 disabled:opacity-60"
+                            >
+                              {action === "approve" ? "Approving..." : "Approve"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openRejectModal({ ...coupon, id })}
+                              disabled={isBusy}
+                              className="px-2.5 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
+                            >
+                              {action === "reject" ? "Rejecting..." : "Reject"}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
+
+      {viewTarget && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4"
+          onClick={closeViewModal}
+        >
+          <div
+            className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Coupon Details</h3>
+                <p className="text-xs text-slate-500 mt-1">Review pending restaurant coupon information</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeViewModal}
+                className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close view coupon modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Coupon</p>
+                  <p className="text-sm font-semibold text-slate-900">{viewTarget?.couponCode || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Restaurant</p>
+                  <p className="text-sm font-semibold text-slate-900">{viewTarget?.restaurantName || "-"}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:col-span-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Discount</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {viewTarget?.discountType === "flat-price"
+                      ? `Flat ₹${Number(viewTarget?.discountValue || 0)}`
+                      : `${Number(viewTarget?.discountValue || 0)}% OFF${viewTarget?.maxDiscount != null ? ` (up to ₹${Number(viewTarget.maxDiscount)})` : ""}`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Min Order</p>
+                  <p className="text-sm font-semibold text-slate-900">₹{Number(viewTarget?.minOrderValue || 0)}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Usage Limit</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {viewTarget?.usageLimit != null ? Number(viewTarget.usageLimit) : "Unlimited"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Per User Limit</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {viewTarget?.perUserLimit != null ? Number(viewTarget.perUserLimit) : "-"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Customer Scope</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {viewTarget?.customerScope === "first-time" ? "First-time Users" : "All Users"}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 sm:col-span-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Validity</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {formatDateText(viewTarget?.startDate)} - {formatDateText(viewTarget?.endDate)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-5 py-3 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={closeViewModal}
+                className="px-3 py-1.5 rounded-lg bg-[#00c87e] text-white text-sm font-semibold hover:bg-[#02b973]"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectTarget && (
+        <div className="fixed inset-0 z-[80] bg-black/40 flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white shadow-xl">
+            <div className="px-4 py-3 border-b border-slate-200">
+              <h3 className="text-base font-semibold text-slate-900">Reject Restaurant Coupon</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Coupon: <span className="font-semibold text-slate-700">{rejectTarget?.couponCode || "-"}</span>
+              </p>
+            </div>
+            <div className="p-4">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">Reason *</label>
+              <textarea
+                value={rejectReason}
+                onChange={(e) => {
+                  setRejectReason(e.target.value)
+                  if (rejectError) setRejectError("")
+                }}
+                rows={4}
+                placeholder="Enter rejection reason..."
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400"
+              />
+              {rejectError && <p className="mt-2 text-xs text-red-600">{rejectError}</p>}
+            </div>
+            <div className="px-4 py-3 border-t border-slate-200 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeRejectModal}
+                className="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-sm font-semibold hover:bg-slate-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmRejectCoupon}
+                className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+              >
+                Confirm Reject
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
 

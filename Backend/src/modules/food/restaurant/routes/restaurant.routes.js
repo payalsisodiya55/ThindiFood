@@ -47,6 +47,12 @@ import {
     updateAddonController,
     deleteAddonController
 } from '../controllers/restaurantAddon.controller.js';
+import {
+    createRestaurantCouponController,
+    deleteMyRestaurantCouponController,
+    getMyRestaurantCouponsController,
+    updateMyRestaurantCouponController
+} from '../controllers/restaurant-coupon.controller.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
@@ -182,6 +188,12 @@ router.get('/addons', authMiddleware, requireRestaurant, listAddonsController);
 router.post('/addons', authMiddleware, requireRestaurant, createAddonController);
 router.patch('/addons/:id', authMiddleware, requireRestaurant, updateAddonController);
 router.delete('/addons/:id', authMiddleware, requireRestaurant, deleteAddonController);
+
+// Coupons (restaurant dashboard) - admin approval flow
+router.get('/coupons', authMiddleware, requireRestaurant, getMyRestaurantCouponsController);
+router.post('/coupons', authMiddleware, requireRestaurant, createRestaurantCouponController);
+router.patch('/coupons/:id', authMiddleware, requireRestaurant, updateMyRestaurantCouponController);
+router.delete('/coupons/:id', authMiddleware, requireRestaurant, deleteMyRestaurantCouponController);
 
 // Orders (restaurant dashboard)
 router.get('/orders', authMiddleware, requireRestaurant, orderController.listOrdersRestaurantController);

@@ -55,7 +55,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
       { id: 6, name: "Restaurant Config", icon: Settings, route: "/restaurant/config" },
       { id: 7, name: "Advertisements", icon: Monitor, route: "/restaurant/advertisements" },
       { id: 9, name: "Categories", icon: Grid3x3, route: "/restaurant/categories" },
-      { id: 10, name: "Coupon", icon: Tag, route: "/restaurant/coupon" },
+      { id: 10, name: "Coupons", icon: Tag, route: "/restaurant/coupons" },
       { id: 11, name: "My Business Plan", icon: FileText, route: "/restaurant/business-plan" },
       { id: 12, name: "Reviews", icon: MessageSquare, route: "/restaurant/reviews" },
       { id: 14, name: "Wallet Method", icon: Settings, route: "/restaurant/wallet" },

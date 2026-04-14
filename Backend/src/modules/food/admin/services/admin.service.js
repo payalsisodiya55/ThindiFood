@@ -3293,7 +3293,15 @@ export async function rejectRestaurant(id, reason) {
 
 // ----- Offers & Coupons -----
 export async function getAllOffers(_query = {}) {
-    const list = await FoodOffer.find({})
+    const list = await FoodOffer.find({
+        $nor: [
+            {
+                restaurantId: { $ne: null },
+                approvalStatus: { $in: ['pending', 'rejected'] },
+                status: 'inactive'
+            }
+        ]
+    })
         .sort({ createdAt: -1 })
         .populate({ path: 'restaurantId', select: 'restaurantName' })
         .lean();
@@ -3343,6 +3351,71 @@ export async function getAllOffers(_query = {}) {
     return { offers };
 }
 
+export async function getPendingRestaurantCoupons() {
+    const list = await FoodOffer.find({
+        approvalStatus: 'pending',
+        status: 'inactive',
+        restaurantId: { $ne: null }
+    })
+        .sort({ createdAt: -1 })
+        .populate({ path: 'restaurantId', select: 'restaurantName' })
+        .lean();
+
+    const coupons = list.map((o) => ({
+        id: String(o._id),
+        couponCode: o.couponCode,
+        discountType: o.discountType,
+        discountValue: Number(o.discountValue) || 0,
+        minOrderValue: Number(o.minOrderValue) || 0,
+        maxDiscount: o.maxDiscount ?? null,
+        usageLimit: o.usageLimit ?? null,
+        perUserLimit: o.perUserLimit ?? null,
+        customerScope: o.customerScope || 'all',
+        startDate: o.startDate || null,
+        endDate: o.endDate || null,
+        status: o.status || 'inactive',
+        approvalStatus: o.approvalStatus || 'pending',
+        rejectionReason: o.rejectionReason || '',
+        isFirstOrderOnly: Boolean(o.isFirstOrderOnly),
+        restaurantId: o.restaurantId?._id ? String(o.restaurantId._id) : String(o.restaurantId || ''),
+        restaurantName: o.restaurantId?.restaurantName || 'Restaurant'
+    }));
+
+    return { coupons };
+}
+
+export async function approveRestaurantCoupon(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const updated = await FoodOffer.findByIdAndUpdate(
+        id,
+        {
+            $set: {
+                approvalStatus: 'approved',
+                status: 'active',
+                rejectionReason: ''
+            }
+        },
+        { new: true }
+    ).lean();
+    return updated;
+}
+
+export async function rejectRestaurantCoupon(id, reason) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const updated = await FoodOffer.findByIdAndUpdate(
+        id,
+        {
+            $set: {
+                approvalStatus: 'rejected',
+                status: 'inactive',
+                rejectionReason: String(reason || '').trim()
+            }
+        },
+        { new: true }
+    ).lean();
+    return updated;
+}
+
 export async function createAdminOffer(body) {
     const existing = await FoodOffer.findOne({ couponCode: body.couponCode }).lean();
     if (existing) {
@@ -3364,6 +3437,8 @@ export async function createAdminOffer(body) {
         isFirstOrderOnly: body.isFirstOrderOnly ?? false,
         endDate: body.endDate,
         status: body.endDate && new Date(body.endDate).getTime() <= Date.now() ? 'inactive' : 'active',
+        approvalStatus: 'approved',
+        rejectionReason: '',
         showInCart: true
     });
 

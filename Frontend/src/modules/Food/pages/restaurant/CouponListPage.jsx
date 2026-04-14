@@ -1,247 +1,278 @@
-import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useMemo, useState } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
+import { ArrowLeft, Clock3, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react"
+import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
-import Lenis from "lenis"
-import { 
-  ArrowLeft,
-  MoreVertical,
-  Plus,
-  Flame
-} from "lucide-react"
-import { Card, CardContent } from "@food/components/ui/card"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 import BottomNavbar from "@food/components/restaurant/BottomNavbar"
 import MenuOverlay from "@food/components/restaurant/MenuOverlay"
-import { formatCurrency, usdToInr } from "@food/utils/currency"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
 
+const STATUS_META = {
+  pending: {
+    label: "Pending",
+    className: "bg-amber-100 text-amber-700 border border-amber-200",
+  },
+  approved: {
+    label: "Approved",
+    className: "",
+  },
+  rejected: {
+    label: "Rejected",
+    className: "bg-red-100 text-red-700 border border-red-200",
+  },
+}
+
+const formatDate = (value) => {
+  if (!value) return "-"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "-"
+  return date.toLocaleDateString("en-GB")
+}
+
+const getDiscountLabel = (coupon) => {
+  const type = String(coupon?.discountType || "percentage")
+  const value = Number(coupon?.discountValue || 0)
+  if (type === "flat-price") return `Rs ${value} OFF`
+  const maxDiscount = coupon?.maxDiscount != null ? Number(coupon.maxDiscount) : null
+  if (Number.isFinite(maxDiscount)) return `${value}% OFF (up to Rs ${maxDiscount})`
+  return `${value}% OFF`
+}
+
+const getUsageText = (coupon) => {
+  const used = Number(coupon?.usedCount || 0)
+  const limit = Number(coupon?.usageLimit || 0)
+  if (limit > 0) return `${used} / ${limit}`
+  return `${used} / unlimited`
+}
 
 export default function CouponListPage() {
   const navigate = useNavigate()
   const goBack = useRestaurantBackNavigation()
   const [showMenu, setShowMenu] = useState(false)
-  const [openMenuId, setOpenMenuId] = useState(null)
+  const [openMenuId, setOpenMenuId] = useState("")
+  const [coupons, setCoupons] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [deletingId, setDeletingId] = useState("")
 
-  // Lenis smooth scrolling
+  const loadCoupons = async () => {
+    try {
+      setLoading(true)
+      setError("")
+      const response = await restaurantAPI.getMyCoupons()
+      const list = response?.data?.data?.coupons || []
+      setCoupons(Array.isArray(list) ? list : [])
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to fetch coupons")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-    })
-
-    function raf(time) {
-      lenis.raf(time)
-      requestAnimationFrame(raf)
-    }
-
-    requestAnimationFrame(raf)
-
-    return () => {
-      lenis.destroy()
-    }
+    loadCoupons()
   }, [])
 
-  // Close menu when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (openMenuId && !event.target.closest(`[data-menu-id="${openMenuId}"]`)) {
-        setOpenMenuId(null)
+    const closeMenuOnOutside = (event) => {
+      if (!openMenuId) return
+      if (!event.target.closest(`[data-menu-id="${openMenuId}"]`)) {
+        setOpenMenuId("")
       }
     }
-
-    if (openMenuId) {
-      document.addEventListener("mousedown", handleClickOutside)
-      document.addEventListener("touchstart", handleClickOutside)
-    }
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside)
-      document.removeEventListener("touchstart", handleClickOutside)
-    }
+    document.addEventListener("mousedown", closeMenuOnOutside)
+    return () => document.removeEventListener("mousedown", closeMenuOnOutside)
   }, [openMenuId])
 
-  // Coupon data matching the image
-  const coupons = [
-    {
-      id: 1,
-      discount: "10 % OFF",
-      merchant: "on Hungry Puppets",
-      name: "fest",
-      validity: {
-        start: "07 Feb, 2023",
-        end: "01 Dec, 2025"
-      },
-      minPurchase: usdToInr(50.00)
+  const normalizedCoupons = useMemo(
+    () =>
+      coupons.map((coupon) => {
+        const approvalStatus = String(coupon?.approvalStatus || "pending").toLowerCase()
+        return {
+          ...coupon,
+          id: String(coupon?._id || coupon?.id || ""),
+          approvalStatus,
+          canEdit: approvalStatus === "pending" || approvalStatus === "rejected",
+        }
+      }),
+    [coupons],
+  )
+
+  const handleDelete = async (id) => {
+    if (!id || deletingId) return
+    if (!window.confirm("Delete this coupon?")) return
+    try {
+      setDeletingId(id)
+      await restaurantAPI.deleteCoupon(id)
+      setCoupons((prev) => prev.filter((coupon) => String(coupon?._id || coupon?.id || "") !== id))
+      setOpenMenuId("")
+    } catch (err) {
+      setError(err?.response?.data?.message || "Failed to delete coupon")
+    } finally {
+      setDeletingId("")
     }
-  ]
+  }
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-24 md:pb-6">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50 flex items-center gap-3">
-        <button 
-          onClick={goBack}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
-        </button>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">Coupon List</h1>
-      </div>
-
-      {/* Coupon List */}
-      <div className="px-4 py-4 space-y-4">
-        {coupons.map((coupon, index) => (
-          <motion.div
-            key={coupon.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1, ease: [0.4, 0, 0.2, 1] }}
-            whileHover={{ y: -4, scale: 1.01 }}
-            whileTap={{ scale: 0.98 }}
-            className="relative"
-          >
-            <Card className="bg-white shadow-md border border-gray-200 overflow-hidden relative">
-              <CardContent className="p-0">
-                {/* Menu Button - Top Right */}
-                <div className="absolute top-2 right-2 z-10">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setOpenMenuId(openMenuId === coupon.id ? null : coupon.id)
-                    }}
-                    className="p-1.5 bg-orange-100 hover:bg-orange-200 rounded transition-colors"
-                    data-menu-id={coupon.id}
-                  >
-                    <MoreVertical className="w-4 h-4 text-[#ff8100]" />
-                  </motion.button>
-                  
-                  {/* Context Menu */}
-                  <AnimatePresence>
-                    {openMenuId === coupon.id && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        transition={{ duration: 0.2, ease: "easeOut" }}
-                        className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 min-w-[180px]"
-                        data-menu-id={coupon.id}
-                      >
-                            {[
-                              { 
-                                label: "Edit Coupon", 
-                                action: () => navigate(`/restaurant/coupon/${coupon.id}/edit`) 
-                              },
-                              { label: "Delete Coupon", action: () => debugLog("Delete:", coupon.id), isDanger: true }
-                            ].map((option, idx) => (
-                              <motion.button
-                                key={option.label}
-                                initial={{ opacity: 0, x: -10 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                transition={{ delay: idx * 0.03, duration: 0.2 }}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  option.action()
-                                  setOpenMenuId(null)
-                                }}
-                                whileHover={{ x: 4 }}
-                                whileTap={{ scale: 0.95 }}
-                                className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-colors ${
-                                  option.isDanger
-                                    ? "text-red-600 hover:bg-red-50"
-                                    : "text-gray-700 hover:bg-gray-50"
-                                }`}
-                              >
-                                <span>{option.label}</span>
-                              </motion.button>
-                            ))}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                </div>
-
-                <div className="flex">
-                  {/* Left Section */}
-                  <div className="flex-1 p-4 flex flex-col items-center justify-center bg-gradient-to-br from-orange-50 to-orange-100/50">
-                    <div className="mb-3">
-                      <div className="w-16 h-16 bg-[#ff8100] rounded-full flex items-center justify-center shadow-md">
-                        <Flame className="w-8 h-8 text-white" />
-                      </div>
-                    </div>
-                    <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-2">
-                      {coupon.discount}
-                    </h2>
-                    <p className="text-sm text-gray-600 text-center">
-                      {coupon.merchant}
-                    </p>
-                  </div>
-
-                  {/* Perforated Line */}
-                  <div className="relative w-8 flex-shrink-0">
-                    <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-0.5 border-l-2 border-dashed border-gray-300"></div>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-[#f6e9dc] rounded-full border-2 border-gray-300"></div>
-                    <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#f6e9dc] rounded-full border border-gray-300"></div>
-                    <div className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-2 h-2 bg-[#f6e9dc] rounded-full border border-gray-300"></div>
-                  </div>
-
-                  {/* Right Section */}
-                  <div className="flex-1 p-4">
-                    {/* Coupon Name */}
-                    <h3 className="text-lg font-bold text-gray-900 mb-3">
-                      {coupon.name}
-                    </h3>
-
-                    {/* Validity */}
-                    <p className="text-xs text-gray-600 mb-3">
-                      {coupon.validity.start} To {coupon.validity.end}
-                    </p>
-
-                    {/* Min Purchase */}
-                    <p className="text-xs">
-                      <span className="text-red-600 font-medium">*Min purchase</span>{" "}
-                      <span className="text-gray-700">{formatCurrency(coupon.minPurchase)}</span>
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-
-        {/* Empty State */}
-        {coupons.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-sm">No coupons found</p>
+    <div className="min-h-screen bg-[#eef2f6] pb-24 md:pb-8">
+      <div className="mx-auto max-w-md">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4">
+          <div className="flex items-center gap-3">
+            <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <h1 className="text-3xl font-semibold text-slate-900">Coupon List</h1>
           </div>
-        )}
+        </header>
+
+        <section className="space-y-3 px-3 py-3">
+          {loading && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+              Loading coupons...
+            </div>
+          )}
+
+          {!!error && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          )}
+
+          {!loading && !error && normalizedCoupons.length === 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
+              No coupons found
+            </div>
+          )}
+
+          {!loading &&
+            !error &&
+            normalizedCoupons.map((coupon) => {
+              const status = STATUS_META[coupon.approvalStatus] || STATUS_META.pending
+              return (
+                <motion.article
+                  key={coupon.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="rounded-2xl border border-slate-200 bg-white p-2 shadow-sm"
+                >
+                  <div className="grid grid-cols-[1.05fr_1fr] gap-2">
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        backgroundColor: RESTAURANT_THEME.softBackground,
+                        border: `1px solid ${RESTAURANT_THEME.softBorder}`,
+                      }}
+                    >
+                      <p className="text-xs uppercase tracking-wide text-slate-500">{coupon.couponCode}</p>
+                      <p className="mt-1 text-[30px] font-semibold leading-tight text-slate-900">
+                        {getDiscountLabel(coupon)}
+                      </p>
+                      <p className="mt-2 text-sm text-slate-600">For your restaurant</p>
+                    </div>
+
+                    <div className="relative rounded-xl bg-white px-2 py-1">
+                      <div className="mb-1 flex items-center justify-between gap-2">
+                        {coupon.approvalStatus === "approved" ? (
+                          <span
+                            className="rounded-full border px-2 py-0.5 text-xs font-semibold"
+                            style={{
+                              color: RESTAURANT_THEME.brand,
+                              borderColor: RESTAURANT_THEME.softBorder,
+                              backgroundColor: RESTAURANT_THEME.softBackground,
+                            }}
+                          >
+                            {status.label}
+                          </span>
+                        ) : (
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${status.className}`}>
+                            {status.label}
+                          </span>
+                        )}
+
+                        <div className="relative">
+                          <button
+                            type="button"
+                            data-menu-id={coupon.id}
+                            onClick={() => setOpenMenuId((prev) => (prev === coupon.id ? "" : coupon.id))}
+                            className="rounded-md bg-[#f8efe3] p-1.5 text-[#f59e0b] hover:bg-[#f4e6d1]"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
+
+                          <AnimatePresence>
+                            {openMenuId === coupon.id && (
+                              <motion.div
+                                initial={{ opacity: 0, y: -6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -6 }}
+                                data-menu-id={coupon.id}
+                                className="absolute right-0 top-9 z-50 min-w-[155px] rounded-xl border border-slate-200 bg-white p-1 shadow-xl"
+                              >
+                                {coupon.canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                    setOpenMenuId("")
+                                    navigate(`/restaurant/coupons/${coupon.id}/edit`)
+                                  }}
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    Edit Coupon
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  disabled={deletingId === coupon.id}
+                                  onClick={() => handleDelete(coupon.id)}
+                                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  {deletingId === coupon.id ? "Deleting..." : "Delete"}
+                                </button>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      </div>
+
+                      <p className="truncate text-sm font-medium text-slate-900">{coupon.couponCode}</p>
+                      <p className="mt-1 text-xs text-slate-600">
+                        {formatDate(coupon.startDate)} to {formatDate(coupon.endDate)}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-700">Min order: Rs {Number(coupon.minOrderValue || 0)}</p>
+                      <p className="mt-1 flex items-center gap-1 text-xs text-slate-700">
+                        <Clock3 className="h-3.5 w-3.5" />
+                        Usage: {getUsageText(coupon)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {coupon.approvalStatus === "rejected" && coupon.rejectionReason && (
+                    <div className="mt-2 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      Reject reason: {coupon.rejectionReason}
+                    </div>
+                  )}
+                </motion.article>
+              )
+            })}
+        </section>
       </div>
 
-      {/* Floating Action Button */}
       <motion.button
+        type="button"
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => {
-          navigate("/restaurant/coupon/new")
-        }}
-        className="fixed bottom-20 md:bottom-6 right-4 md:right-6 w-14 h-14 bg-[#ff8100] hover:bg-[#e67300] text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
+        transition={{ type: "spring", stiffness: 220, damping: 16 }}
+        onClick={() => navigate("/restaurant/coupons/new")}
+        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg md:bottom-6 md:right-6"
+        style={{ backgroundColor: RESTAURANT_THEME.brand }}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="h-6 w-6" />
       </motion.button>
 
-      {/* Bottom Navigation Bar */}
       <BottomNavbar onMenuClick={() => setShowMenu(true)} />
-      
-      {/* Menu Overlay */}
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
     </div>
   )
 }
-
-

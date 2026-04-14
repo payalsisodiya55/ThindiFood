@@ -105,3 +105,17 @@ export const validateUpdateOfferCartVisibilityDto = (body) => {
     }
     return result.data;
 };
+
+const rejectRestaurantCouponSchema = z.object({
+    reason: z.string().min(1, 'reason is required').max(1000)
+});
+
+export const validateRejectRestaurantCouponDto = (body) => {
+    const result = rejectRestaurantCouponSchema.safeParse({
+        reason: typeof body?.reason === 'string' ? body.reason.trim() : body?.reason
+    });
+    if (!result.success) {
+        throw new ValidationError(result.error.errors[0].message);
+    }
+    return result.data;
+};

@@ -1,7 +1,12 @@
 import mongoose from 'mongoose';
 import * as adminService from '../services/admin.service.js';
 import { validateCategoryListQuery, validateCategoryRejectDto, validateCategoryUpsertDto } from '../validators/category.validator.js';
-import { validateCreateOfferDto, validateUpdateOfferCartVisibilityDto, validateUpdateOfferDto } from '../validators/offer.validator.js';
+import {
+    validateCreateOfferDto,
+    validateRejectRestaurantCouponDto,
+    validateUpdateOfferCartVisibilityDto,
+    validateUpdateOfferDto
+} from '../validators/offer.validator.js';
 import { validateAddDeliveryBonusDto } from '../validators/deliveryBonus.validator.js';
 import { validateCheckCompletionsDto, validateEarningAddonHistoryActionDto, validateEarningAddonUpsertDto, validateToggleEarningAddonStatusDto } from '../validators/earningAddon.validator.js';
 import { validateDeliveryCommissionRuleDto, validateOptionalStatusDto, validateRestaurantCommissionUpsertDto } from '../validators/commission.validator.js';
@@ -573,6 +578,48 @@ export async function deleteAdminOffer(req, res, next) {
             return res.status(404).json({ success: false, message: 'Offer not found' });
         }
         res.status(200).json({ success: true, message: 'Offer deleted successfully', data: result });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getPendingRestaurantCoupons(req, res, next) {
+    try {
+        const data = await adminService.getPendingRestaurantCoupons();
+        res.status(200).json({ success: true, message: 'Pending restaurant coupons fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function approveRestaurantCoupon(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid offer id' });
+        }
+        const coupon = await adminService.approveRestaurantCoupon(id);
+        if (!coupon) {
+            return res.status(404).json({ success: false, message: 'Coupon not found' });
+        }
+        res.status(200).json({ success: true, message: 'Restaurant coupon approved successfully', data: { coupon } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function rejectRestaurantCoupon(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid offer id' });
+        }
+        const body = validateRejectRestaurantCouponDto(req.body || {});
+        const coupon = await adminService.rejectRestaurantCoupon(id, body.reason);
+        if (!coupon) {
+            return res.status(404).json({ success: false, message: 'Coupon not found' });
+        }
+        res.status(200).json({ success: true, message: 'Restaurant coupon rejected successfully', data: { coupon } });
     } catch (error) {
         next(error);
     }

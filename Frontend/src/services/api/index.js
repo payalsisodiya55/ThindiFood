@@ -611,6 +611,23 @@ export const adminAPI = {
     apiClient.post("/food/admin/offers", body ?? {}, {
       contextModule: "admin",
     }),
+  getPendingRestaurantCoupons: (params = {}) =>
+    apiClient.get("/food/admin/offers/pending-restaurant", {
+      params,
+      contextModule: "admin",
+    }),
+  approveRestaurantCoupon: (id) =>
+    apiClient.patch(
+      `/food/admin/offers/${String(id)}/approve`,
+      {},
+      { contextModule: "admin" },
+    ),
+  rejectRestaurantCoupon: (id, reason) =>
+    apiClient.patch(
+      `/food/admin/offers/${String(id)}/reject`,
+      { reason: String(reason || "").trim() },
+      { contextModule: "admin" },
+    ),
   updateAdminOffer: (offerId, body) =>
     apiClient.patch(`/food/admin/offers/${String(offerId)}`, body ?? {}, {
       contextModule: "admin",
@@ -1010,6 +1027,24 @@ export const restaurantAPI = {
       contextModule: "restaurant",
     });
   },
+  /** Restaurant coupons (approval flow) */
+  getMyCoupons: (params = {}) =>
+    apiClient.get("/food/restaurant/coupons", {
+      params,
+      contextModule: "restaurant",
+    }),
+  createCoupon: (body) =>
+    apiClient.post("/food/restaurant/coupons", body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  updateCoupon: (id, body) =>
+    apiClient.patch(`/food/restaurant/coupons/${String(id)}`, body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  deleteCoupon: (id) =>
+    apiClient.delete(`/food/restaurant/coupons/${String(id)}`, {
+      contextModule: "restaurant",
+    }),
   /** Public Offers for users (global/selected restaurant) */
   getPublicOffers: () => apiClient.get("/food/restaurant/offers"),
   /** Backward-compat helper used by Cart: returns coupons array for an item by adapting public offers */
