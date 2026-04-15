@@ -84,18 +84,33 @@ export default function SignIn() {
       await authAPI.sendOTP(fullPhone, "login", null)
 
       const ref = String(searchParams.get("ref") || "").trim()
+      const nextParamRaw = String(
+        searchParams.get("next") || searchParams.get("redirect") || ""
+      ).trim()
+      let redirectTo = ""
+      if (nextParamRaw) {
+        try {
+          redirectTo = decodeURIComponent(nextParamRaw)
+        } catch (_) {
+          redirectTo = nextParamRaw
+        }
+      }
       const authData = {
         method: "phone",
         phone: fullPhone,
         email: null,
         name: null,
         referralCode: ref || null,
+        redirectTo: redirectTo || null,
         isSignUp: false,
         module: "user",
       }
 
       sessionStorage.setItem("userAuthData", JSON.stringify(authData))
-      navigate("/food/user/auth/otp")
+      const otpPath = redirectTo
+        ? `/food/user/auth/otp?next=${encodeURIComponent(redirectTo)}`
+        : "/food/user/auth/otp"
+      navigate(otpPath)
     } catch (apiError) {
       const message =
         apiError?.response?.data?.message ||

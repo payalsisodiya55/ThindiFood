@@ -14,6 +14,7 @@ import {
   Settings,
   Bell,
   Truck,
+  Utensils,
   FileText,
   Star,
   MessageSquare,
@@ -22,6 +23,7 @@ import {
   Edit,
   IndianRupee,
   Receipt,
+  QrCode,
   FileCheck,
   Building2,
   X,
@@ -734,34 +736,36 @@ export default function ExploreMore() {
 
   // Section data
   const manageOutletItems = [
-    { id: 1, label: "Outlet info", icon: Info, route: "/restaurant/outlet-info" },
-    { id: 2, label: "Outlet timings", icon: Clock, route: "/restaurant/outlet-timings" },
-    { id: 3, label: "Dining Reservations", icon: Calendar, route: "/restaurant/reservations" },
-    { id: 4, label: "Menu categories", icon: Settings, route: "/restaurant/menu-categories" },
-    { id: 10, label: "Coupons", icon: TicketPercent, route: "/restaurant/coupons" },
-    { id: 11, label: "Offers", icon: Gift, route: "/restaurant/offers" },
+    { id: 1, label: "Outlet info", icon: Info, route: "/food/restaurant/outlet-info" },
+    { id: 2, label: "Outlet timings", icon: Clock, route: "/food/restaurant/outlet-timings" },
+    { id: 3, label: "Dining Reservations", icon: Calendar, route: "/food/restaurant/reservations" },
+    { id: 4, label: "Tables & QRs", icon: QrCode, route: "/food/restaurant/dine-in/tables" },
+    { id: "dine-in-orders", label: "Live Kitchen", icon: Utensils, route: "/food/restaurant/dine-in/orders" },
+    { id: 6, label: "Menu categories", icon: Settings, route: "/food/restaurant/menu-categories" },
+    { id: 10, label: "Coupons", icon: TicketPercent, route: "/food/restaurant/coupons" },
+    { id: 11, label: "Offers", icon: Gift, route: "/food/restaurant/offers" },
   ]
 
   const settingsItems = [
-    { id: 3, label: "Delivery settings", icon: Truck, route: "/restaurant/delivery-settings" },
-    { id: 4, label: "Zone Setup", icon: MapPin, route: "/restaurant/zone-setup" },
+    { id: 3, label: "Delivery settings", icon: Truck, route: "/food/restaurant/delivery-settings" },
+    { id: 4, label: "Zone Setup", icon: MapPin, route: "/food/restaurant/zone-setup" },
   ]
 
   const ordersItems = [
-    { id: 1, label: "Order history", icon: FileText, route: "/restaurant/orders/all" },
-    { id: 2, label: "Complaints", icon: Star, route: "/restaurant/feedback?tab=complaints" },
-    { id: 3, label: "Reviews", icon: MessageSquare, route: "/restaurant/feedback" },
+    { id: 1, label: "Order history", icon: FileText, route: "/food/restaurant/orders/all" },
+    { id: 2, label: "Complaints", icon: Star, route: "/food/restaurant/feedback?tab=complaints" },
+    { id: 3, label: "Reviews", icon: MessageSquare, route: "/food/restaurant/feedback" },
   ]
 
   const helpItems = [
-    { id: 1, label: "Support", icon: LifeBuoy, route: "/restaurant/help-centre/support" },
-    { id: 2, label: "Share your feedback", icon: Edit, route: "/restaurant/Share-Feedback" },
+    { id: 1, label: "Support", icon: LifeBuoy, route: "/food/restaurant/help-centre/support" },
+    { id: 2, label: "Share your feedback", icon: Edit, route: "/food/restaurant/Share-Feedback" },
   ]
 
   const accountingItems = [
-    { id: 1, label: "Payout", icon: IndianRupee, route: "/restaurant/hub-finance" },
-    { id: 2, label: "Invoices", icon: Receipt, route: "/restaurant/hub-finance?tab=invoices" },
-    { id: 3, label: "Bank details", icon: Building2, route: "/restaurant/update-bank-details" },
+    { id: 1, label: "Payout", icon: IndianRupee, route: "/food/restaurant/hub-finance" },
+    { id: 2, label: "Invoices", icon: Receipt, route: "/food/restaurant/hub-finance?tab=invoices" },
+    { id: 3, label: "Bank details", icon: Building2, route: "/food/restaurant/update-bank-details" },
   ]
 
   // All sections with their items

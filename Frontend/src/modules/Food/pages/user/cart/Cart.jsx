@@ -2240,15 +2240,7 @@ export default function Cart() {
                     <Zap className="h-5 w-5 text-green-600 fill-green-600/20" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-1">
-                      Want this later?
-                      <button onClick={() => {
-                        setIsScheduled(!isScheduled)
-                        if (!isScheduled) setIsPickupScheduled(false)
-                      }} className="border-b border-dashed border-gray-500 font-medium outline-none">
-                        Schedule it
-                      </button>
-                    </p>
+
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
                       Need takeaway?
                       <button onClick={() => {

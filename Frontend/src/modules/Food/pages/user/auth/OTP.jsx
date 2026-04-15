@@ -1,14 +1,16 @@
 import { useState, useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { AlertCircle, ArrowLeft, Loader2, Smartphone } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { authAPI } from "@food/api"
 import { setAuthData as setUserAuthData } from "@food/utils/auth"
+import loginBanner from "@food/assets/loginbanner.png"
 
 export default function OTP() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [otp, setOtp] = useState(["", "", "", ""]) // exactly 4 digits
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -25,6 +27,7 @@ export default function OTP() {
   const [activePlatform, setActivePlatform] = useState("web")
   const inputRefs = useRef([])
   const submittingRef = useRef(false)
+  const nextRouteRef = useRef("/food/user")
 
   useEffect(() => {
     // Redirect to home if already authenticated
@@ -43,6 +46,9 @@ export default function OTP() {
     }
     const data = JSON.parse(stored)
     setAuthData(data)
+    const nextParam = String(searchParams.get("next") || "").trim()
+    const persistedRedirect = String(data?.redirectTo || "").trim()
+    nextRouteRef.current = nextParam || persistedRedirect || "/food/user"
 
     // Handle both phone and email
     if (data.method === "email" && data.email) {
@@ -75,7 +81,7 @@ export default function OTP() {
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [navigate])
+  }, [navigate, searchParams])
 
   useEffect(() => {
     // Focus first input on mount
@@ -254,9 +260,9 @@ export default function OTP() {
 
       setSuccess(true)
 
-      // Redirect to user home after short delay
+      // Redirect to requested page (or user home) after short delay
       setTimeout(() => {
-        navigate("/food/user")
+        navigate(nextRouteRef.current || "/food/user", { replace: true })
       }, 500)
     } catch (err) {
       const status = err?.response?.status
@@ -342,7 +348,7 @@ export default function OTP() {
       setSuccess(true)
 
       setTimeout(() => {
-        navigate("/food/user")
+        navigate(nextRouteRef.current || "/food/user", { replace: true })
       }, 500)
     } catch (err) {
       const message =
@@ -416,7 +422,12 @@ export default function OTP() {
         {/* Header */}
         <div className="flex items-center px-6 py-4 border-b border-gray-100 dark:border-gray-800">
           <button
-            onClick={() => navigate("/food/user/auth/login")}
+            onClick={() => {
+              const nextParam = nextRouteRef.current
+                ? `?next=${encodeURIComponent(nextRouteRef.current)}`
+                : ""
+              navigate(`/food/user/auth/login${nextParam}`)
+            }}
             className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
             aria-label="Go back"
           >

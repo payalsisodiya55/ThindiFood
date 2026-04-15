@@ -5,6 +5,7 @@ import { diningAPI, restaurantAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
 import { toast } from "sonner"
+import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
 const debugError = (...args) => {}
 
 const getRestaurantFromResponse = (response) =>
@@ -92,6 +93,8 @@ export default function DiningReservations() {
     const [diningSettingsMessage, setDiningSettingsMessage] = useState("")
     const [diningSettingsError, setDiningSettingsError] = useState("")
 
+    const { newBooking, clearNewBooking } = useRestaurantNotifications()
+
     const syncRestaurantMediaState = (restaurantData) => {
         setRestaurant(restaurantData || null)
         const coverImages = getCoverImages(restaurantData)
@@ -132,6 +135,18 @@ export default function DiningReservations() {
         }
         fetchAll()
     }, [])
+
+    useEffect(() => {
+        if (!newBooking) return
+        // Push the booking into the local list immediately (polling hook already dedupes).
+        setBookings((prev) => {
+            const existing = prev.some((b) => String(b?._id || b?.id || "") === String(newBooking?._id || newBooking?.id || ""))
+            if (existing) return prev
+            return [newBooking, ...prev]
+        })
+        toast.success("New table booking received")
+        clearNewBooking()
+    }, [newBooking, clearNewBooking])
 
     const handleRestaurantPhotoUpload = async (event) => {
         const files = Array.from(event.target.files || [])

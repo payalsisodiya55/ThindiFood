@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import { API_BASE_URL } from '@food/api/config';
-import { restaurantAPI } from '@food/api';
+import { restaurantAPI, dineInAPI } from '@food/api';
 import alertSound from '@food/assets/audio/alert.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
 const debugLog = (...args) => {}
@@ -82,9 +82,11 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 export const useRestaurantNotifications = () => {
   const socketRef = useRef(null);
   const [newOrder, setNewOrder] = useState(null);
+  const [newBooking, setNewBooking] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const audioRef = useRef(null);
   const activeOrderRef = useRef(null);
+  const handledAlertKeysRef = useRef(new Map()); // key -> timestamp (prevents repeated alerts from polling)
   const alertLoopTimerRef = useRef(null);
   const alertLoopStartedAtRef = useRef(0);
   const userInteractedRef = useRef(false); // Track user interaction for autoplay policy
@@ -93,6 +95,8 @@ export const useRestaurantNotifications = () => {
   const lastConnectErrorLogRef = useRef(0);
   const lastAlertAtByOrderRef = useRef(new Map());
   const lastBrowserNotificationAtByOrderRef = useRef(new Map());
+  const lastAlertAtByBookingRef = useRef(new Map());
+  const lastSeenConfirmedOrderUpdatedAtRef = useRef(0);
   const CONNECT_ERROR_LOG_THROTTLE_MS = 10000;
   const ALERT_LOOP_INTERVAL_MS = 4500;
   const ALERT_LOOP_MAX_MS = 120000;
@@ -112,8 +116,24 @@ export const useRestaurantNotifications = () => {
     ).trim()
   );
 
+  const shouldSkipBecauseHandled = (key) => {
+    if (!key) return false;
+    const now = Date.now();
+    // Drop old keys to avoid unbounded growth.
+    for (const [k, at] of handledAlertKeysRef.current.entries()) {
+      if (now - at > 30 * 60 * 1000) handledAlertKeysRef.current.delete(k); // 30 min TTL
+    }
+    return handledAlertKeysRef.current.has(key);
+  };
+
+  const markHandled = (key) => {
+    if (!key) return;
+    handledAlertKeysRef.current.set(key, Date.now());
+  };
+
   const shouldProcessOrderAlert = (orderData = {}) => {
     const key = getOrderAlertKey(orderData);
+    if (shouldSkipBecauseHandled(key)) return false;
     if (!key) return true;
     const now = Date.now();
     const last = lastAlertAtByOrderRef.current.get(key) || 0;
@@ -174,6 +194,25 @@ export const useRestaurantNotifications = () => {
     }
   };
 
+  const getBookingAlertKey = (booking = {}) =>
+    String(
+      booking?._id ||
+        booking?.id ||
+        booking?.bookingId ||
+        booking?.booking_id ||
+        "",
+    ).trim();
+
+  const shouldProcessBookingAlert = (booking = {}) => {
+    const key = getBookingAlertKey(booking);
+    if (!key) return true;
+    const now = Date.now();
+    const last = lastAlertAtByBookingRef.current.get(key) || 0;
+    if (now - last < ALERT_DEDUPE_MS) return false;
+    lastAlertAtByBookingRef.current.set(key, now);
+    return true;
+  };
+
   const stopAlertLoop = () => {
     if (alertLoopTimerRef.current) {
       clearInterval(alertLoopTimerRef.current);
@@ -205,12 +244,44 @@ export const useRestaurantNotifications = () => {
       return;
     }
 
+    const alertKey = getOrderAlertKey(orderData);
+    // Mark as handled immediately so polling doesn't keep spamming.
+    markHandled(alertKey);
+
+    // Ensure restaurant UI can open the in-app popup for *any* alert source
+    // (Socket new_order, play_notification_sound, or dine-in polling).
+    setNewOrder(orderData);
+
     activeOrderRef.current = orderData || { id: Date.now() };
     playNotificationSound(orderData);
     startAlertLoop();
 
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       showBackgroundOrderNotification(orderData);
+    }
+  };
+
+  const handleIncomingBookingAlert = (bookingData) => {
+    if (!shouldProcessBookingAlert(bookingData)) {
+      return;
+    }
+
+    // Use the same sound/alert loop behavior as orders.
+    activeOrderRef.current = bookingData || { id: Date.now() };
+    playNotificationSound(bookingData);
+    startAlertLoop();
+    setNewBooking(bookingData);
+
+    if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+      // For bookings we still reuse browser notification path (title/body are generated in bridge/toast layers).
+      showBackgroundOrderNotification({
+        notification: { title: "New table booking", body: "" },
+        data: {
+          title: "New table booking",
+          body: `Booking ${bookingData?.bookingId || ""}`.trim(),
+          targetUrl: "/restaurant/reservations",
+        },
+      });
     }
   };
 
@@ -263,8 +334,16 @@ export const useRestaurantNotifications = () => {
           });
 
         if (confirmed.length > 0) {
-          // Trigger alerts for newest confirmed orders (dedupe prevents spam).
-          confirmed.slice(0, 5).forEach((o) => handleIncomingOrderAlert(o));
+          const newest = confirmed[0];
+          const newestUpdatedAt = new Date(newest?.updatedAt || newest?.createdAt || 0).getTime();
+
+          // Only alert when we see something newer than what we've already handled.
+          if (Number.isFinite(newestUpdatedAt) && newestUpdatedAt > lastSeenConfirmedOrderUpdatedAtRef.current) {
+            lastSeenConfirmedOrderUpdatedAtRef.current = newestUpdatedAt;
+            // Trigger alert for the newest confirmed order only.
+            setNewOrder(newest);
+            handleIncomingOrderAlert(newest);
+          }
         }
       } catch (error) {
         // Non-blocking: keep polling.
@@ -275,9 +354,98 @@ export const useRestaurantNotifications = () => {
     pollOrders();
     const intervalId = setInterval(pollOrders, ALERT_POLL_MS);
 
+    // TABLE BOOKING polling logic (localStorage-backed diningAPI).
+    const pollBookings = async () => {
+      try {
+        const resResponse = await restaurantAPI.getCurrentRestaurant();
+        const payload = resResponse?.data?.data || {};
+        const restaurant = payload?.restaurant || payload;
+        if (!restaurant) return;
+
+        const bookingsResponse = await diningAPI.getRestaurantBookings(restaurant);
+        const rows = Array.isArray(bookingsResponse?.data?.data)
+          ? bookingsResponse.data.data
+          : [];
+
+        // We alert only for fresh "confirmed" bookings waiting for action.
+        const confirmed = rows
+          .filter((b) => String(b?.status || "").toLowerCase() === "confirmed")
+          .sort((a, b) => {
+            const at = a?.updatedAt || a?.createdAt || a?.date || 0;
+            const bt = b?.updatedAt || b?.createdAt || b?.date || 0;
+            return new Date(bt).getTime() - new Date(at).getTime();
+          });
+
+        if (confirmed.length > 0) {
+          confirmed.slice(0, 3).forEach((b) => handleIncomingBookingAlert(b));
+        }
+      } catch {
+        // Non-blocking.
+      }
+    };
+
+    pollBookings();
+    const bookingsIntervalId = setInterval(pollBookings, 9000);
+
+    // DINE-IN POLLING logic:
+    // Check active tables for any "received" status rounds
+    const pollDineIn = async () => {
+      try {
+        const res = await restaurantAPI.getCurrentRestaurant();
+        const payload = res?.data?.data || {};
+        const restaurant = payload?.restaurant || payload;
+        const rId = restaurant?._id || restaurant?.id || restaurant?.restaurantId;
+        if (!rId) return;
+
+        const tablesRes = await dineInAPI.listTables(rId);
+        
+        if (tablesRes.data?.success) {
+            const activeTables = tablesRes.data.data.filter(t => t.currentSessionId);
+            for (const table of activeTables) {
+                // Fetch session to see if there's a new "received" round
+                const sessRes = await dineInAPI.getSession(table.currentSessionId);
+                
+                const session = sessRes.data?.data;
+                if (!session || !session.orders) continue;
+
+                const rounds = Array.isArray(session.orders) ? session.orders : [];
+                const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                if (!latestRound) continue;
+
+                // A "new" round is when any item is still in received state.
+                const hasReceivedItems = Array.isArray(latestRound.items)
+                  ? latestRound.items.some((item) => item?.status === 'received')
+                  : false;
+
+                if (hasReceivedItems) {
+                    // Trigger alert for this table. Use the *round id* as the key so accept can update it.
+                    handleIncomingOrderAlert({
+                        orderId: `Table ${table.tableNumber}`,
+                        orderMongoId: latestRound._id?.toString?.() || latestRound._id || `${session._id}-${rounds.length}`,
+                        sessionId: session._id?.toString?.() || session._id,
+                        tableNumber: table.tableNumber,
+                        tableLabel: table.tableLabel,
+                        type: 'Dine-In',
+                        total: session.totalAmount,
+                        items: latestRound.items,
+                        isDineIn: true
+                    });
+                }
+            }
+        }
+      } catch (err) {
+        // Silently fail
+      }
+    };
+
+    pollDineIn();
+    const dineInIntervalId = setInterval(pollDineIn, 10000);
+
     return () => {
       isCancelled = true;
       clearInterval(intervalId);
+      clearInterval(bookingsIntervalId);
+      clearInterval(dineInIntervalId);
     };
   }, [restaurantId]);
 
@@ -606,6 +774,8 @@ export const useRestaurantNotifications = () => {
         orderMongoId: data?.orderMongoId || data?.order_mongo_id,
         ...data
       };
+      // Ensure the UI popup can open even if backend emits only "play_notification_sound".
+      setNewOrder(normalizedData);
       // Force immediate buzz for notification events, even if dedupe would skip.
       activeOrderRef.current = normalizedData || { id: Date.now() };
       playNotificationSound(normalizedData);
@@ -620,6 +790,14 @@ export const useRestaurantNotifications = () => {
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
       // You can handle status updates here if needed
+    });
+
+    socketRef.current.on('dine_in_session_closed', (payload) => {
+      debugLog('?? Dine-in session closed:', payload);
+      // Clear any active dine-in alert loop and refresh in-app inbox.
+      stopAlertLoop();
+      activeOrderRef.current = null;
+      dispatchNotificationInboxRefresh();
     });
 
     socketRef.current.on('admin_notification', (payload) => {
@@ -700,7 +878,14 @@ export const useRestaurantNotifications = () => {
   const playNotificationSound = async (orderData = {}) => {
     try {
       const usedNativeBridge = await triggerWebViewNativeNotification(orderData);
-      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      const hasUserActivation =
+        userInteractedRef.current ||
+        (typeof document !== 'undefined' && Boolean(document.userActivation?.hasBeenActive));
+      if (
+        hasUserActivation &&
+        typeof navigator !== 'undefined' &&
+        typeof navigator.vibrate === 'function'
+      ) {
         navigator.vibrate([200, 100, 200, 100, 300]);
       }
       if (usedNativeBridge) {
@@ -740,9 +925,17 @@ export const useRestaurantNotifications = () => {
     setNewOrder(null);
   };
 
+  const clearNewBooking = () => {
+    stopAlertLoop();
+    activeOrderRef.current = null;
+    setNewBooking(null);
+  };
+
   return {
     newOrder,
     clearNewOrder,
+    newBooking,
+    clearNewBooking,
     isConnected,
     playNotificationSound
   };

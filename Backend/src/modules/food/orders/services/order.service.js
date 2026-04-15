@@ -307,6 +307,13 @@ function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
 }
 
 function canExposeOrderToRestaurant(orderLike) {
+  // Restaurants must be able to see and act on newly created orders even if
+  // an online payment is still in-flight (otherwise "new order popup" never triggers).
+  const orderStatus = String(orderLike?.orderStatus || orderLike?.status || "")
+    .toLowerCase()
+    .trim();
+  if (["created", "confirmed"].includes(orderStatus)) return true;
+
   const method = String(orderLike?.payment?.method || "").toLowerCase();
   const status = String(orderLike?.payment?.status || "").toLowerCase();
 
@@ -1379,10 +1386,6 @@ export async function listOrdersRestaurant(restaurantId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const filter = {
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
-    $or: [
-      { "payment.method": { $in: ["cash", "wallet"] } },
-      { "payment.status": { $in: ["paid", "authorized", "captured", "settled", "refunded"] } },
-    ],
   };
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)

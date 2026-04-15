@@ -2700,5 +2700,29 @@ export const diningAPI = {
     });
   },
 };
+
+export const dineInAPI = {
+  getTableInfo: (restaurantId, table) =>
+    apiClient.get('/food/dine-in/table-info', { params: { restaurantId, table } }),
+  createSession: (body) =>
+    apiClient.post('/food/dine-in/sessions', body, { contextModule: "user" }),
+  getSession: (id) =>
+    apiClient.get(`/food/dine-in/sessions/${id}`, { contextModule: "user" }),
+  placeOrder: (sessionId, body) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/orders`, body, { contextModule: "user" }),
+  getSessionOrders: (sessionId) =>
+    apiClient.get(`/food/dine-in/sessions/${sessionId}/orders`, { contextModule: "user" }),
+  updateOrderStatus: (orderId, body) =>
+    apiClient.patch(`/food/dine-in/orders/${orderId}/status`, body, { contextModule: "restaurant" }),
+  getSessionBill: (sessionId) =>
+    apiClient.get(`/food/dine-in/sessions/${sessionId}/bill`, { contextModule: "user" }),
+  payBill: (sessionId, body) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/pay`, body, { contextModule: "user" }),
+  addTable: (body) =>
+    apiClient.post('/food/dine-in/tables', body, { contextModule: "restaurant" }),
+  listTables: (restaurantId) =>
+    apiClient.get(`/food/dine-in/restaurants/${restaurantId}/tables`, { contextModule: "restaurant" }),
+};
+
 export const heroBannerAPI = createStubAPI();
 export const publicAPI = createStubAPI();

@@ -126,8 +126,19 @@ export default function UnifiedOTPFastLogin() {
       }
 
       setAuthData("user", accessToken, user, refreshToken)
+      // Dispatch event to notify ProfileContext to refresh
+      window.dispatchEvent(new CustomEvent("userAuthChanged"));
       toast.success("Login successful!")
-      navigate("/", { replace: true })
+      
+      // Check for redirect parameter in URL
+      const params = new URLSearchParams(window.location.search);
+      const redirectPath = params.get("redirect");
+      
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true });
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       const status = err?.response?.status
       let msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Invalid OTP. Please try again."

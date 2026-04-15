@@ -1,14 +1,14 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { MapPin, SlidersHorizontal, Star, X, ArrowDownUp, Timer, IndianRupee, Clock, Bookmark, UtensilsCrossed } from "lucide-react"
+import { MapPin, SlidersHorizontal, Star, X, ArrowDownUp, Timer, IndianRupee, Clock, Bookmark, UtensilsCrossed, ChevronRight, Utensils, QrCode } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Card, CardContent } from "@food/components/ui/card"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { useSearchOverlay, useLocationSelector } from "@food/components/user/UserLayout"
 import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
-import { diningAPI } from "@food/api"
+import { diningAPI, dineInAPI } from "@food/api"
 import OptimizedImage from "@food/components/OptimizedImage"
 import HomeHeader from "@food/components/user/home/HomeHeader"
 import { RED } from "../../constants/color"
@@ -160,6 +160,32 @@ export default function Dining() {
   const touchEndXRef = useRef(0)
   const touchEndYRef = useRef(0)
   const isBannerSwipingRef = useRef(false)
+  const [activeSessionId, setActiveSessionId] = useState(null)
+  
+  useEffect(() => {
+    const sid = localStorage.getItem('activeDineInSessionId');
+    if (sid) {
+      dineInAPI.getSession(sid).then(res => {
+        if (res.data?.success) {
+          const session = res.data.data;
+          const hasActiveOrders = session.orders?.some(o => o.status !== 'cancelled');
+          
+          if (session.status === 'active' && !session.isPaid && (session.orders?.length === 0 || hasActiveOrders)) {
+            setActiveSessionId(sid);
+          } else {
+            localStorage.removeItem('activeDineInSessionId');
+            setActiveSessionId(null);
+          }
+        } else {
+          localStorage.removeItem('activeDineInSessionId');
+          setActiveSessionId(null);
+        }
+      }).catch(() => {
+        localStorage.removeItem('activeDineInSessionId');
+        setActiveSessionId(null);
+      });
+    }
+  }, []);
   const placeholders = useMemo(
     () => [
       'Search "cafe"',
@@ -598,6 +624,53 @@ export default function Dining() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-6 sm:pt-8 md:pt-10 lg:pt-12 pb-6 md:pb-8 lg:pb-10">
+        
+        {/* Scan & Dine CTA */}
+        <motion.div
+          initial={{ opacity: 0, y: -12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <button
+            type="button"
+            onClick={() => navigate("/user/dine-in/scan")}
+            className="w-full rounded-[2rem] bg-white border border-gray-100 p-5 shadow-sm flex items-center justify-between text-left"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center">
+                <QrCode className="w-6 h-6 text-[#00c87e]" />
+              </div>
+              <div>
+                <p className="text-sm font-black text-gray-900 uppercase tracking-wide">Scan & Dine</p>
+                <p className="text-xs text-gray-500">Scan table QR and start dine-in instantly</p>
+              </div>
+            </div>
+            <div className="text-[#00c87e] text-xs font-black uppercase tracking-wider">Open</div>
+          </button>
+        </motion.div>
+
+        {/* Active Session Banner */}
+        {activeSessionId && (
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8 bg-[#00c87e] rounded-[2rem] p-5 flex items-center justify-between text-white shadow-xl shadow-green-100 cursor-pointer"
+            onClick={() => navigate(`/user/dine-in/menu?sessionId=${activeSessionId}`)}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
+                <Utensils className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold">Active Dine-In Session</p>
+                <p className="text-[10px] text-white/80 uppercase font-black tracking-widest leading-none mt-1">Ready to order more?</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 bg-white text-[#00c87e] px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider">
+              Resume <ChevronRight className="w-4 h-4" />
+            </div>
+          </motion.div>
+        )}
         {/* Categories Section */}
         <div className="mb-6">
           <div className="mb-4 sm:mb-5">

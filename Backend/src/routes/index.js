@@ -16,6 +16,7 @@ import { requireRoles } from '../core/roles/role.middleware.js';
 import { getQueuesController } from '../controllers/admin.controller.js';
 import webhookRoutes from '../core/payments/routes/webhook.routes.js';
 import searchRoutes from '../modules/food/search/routes/search.routes.js';
+import dineInRoutes from '../modules/food/dineIn/routes/dineIn.routes.js';
 
 const router = express.Router();
 
@@ -29,9 +30,12 @@ router.use('/v1/food/auth', authRoutes);
 // Backward-compatible auth routes (legacy)
 router.use('/v1/auth', authRoutes);
 router.use('/v1/food/restaurant', restaurantRoutes);
+
 // Landing & hero-banners for Food user app (paths start with /food/hero-banners/...)
 router.use('/v1/food', landingRoutes);
 router.use('/v1/food/search', searchRoutes);
+router.use('/v1/food/dine-in', dineInRoutes);
+
 router.get('/v1/food/dining/categories/public', getPublicDiningCategories);
 router.get('/v1/food/dining/restaurants/public', getPublicDiningRestaurants);
 router.use('/v1/uploads', uploadRoutes);
@@ -47,8 +51,6 @@ router.use('/v1/food/payments', authMiddleware, paymentRoutes);
 router.use('/v1/payments/webhook', webhookRoutes);
 router.use('/v1/fcm-tokens', fcmRoutes);
 router.use('/fcm-tokens', fcmRoutes);
-// router.get('/v1/env/public', getPublicEnvController);
-// router.get('/env/public', getPublicEnvController);
 
 router.get('/v1/admin/queues', authMiddleware, requireRoles('ADMIN'), getQueuesController);
 

@@ -21,12 +21,13 @@ import {
   Clock,
   Users,
   MessageSquare,
+  Utensils,
 } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders";
 import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar";
 import notificationSound from "@food/assets/audio/alert.mp3";
-import { restaurantAPI, diningAPI } from "@food/api";
+import { restaurantAPI, diningAPI, dineInAPI } from "@food/api";
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications";
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
 import { jsPDF } from "jspdf";
@@ -42,7 +43,7 @@ const filterTabs = [
   { id: "all", label: "All" },
   { id: "preparing", label: "Preparing" },
   { id: "ready", label: "Ready" },
-  { id: "scheduled", label: "Scheduled" },
+  // { id: "scheduled", label: "Scheduled" },
   { id: "table-booking", label: "Table Booking" },
   { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },
@@ -656,7 +657,7 @@ function TableBookings() {
   );
 }
 
-function AllOrders({ onSelectOrder, onCancel }) {
+function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -670,35 +671,80 @@ function AllOrders({ onSelectOrder, onCancel }) {
     const fetchOrders = async () => {
       try {
         const response = await restaurantAPI.getOrders();
+        
+        // --- ADD DINE-IN FETCHING ---
+        let dineInOrdersTransformed = [];
+        try {
+          const profileRes = await restaurantAPI.getCurrentRestaurant();
+          const rId = profileRes.data?.data?.restaurant?._id || profileRes.data?.data?._id;
+          
+          if (rId) {
+            const tablesRes = await dineInAPI.listTables(rId);
+            if (tablesRes.data?.success) {
+              const activeTables = (tablesRes.data.data || []).filter((t) => t.currentSessionId);
+              const sessions = await Promise.all(
+                activeTables.map(async (table) => {
+                  try {
+                    const sRes = await dineInAPI.getSession(table.currentSessionId);
+                    return { table, session: sRes.data?.data || null };
+                  } catch {
+                    return { table, session: null };
+                  }
+                })
+              );
+
+              dineInOrdersTransformed = sessions
+                .filter(({ session }) => Boolean(session))
+                .map(({ table, session }) => {
+                  const rounds = Array.isArray(session.orders) ? session.orders : [];
+                  const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                  const latestStatus = String(latestRound?.status || "").toLowerCase();
+                  const displayStatus = latestStatus === "received" ? "active" : (latestStatus || "active");
+
+                  return {
+                    orderId: `Table ${table.tableNumber}`,
+                    mongoId: session._id,
+                    status: displayStatus,
+                    isDineIn: true,
+                    customerName: `Table ${table.tableNumber} (${table.tableLabel || "Default"})`,
+                    type: "Dine-In",
+                    tableOrToken: table.tableLabel || `Table ${table.tableNumber}`,
+                    timePlaced: new Date(latestRound?.createdAt || session.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                    itemsSummary: (latestRound?.items || [])
+                      .map((item) => `${item.quantity}x ${item.name}`)
+                      .join(", ") || "Active Session",
+                    photoUrl: null,
+                    photoAlt: "Dine-In",
+                    sortTimestamp: new Date(session.updatedAt || session.createdAt).getTime(),
+                  };
+                });
+            }
+          }
+        } catch (dineInErr) {
+          console.error("Dine-In fetch failed", dineInErr);
+        }
+        // ----------------------------
 
         if (!isMounted) return;
 
+        let regularOrders = [];
         if (response.data?.success && response.data.data?.orders) {
-          const transformedOrders = response.data.data.orders
-            .map(transformOrderForList)
-            .sort((a, b) => {
-              const priorityDiff =
-                (allOrdersStatusPriority[a.status] ?? 999) -
-                (allOrdersStatusPriority[b.status] ?? 999);
-              if (priorityDiff !== 0) return priorityDiff;
-              return b.sortTimestamp - a.sortTimestamp;
-            });
-
-          setOrders(transformedOrders);
-        } else {
-          setOrders([]);
+          regularOrders = response.data.data.orders.map(transformOrderForList);
         }
+
+        // Combine and Sort
+        const combined = [...regularOrders, ...dineInOrdersTransformed].sort((a, b) => {
+          if (a.isDineIn && !b.isDineIn) return -1; // Prioritize active Dine-In
+          if (!a.isDineIn && b.isDineIn) return 1;
+          return b.sortTimestamp - a.sortTimestamp;
+        });
+
+        setOrders(combined);
       } catch (error) {
         if (!isMounted) return;
-
-        if (
-          error.code !== "ERR_NETWORK" &&
-          error.response?.status !== 404 &&
-          error.response?.status !== 401
-        ) {
-          debugError("Error fetching all orders:", error);
-        }
-
         setOrders([]);
       } finally {
         if (isMounted) {
@@ -720,9 +766,10 @@ function AllOrders({ onSelectOrder, onCancel }) {
       if (intervalId) clearInterval(intervalId);
       if (countdownIntervalId) clearInterval(countdownIntervalId);
     };
-  }, []);
+  }, [refreshToken]);
 
-  const handleMarkReady = async ({ orderId, mongoId }) => {
+  const handleMarkReady = async ({ orderId, mongoId, isDineIn }) => {
+    if (isDineIn) return;
     const orderKey = mongoId || orderId;
     if (!orderKey || markingReadyOrderIds[orderKey]) return;
 
@@ -807,10 +854,14 @@ function AllOrders({ onSelectOrder, onCancel }) {
                 eta={etaDisplay}
                 onSelect={onSelectOrder}
                 onCancel={
-                  normalizedStatus === "preparing" ? onCancel : undefined
+                  normalizedStatus === "preparing" && !order.isDineIn
+                    ? onCancel
+                    : undefined
                 }
                 onMarkReady={
-                  normalizedStatus === "preparing" ? handleMarkReady : undefined
+                  normalizedStatus === "preparing" && !order.isDineIn
+                    ? handleMarkReady
+                    : undefined
                 }
                 isMarkingReady={Boolean(
                   markingReadyOrderIds[order.mongoId || order.orderId],
@@ -856,9 +907,13 @@ export default function OrdersMain() {
   const [isAcceptingOrder, setIsAcceptingOrder] = useState(false);
   const audioRef = useRef(null);
   const shownOrdersRef = useRef(new Set()); // Track orders already shown in popup
+  const shownBookingsRef = useRef(new Set()); // Track bookings already shown in popup
   const acceptSliderRef = useRef(null);
   const acceptSwipeStartXRef = useRef(0);
   const acceptSwipeActiveRef = useRef(false);
+  // New table booking popup states
+  const [showNewBookingPopup, setShowNewBookingPopup] = useState(false);
+  const [popupBooking, setPopupBooking] = useState(null);
   const [restaurantStatus, setRestaurantStatus] = useState({
     isActive: null,
     rejectionReason: null,
@@ -872,6 +927,8 @@ export default function OrdersMain() {
   const newOrderRef = useRef(null);
 
   const markOrderAsShown = (orderLike) => {
+        if (orderLike?.isDineIn && orderLike?.orderMongoId) { return shownOrdersRef.current.has(orderLike.orderMongoId); }
+
     const keys = [
       orderLike?.orderMongoId,
       orderLike?.orderId,
@@ -885,6 +942,8 @@ export default function OrdersMain() {
   };
 
   const hasOrderBeenShown = (orderLike) => {
+        if (orderLike?.isDineIn && orderLike?.orderMongoId) { return shownOrdersRef.current.has(orderLike.orderMongoId); }
+
     const keys = [
       orderLike?.orderMongoId,
       orderLike?.orderId,
@@ -919,8 +978,9 @@ export default function OrdersMain() {
     return Number.isFinite(itemsTotal) ? itemsTotal : 0;
   };
 
-  // Restaurant notifications hook for real-time orders
-  const { newOrder, clearNewOrder, isConnected } = useRestaurantNotifications();
+  // Restaurant notifications hook for real-time orders + table bookings
+  const { newOrder, clearNewOrder, newBooking, clearNewBooking, isConnected } =
+    useRestaurantNotifications();
 
   const rejectReasons = [
     "Restaurant is too busy",
@@ -1098,6 +1158,36 @@ export default function OrdersMain() {
       }
     }
   }, [newOrder]);
+
+  const getBookingKey = (bookingLike) =>
+    String(bookingLike?._id || bookingLike?.id || bookingLike?.bookingId || "")
+      .trim();
+
+  const hasBookingBeenShown = (bookingLike) => {
+    const key = getBookingKey(bookingLike);
+    if (!key) return false;
+    return shownBookingsRef.current.has(key);
+  };
+
+  const markBookingAsShown = (bookingLike) => {
+    const key = getBookingKey(bookingLike);
+    if (!key) return;
+    shownBookingsRef.current.add(key);
+  };
+
+  // Show new table booking popup when booking notification arrives (polling)
+  useEffect(() => {
+    if (!newBooking) return;
+    // Don't stack over order popup; booking will keep polling until accepted/declined.
+    if (showNewOrderPopupRef.current) return;
+
+    if (!hasBookingBeenShown(newBooking)) {
+      markBookingAsShown(newBooking);
+      setPopupBooking(newBooking);
+      setShowNewBookingPopup(true);
+      toast.success(`New table booking ${newBooking?.bookingId ? `#${newBooking.bookingId}` : ""}`.trim());
+    }
+  }, [newBooking]);
 
   // Keep refs in sync to avoid stale state inside one-time event handlers.
   useEffect(() => {
@@ -1383,9 +1473,27 @@ export default function OrdersMain() {
     if (orderToAccept?.orderMongoId || orderToAccept?.orderId) {
       try {
         const orderId = orderToAccept.orderMongoId || orderToAccept.orderId;
-        const response = await restaurantAPI.acceptOrder(orderId, prepTime);
+        
+        // DINE-IN SPECIAL HANDLING
+        if (orderToAccept.isDineIn) {
+            // For Dine-In, "accepting" moves the latest round from received -> preparing.
+            const roundId = orderToAccept.orderMongoId;
+            if (roundId) {
+                await dineInAPI.updateOrderStatus(roundId, { status: "preparing" });
+                toast.success("Dine-In order accepted & marked as Preparing");
+            } else {
+                toast.error("Dine-In round not found");
+                setIsAcceptingOrder(false);
+                setAcceptSwipeProgress(0);
+                return;
+            }
+        } else {
+            // Standard Takeaway/Delivery acceptance
+            const response = await restaurantAPI.acceptOrder(orderId, prepTime);
+            toast.success("Order accepted successfully");
+        }
+        
         debugLog("? Order accepted:", orderId);
-        toast.success("Order accepted successfully");
         requestOrdersRefresh();
       } catch (error) {
         debugError("? Error accepting order:", error);
@@ -1437,7 +1545,17 @@ export default function OrdersMain() {
     if (orderToReject?.orderMongoId || orderToReject?.orderId) {
       try {
         const orderId = orderToReject.orderMongoId || orderToReject.orderId;
-        await restaurantAPI.rejectOrder(orderId, rejectReason);
+        
+        if (orderToReject.isDineIn) {
+            // Dine-In order rejection handling
+            await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: rejectReason });
+            toast.success("Dine-In order rejected");
+        } else {
+            // Standard order rejection
+            await restaurantAPI.rejectOrder(orderId, rejectReason);
+            toast.success("Order rejected successfully");
+        }
+
         debugLog("? Order rejected:", orderId);
         requestOrdersRefresh();
       } catch (error) {
@@ -1480,7 +1598,15 @@ export default function OrdersMain() {
 
     try {
       const orderId = orderToCancel.mongoId || orderToCancel.orderId;
-      await restaurantAPI.rejectOrder(orderId, cancelReason.trim());
+      
+      if (orderToCancel.isDineIn) {
+        // Dine-In specific cancellation
+        await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: cancelReason.trim() });
+      } else {
+        // Standard order cancellation
+        await restaurantAPI.rejectOrder(orderId, cancelReason.trim());
+      }
+      
       toast.success("Order cancelled successfully");
       requestOrdersRefresh();
       setShowCancelPopup(false);
@@ -1496,6 +1622,57 @@ export default function OrdersMain() {
     setShowCancelPopup(false);
     setOrderToCancel(null);
     setCancelReason("");
+  };
+
+  const handleCloseBookingPopup = () => {
+    setShowNewBookingPopup(false);
+    setPopupBooking(null);
+    clearNewBooking();
+  };
+
+  const handleAcceptBooking = async () => {
+    const booking = popupBooking || newBooking;
+    const bookingId = booking?._id || booking?.id;
+    if (!bookingId) return;
+
+    try {
+      const res = await diningAPI.updateBookingStatusRestaurant(bookingId, "accepted");
+      if (res?.data?.success) {
+        toast.success("Booking accepted");
+      } else {
+        toast.error("Failed to accept booking");
+        return;
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Failed to accept booking");
+      return;
+    }
+
+    handleCloseBookingPopup();
+    // Keep the restaurant in the right place to act on it further if needed.
+    navigate("/restaurant/reservations");
+  };
+
+  const handleDeclineBooking = async () => {
+    const booking = popupBooking || newBooking;
+    const bookingId = booking?._id || booking?.id;
+    if (!bookingId) return;
+
+    try {
+      const res = await diningAPI.updateBookingStatusRestaurant(bookingId, "cancelled");
+      if (res?.data?.success) {
+        toast.success("Booking declined");
+      } else {
+        toast.error("Failed to decline booking");
+        return;
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Failed to decline booking");
+      return;
+    }
+
+    handleCloseBookingPopup();
+    navigate("/restaurant/reservations");
   };
 
   // Toggle mute
@@ -1788,6 +1965,33 @@ export default function OrdersMain() {
     setIsSheetOpen(true);
   };
 
+  const updateSelectedDineInRoundStatus = async (nextStatus, successMessage) => {
+    try {
+      const sessionId = selectedOrder?.mongoId;
+      if (!sessionId) {
+        toast.error("Dine-In session not found");
+        return;
+      }
+
+      const res = await dineInAPI.getSession(sessionId);
+      const session = res.data?.data;
+      const rounds = Array.isArray(session?.orders) ? session.orders : [];
+      const lastRound = rounds.length ? rounds[rounds.length - 1] : null;
+
+      if (!lastRound?._id) {
+        toast.error("No active order round found for this table");
+        return;
+      }
+
+      await dineInAPI.updateOrderStatus(lastRound._id, { status: nextStatus });
+      toast.success(successMessage);
+      setIsSheetOpen(false);
+      requestOrdersRefresh();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to update table status");
+    }
+  };
+
   const renderContent = () => {
     switch (activeFilter) {
       case "all":
@@ -1795,6 +1999,7 @@ export default function OrdersMain() {
           <AllOrders
             onSelectOrder={handleSelectOrder}
             onCancel={handleCancelClick}
+            refreshToken={ordersRefreshToken}
           />
         );
       case "preparing":
@@ -2103,10 +2308,20 @@ export default function OrdersMain() {
                 <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
                   <div className="flex-1">
                     <h3 className="text-base font-bold text-gray-900">
-                      {(popupOrder || newOrder)?.orderId || "#Order"}
+                      {(popupOrder || newOrder)?.isDineIn
+                        ? "New Dine-In Order"
+                        : (popupOrder || newOrder)?.scheduledAt
+                          ? "New Scheduled Order"
+                          : "New Order"}
                     </h3>
                     <p className="text-xs text-gray-500 mt-0.5">
-                      {(popupOrder || newOrder)?.restaurantName || "Restaurant"}
+                      Order{" "}
+                      {(popupOrder || newOrder)?.orderId
+                        ? `#${(popupOrder || newOrder).orderId}`
+                        : ""}
+                      {(popupOrder || newOrder)?.restaurantName
+                        ? ` • ${(popupOrder || newOrder).restaurantName}`
+                        : ""}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -2156,6 +2371,23 @@ export default function OrdersMain() {
                             })}
                           </p>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DINE-IN Indicator */}
+                  {(popupOrder || newOrder)?.isDineIn && (
+                    <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                        <Utensils className="w-4 h-4 text-indigo-600" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">
+                          Dine-In Order
+                        </p>
+                        <p className="text-sm font-black text-indigo-900 mt-0.5">
+                          {(popupOrder || newOrder)?.orderId || "New Table Order"}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -2445,6 +2677,122 @@ export default function OrdersMain() {
         )}
       </AnimatePresence>
 
+      {/* New Table Booking Popup */}
+      <AnimatePresence>
+        {showNewBookingPopup && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[65] bg-black/60 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseBookingPopup}
+            >
+              <motion.div
+                className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="px-4 py-4 border-b border-gray-200 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-bold text-gray-900">
+                      New Table Booking
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      {(popupBooking || newBooking)?.bookingId
+                        ? `Booking #${(popupBooking || newBooking).bookingId}`
+                        : "Booking request received"}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseBookingPopup}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5 text-gray-700" />
+                  </button>
+                </div>
+
+                <div className="px-4 py-4">
+                  <div className="space-y-3 text-sm">
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                      <span className="text-gray-600 font-medium">Guest</span>
+                      <span className="text-gray-900 font-semibold truncate max-w-[60%] text-right">
+                        {(popupBooking || newBooking)?.user?.name ||
+                          (popupBooking || newBooking)?.customerName ||
+                          "Guest"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                      <span className="text-gray-600 font-medium">Guests</span>
+                      <span className="text-gray-900 font-semibold">
+                        {(popupBooking || newBooking)?.guests || 1}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                      <span className="text-gray-600 font-medium">Date</span>
+                      <span className="text-gray-900 font-semibold">
+                        {(popupBooking || newBooking)?.date
+                          ? new Date((popupBooking || newBooking).date).toLocaleDateString(
+                              "en-GB",
+                              { day: "2-digit", month: "short", year: "numeric" },
+                            )
+                          : "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
+                      <span className="text-gray-600 font-medium">Time</span>
+                      <span className="text-gray-900 font-semibold">
+                        {(popupBooking || newBooking)?.timeSlot || "—"}
+                      </span>
+                    </div>
+                    {(popupBooking || newBooking)?.specialRequest ? (
+                      <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2 text-blue-800">
+                        <div className="text-xs font-bold uppercase tracking-wider">
+                          Special request
+                        </div>
+                        <div className="mt-1 text-sm font-medium">
+                          {(popupBooking || newBooking).specialRequest}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={handleDeclineBooking}
+                      className="bg-white border-2 border-rose-500 text-rose-600 py-3 rounded-lg font-semibold text-sm hover:bg-rose-50 transition-colors"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleAcceptBooking}
+                      className="bg-emerald-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-emerald-700 transition-colors"
+                    >
+                      Accept
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/restaurant/reservations")}
+                    className="mt-3 w-full bg-gray-100 text-gray-800 py-3 rounded-lg font-semibold text-sm hover:bg-gray-200 transition-colors"
+                  >
+                    View all reservations
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Reject Order Popup */}
       <AnimatePresence>
         {showRejectPopup && (
@@ -2676,21 +3024,27 @@ export default function OrdersMain() {
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
+                  {(() => {
+                    const selectedStatus = String(selectedOrder.status || "").toLowerCase();
+                    const isReadyStatus = selectedStatus === "ready";
+                    return (
                   <span
                     className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
-                      selectedOrder.status === "Ready"
+                      isReadyStatus
                         ? "border-green-500 text-green-600"
                         : "border-gray-800 text-gray-900"
                     }`}>
                     <span
                       className={`h-1.5 w-1.5 rounded-full ${
-                        selectedOrder.status === "Ready"
+                        isReadyStatus
                           ? "bg-green-500"
                           : "bg-gray-800"
                       }`}
                     />
                     {selectedOrder.status}
                   </span>
+                    );
+                  })()}
                   <span className="text-[11px] text-gray-500">
                     {selectedOrder.timePlaced}
                   </span>
@@ -2708,7 +3062,7 @@ export default function OrdersMain() {
 
               <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
                 {/* Hide ETA for ready orders */}
-                {selectedOrder.status !== "ready" && selectedOrder.eta && (
+                {String(selectedOrder.status || "").toLowerCase() !== "ready" && selectedOrder.eta && (
                   <span>
                     ETA:{" "}
                     <span className="font-medium text-black">
@@ -2733,8 +3087,46 @@ export default function OrdersMain() {
                 })()}
               </div>
 
+              {/* ACTION BUTTONS FOR DINE-IN */}
+              { (selectedOrder.isDineIn || String(selectedOrder.orderId).includes("Table")) && (
+                <div className="space-y-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      className="flex-1 bg-orange-600 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-orange-700 active:scale-95 transition-all"
+                      onClick={() => updateSelectedDineInRoundStatus("preparing", "Table marked as Preparing")}>
+                      Preparing
+                    </button>
+                    <button
+                      className="flex-1 bg-[#00c87e] text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-[#00a165] active:scale-95 transition-all"
+                      onClick={() => updateSelectedDineInRoundStatus("ready", "Food is Ready")}>
+                      Ready
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-blue-700 active:scale-95 transition-all"
+                      onClick={() => updateSelectedDineInRoundStatus("served", "Food Served")}>
+                      Served
+                    </button>
+                    <button
+                      className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider shadow-sm hover:bg-red-700 active:scale-95 transition-all"
+                      onClick={() => {
+                        // Redirect to live dine-in orders view which handles active sessions
+                        navigate(`/food/restaurant/dine-in/orders`);
+                        setIsSheetOpen(false);
+                      }}>
+                      Settle Bill
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <button
-                className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
+                className={`w-full py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-colors ${
+                  selectedOrder.isDineIn 
+                    ? "bg-gray-100 text-gray-800 hover:bg-gray-200" 
+                    : "bg-black text-white hover:bg-black/90"
+                }`}
                 onClick={() => setIsSheetOpen(false)}>
                 Close
               </button>
@@ -2772,13 +3164,18 @@ function OrderCard({
   onVerifyOtp,
   isVerifyingOtp = false,
   isMarkingReady = false,
+  isDineIn = false,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
   const isReady = normalizedStatus === "ready";
   const isPreparing = normalizedStatus === "preparing";
-  const statusLabel = String(status || "")
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+  const isActiveDineIn = isDineIn && normalizedStatus === "active";
+  
+  const statusLabel = isActiveDineIn 
+    ? "Live Table" 
+    : String(status || "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative">
@@ -2799,7 +3196,9 @@ function OrderCard({
         onClick={() =>
           onSelect?.({
             orderId,
+            mongoId,
             status,
+            isDineIn,
             customerName,
             type,
             tableOrToken,
@@ -2839,19 +3238,21 @@ function OrderCard({
             </div>
 
             <div className="flex flex-col items-end gap-1">
-              <span
-                className={`inline-flex items-start gap-1 px-2 py-1 rounded-full text-[11px] font-medium border text-right whitespace-normal break-words max-w-[140px] leading-tight ${
-                  isReady
-                    ? "border-green-500 text-green-600"
-                    : "border-gray-800 text-gray-900"
-                }`}>
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    isReady ? "bg-green-500" : "bg-gray-800"
-                  }`}
-                />
-                {statusLabel}
-              </span>
+      <div
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${
+          isActiveDineIn
+            ? "bg-[#00c87e] border-[#00c87e] text-white shadow-lg shadow-[#00c87e]/20"
+            : isReady
+            ? "bg-green-50 border-green-500 text-green-700"
+            : "bg-gray-50 border-gray-200 text-gray-700"
+        }`}>
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${
+            isActiveDineIn ? "bg-white animate-pulse" : isReady ? "bg-green-500" : "bg-gray-400"
+          }`}
+        />
+        {isActiveDineIn ? "DINE-IN ACTIVE" : statusLabel}
+      </div>
               <span className="text-[11px] text-gray-500 text-right whitespace-normal break-words max-w-[120px] leading-tight">
                 {timePlaced}
               </span>
@@ -2877,7 +3278,7 @@ function OrderCard({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onMarkReady({ orderId, mongoId, customerName });
+                    onMarkReady({ orderId, mongoId, customerName, isDineIn });
                   }}
                   disabled={isMarkingReady}
                   className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-green-600 text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
@@ -2976,8 +3377,66 @@ function PreparingOrders({
             };
           });
 
+          let dineInPreparingOrders = [];
+          try {
+            const profileRes = await restaurantAPI.getCurrentRestaurant();
+            const rId = profileRes?.data?.data?.restaurant?._id || profileRes?.data?.data?._id;
+
+            if (rId) {
+              const tablesRes = await dineInAPI.listTables(rId);
+              if (tablesRes.data?.success) {
+                const activeTables = (tablesRes.data.data || []).filter((t) => t.currentSessionId);
+                const sessions = await Promise.all(
+                  activeTables.map(async (table) => {
+                    try {
+                      const sRes = await dineInAPI.getSession(table.currentSessionId);
+                      return { table, session: sRes.data?.data || null };
+                    } catch {
+                      return { table, session: null };
+                    }
+                  })
+                );
+
+                dineInPreparingOrders = sessions
+                  .filter(({ session }) => Boolean(session))
+                  .map(({ table, session }) => {
+                    const rounds = Array.isArray(session.orders) ? session.orders : [];
+                    const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                    const latestStatus = String(latestRound?.status || "").toLowerCase();
+                    if (latestStatus !== "preparing") return null;
+
+                    return {
+                      orderId: `Table ${table.tableNumber}`,
+                      mongoId: session._id,
+                      status: "preparing",
+                      isDineIn: true,
+                      customerName: `Table ${table.tableNumber} (${table.tableLabel || "Default"})`,
+                      type: "Dine-In",
+                      tableOrToken: table.tableLabel || `Table ${table.tableNumber}`,
+                      timePlaced: new Date(latestRound?.createdAt || session.createdAt).toLocaleTimeString(
+                        "en-US",
+                        { hour: "2-digit", minute: "2-digit" },
+                      ),
+                      initialETA: 30,
+                      preparingTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()),
+                      itemsSummary:
+                        (latestRound?.items || [])
+                          .map((item) => `${item.quantity}x ${item.name}`)
+                          .join(", ") || "No items",
+                      photoUrl: null,
+                      photoAlt: "Dine-In",
+                      deliveryPartnerId: null,
+                      dispatchStatus: null,
+                      paymentMethod: null,
+                    };
+                  })
+                  .filter(Boolean);
+              }
+            }
+          } catch (_) {}
+
           if (isMounted) {
-            setOrders(transformedOrders);
+            setOrders([...dineInPreparingOrders, ...transformedOrders]);
             setLoading(false);
           }
         } else {
@@ -3112,7 +3571,8 @@ function PreparingOrders({
     }
   }, [orders]);
 
-  const handleMarkReady = async ({ orderId, mongoId, customerName }) => {
+  const handleMarkReady = async ({ orderId, mongoId, customerName, isDineIn }) => {
+    if (isDineIn) return;
     const orderKey = mongoId || orderId;
     if (!orderKey || markingReadyOrderIds[orderKey]) return;
 
@@ -3220,8 +3680,8 @@ function PreparingOrders({
                 deliveryPartnerId={order.deliveryPartnerId}
                 dispatchStatus={order.dispatchStatus}
                 onSelect={onSelectOrder}
-                onCancel={onCancel}
-                onMarkReady={handleMarkReady}
+                onCancel={order.isDineIn ? undefined : onCancel}
+                onMarkReady={order.isDineIn ? undefined : handleMarkReady}
                 isMarkingReady={Boolean(
                   markingReadyOrderIds[order.mongoId || order.orderId],
                 )}
@@ -3285,8 +3745,65 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
             dispatchStatus: order.dispatch?.status || null,
           }));
 
+          let dineInReadyOrders = [];
+          try {
+            const profileRes = await restaurantAPI.getCurrentRestaurant();
+            const rId = profileRes?.data?.data?.restaurant?._id || profileRes?.data?.data?._id;
+
+            if (rId) {
+              const tablesRes = await dineInAPI.listTables(rId);
+              if (tablesRes.data?.success) {
+                const activeTables = (tablesRes.data.data || []).filter((t) => t.currentSessionId);
+                const sessions = await Promise.all(
+                  activeTables.map(async (table) => {
+                    try {
+                      const sRes = await dineInAPI.getSession(table.currentSessionId);
+                      return { table, session: sRes.data?.data || null };
+                    } catch {
+                      return { table, session: null };
+                    }
+                  })
+                );
+
+                dineInReadyOrders = sessions
+                  .filter(({ session }) => Boolean(session))
+                  .map(({ table, session }) => {
+                    const rounds = Array.isArray(session.orders) ? session.orders : [];
+                    const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                    const latestStatus = String(latestRound?.status || "").toLowerCase();
+                    if (latestStatus !== "ready") return null;
+
+                    return {
+                      orderId: `Table ${table.tableNumber}`,
+                      mongoId: session._id,
+                      status: "ready",
+                      isDineIn: true,
+                      customerName: `Table ${table.tableNumber} (${table.tableLabel || "Default"})`,
+                      type: "Dine-In",
+                      tableOrToken: table.tableLabel || `Table ${table.tableNumber}`,
+                      timePlaced: new Date(latestRound?.createdAt || session.createdAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }),
+                      eta: null,
+                      itemsSummary:
+                        (latestRound?.items || [])
+                          .map((item) => `${item.quantity}x ${item.name}`)
+                          .join(", ") || "No items",
+                      photoUrl: null,
+                      photoAlt: "Dine-In",
+                      paymentMethod: null,
+                      deliveryPartnerId: null,
+                      dispatchStatus: null,
+                    };
+                  })
+                  .filter(Boolean);
+              }
+            }
+          } catch (_) {}
+
           if (isMounted) {
-            setOrders(transformedOrders);
+            setOrders([...dineInReadyOrders, ...transformedOrders]);
             setLoading(false);
           }
         } else {
@@ -3404,7 +3921,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
               key={order.orderId || order.mongoId}
               {...order}
               onSelect={onSelectOrder}
-              onVerifyOtp={handleOpenOtpModal}
+              onVerifyOtp={order.isDineIn ? undefined : handleOpenOtpModal}
               isVerifyingOtp={Boolean(
                 verifyingOrderIds[order.mongoId || order.orderId],
               )}

@@ -26,6 +26,11 @@ const TableBookingSuccess = lazy(() => import("@food/pages/user/dining/TableBook
 const MyBookings = lazy(() => import("@food/pages/user/dining/MyBookings"))
 const SearchResults = lazy(() => import("@food/pages/user/search/ProfessionalSearch"))
 const ProductDetail = lazy(() => import("@food/pages/user/ProductDetail"))
+const QRLanding = lazy(() => import("@food/pages/user/dineIn/QRLanding"))
+const ScanAndDine = lazy(() => import("@food/pages/user/dineIn/ScanAndDine"))
+const DineInSessionEntry = lazy(() => import("@food/pages/user/dineIn/DineInSessionEntry"))
+const DineInMenu = lazy(() => import("@food/pages/user/dineIn/DineInMenu"))
+const DineInBill = lazy(() => import("@food/pages/user/dineIn/DineInBill"))
 
 // Cart
 const Cart = lazy(() => import("@food/pages/user/cart/Cart"))
@@ -98,6 +103,11 @@ export default function UserRouter() {
           <Route path="" element={<Home />} />
           <Route path="quick" element={<Home />} />
           <Route path="dining" element={<Dining />} />
+          <Route path="dine-in" element={<QRLanding />} />
+          <Route path="dine-in/scan" element={<ScanAndDine />} />
+          <Route path="dine-in/entry" element={<DineInSessionEntry />} />
+          <Route path="dine-in/menu" element={<DineInMenu />} />
+          <Route path="dine-in/bill" element={<DineInBill />} />
           <Route path="dining/restaurants" element={<DiningRestaurants />} />
           <Route path="dining/:category" element={<DiningCategory />} />
           <Route path="dining/explore/upto50" element={<DiningExplore50 />} />
