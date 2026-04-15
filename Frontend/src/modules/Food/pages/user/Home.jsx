@@ -2595,20 +2595,18 @@ export default function Home() {
               {CategoryRailSection}
               {recommendedForYouRestaurants.length > 0 && (
                 <motion.section
-                  className="content-auto pt-1 sm:pt-2"
+                  className="content-auto pt-3 sm:pt-4"
                   initial={false}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-2 sm:mb-3 px-4">
-                    Recommended For You
+                  <h2 className="text-xs sm:text-sm font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-3 px-4">
+                    Top Picks Near You
                   </h2>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 px-4">
+                  <div className="flex gap-3 overflow-x-auto scrollbar-hide px-4 pb-2" style={{ scrollbarWidth: "none" }}>
                     {recommendedForYouRestaurants.map((restaurant, index) => {
                       const restaurantSlug =
                         restaurant.slug ||
                         restaurant.name.toLowerCase().replace(/\s+/g, "-");
-
                       return (
                         <motion.div
                           key={`recommended-${restaurant.mongoId || restaurant.id || restaurantSlug}`}
@@ -2616,29 +2614,33 @@ export default function Home() {
                           whileInView={{ opacity: 1, y: 0 }}
                           viewport={{ once: true }}
                           transition={{ duration: 0.35, delay: index * 0.05 }}
+                          className="flex-shrink-0 w-[155px] sm:w-[175px]"
                         >
                           <Link
                             to={`/user/restaurants/${restaurantSlug}`}
-                            className="block rounded-[20px] overflow-hidden border border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] shadow-sm hover:shadow-md transition-shadow"
+                            className="relative block h-[220px] sm:h-[240px] rounded-[20px] overflow-hidden shadow-md hover:shadow-xl transition-shadow active:scale-[0.98]"
                           >
-                            <div className="relative h-24 sm:h-28 md:h-32 bg-gray-50">
-                              <img
-                                src={restaurant.image}
-                                alt={restaurant.name}
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                              />
-                              <div className={`absolute bottom-2 left-2 px-2 py-0.5 rounded-lg ${Number(restaurant.rating) > 0 ? "bg-black/80 backdrop-blur-md text-white font-medium" : "bg-gray-200/90 text-gray-600 font-medium"} text-[10px] shadow-lg border border-white/10`}>
-                                {Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}
-                              </div>
+                            <img
+                              src={restaurant.image}
+                              alt={restaurant.name}
+                              className="absolute inset-0 h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                            <div className="absolute left-2.5 top-2.5 rounded-full bg-black/50 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur-sm">
+                              Top Pick
                             </div>
-                            <div className="p-2.5">
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white truncate tracking-tight">
+                            <div className={`absolute right-2.5 top-2.5 flex items-center gap-0.5 rounded-lg px-1.5 py-0.5 text-[10px] font-bold text-white ${Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-500"}`}>
+                              {Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}
+                              {Number(restaurant.rating) > 0 && <Star className="h-2.5 w-2.5 fill-white ml-0.5" strokeWidth={0} />}
+                            </div>
+                            <div className="absolute bottom-0 left-0 right-0 p-3">
+                              <p className="line-clamp-2 text-[14px] font-bold leading-tight text-white mb-1">
                                 {restaurant.name}
                               </p>
-                              <p className="text-[10px] font-bold mt-1 flex items-center gap-1 uppercase tracking-wider" style={{ color: RED }}>
-                                <Flame className="w-3.5 h-3.5" style={{ fill: RED }} />
-                                Near & Fast
+                              <p className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: RED }}>
+                                <Flame className="h-3 w-3 flex-shrink-0" style={{ fill: RED }} />
+                                Near &amp; Fast
                               </p>
                             </div>
                           </Link>

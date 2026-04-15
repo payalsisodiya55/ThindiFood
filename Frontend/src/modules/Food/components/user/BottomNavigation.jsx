@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom"
-import { Tag, User, Truck, UtensilsCrossed } from "lucide-react"
+import { Tag, User, UtensilsCrossed } from "lucide-react"
 
 export default function BottomNavigation() {
   const location = useLocation()
@@ -36,9 +36,31 @@ export default function BottomNavigation() {
               : "text-gray-600 dark:text-gray-400"
             }`}
         >
-          < Truck className={`h-5 w-5 ${isDelivery ? "text-[#00c87e] fill-[#00c87e]" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={`h-5 w-5 ${isDelivery ? "text-[#00c87e]" : "text-gray-600 dark:text-gray-400"}`}
+          >
+            {/* Paper bag body */}
+            <path d="M5 4h14l-1 16H6L5 4z" />
+            {/* Rolled top */}
+            <path d="M5 4c0-1 1.5-1.5 3-1.5h8c1.5 0 3 .5 3 1.5" />
+            {/* Right fold crease */}
+            <path d="M17 4l1.5 7-1.5 9" />
+            {/* Circle on bag */}
+            <circle cx="10.5" cy="13" r="3.5" />
+            {/* Fork inside circle */}
+            <path d="M9.5 11.2v3.6M9 11.2v1.2a.5.5 0 0 0 1 0v-1.2" />
+            {/* Knife inside circle */}
+            <path d="M11.5 11.2c.5.4.8 1 .8 1.6v1.8" />
+          </svg>
           <span className={`text-xs sm:text-sm font-medium ${isDelivery ? "text-[#00c87e] font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Delivery
+            Takeaway
           </span>
           {isDelivery && (
             <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#00c87e] rounded-b-full" />
