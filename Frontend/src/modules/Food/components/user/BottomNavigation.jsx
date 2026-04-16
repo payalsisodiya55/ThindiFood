@@ -1,17 +1,17 @@
 import { Link, useLocation } from "react-router-dom"
-import { Tag, User, UtensilsCrossed } from "lucide-react"
+import { ShoppingBag, User, UtensilsCrossed, ShoppingCart, ChevronRight } from "lucide-react"
+import { useCart } from "@food/context/CartContext"
 
 export default function BottomNavigation() {
+  const { itemCount, total } = useCart()
   const location = useLocation()
   const pathname = location.pathname
 
   // Check active routes - support both /user/* and /* paths
   const isDining = pathname === "/dining" || pathname.startsWith("/dining/") || pathname === "/food/dining" || pathname.startsWith("/food/user/dining")
-  const isUnder250 = pathname === "/under-250" || pathname.startsWith("/under-250/") || pathname === "/food/under-250" || pathname.startsWith("/food/user/under-250")
   const isProfile = pathname.startsWith("/profile") || pathname.startsWith("/food/profile") || pathname.startsWith("/food/user/profile")
   const isDelivery =
     !isDining &&
-    !isUnder250 &&
     !isProfile &&
     (pathname === "/" ||
       pathname === "" ||
@@ -20,112 +20,77 @@ export default function BottomNavigation() {
       pathname === "/food/user" ||
       (pathname.startsWith("/food/user") &&
         !pathname.includes("/dining") &&
-        !pathname.includes("/under-250") &&
         !pathname.includes("/profile")))
 
   return (
     <div
-      className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] border-t border-gray-200 dark:border-gray-800 z-50 shadow-lg"
+      className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] border-t border-gray-200 dark:border-gray-800 z-50 shadow-[0_-4px_12px_rgba(0,0,0,0.08)] px-4 py-2"
     >
-      <div className="flex items-center justify-around h-auto px-2 sm:px-4">
-        {/* Delivery Tab */}
-        <Link
-          to="/food/user"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isDelivery
-              ? "text-[#00c87e]"
-              : "text-gray-600 dark:text-gray-400"
-            }`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={`h-5 w-5 ${isDelivery ? "text-[#00c87e]" : "text-gray-600 dark:text-gray-400"}`}
+      <div className="flex items-center gap-3 h-14">
+        {/* Compact Tabs Group */}
+        <div className="flex flex-1 items-center">
+          {/* Takeaway Tab */}
+          <Link
+            to="/food/user"
+            className={`flex flex-1 flex-col items-center gap-1 transition-all duration-200 ${isDelivery ? "text-[#00c87e]" : "text-gray-500"}`}
           >
-            {/* Paper bag body */}
-            <path d="M5 4h14l-1 16H6L5 4z" />
-            {/* Rolled top */}
-            <path d="M5 4c0-1 1.5-1.5 3-1.5h8c1.5 0 3 .5 3 1.5" />
-            {/* Right fold crease */}
-            <path d="M17 4l1.5 7-1.5 9" />
-            {/* Circle on bag */}
-            <circle cx="10.5" cy="13" r="3.5" />
-            {/* Fork inside circle */}
-            <path d="M9.5 11.2v3.6M9 11.2v1.2a.5.5 0 0 0 1 0v-1.2" />
-            {/* Knife inside circle */}
-            <path d="M11.5 11.2c.5.4.8 1 .8 1.6v1.8" />
-          </svg>
-          <span className={`text-xs sm:text-sm font-medium ${isDelivery ? "text-[#00c87e] font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Takeaway
-          </span>
-          {isDelivery && (
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#00c87e] rounded-b-full" />
-          )}
-        </Link>
+            <div className={`p-1 rounded-xl ${isDelivery ? "bg-[#00c87e]/10" : ""}`}>
+              <ShoppingBag className="h-5 w-5" strokeWidth={isDelivery ? 2.5 : 2} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-tighter">Takeaway</span>
+          </Link>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+          {/* Divider */}
+          <div className="h-6 w-px bg-gray-200 dark:bg-gray-800" />
 
-        {/* Dining Tab */}
-        <Link
-          to="/food/user/dining"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isDining
-              ? "text-[#00c87e]"
-              : "text-gray-600 dark:text-gray-400"
-            }`}
-        >
-          <UtensilsCrossed className={`h-5 w-5 ${isDining ? "text-[#00c87e]" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
-          <span className={`text-xs sm:text-sm font-medium ${isDining ? "text-[#00c87e] font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Dining
-          </span>
-          {isDining && (
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#00c87e] rounded-b-full" />
-          )}
-        </Link>
+          {/* Dining Tab */}
+          <Link
+            to="/food/user/dining"
+            className={`flex flex-1 flex-col items-center gap-1 transition-all duration-200 ${isDining ? "text-[#00c87e]" : "text-gray-500"}`}
+          >
+            <div className={`p-1 rounded-xl ${isDining ? "bg-[#00c87e]/10" : ""}`}>
+              <UtensilsCrossed className="h-5 w-5" strokeWidth={isDining ? 2.5 : 2} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-tighter">Dining</span>
+          </Link>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
+          {/* Divider */}
+          <div className="h-6 w-px bg-gray-200 dark:bg-gray-800" />
 
-        {/* Under 250 Tab */}
-        <Link
-          to="/food/user/under-250"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isUnder250
-              ? "text-[#00c87e]"
-              : "text-gray-600 dark:text-gray-400"
-            }`}
-        >
-          <Tag className={`h-5 w-5 ${isUnder250 ? "text-[#00c87e] fill-[#00c87e]" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
-          <span className={`text-xs sm:text-sm font-medium ${isUnder250 ? "text-[#00c87e] font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Under 250
-          </span>
-          {isUnder250 && (
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#00c87e] rounded-b-full" />
-          )}
-        </Link>
+          {/* Profile Tab */}
+          <Link
+            to="/food/user/profile"
+            className={`flex flex-1 flex-col items-center gap-1 transition-all duration-200 ${isProfile ? "text-[#00c87e]" : "text-gray-500"}`}
+          >
+            <div className={`p-1 rounded-xl ${isProfile ? "bg-[#00c87e]/10" : ""}`}>
+              <User className="h-5 w-5" strokeWidth={isProfile ? 2.5 : 2} />
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-tighter">Profile</span>
+          </Link>
+        </div>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-700" />
-
-        {/* Profile Tab */}
-        <Link
-          to="/food/user/profile"
-          className={`flex flex-1 flex-col items-center gap-1.5 px-2 sm:px-3 py-2 transition-all duration-200 relative ${isProfile
-              ? "text-[#00c87e]"
-              : "text-gray-600 dark:text-gray-400"
-            }`}
-        >
-          <User className={`h-5 w-5 ${isProfile ? "text-[#00c87e] fill-[#00c87e]" : "text-gray-600 dark:text-gray-400"}`} />
-          <span className={`text-xs sm:text-sm font-medium ${isProfile ? "text-[#00c87e] font-semibold" : "text-gray-600 dark:text-gray-400"}`}>
-            Profile
-          </span>
-          {isProfile && (
-            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[#00c87e] rounded-b-full" />
-          )}
-        </Link>
+        {/* Compact View Cart Button on Right */}
+        {itemCount > 0 && (
+          <>
+            {/* Divider */}
+            <div className="h-8 w-px bg-gray-200 dark:bg-gray-800 mx-1" />
+            <Link
+              to="/food/user/cart"
+              className="flex flex-[0.45] items-center justify-between bg-[#00c87e] text-white h-full px-3 rounded-2xl shadow-[0_4px_15px_rgba(0,200,126,0.25)] active:scale-[0.96] transition-all duration-200"
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="relative">
+                  <ShoppingCart className="h-4.5 w-4.5 stroke-[3]" />
+                  <span className="absolute -top-1.5 -right-1.5 bg-black text-[#00c87e] text-[8px] font-bold h-3.5 w-3.5 rounded-full flex items-center justify-center border border-[#00c87e]">
+                    {itemCount}
+                  </span>
+                </div>
+                <span className="font-extrabold text-[12px] whitespace-nowrap">View Cart</span>
+              </div>
+              <ChevronRight className="h-4 w-4 stroke-[3]" />
+            </Link>
+          </>
+        )}
       </div>
     </div>
   )

@@ -123,7 +123,7 @@ const RestaurantImageCarousel = React.memo(({ restaurant, priority = false, back
 
   return (
     <div 
-      className="relative w-full h-[180px] sm:h-[190px] overflow-hidden bg-gray-100 dark:bg-gray-800"
+      className="relative w-full h-full overflow-hidden bg-gray-100 dark:bg-gray-800"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -185,7 +185,9 @@ const RestaurantCard = ({
       className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-[0_4px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.08)] transition-all duration-300 group relative cursor-pointer transform hover:-translate-y-1 active:scale-95"
     >
       <div className="relative">
-        <RestaurantImageCarousel restaurant={restaurant} backendOrigin={backendOrigin} />
+        <div className="relative w-full h-[180px] sm:h-[190px] overflow-hidden bg-gray-100 dark:bg-gray-800">
+          <RestaurantImageCarousel restaurant={restaurant} backendOrigin={backendOrigin} />
+        </div>
         <button
           onClick={(e) => {
             e.stopPropagation();

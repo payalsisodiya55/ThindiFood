@@ -23,36 +23,51 @@ export const uploadLandingHeaderVideo = async (file) => {
         throw new Error('Video file is required');
     }
 
-    const existing = await getLandingSettings();
     const uploaded = await uploadBufferDetailed(file.buffer, {
         folder: 'food/landing/header-video',
         resourceType: 'video'
     });
 
-    if (existing?.headerVideoPublicId) {
-        await cloudinary.uploader
-            .destroy(existing.headerVideoPublicId, { resource_type: 'video' })
-            .catch(() => {});
-    }
+    const existing = await getLandingSettings();
+    const existingUrls = Array.isArray(existing?.headerVideoUrls) ? existing.headerVideoUrls : (existing?.headerVideoUrl ? [existing.headerVideoUrl] : []);
+    const existingIds = Array.isArray(existing?.headerVideoPublicIds) ? existing.headerVideoPublicIds : (existing?.headerVideoPublicId ? [existing.headerVideoPublicId] : []);
 
     return updateLandingSettings({
+        headerVideoUrls: [...existingUrls, uploaded?.secure_url || ''],
+        headerVideoPublicIds: [...existingIds, uploaded?.public_id || ''],
         headerVideoUrl: uploaded?.secure_url || '',
         headerVideoPublicId: uploaded?.public_id || ''
     });
 };
 
-export const deleteLandingHeaderVideo = async () => {
+export const deleteLandingHeaderVideo = async (publicId) => {
     const existing = await getLandingSettings();
+    const existingUrls = Array.isArray(existing?.headerVideoUrls) ? existing.headerVideoUrls : (existing?.headerVideoUrl ? [existing.headerVideoUrl] : []);
+    const existingIds = Array.isArray(existing?.headerVideoPublicIds) ? existing.headerVideoPublicIds : (existing?.headerVideoPublicId ? [existing.headerVideoPublicId] : []);
 
-    if (existing?.headerVideoPublicId) {
-        await cloudinary.uploader
-            .destroy(existing.headerVideoPublicId, { resource_type: 'video' })
-            .catch(() => {});
+    if (publicId) {
+        // Delete specific video
+        const idx = existingIds.indexOf(publicId);
+        await cloudinary.uploader.destroy(publicId, { resource_type: 'video' }).catch(() => {});
+        const newUrls = existingUrls.filter((_, i) => i !== idx);
+        const newIds = existingIds.filter((id) => id !== publicId);
+        return updateLandingSettings({
+            headerVideoUrls: newUrls,
+            headerVideoPublicIds: newIds,
+            headerVideoUrl: newUrls[0] || '',
+            headerVideoPublicId: newIds[0] || ''
+        });
     }
 
+    // Delete all (legacy)
+    for (const id of existingIds) {
+        if (id) await cloudinary.uploader.destroy(id, { resource_type: 'video' }).catch(() => {});
+    }
     return updateLandingSettings({
         headerVideoUrl: '',
-        headerVideoPublicId: ''
+        headerVideoPublicId: '',
+        headerVideoUrls: [],
+        headerVideoPublicIds: []
     });
 };
 

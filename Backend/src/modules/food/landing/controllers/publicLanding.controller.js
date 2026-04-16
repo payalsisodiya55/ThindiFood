@@ -88,6 +88,7 @@ export const getPublicLandingSettingsController = async (req, res, next) => {
         const payload = {
             ...settings,
             headerVideoPublicId: undefined,
+            headerVideoPublicIds: undefined,
             recommendedRestaurantIds: undefined,
             recommendedRestaurants
         };

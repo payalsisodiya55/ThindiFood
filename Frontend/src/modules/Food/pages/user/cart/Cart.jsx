@@ -2244,8 +2244,13 @@ export default function Cart() {
                     <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
                       Need takeaway?
                       <button onClick={() => {
-                        setIsPickupScheduled(!isPickupScheduled)
-                        if (!isPickupScheduled) setIsScheduled(false)
+                        const newPickupScheduled = !isPickupScheduled
+                        setIsPickupScheduled(newPickupScheduled)
+                        if (newPickupScheduled) {
+                          setIsScheduled(false)
+                          // Set today's date automatically
+                          setPickupDate(new Date().toLocaleDateString('en-CA'))
+                        }
                       }} className="border-b border-dashed border-gray-500 font-medium outline-none">
                         Add pickup time
                       </button>
@@ -2292,17 +2297,7 @@ export default function Cart() {
 
                 {isPickupScheduled && (
                   <div className="mt-5 flex flex-col sm:flex-row gap-3 pt-3 border-t border-gray-100 dark:border-gray-800">
-                    <div className="flex-1">
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pickup Date (Up to Tomorrow)</label>
-                      <input
-                        type="date"
-                        min={new Date().toLocaleDateString('en-CA')}
-                        max={new Date(Date.now() + 86400000).toLocaleDateString('en-CA')}
-                        value={pickupDate}
-                        onChange={(e) => setPickupDate(e.target.value)}
-                        className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e]"
-                      />
-                    </div>
+                    {/* Date selection removed - today only */}
                     <div className="flex-1">
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pickup Time</label>
                       {availablePickupTimeSlots.length > 0 ? (

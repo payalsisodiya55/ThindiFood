@@ -1343,8 +1343,14 @@ export const listApprovedRestaurants = async (query = {}) => {
 };
 
 export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
-    const value = String(idOrSlug || '').trim();
+    let value = String(idOrSlug || '').trim();
     if (!value) return null;
+
+    try {
+        value = decodeURIComponent(value).trim();
+    } catch (e) {
+        // Fallback to original
+    }
 
     // ObjectId path
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
@@ -1372,6 +1378,7 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
         status: 'approved',
         $or: [
             { restaurantNameNormalized },
+            { restaurantName: { $regex: new RegExp(`^${escapeRegex(value)}$`, 'i') } },
             ...(restaurantNamePattern ? [{ restaurantName: restaurantNamePattern }] : [])
         ]
     }).lean();

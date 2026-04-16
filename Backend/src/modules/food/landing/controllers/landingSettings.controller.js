@@ -40,7 +40,8 @@ export const uploadAdminLandingHeaderVideoController = async (req, res, next) =>
 
 export const deleteAdminLandingHeaderVideoController = async (req, res, next) => {
     try {
-        const updated = await deleteLandingHeaderVideo();
+        const { publicId } = req.query;
+        const updated = await deleteLandingHeaderVideo(publicId || null);
         return sendResponse(res, 200, 'Landing header video removed successfully', { settings: updated });
     } catch (error) {
         next(error);

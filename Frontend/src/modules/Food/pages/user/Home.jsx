@@ -106,6 +106,51 @@ import exploreCollection from "@food/assets/explore more icons/collection.png";
 // Import local banners
 // Banner images for hero carousel - will be fetched from API
 
+// VideoCarousel - auto-plays next video when current ends, with dots
+const VideoCarousel = React.memo(function VideoCarousel({ videos }) {
+  const [current, setCurrent] = React.useState(0);
+  const videoRef = React.useRef(null);
+
+  const goTo = React.useCallback((idx) => {
+    setCurrent(idx);
+  }, []);
+
+  React.useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.load();
+      videoRef.current.play().catch(() => {});
+    }
+  }, [current]);
+
+  if (!videos || videos.length === 0) return null;
+
+  return (
+    <div className="relative h-full w-full">
+      <video
+        ref={videoRef}
+        key={videos[current]}
+        src={videos[current]}
+        autoPlay
+        muted
+        playsInline
+        className="h-full w-full max-w-none object-cover object-center"
+        onEnded={() => setCurrent((prev) => (prev + 1) % videos.length)}
+      />
+      {videos.length > 1 && (
+        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none z-10">
+          {videos.map((_, idx) => (
+            <button
+              key={idx}
+              className={`h-1.5 rounded-full transition-all duration-300 pointer-events-auto ${idx === current ? "w-5 bg-white" : "w-1.5 bg-white/50"}`}
+              onClick={() => goTo(idx)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
 // Animated placeholder for search - moved outside component to prevent recreation
 const placeholders = [
   'Search "burger"',
@@ -137,7 +182,7 @@ const getRestaurantDisplayName = (restaurant) => {
 
 // Restaurant Image Carousel Component
 const RestaurantImageCarousel = React.memo(
-  ({ restaurant, priority = false, backendOrigin = "" }) => {
+  ({ restaurant, priority = false, backendOrigin = "", className = "" }) => {
     const webviewSessionKeyRef = useRef(WEBVIEW_SESSION_CACHE_BUSTER);
     const imageElementRef = useRef(null);
 
@@ -294,7 +339,7 @@ const RestaurantImageCarousel = React.memo(
 
     return (
       <div
-        className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-md flex-shrink-0 group"
+        className={className || "relative h-full w-full overflow-hidden group"}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}>
@@ -350,7 +395,7 @@ const RestaurantImageCarousel = React.memo(
 
         {/* Image Indicators - only show if more than 1 image */}
         {images.length > 1 && (
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex items-center z-10 -space-x-2">
+          <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 flex items-center z-[25] -space-x-2">
             {images.map((_, index) => (
               <button
                 key={index}
@@ -412,6 +457,7 @@ export default function Home() {
   const [landingExploreMore, setLandingExploreMore] = useState([]);
   const [exploreMoreHeading, setExploreMoreHeading] = useState("Explore More");
   const [headerVideoUrl, setHeaderVideoUrl] = useState("");
+  const [headerVideoUrls, setHeaderVideoUrls] = useState([]);
   const [recommendedRestaurantIds, setRecommendedRestaurantIds] = useState([]);
   const [
     recommendedRestaurantsFromSettings,
@@ -904,6 +950,7 @@ export default function Home() {
         const settings = settingsRes?.data?.data || {};
         setExploreMoreHeading(settings.exploreMoreHeading || "Explore More");
         setHeaderVideoUrl(settings.headerVideoUrl || "");
+        setHeaderVideoUrls(Array.isArray(settings.headerVideoUrls) && settings.headerVideoUrls.length > 0 ? settings.headerVideoUrls : (settings.headerVideoUrl ? [settings.headerVideoUrl] : []));
         setRecommendedRestaurantIds(settings.recommendedRestaurantIds || []);
         setRecommendedRestaurantsFromSettings(
           settings.recommendedRestaurants || [],
@@ -2435,35 +2482,18 @@ export default function Home() {
   // Memoized Category Rail Component
   const CategoryRailSection = useMemo(() => {
     return (
-      <section className="space-y-1 sm:space-y-1.5 lg:space-y-2 min-h-[108px] sm:min-h-[120px]">
-        <div className="px-4 pt-1 sm:px-4">
-          <p className="text-lg sm:text-xl font-bold text-neutral-900 tracking-tight leading-none mt-1">
-            What's on your mind?
-          </p>
+      <section className="space-y-4 sm:space-y-6 pt-4 pb-2">
+        <div className="px-5 flex items-center justify-between">
+          <h2 className="text-[20px] sm:text-[22px] font-[900] text-gray-900 tracking-tight leading-none italic uppercase">
+            Cravings for you!
+          </h2>
+          <div className="h-1 w-12 bg-[#00c87e] rounded-full opacity-60"></div>
         </div>
         <div
           ref={categoryScrollRef}
-          className="flex gap-3 sm:gap-4 lg:gap-5 overflow-x-auto overflow-y-visible scrollbar-hide scroll-smooth px-2 sm:px-3 py-2 sm:py-3"
+          className="flex gap-4 sm:gap-6 overflow-x-auto overflow-y-visible scrollbar-hide scroll-smooth px-5 py-2"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
-          {/* Meals Under 200 Card */}
-          <div 
-            className="flex-shrink-0 flex flex-col items-center gap-2 cursor-pointer transition-transform hover:scale-105 active:scale-95"
-            onClick={() => navigate("/user/under-250")}
-          >
-            <div 
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-b-full rounded-t-sm shadow-md border-t-4 border-red-200 flex flex-col items-center justify-center p-1"
-              style={{ backgroundColor: RED }}
-            >
-              <span className="text-[10px] sm:text-xs font-bold text-white text-center leading-tight">UNDER</span>
-              <span className="text-sm sm:text-base font-extrabold text-white">₹200</span>
-              <div className="w-10 h-3.5 bg-white rounded-full mt-1 flex items-center justify-center">
-                <span className="text-[8px] font-bold" style={{ color: RED }}>Explore</span>
-              </div>
-            </div>
-            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Offers</span>
-          </div>
-
           {showCategorySkeleton ? (
             <CategoryChipRowSkeleton className="py-1" />
           ) : (
@@ -2471,21 +2501,20 @@ export default function Home() {
               <Link
                 key={category.id || index}
                 to={`/user/category/${category.slug || category.name.toLowerCase().replace(/\s+/g, "-")}`}
-                className="flex-shrink-0 flex flex-col items-center gap-2 group transition-all duration-300 hover:-translate-y-1"
+                className="flex-shrink-0 flex flex-col items-center gap-3 group transition-all duration-300"
                 style={{ animation: `fade-in-up 0.5s ease-out forwards ${index * 0.05}s`, opacity: 0 }}
               >
                 <div 
-                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden shadow-sm border border-gray-100 dark:border-gray-800 transition-colors group-hover:border-[var(--hover-border)]"
-                  style={{ '--hover-border': RED }}
+                  className="w-[72px] h-[72px] sm:w-[84px] sm:h-[84px] rounded-[22px] overflow-hidden bg-gray-50 dark:bg-gray-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08)] border-2 border-white dark:border-gray-800 group-hover:border-[#00c87e]/40 group-hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.12)] transform transition-all duration-500 group-hover:scale-105 group-hover:-translate-y-1"
                 >
                   <OptimizedImage
                     src={category.image}
                     alt={category.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    sizes="80px"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                    sizes="84px"
                   />
                 </div>
-                <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center truncate max-w-[72px]">
+                <span className="text-[12px] sm:text-[13px] font-bold text-gray-800 dark:text-gray-200 text-center truncate max-w-[80px] group-hover:text-[#00c87e] transition-colors duration-300">
                   {category.name}
                 </span>
               </Link>
@@ -2494,16 +2523,15 @@ export default function Home() {
           
           {displayCategories.length > 12 && !showCategorySkeleton && (
             <div 
-              className="flex-shrink-0 flex flex-col items-center gap-2 cursor-pointer group"
+              className="flex-shrink-0 flex flex-col items-center gap-3 cursor-pointer group"
               onClick={() => setShowAllCategoriesModal(true)}
             >
               <div 
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-50 dark:bg-red-950 flex items-center justify-center border border-red-100 transition-all group-hover:border-[var(--hover-border)]"
-                style={{ '--hover-border': RED }}
+                className="w-[72px] h-[72px] sm:w-[84px] sm:h-[84px] rounded-[22px] bg-white dark:bg-gray-900 flex items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 transition-all duration-300 group-hover:border-[#00c87e] group-hover:bg-[#00c87e]/5 group-hover:-translate-y-1"
               >
-                <Plus className="w-6 h-6" style={{ color: RED }} />
+                <Plus className="w-8 h-8 text-gray-400 group-hover:text-[#00c87e] transition-colors" />
               </div>
-              <span className="text-xs font-medium text-gray-700">See All</span>
+              <span className="text-[12px] font-bold text-gray-500 uppercase tracking-tight">All</span>
             </div>
           )}
         </div>
@@ -2567,7 +2595,9 @@ export default function Home() {
           quickThemeColor={quickThemeColor}
           showHeaderContent={false}
           bannerContent={
-            headerVideoUrl ? (
+            headerVideoUrls.length > 0 ? (
+              <VideoCarousel videos={headerVideoUrls} />
+            ) : headerVideoUrl ? (
               <video
                 src={headerVideoUrl}
                 autoPlay
@@ -2787,11 +2817,11 @@ export default function Home() {
                         `restaurant-${index}`,
                     );
 
-                  const restaurantSlug =
-                    typeof restaurant?.slug === "string" &&
-                    restaurant.slug.trim()
+                  const restaurantSlug = (
+                    typeof restaurant?.slug === "string" && restaurant.slug.trim()
                       ? restaurant.slug.trim()
-                      : fallbackSlugSource.toLowerCase().replace(/\s+/g, "-");
+                      : (restaurant.restaurantName || restaurant.name || "restaurant")
+                  ).toLowerCase().replace(/\s+/g, "-");
                   const availability = getRestaurantAvailabilityStatus(
                     restaurant,
                     new Date(availabilityTick),
@@ -2846,125 +2876,91 @@ export default function Home() {
                         <Link
                           to={`/user/restaurants/${restaurantSlug}`}
                           className="h-full flex">
-                          <Card
-                            className={`overflow-hidden gap-0 cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] border-background transition-all duration-500 py-0 rounded-[28px] flex flex-col h-full w-full relative shadow-sm hover:shadow-xl ${
-                              isOutOfService || !availability.isOpen
-                                ? "grayscale opacity-75"
-                                : ""
-                            }`}>
-                            {/* Image Section with Carousel */}
-                            <div className="relative">
+                          <div className={`relative w-full overflow-hidden rounded-2xl shadow-sm transition-all duration-300 hover:shadow-lg active:scale-[0.98] ${
+                            isOutOfService || !availability.isOpen ? "grayscale opacity-70" : ""
+                          }`}>
+                            {/* Full image */}
+                            <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
                               <RestaurantImageCarousel
                                 restaurant={restaurant}
                                 priority={index < 3}
                                 backendOrigin={BACKEND_ORIGIN}
                               />
 
-                              {/* Featured Dish Badge - Top Left */}
-                              <div className="absolute top-4 left-4 flex items-center z-10 transform transition-transform duration-300 group-hover:scale-105">
-                                <div className="bg-black/70 backdrop-blur-lg text-white px-4 py-1.5 rounded-full text-[11px] font-medium tracking-tight flex items-center shadow-2xl border border-white/20">
-                                  {restaurant.featuredDish}
-                                  {" \u2022 \u20B9"}
-                                  {restaurant.featuredPrice}
+                              {/* Featured dish badge top-left */}
+                              <div className="absolute left-2 top-2 z-10 max-w-[65%]">
+                                <div className="truncate rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-medium text-white backdrop-blur-sm">
+                                  {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
                                 </div>
                               </div>
 
-                              {/* Bookmark Icon - Top Right */}
-                              <div className="absolute top-4 right-4 z-10 transform transition-transform duration-300 group-hover:scale-110">
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={handleToggleFavorite}
-                                  aria-label={
-                                    favorite
-                                      ? "Remove from favorites"
-                                      : "Add to favorites"
-                                  }
-                                  className={`h-11 w-11 rounded-[20px] shadow-xl flex items-center justify-center transition-all duration-300 ${
-                                    favorite
-                                      ? "bg-red-500 text-white"
-                                      : "bg-white/90 backdrop-blur-sm text-gray-800 hover:bg-white"
-                                  }`}>
-                                  <Bookmark
-                                    className={`h-5 w-5 transition-all duration-300 ${
-                                      favorite ? "fill-white" : ""
-                                    }`}
-                                  />
-                                </Button>
-                              </div>
-                            </div>
+                              {/* Bookmark top-right */}
+                              <button
+                                onClick={handleToggleFavorite}
+                                className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 ${
+                                  favorite ? "bg-red-500 text-white" : "bg-white/85 text-gray-600 backdrop-blur-sm"
+                                }`}>
+                                <Bookmark className={`h-3.5 w-3.5 ${favorite ? "fill-white" : ""}`} />
+                              </button>
 
-                            {/* Content Section */}
-                            <div className="transform transition-transform duration-300 group-hover:-translate-y-1">
-                              <CardContent className="p-3 sm:p-4 lg:p-5 pt-3 sm:pt-4 lg:pt-5 flex flex-col flex-grow">
-                                {/* Restaurant Name & Rating */}
-                                <div className="flex items-start justify-between gap-2 mb-2 lg:mb-3">
-                                  <div className="flex-1 min-w-0">
-                                    <h3 className="text-lg lg:text-2xl font-medium text-gray-950 dark:text-white line-clamp-1 leading-tight tracking-tight transition-colors duration-300 group-hover:text-[#ef4f5f]">
+                              {/* Dark bottom overlay */}
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-[2px] px-3 py-2.5">
+                                {/* Row 1: initial + name + arrow */}
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/20 text-sm font-bold text-white">
+                                    {restaurant.name?.charAt(0) || "R"}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">
                                       {restaurant.name}
-                                    </h3>
-                                    <div className="flex flex-wrap items-center gap-2 mt-2">
-                                      <span
-                                        className={`inline-flex rounded-full px-3 py-1 text-[10px] font-medium uppercase tracking-widest shadow-sm ${availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-400 text-white"}`}>
-                                        {availability.isOpen
-                                          ? "Open now"
-                                          : "Offline"}
-                                      </span>
-                                      {availability.isOpen &&
-                                        availability.closingCountdownLabel && (
-                                          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-[10px] font-medium uppercase tracking-wide">
-                                            <Timer
-                                              className="h-3 w-3 flex-shrink-0"
-                                              strokeWidth={2.5}
-                                            />
-                                            <span>
-                                              {availability.closingCountdownLabel}
-                                            </span>
-                                          </div>
-                                        )}
-                                    </div>
+                                    </p>
+                                    <p className="line-clamp-1 text-[10px] text-white/70">
+                                      {restaurant.cuisine || (Array.isArray(restaurant.cuisines) ? restaurant.cuisines.join(", ") : "")}
+                                    </p>
                                   </div>
-                                  <div className={`flex-shrink-0 ${Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-400"} text-white px-3 py-1.5 rounded-2xl flex items-center gap-1.5 shadow-md transform transition-transform duration-300 group-hover:scale-110`}>
-                                    <span className="text-sm lg:text-lg font-medium tracking-tight">
-                                      {Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}
+                                  <svg className="h-4 w-4 flex-shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                  </svg>
+                                </div>
+
+                                {/* Row 2: open + closes-in + rating */}
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                    availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-500 text-white"
+                                  }`}>
+                                    {availability.isOpen ? "Open" : "Closed"}
+                                  </span>
+                                  {availability.isOpen && availability.closingCountdownLabel && (
+                                    <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+                                      <Timer className="h-2.5 w-2.5 flex-shrink-0" strokeWidth={2.5} />
+                                      {availability.closingCountdownLabel}
                                     </span>
-                                    {Number(restaurant.rating) > 0 && <Star className="h-3.5 w-3.5 lg:h-4.5 lg:w-4.5 fill-white text-white" strokeWidth={0} />}
+                                  )}
+                                  <div className={`ml-auto flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white ${
+                                    Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-500"
+                                  }`}>
+                                    <span>{Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}</span>
+                                    {Number(restaurant.rating) > 0 && <Star className="ml-0.5 h-2.5 w-2.5 fill-white" strokeWidth={0} />}
                                   </div>
                                 </div>
 
-                                {/* Delivery Time & Distance */}
-                                <div className="flex items-center gap-1 text-sm lg:text-base text-gray-500 mb-2 lg:mb-3 transition-opacity duration-300 opacity-70 group-hover:opacity-100">
-                                  <Clock
-                                    className="h-4 w-4 lg:h-5 lg:w-5 text-gray-500 dark:text-gray-400"
-                                    strokeWidth={1.5}
-                                  />
-                                  <span className="font-medium dark:text-gray-300 text-gray-700">
-                                    {restaurant.deliveryTime}
-                                  </span>
-                                  <span className="mx-1">|</span>
-                                  <span className="font-medium dark:text-gray-300 text-gray-700">
-                                    {restaurant.distance}
-                                  </span>
+                                {/* Row 3: time + distance + offer */}
+                                <div className="mt-1 flex items-center gap-1 text-[10px] text-white/70">
+                                  <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={1.5} />
+                                  <span>{restaurant.deliveryTime}</span>
+                                  <span className="text-white/40">|</span>
+                                  <span>{restaurant.distance}</span>
+                                  {restaurant.offer && (
+                                    <>
+                                      <span className="text-white/40">|</span>
+                                      <BadgePercent className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
+                                      <span className="line-clamp-1 flex-1">{restaurant.offer}</span>
+                                    </>
+                                  )}
                                 </div>
-
-                                {/* Offer Badge */}
-                                {restaurant.offer && (
-                                  <div className="flex items-center gap-2 text-sm lg:text-base mt-auto transform transition-transform duration-300 group-hover:translate-x-1">
-                                    <BadgePercent
-                                      className="h-4 w-4 lg:h-5 lg:w-5 text-black"
-                                      strokeWidth={2}
-                                    />
-                                    <span className="text-gray-700 dark:text-gray-300 font-medium">
-                                      {restaurant.offer}
-                                    </span>
-                                  </div>
-                                )}
-                              </CardContent>
+                              </div>
                             </div>
-
-                            {/* Border Glow Effect */}
-                            <div className="absolute inset-0 rounded-md pointer-events-none z-0 transition-all duration-300 border border-transparent group-hover:border-[#EB590E]/30 group-hover:shadow-[inset_0_0_0_1px_rgba(235,89,14,0.2)]" />
-                          </Card>
+                          </div>
                         </Link>
                       </div>
                     </div>

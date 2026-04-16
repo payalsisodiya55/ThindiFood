@@ -14,6 +14,14 @@ const foodLandingSettingsSchema = new mongoose.Schema(
             type: String,
             default: ''
         },
+        headerVideoUrls: {
+            type: [String],
+            default: []
+        },
+        headerVideoPublicIds: {
+            type: [String],
+            default: []
+        },
         recommendedRestaurantIds: {
             type: [mongoose.Schema.Types.ObjectId],
             ref: 'FoodRestaurant',

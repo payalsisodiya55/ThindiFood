@@ -60,7 +60,7 @@ export default function LandingPageManagement() {
   const diningBannersFileInputRef = useRef(null)
 
   // Settings
-  const [settings, setSettings] = useState({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "" })
+  const [settings, setSettings] = useState({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "", headerVideoUrls: [] })
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [settingsSaving, setSettingsSaving] = useState(false)
   const [headerVideoUploading, setHeaderVideoUploading] = useState(false)
@@ -1037,13 +1037,14 @@ export default function LandingPageManagement() {
         setSettings({
           exploreMoreHeading: nextSettings.exploreMoreHeading || "Explore More",
           recommendedRestaurantIds: Array.isArray(nextSettings.recommendedRestaurantIds) ? nextSettings.recommendedRestaurantIds : [],
-          headerVideoUrl: nextSettings.headerVideoUrl || ""
+          headerVideoUrl: nextSettings.headerVideoUrl || "",
+          headerVideoUrls: Array.isArray(nextSettings.headerVideoUrls) ? nextSettings.headerVideoUrls : (nextSettings.headerVideoUrl ? [nextSettings.headerVideoUrl] : [])
         })
       }
     } catch (err) {
       // Silently handle 401/404 errors - endpoints may not exist yet, use default settings
       if (err.response?.status === 401 || err.response?.status === 404) {
-        setSettings({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "" }) // Use default settings
+        setSettings({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "", headerVideoUrls: [] }) // Use default settings
         setError(null) // Clear any previous error
       } else {
         // Filter out token-related errors
@@ -1107,7 +1108,8 @@ export default function LandingPageManagement() {
         const savedSettings = response.data.data?.settings || response.data.data || {}
         setSettings((prev) => ({
           ...prev,
-          headerVideoUrl: savedSettings.headerVideoUrl || ""
+          headerVideoUrl: savedSettings.headerVideoUrl || "",
+          headerVideoUrls: Array.isArray(savedSettings.headerVideoUrls) ? savedSettings.headerVideoUrls : (savedSettings.headerVideoUrl ? [savedSettings.headerVideoUrl] : prev.headerVideoUrls)
         }))
         setSuccess('Header video uploaded successfully!')
         setTimeout(() => setSuccess(null), 3000)
@@ -1120,16 +1122,24 @@ export default function LandingPageManagement() {
     }
   }
 
-  const handleRemoveHeaderVideo = async () => {
-    if (!window.confirm('Remove the current homepage header video?')) return
+  const handleRemoveHeaderVideo = async (publicId) => {
+    if (!window.confirm('Remove this homepage header video?')) return
 
     try {
       setHeaderVideoRemoving(true)
       setError(null)
       setSuccess(null)
-      const response = await api.delete('/food/hero-banners/landing/settings/header-video', getAuthConfig())
+      const url = publicId
+        ? `/food/hero-banners/landing/settings/header-video?publicId=${encodeURIComponent(publicId)}`
+        : '/food/hero-banners/landing/settings/header-video'
+      const response = await api.delete(url, getAuthConfig())
       if (response.data.success) {
-        setSettings((prev) => ({ ...prev, headerVideoUrl: "" }))
+        const savedSettings = response.data.data?.settings || response.data.data || {}
+        setSettings((prev) => ({
+          ...prev,
+          headerVideoUrl: savedSettings.headerVideoUrl || "",
+          headerVideoUrls: Array.isArray(savedSettings.headerVideoUrls) ? savedSettings.headerVideoUrls : []
+        }))
         setSuccess('Header video removed successfully!')
         setTimeout(() => setSuccess(null), 3000)
       }
@@ -1716,7 +1726,7 @@ export default function LandingPageManagement() {
                 <div>
                   <h2 className="text-lg font-bold text-slate-900">Homepage Video</h2>
                   <p className="text-sm text-slate-500 mt-1">
-                    Upload the video shown in the food homepage header.
+                    Upload videos shown in the food homepage header. Multiple videos will auto-play in sequence.
                   </p>
                 </div>
                 <input
@@ -1741,42 +1751,40 @@ export default function LandingPageManagement() {
                 <div className="flex items-center justify-center py-10">
                   <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
                 </div>
-              ) : settings.headerVideoUrl ? (
+              ) : (settings.headerVideoUrls?.length > 0) ? (
                 <div className="space-y-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                    <video
-                      src={settings.headerVideoUrl}
-                      controls
-                      muted
-                      playsInline
-                      className="w-full max-w-md rounded-lg border border-slate-200 bg-black"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => headerVideoInputRef.current?.click()}
-                      disabled={headerVideoUploading}
-                    >
-                      Replace Video
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleRemoveHeaderVideo}
-                      disabled={headerVideoRemoving}
-                      className="text-red-600 border-red-200 hover:bg-red-50"
-                    >
-                      {headerVideoRemoving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
-                      Remove Video
-                    </Button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {settings.headerVideoUrls.map((url, idx) => (
+                      <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                        <video
+                          src={url}
+                          controls
+                          muted
+                          playsInline
+                          className="w-full rounded-lg border border-slate-200 bg-black"
+                        />
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-500 font-medium">Video {idx + 1}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRemoveHeaderVideo(null)}
+                            disabled={headerVideoRemoving}
+                            className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2"
+                          >
+                            {headerVideoRemoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1" />}
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                   <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-                  <p className="text-slate-700 font-medium">No homepage video uploaded yet.</p>
+                  <p className="text-slate-700 font-medium">No homepage videos uploaded yet.</p>
                   <p className="text-sm text-slate-500 mt-1">
                     The app will keep using the default bundled video until you upload one here.
                   </p>
