@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom"
+import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import UserLayout from "./UserLayout"
 import { Suspense, lazy } from "react"
 import Loader from "@food/components/Loader"
@@ -26,11 +26,22 @@ const TableBookingSuccess = lazy(() => import("@food/pages/user/dining/TableBook
 const MyBookings = lazy(() => import("@food/pages/user/dining/MyBookings"))
 const SearchResults = lazy(() => import("@food/pages/user/search/ProfessionalSearch"))
 const ProductDetail = lazy(() => import("@food/pages/user/ProductDetail"))
-const QRLanding = lazy(() => import("@food/pages/user/dineIn/QRLanding"))
 const ScanAndDine = lazy(() => import("@food/pages/user/dineIn/ScanAndDine"))
 const DineInSessionEntry = lazy(() => import("@food/pages/user/dineIn/DineInSessionEntry"))
 const DineInMenu = lazy(() => import("@food/pages/user/dineIn/DineInMenu"))
 const DineInBill = lazy(() => import("@food/pages/user/dineIn/DineInBill"))
+
+function DineInRootRedirect() {
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const hasQrParams = Boolean(searchParams.get("r") && searchParams.get("t"))
+  return (
+    <Navigate
+      to={hasQrParams ? `/user/dine-in/entry${location.search || ""}` : "/user/dine-in/scan"}
+      replace
+    />
+  )
+}
 
 // Cart
 const Cart = lazy(() => import("@food/pages/user/cart/Cart"))
@@ -103,7 +114,7 @@ export default function UserRouter() {
           <Route path="" element={<Home />} />
           <Route path="quick" element={<Home />} />
           <Route path="dining" element={<Dining />} />
-          <Route path="dine-in" element={<QRLanding />} />
+          <Route path="dine-in" element={<DineInRootRedirect />} />
           <Route path="dine-in/scan" element={<ScanAndDine />} />
           <Route path="dine-in/entry" element={<DineInSessionEntry />} />
           <Route path="dine-in/menu" element={<DineInMenu />} />

@@ -772,10 +772,13 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
               dineInOrdersTransformed = sessions
                 .filter(({ session }) => Boolean(session))
                 .map(({ table, session }) => {
+                  const sessionStatus = String(session?.status || "").toLowerCase();
+                  if (sessionStatus !== "active") return null;
                   const rounds = Array.isArray(session.orders) ? session.orders : [];
                   const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                   const latestStatus = String(latestRound?.status || "").toLowerCase();
-                  const displayStatus = latestStatus === "received" ? "active" : (latestStatus || "active");
+                  const displayStatus =
+                    latestStatus === "received" ? "active" : latestStatus || "active";
 
                   return {
                     orderId: `Table ${table.tableNumber}`,
@@ -796,7 +799,8 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                     photoAlt: "Dine-In",
                     sortTimestamp: new Date(session.updatedAt || session.createdAt).getTime(),
                   };
-                });
+                })
+                .filter(Boolean);
             }
           }
         } catch (dineInErr) {
@@ -983,14 +987,9 @@ export default function OrdersMain() {
   const [isAcceptingOrder, setIsAcceptingOrder] = useState(false);
   const audioRef = useRef(null);
   const shownOrdersRef = useRef(new Set()); // Track orders already shown in popup
-  // Persist shown bookings in sessionStorage so page refresh doesn't re-show popup
-  const shownBookingsRef = useRef(null);
-  if (!shownBookingsRef.current) {
-    try {
-      const stored = sessionStorage.getItem('_shown_bookings');
-      shownBookingsRef.current = new Set(stored ? JSON.parse(stored) : []);
-    } catch { shownBookingsRef.current = new Set(); }
-  }
+  // Keep booking-popup dedupe in-memory only.
+  // If page refreshes and booking is still pending, popup should appear again.
+  const shownBookingsRef = useRef(new Set());
   const acceptSliderRef = useRef(null);
   const acceptSwipeStartXRef = useRef(0);
   const acceptSwipeActiveRef = useRef(false);
@@ -1256,9 +1255,6 @@ export default function OrdersMain() {
     const key = getBookingKey(bookingLike);
     if (!key) return;
     shownBookingsRef.current.add(key);
-    try {
-      sessionStorage.setItem('_shown_bookings', JSON.stringify([...shownBookingsRef.current]));
-    } catch {}
   };
 
   // Show new table booking popup when booking notification arrives (polling)
@@ -3488,6 +3484,8 @@ function PreparingOrders({
                 dineInPreparingOrders = sessions
                   .filter(({ session }) => Boolean(session))
                   .map(({ table, session }) => {
+                    const sessionStatus = String(session?.status || "").toLowerCase();
+                    if (sessionStatus !== "active") return null;
                     const rounds = Array.isArray(session.orders) ? session.orders : [];
                     const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                     const latestStatus = String(latestRound?.status || "").toLowerCase();
@@ -3856,6 +3854,8 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                 dineInReadyOrders = sessions
                   .filter(({ session }) => Boolean(session))
                   .map(({ table, session }) => {
+                    const sessionStatus = String(session?.status || "").toLowerCase();
+                    if (sessionStatus !== "active") return null;
                     const rounds = Array.isArray(session.orders) ? session.orders : [];
                     const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                     const latestStatus = String(latestRound?.status || "").toLowerCase();

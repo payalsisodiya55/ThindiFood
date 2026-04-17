@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { 
-    Plus, QrCode, Users, Trash2, Download, ExternalLink, 
+    Plus, QrCode, Users, Trash2, Download, 
     Loader2, AlertCircle, CheckCircle2, MoreVertical, 
     Printer, Info, Search, Utensils
 } from "lucide-react";
@@ -93,13 +93,115 @@ const DineInTableManagement = () => {
         }
     };
 
-    const downloadQR = (table) => {
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(table.qrCodeUrl)}`;
+    const getQrImageUrl = (table, size = 500) =>
+        `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(table?.qrCodeUrl || "")}`;
+
+    const toSafeText = (value) =>
+        String(value ?? "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+
+    const triggerDownload = (href, fileName) => {
         const link = document.createElement("a");
-        link.href = qrUrl;
-        link.download = `Table_${table.tableNumber}_QR.png`;
-        link.target = "_blank";
+        link.href = href;
+        link.download = fileName;
+        document.body.appendChild(link);
         link.click();
+        document.body.removeChild(link);
+    };
+
+    const downloadQR = async (table) => {
+        const qrUrl = getQrImageUrl(table, 700);
+        const fileName = `Table_${table.tableNumber}_QR.png`;
+        try {
+            const response = await fetch(qrUrl);
+            if (!response.ok) throw new Error("Failed to fetch QR");
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            triggerDownload(objectUrl, fileName);
+            URL.revokeObjectURL(objectUrl);
+            toast.success(`Table ${table.tableNumber} QR downloaded`);
+        } catch {
+            // Fallback download path if blob fetch is blocked
+            triggerDownload(qrUrl, fileName);
+            toast.success(`Table ${table.tableNumber} QR download started`);
+        }
+    };
+
+    const openQrPreview = (table, autoPrint = false) => {
+        const qrImageUrl = getQrImageUrl(table, 700);
+        const tableNumber = toSafeText(table?.tableNumber || "");
+        const tableLabel = toSafeText(table?.tableLabel || "Table");
+        const capacity = toSafeText(table?.capacity || "");
+        const qrTarget = toSafeText(table?.qrCodeUrl || "");
+
+        const previewWindow = window.open("", "_blank", "width=760,height=900");
+        if (!previewWindow) {
+            toast.error("Popup blocked. Please allow popups to preview/print QR.");
+            return;
+        }
+
+        previewWindow.document.write(`
+            <!doctype html>
+            <html>
+            <head>
+                <meta charset="utf-8" />
+                <meta name="viewport" content="width=device-width, initial-scale=1" />
+                <title>Table #${tableNumber} QR</title>
+                <style>
+                    body { margin: 0; font-family: Inter, Arial, sans-serif; background: #f5f7fb; color: #0f172a; }
+                    .wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+                    .card { width: min(520px, 100%); background: #fff; border-radius: 20px; padding: 24px; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12); }
+                    .title { font-size: 28px; font-weight: 800; margin: 0; }
+                    .sub { margin: 6px 0 16px; color: #64748b; font-weight: 600; }
+                    .qr-box { border: 1px solid #e2e8f0; border-radius: 16px; padding: 14px; background: #fff; }
+                    .qr { width: 100%; height: auto; display: block; }
+                    .meta { margin-top: 14px; font-size: 13px; color: #475569; line-height: 1.5; word-break: break-all; }
+                    .actions { margin-top: 16px; display: flex; gap: 10px; }
+                    .btn { border: 0; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
+                    .btn-print { background: #10b981; color: #fff; }
+                    .btn-download { background: #e2e8f0; color: #0f172a; }
+                    @media print {
+                        body { background: #fff; }
+                        .wrap { padding: 0; }
+                        .card { box-shadow: none; border: 0; width: 100%; max-width: 100%; border-radius: 0; }
+                        .actions { display: none !important; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="wrap">
+                    <div class="card">
+                        <h1 class="title">Table #${tableNumber}</h1>
+                        <p class="sub">${tableLabel} ${capacity ? `| Capacity: ${capacity}` : ""}</p>
+                        <div class="qr-box">
+                            <img id="qrImage" class="qr" src="${qrImageUrl}" alt="Table QR" />
+                        </div>
+                        <div class="meta">Scan URL: ${qrTarget}</div>
+                        <div class="actions">
+                            <button class="btn btn-print" onclick="window.print()">Print</button>
+                            <button class="btn btn-download" onclick="window.location.href='${qrImageUrl}'">Open Image</button>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `);
+        previewWindow.document.close();
+
+        if (autoPrint) {
+            previewWindow.onload = () => {
+                previewWindow.focus();
+                previewWindow.print();
+            };
+        }
+    };
+
+    const printQR = (table) => {
+        openQrPreview(table, true);
     };
 
     if (loading) return (
@@ -211,18 +313,18 @@ const DineInTableManagement = () => {
                             </div>
 
                             {/* Action Buttons - Always Visible */}
-                            <div className="flex gap-3 mb-6">
+                            <div className="grid grid-cols-2 gap-3 mb-6">
                                 <Button 
                                     onClick={() => downloadQR(table)}
-                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl font-bold h-12 gap-2 text-xs"
+                                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl font-bold h-12 gap-2 text-xs"
                                 >
                                     <Download className="w-4 h-4" /> Download
                                 </Button>
                                 <Button 
-                                    onClick={() => window.open(table.qrCodeUrl, '_blank')}
-                                    className="flex-1 bg-[#00c87e] hover:bg-[#00b06f] text-white rounded-2xl font-bold h-12 gap-2 text-xs shadow-lg shadow-green-50"
+                                    onClick={() => printQR(table)}
+                                    className="bg-white border border-[#00c87e]/30 text-[#00a86c] hover:bg-[#00c87e]/10 rounded-2xl font-bold h-12 gap-2 text-xs"
                                 >
-                                    <ExternalLink className="w-4 h-4" /> Preview
+                                    <Printer className="w-4 h-4" /> Print
                                 </Button>
                             </div>
 

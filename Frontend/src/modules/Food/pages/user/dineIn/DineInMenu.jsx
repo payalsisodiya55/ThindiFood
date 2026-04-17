@@ -17,6 +17,25 @@ import { toast } from "sonner";
 
 const RUPEE_SYMBOL = "\u20B9";
 
+const resolveRestaurantPayload = (response) =>
+    response?.data?.data?.restaurant ||
+    response?.data?.restaurant ||
+    response?.data?.data ||
+    null;
+
+const formatRestaurantAddress = (restaurantLike) => {
+    if (!restaurantLike || typeof restaurantLike !== "object") return "";
+    const loc = restaurantLike?.location || {};
+    return (
+        loc?.formattedAddress ||
+        loc?.addressLine1 ||
+        loc?.address ||
+        [loc?.area || restaurantLike?.area, loc?.city || restaurantLike?.city]
+            .filter(Boolean)
+            .join(", ")
+    );
+};
+
 const DineInMenu = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
@@ -86,7 +105,9 @@ const DineInMenu = () => {
                 restaurantAPI.getMenuByRestaurantId(rId)
             ]);
 
-            if (rRes.data?.success) setRestaurant(rRes.data.data);
+            if (rRes.data?.success) {
+                setRestaurant(resolveRestaurantPayload(rRes) || null);
+            }
             if (mRes.data?.success) {
                 const rawSections = mRes.data.data.menu?.sections || [];
                 setMenuSections(Array.isArray(rawSections) ? rawSections : Object.values(rawSections));
@@ -179,6 +200,20 @@ const DineInMenu = () => {
         </div>
     );
 
+    const sessionRestaurant =
+        sessionData?.restaurantId && typeof sessionData.restaurantId === "object"
+            ? sessionData.restaurantId
+            : {};
+    const restaurantName =
+        restaurant?.name ||
+        restaurant?.restaurantName ||
+        sessionRestaurant?.name ||
+        sessionRestaurant?.restaurantName ||
+        "Dine-In Menu";
+    const restaurantAddress =
+        formatRestaurantAddress(restaurant) ||
+        formatRestaurantAddress(sessionRestaurant);
+
     return (
         <AnimatedPage className="min-h-screen bg-[#fafafa] pb-32">
             
@@ -190,11 +225,16 @@ const DineInMenu = () => {
                     </button>
                     <div className="flex-1 px-4">
                         <h1 className="text-lg font-bold text-gray-900 truncate">
-                            {restaurant?.restaurantName || "Dine-In Menu"}
+                            {restaurantName}
                         </h1>
                         <p className="text-[10px] text-[#00c87e] font-black uppercase tracking-widest flex items-center gap-1">
                             <MapPin className="w-3 h-3" /> Live at Table {sessionData?.tableNumber}
                         </p>
+                        {restaurantAddress && (
+                            <p className="text-[11px] text-gray-500 font-medium truncate mt-0.5">
+                                {restaurantAddress}
+                            </p>
+                        )}
                         {sessionData?.bookingId && (
                             <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 text-[9px] font-black uppercase tracking-widest rounded-full">
                                 ✓ Booking Confirmed

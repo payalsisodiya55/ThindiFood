@@ -362,9 +362,9 @@ export const useRestaurantNotifications = () => {
           ? bookingsResponse.data.data
           : [];
 
-        // Alert for "PENDING" bookings (new backend status).
+        // Alert only for pending bookings. Accepted/confirmed must not reopen request popup.
         const pending = rows
-          .filter((b) => ['pending', 'confirmed'].includes(String(b?.status || "").toLowerCase()))
+          .filter((b) => String(b?.status || "").toLowerCase() === 'pending')
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || a?.date || 0;
             const bt = b?.updatedAt || b?.createdAt || b?.date || 0;
