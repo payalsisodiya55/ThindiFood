@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { useEffect, Suspense, lazy } from "react"
 import ProtectedRoute from "@food/components/ProtectedRoute"
 import AuthRedirect from "@food/components/AuthRedirect"
@@ -30,7 +30,17 @@ function ScrollToTop() {
 }
 
 function RestaurantGlobalNotificationListenerInner() {
-  useRestaurantNotifications()
+  const navigate = useNavigate()
+  const { newOrder, newBooking } = useRestaurantNotifications()
+
+  useEffect(() => {
+    if (newOrder || newBooking) {
+      // Automatically redirect to the main restaurant dashboard (/food/restaurant)
+      // This is where both new orders and new table booking popups are managed.
+      navigate("/food/restaurant")
+    }
+  }, [newOrder, newBooking, navigate])
+
   return null
 }
 
@@ -48,15 +58,16 @@ function RestaurantGlobalNotificationListener() {
     location.pathname === "/food/restaurant/otp" ||
     location.pathname === "/food/restaurant/welcome" ||
     location.pathname === "/food/restaurant/auth/google-callback"
-  const isOrderManagedRoute =
-    location.pathname === "/food/restaurant" ||
-    location.pathname === "/food/restaurant/orders" ||
-    location.pathname.startsWith("/food/restaurant/orders/")
+  
+  // Only listen when NOT on the main dashboard, because the dashboard manages its own notifications
+  const isDashboardRoute = 
+    location.pathname === "/food/restaurant" || 
+    location.pathname === "/food/restaurant/"
 
   const shouldListen =
     isRestaurantRoute &&
     !isRestaurantAuthRoute &&
-    !isOrderManagedRoute &&
+    !isDashboardRoute &&
     isModuleAuthenticated("restaurant")
 
   if (!shouldListen) {
@@ -99,3 +110,4 @@ export default function App() {
     </>
   )
 }
+

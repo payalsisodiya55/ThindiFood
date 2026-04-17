@@ -185,8 +185,8 @@ export default function UnifiedOTPFastLogin() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0">
-      {/* Top Banner section - Zomato Red */}
-      <div className="w-full bg-[#00c87e] dark:bg-[#d41b14] rounded-b-[2.5rem] p-6 text-center text-white relative overflow-hidden shadow-2xl">
+      {/* Top Banner section - Thindi Green */}
+      <div className="w-full bg-[#00c87e] dark:bg-[#00c87e] rounded-b-[2.5rem] p-6 text-center text-white relative overflow-hidden shadow-2xl">
         <div className="absolute inset-0 bg-white/5 opacity-50 blur-3xl rounded-full -top-1/2 -left-1/4 animate-pulse" />
         <div className="absolute right-0 bottom-0 w-32 h-32 md:w-48 md:h-48 opacity-10 pointer-events-none">
            <svg viewBox="0 0 200 200" fill="currentColor">
@@ -200,14 +200,14 @@ export default function UnifiedOTPFastLogin() {
             animate={{ scale: 1 }}
             className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-xl"
           >
-             <span className="text-[#00c87e] text-3xl font-black">Z</span>
+             <span className="text-[#00c87e] text-3xl font-black">T</span>
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl md:text-5xl font-black tracking-tight mb-1"
           >
-            Zozomen
+            Thindi
           </motion.h1>
           <p className="text-xs md:text-base font-bold text-white/90 tracking-[0.2em] uppercase">
             Taste the best, forget the rest
@@ -337,7 +337,7 @@ export default function UnifiedOTPFastLogin() {
               className={`w-full py-4 rounded-2xl font-black text-lg transition-all relative overflow-hidden shadow-xl ${
                 loading
                   ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
-                  : "bg-[#00c87e] hover:bg-[#d41b14] text-white hover:shadow-2xl hover:shadow-[#00c87e]/30 active:scale-[0.98] hover:-translate-y-0.5"
+                  : "bg-[#00c87e] hover:bg-[#00b371] text-white hover:shadow-2xl hover:shadow-[#00c87e]/30 active:scale-[0.98] hover:-translate-y-0.5"
               }`}
             >
               {loading ? (

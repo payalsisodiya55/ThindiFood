@@ -1,5 +1,4 @@
 import React, { createContext, useContext } from 'react';
-import { Toaster } from '@/components/ui/sonner';
 import { toast } from 'sonner';
 
 
@@ -29,7 +28,6 @@ export const ToastProvider = ({ children }) => {
     return (
         <ToastContext.Provider value={{ showToast }}>
             {children}
-            <Toaster position="bottom-right" richColors closeButton />
         </ToastContext.Provider>
     );
 };
