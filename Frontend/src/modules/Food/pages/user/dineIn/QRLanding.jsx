@@ -51,7 +51,7 @@ const QRLanding = () => {
             navigate(`/user/auth/login?next=${encodeURIComponent(entryPath)}`);
             return;
         }
-        navigate(`/user/dine-in/entry?r=${encodeURIComponent(restaurantId)}&t=${encodeURIComponent(tableNumber)}`);
+        navigate(`/food/user/dine-in/entry?r=${encodeURIComponent(restaurantId)}&t=${encodeURIComponent(tableNumber)}`);
     };
 
     if (loading) {

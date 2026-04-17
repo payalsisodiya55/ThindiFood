@@ -157,6 +157,26 @@ export async function placeOrder(sessionId, userId, orderData) {
     // Ensure totals are accurate and only include active rounds
     await recalculateSessionTotal(session._id);
 
+    // 4. Real-time notify restaurant so they see the order instantly
+    try {
+        const io = getIO();
+        if (io) {
+            io.to(rooms.restaurant(session.restaurantId)).emit('new_dine_in_order', {
+                sessionId: String(session._id),
+                restaurantId: String(session.restaurantId),
+                tableNumber: String(session.tableNumber),
+                orderId: String(order._id),
+                roundNumber: order.roundNumber,
+                items: order.items,
+                subtotal: order.subtotal,
+                status: order.status,
+                createdAt: order.createdAt,
+            });
+        }
+    } catch {
+        // Non-blocking: order is saved even if socket emit fails
+    }
+
     return order;
 }
 

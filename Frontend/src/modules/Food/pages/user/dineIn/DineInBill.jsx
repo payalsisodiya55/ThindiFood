@@ -24,7 +24,7 @@ const DineInBill = () => {
 
     useEffect(() => {
         if (!sessionId) {
-            navigate("/user/dining");
+            navigate("/food/user/dining");
             return;
         }
         fetchBill();
@@ -58,7 +58,7 @@ const DineInBill = () => {
                 // Clear the active session since it's now completed
                 localStorage.removeItem('activeDineInSessionId');
                 // Redirect to a success state or home
-                navigate("/user/dining");
+                navigate("/food/user/dining");
             } else {
                 toast.error(res.data?.message || "Payment failed");
             }

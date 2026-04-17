@@ -793,15 +793,30 @@ export const useRestaurantNotifications = () => {
     });
 
     socketRef.current.on('dine_in_session_closed', (payload) => {
-      debugLog('?? Dine-in session closed:', payload);
+      debugLog('🔔 Dine-in session closed:', payload);
       // Clear any active dine-in alert loop and refresh in-app inbox.
       stopAlertLoop();
       activeOrderRef.current = null;
       dispatchNotificationInboxRefresh();
     });
 
+    // 🆕 Real-time dine-in order: fired when a customer places a round
+    socketRef.current.on('new_dine_in_order', (payload) => {
+      debugLog('🍽️ New dine-in order received:', payload);
+      handleIncomingOrderAlert({
+        orderId: `Table ${payload.tableNumber}`,
+        orderMongoId: payload.orderId,
+        sessionId: payload.sessionId,
+        tableNumber: payload.tableNumber,
+        type: 'Dine-In',
+        total: payload.subtotal,
+        items: payload.items,
+        isDineIn: true,
+      });
+    });
+
     socketRef.current.on('admin_notification', (payload) => {
-      debugLog('?? Admin broadcast received:', payload);
+      debugLog('📢 Admin broadcast received:', payload);
       dispatchNotificationInboxRefresh();
     });
 

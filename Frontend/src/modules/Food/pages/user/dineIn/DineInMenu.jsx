@@ -66,7 +66,7 @@ const DineInMenu = () => {
         // If the session is completed/paid, this menu screen should not stay in "active ordering" mode.
         if (sessionData.status === "completed" || sessionData.isPaid) {
             toast.success("Session completed. Thanks for dining!");
-            setTimeout(() => navigate("/user/dining"), 800);
+            setTimeout(() => navigate("/food/user/dining"), 800);
         }
     }, [sessionData, navigate]);
 

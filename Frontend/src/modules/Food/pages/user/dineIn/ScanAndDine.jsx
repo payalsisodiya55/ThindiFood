@@ -72,7 +72,7 @@ export default function ScanAndDine() {
       t: payload.tableNumber,
     }).toString();
     cleanupScanner();
-    navigate(`/user/dine-in/entry?${q}`, { replace: true });
+    navigate(`/food/user/dine-in/entry?${q}`, { replace: true });
   };
 
   const detectLoop = async () => {
