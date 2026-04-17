@@ -159,7 +159,7 @@ export default function MyBookings() {
                         <div key={booking._id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-start gap-4">
                             <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-slate-100">
                                 <img
-                                    src={booking.restaurant?.image || booking.restaurant?.profileImage?.url || ""}
+                                    src={booking.restaurant?.image || booking.restaurant?.profileImage?.url || undefined}
                                     className="w-full h-full object-cover"
                                     alt={booking.restaurant?.name}
                                     onError={(e) => {
@@ -205,6 +205,18 @@ export default function MyBookings() {
                                         style={{ color: RED }}
                                     >
                                         RATE & REVIEW
+                                    </button>
+                                )}
+                                {['CHECKED_IN'].includes(booking.status) && (
+                                    <button
+                                        onClick={() => navigate("/food/user/dining")}
+                                        className="mt-3 w-full py-2 text-white text-[11px] font-bold rounded-lg flex items-center justify-center gap-1.5 transition-opacity hover:opacity-90"
+                                        style={{ backgroundColor: '#00c87e' }}
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/>
+                                        </svg>
+                                        Scan QR & Start Ordering
                                     </button>
                                 )}
                             </div>

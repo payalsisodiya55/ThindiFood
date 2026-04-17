@@ -195,6 +195,11 @@ const DineInMenu = () => {
                         <p className="text-[10px] text-[#00c87e] font-black uppercase tracking-widest flex items-center gap-1">
                             <MapPin className="w-3 h-3" /> Live at Table {sessionData?.tableNumber}
                         </p>
+                        {sessionData?.bookingId && (
+                            <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 text-[9px] font-black uppercase tracking-widest rounded-full">
+                                ✓ Booking Confirmed
+                            </span>
+                        )}
                     </div>
                 </div>
 

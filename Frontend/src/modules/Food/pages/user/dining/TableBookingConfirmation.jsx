@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft, Calendar, Users, MapPin, Ticket, ChevronRight, Edit2, ShieldCheck, Info } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
-import { diningAPI, authAPI } from "@food/api"
+import { diningAPI, authAPI, dineInAPI } from "@food/api"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useEffect } from "react"
 import { toast } from "sonner"
@@ -15,6 +15,40 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
 const BOOKING_DRAFT_KEY = "food_dining_booking_draft_v1"
+
+const toImageUrl = (value) => {
+    if (!value) return ""
+    if (typeof value === "string") return value.trim()
+    if (typeof value === "object") {
+        return String(value?.url || value?.secure_url || "").trim()
+    }
+    return ""
+}
+
+const buildRestaurantSnapshot = (primary, fallback) => {
+    const base = (primary && typeof primary === "object" ? primary : null) ||
+        (fallback && typeof fallback === "object" ? fallback : null) ||
+        {}
+
+    const resolvedImage =
+        toImageUrl(base?.image) ||
+        toImageUrl(base?.profileImage) ||
+        toImageUrl(base?.coverImage) ||
+        toImageUrl(base?.coverImages?.[0]) ||
+        toImageUrl(base?.menuImages?.[0])
+
+    return {
+        _id: base?._id || base?.id || base?.restaurantId || null,
+        id: base?.id || base?._id || base?.restaurantId || null,
+        restaurantId: base?.restaurantId || base?._id || base?.id || null,
+        name: base?.name || base?.restaurantName || "Restaurant",
+        restaurantName: base?.restaurantName || base?.name || "Restaurant",
+        image: resolvedImage,
+        profileImage: base?.profileImage || null,
+        location: base?.location || null,
+        slug: base?.slug || "",
+    }
+}
 
 export default function TableBookingConfirmation() {
   const location = useLocation()
@@ -79,7 +113,7 @@ export default function TableBookingConfirmation() {
                 return
             }
 
-            const response = await diningAPI.createBooking({
+            const response = await dineInAPI.createBooking({
                 restaurant: restaurantId,
                 restaurantRef: restaurant,
                 userRef: user,
@@ -90,15 +124,22 @@ export default function TableBookingConfirmation() {
             })
 
             if (response.data.success) {
+                const bookingPayload = response?.data?.data || {}
+                const snapshot = buildRestaurantSnapshot(restaurant, bookingPayload?.restaurant)
+                const enrichedBooking = {
+                    ...bookingPayload,
+                    restaurant: snapshot,
+                }
+
                 toast.success("Table booked successfully!")
                 try {
                     sessionStorage.removeItem(BOOKING_DRAFT_KEY)
                 } catch {}
                 try {
-                    sessionStorage.setItem("latest_dining_booking", JSON.stringify(response.data.data))
+                    sessionStorage.setItem("latest_dining_booking", JSON.stringify(enrichedBooking))
                 } catch {}
                 // Navigate to success page with booking details
-                navigate("/food/user/dining/book-success", { state: { booking: response.data.data } })
+                navigate("/food/user/dining/book-success", { state: { booking: enrichedBooking } })
             }
         } catch (error) {
             debugError("Booking error:", error)

@@ -2620,47 +2620,44 @@ export const diningAPI = {
 
     if (!restaurantId) {
       return Promise.resolve({
-        data: {
-          success: false,
-          message: "Restaurant is required",
-          data: null,
-        },
+        data: { success: false, message: "Restaurant is required", data: null },
       });
     }
 
+    // Resolve restaurant display data for the success page
     let restaurantData =
       normalizeRestaurantShape(payload?.restaurantRef) ||
       normalizeRestaurantShape(payload?.restaurant?.restaurant) ||
       normalizeRestaurantShape(payload?.restaurant);
-    if (!restaurantData) {
-      try {
-        const restaurantRes = await apiClient.get(
-          `/food/restaurant/restaurants/${String(restaurantId)}`,
-        );
-        const rawRestaurant =
-          restaurantRes?.data?.data?.restaurant ||
-          restaurantRes?.data?.data ||
-          null;
-        restaurantData = normalizeRestaurantShape(rawRestaurant);
-      } catch {
-        restaurantData = {
-          _id: restaurantId,
-          id: restaurantId,
-          name: "Restaurant",
-          restaurantName: "Restaurant",
-          profileImage: null,
-          image: "",
-          location: null,
-          slug: "",
-        };
+
+    // Call real backend
+    try {
+      const res = await apiClient.post('/food/dine-in/bookings', {
+        restaurant: restaurantId,
+        guests: Math.max(1, Number(payload?.guests) || 1),
+        date: payload?.date,
+        timeSlot: payload?.timeSlot,
+        specialRequest: payload?.specialRequest || '',
+        restaurantRef: restaurantData,
+        userRef: normalizeBookingUser(payload?.userRef || payload?.user),
+      }, { contextModule: 'user' });
+
+      if (res?.data?.success) {
+        // Attach restaurant display data for success page
+        const booking = { ...res.data.data, restaurant: restaurantData };
+        // Also save locally for offline fallback
+        const bookings = getStoredBookings();
+        const next = [booking, ...bookings].sort(byLatest);
+        saveStoredBookings(next);
+        return { data: { success: true, message: 'Booking created successfully', data: booking } };
       }
+    } catch (err) {
+      // If backend fails, fall through to local mock
     }
 
+    // Local fallback
     const payloadUser = normalizeBookingUser(payload?.userRef || payload?.user);
-    const resolvedUser =
-      payloadUser ||
-      normalizeBookingUser(await getCurrentUserForBookings()) ||
-      null;
+    const resolvedUser = payloadUser || normalizeBookingUser(await getCurrentUserForBookings()) || null;
     const nowIso = new Date().toISOString();
     const localBookingId = buildLocalBookingId();
 
@@ -2682,7 +2679,7 @@ export const diningAPI = {
       date: new Date(payload?.date || nowIso).toISOString(),
       timeSlot: String(payload?.timeSlot || "").trim(),
       specialRequest: String(payload?.specialRequest || "").trim(),
-      status: "confirmed",
+      status: "PENDING",
       createdAt: nowIso,
       updatedAt: nowIso,
     };
@@ -2692,11 +2689,7 @@ export const diningAPI = {
     saveStoredBookings(next);
 
     return Promise.resolve({
-      data: {
-        success: true,
-        message: "Booking created successfully",
-        data: booking,
-      },
+      data: { success: true, message: "Booking created successfully", data: booking },
     });
   },
 };
@@ -2722,6 +2715,23 @@ export const dineInAPI = {
     apiClient.post('/food/dine-in/tables', body, { contextModule: "restaurant" }),
   listTables: (restaurantId) =>
     apiClient.get(`/food/dine-in/restaurants/${restaurantId}/tables`, { contextModule: "restaurant" }),
+
+  // ─── Table Booking Management (Restaurant side) ────────────────────────────
+  getRestaurantBookings: () =>
+    apiClient.get('/food/dine-in/bookings/restaurant', { contextModule: 'restaurant' }),
+  acceptBooking: (bookingId) =>
+    apiClient.patch(`/food/dine-in/bookings/${bookingId}/accept`, {}, { contextModule: 'restaurant' }),
+  declineBooking: (bookingId) =>
+    apiClient.patch(`/food/dine-in/bookings/${bookingId}/decline`, {}, { contextModule: 'restaurant' }),
+  // CHECK-IN: sends notification to user only, does NOT create session
+  checkInBooking: (bookingId) =>
+    apiClient.patch(`/food/dine-in/bookings/${bookingId}/check-in`, {}, { contextModule: 'restaurant' }),
+
+  // ─── Table Booking Management (User side) ──────────────────────────────────
+  createBooking: (body) =>
+    apiClient.post('/food/dine-in/bookings', body, { contextModule: 'user' }),
+  cancelBooking: (bookingId) =>
+    apiClient.patch(`/food/dine-in/bookings/${bookingId}/cancel`, {}, { contextModule: 'user' }),
 };
 
 export const heroBannerAPI = createStubAPI();

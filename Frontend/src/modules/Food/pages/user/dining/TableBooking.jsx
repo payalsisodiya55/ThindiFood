@@ -10,6 +10,23 @@ import { toast } from "sonner"
 import { RED } from "@food/constants/color"
 
 const BOOKING_DRAFT_KEY = "food_dining_booking_draft_v1"
+const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
+
+const readStoredGuestCount = (slug) => {
+  try {
+    const raw = sessionStorage.getItem(BOOKING_GUESTS_PREF_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    const savedSlug = String(parsed?.slug || "").trim()
+    const currentSlug = String(slug || "").trim()
+    if (savedSlug && currentSlug && savedSlug !== currentSlug) return null
+    const count = Number(parsed?.guestCount)
+    if (!Number.isInteger(count) || count < 1) return null
+    return count
+  } catch {
+    return null
+  }
+}
 
 const buildDates = (count = 7) =>
   Array.from({ length: count }, (_, index) => {
@@ -60,7 +77,7 @@ const buildSlots = (timing) => {
   let cursor = opening
   const end = closing > opening ? closing : opening + 240
 
-  while (cursor <= end && slots.length < 16) {
+  while (cursor <= end && slots.length < 48) {
     const hours = Math.floor((cursor % (24 * 60)) / 60)
     const minutes = cursor % 60
     slots.push(formatTimeValue(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`))
@@ -121,7 +138,11 @@ export default function TableBooking() {
   const [restaurant, setRestaurant] = useState(location.state?.restaurant || null)
   const [loading, setLoading] = useState(!location.state?.restaurant)
   const [outletTimings, setOutletTimings] = useState({})
-  const [selectedGuests, setSelectedGuests] = useState(location.state?.guestCount || 2)
+  const [selectedGuests, setSelectedGuests] = useState(() => {
+    const fromRoute = Number(location.state?.guestCount)
+    if (Number.isInteger(fromRoute) && fromRoute > 0) return fromRoute
+    return readStoredGuestCount(slug) || 2
+  })
   const [selectedDate, setSelectedDate] = useState(() => {
     const initial = location.state?.selectedDate ? new Date(location.state.selectedDate) : new Date()
     return Number.isNaN(initial.getTime()) ? new Date() : initial
@@ -161,6 +182,28 @@ export default function TableBooking() {
 
     fetchRestaurant()
   }, [location.state?.restaurant, slug])
+
+  useEffect(() => {
+    const fromRoute = Number(location.state?.guestCount)
+    if (Number.isInteger(fromRoute) && fromRoute > 0) {
+      setSelectedGuests(fromRoute)
+      return
+    }
+    const fromStorage = readStoredGuestCount(slug)
+    if (fromStorage) {
+      setSelectedGuests(fromStorage)
+    }
+  }, [location.state?.guestCount, slug])
+
+  useEffect(() => {
+    try {
+      const guestPrefPayload = {
+        slug: slug || restaurant?.slug || "",
+        guestCount: selectedGuests,
+      }
+      sessionStorage.setItem(BOOKING_GUESTS_PREF_KEY, JSON.stringify(guestPrefPayload))
+    } catch {}
+  }, [selectedGuests, slug, restaurant?.slug])
 
   const dates = useMemo(() => buildDates(7), [])
   const selectedDayTiming = useMemo(() => {

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X } from "lucide-react"
-import { diningAPI, restaurantAPI } from "@food/api"
+import { diningAPI, restaurantAPI, dineInAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
 import { toast } from "sonner"
@@ -118,9 +118,9 @@ export default function DiningReservations() {
 
                     if (restaurantId) {
                         syncRestaurantMediaState(resData)
-                        // Then get its bookings
-                        const bookingsResponse = await diningAPI.getRestaurantBookings(resData)
-                        if (bookingsResponse.data.success) {
+                        // Fetch bookings from real backend
+                        const bookingsResponse = await dineInAPI.getRestaurantBookings()
+                        if (bookingsResponse.data?.success) {
                             setBookings(Array.isArray(bookingsResponse.data.data) ? bookingsResponse.data.data : [])
                         }
                     } else {
@@ -135,6 +135,18 @@ export default function DiningReservations() {
         }
         fetchAll()
     }, [])
+
+    // Refresh bookings list from real backend
+    const refreshBookings = async () => {
+        try {
+            const res = await dineInAPI.getRestaurantBookings()
+            if (res.data?.success) {
+                setBookings(Array.isArray(res.data.data) ? res.data.data : [])
+            }
+        } catch (e) {
+            // Silently fail
+        }
+    }
 
     useEffect(() => {
         if (!newBooking) return
@@ -298,27 +310,40 @@ export default function DiningReservations() {
         }
     }
 
+    // Real backend: accept / decline / check-in
     const handleStatusUpdate = async (bookingId, newStatus) => {
         try {
-            const response = await diningAPI.updateBookingStatusRestaurant(bookingId, newStatus)
-            if (response.data.success) {
-                // Update local state
+            let res
+            if (newStatus === 'ACCEPTED') res = await dineInAPI.acceptBooking(bookingId)
+            else if (newStatus === 'DECLINED') res = await dineInAPI.declineBooking(bookingId)
+            else if (newStatus === 'CHECKED_IN') res = await dineInAPI.checkInBooking(bookingId)
+
+            if (res?.data?.success) {
+                toast.success(
+                    newStatus === 'CHECKED_IN'
+                        ? 'Notification sent to guest ✓'
+                        : `Booking ${newStatus.toLowerCase()} successfully`
+                )
                 setBookings(prev => prev.map(b =>
-                    b._id === bookingId ? { ...b, status: newStatus } : b
+                    (b._id === bookingId || b._id === String(bookingId))
+                        ? { ...b, status: newStatus }
+                        : b
                 ))
             }
         } catch (error) {
-            debugError("Error updating status:", error)
+            toast.error(error?.response?.data?.message || 'Failed to update booking')
         }
     }
 
     const getStatusPriority = (status) => {
         const key = String(status || "").toLowerCase()
-        if (key === "confirmed") return 0
+        // PENDING = new booking needing action (highest priority)
+        if (key === "pending") return 0
+        if (key === "confirmed") return 0  // legacy
         if (key === "accepted") return 1
-        if (key === "checked-in") return 2
+        if (key === "checked_in" || key === "checked-in") return 2
         if (key === "completed") return 3
-        if (key === "cancelled") return 4
+        if (key === "cancelled" || key === "declined") return 4
         return 5
     }
 
@@ -337,7 +362,9 @@ export default function DiningReservations() {
     }
 
     const isNewRequest = (booking) => {
-        if (String(booking?.status || "").toLowerCase() !== "confirmed") return false
+        // Support both new uppercase (PENDING) and old lowercase (confirmed)
+        const status = String(booking?.status || "").toLowerCase()
+        if (status !== "pending" && status !== "confirmed") return false
         const createdAt = new Date(booking?.createdAt || booking?.date || "").getTime()
         if (Number.isNaN(createdAt)) return true
         return Date.now() - createdAt <= 2 * 60 * 60 * 1000
@@ -458,7 +485,7 @@ export default function DiningReservations() {
                             <div>
                                 <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Active</p>
                                 <p className="text-3xl font-black text-slate-900 leading-none mt-1">
-                                    {bookings.filter(b => ['confirmed', 'accepted', 'checked-in'].includes(String(b.status || '').toLowerCase())).length}
+                                    {bookings.filter(b => ['pending', 'confirmed', 'accepted', 'checked-in', 'checked_in'].includes(String(b.status || '').toLowerCase())).length}
                                 </p>
                             </div>
                         </div>
@@ -811,48 +838,40 @@ export default function DiningReservations() {
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-2">
                                                             <Badge className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                                                                booking.status === 'confirmed' ? 'bg-amber-100 text-amber-700' :
-                                                                booking.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                                                                booking.status === 'checked-in' ? 'bg-orange-100 text-orange-700' :
-                                                                booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                                                                ['PENDING','confirmed'].includes(booking.status) ? 'bg-amber-100 text-amber-700' :
+                                                                ['ACCEPTED','accepted'].includes(booking.status) ? 'bg-emerald-100 text-emerald-700' :
+                                                                ['CHECKED_IN','checked-in'].includes(booking.status) ? 'bg-orange-100 text-orange-700' :
+                                                                ['completed','COMPLETED'].includes(booking.status) ? 'bg-blue-100 text-blue-700' :
                                                                 'bg-rose-100 text-rose-700'
                                                             }`}>
-                                                                {booking.status}
+                                                                {booking.status === 'COMPLETED' ? 'Checked Out' : booking.status}
                                                             </Badge>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            {booking.status === 'confirmed' && (
+                                                            {['PENDING','confirmed'].includes(booking.status) && (
                                                                 <button
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'accepted')}
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'ACCEPTED')}
                                                                     className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
                                                                 >
                                                                     Accept
                                                                 </button>
                                                             )}
-                                                            {booking.status === 'confirmed' && (
+                                                            {['PENDING','confirmed'].includes(booking.status) && (
                                                                 <button
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'cancelled')}
-                                                                    className="px-3 py-1.5 bg-white border border-rose-200 text-rose-600 text-xs font-bold rounded-lg hover:bg-rose-50 transition-colors"
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'DECLINED')}
+                                                                    className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors"
                                                                 >
                                                                     Decline
                                                                 </button>
                                                             )}
-                                                            {booking.status === 'accepted' && (
+                                                            {['ACCEPTED','accepted'].includes(booking.status) && (
                                                                 <button
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'checked-in')}
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')}
                                                                     className="px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-colors shadow-sm"
                                                                 >
-                                                                    Check-in
-                                                                </button>
-                                                            )}
-                                                            {booking.status === 'checked-in' && (
-                                                                <button
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'completed')}
-                                                                    className="px-3 py-1.5 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                                                                >
-                                                                    Check-out
+                                                                    Check-in 🔔
                                                                 </button>
                                                             )}
                                                             {booking.specialRequest && (
@@ -895,13 +914,13 @@ export default function DiningReservations() {
                                                     </div>
                                                 </div>
                                                 <Badge className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                                                    booking.status === 'confirmed' ? 'bg-amber-100 text-amber-700' :
-                                                    booking.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' :
-                                                    booking.status === 'checked-in' ? 'bg-orange-100 text-orange-700' :
-                                                    booking.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                                                    ['pending','confirmed'].includes(String(booking.status||'').toLowerCase()) ? 'bg-amber-100 text-amber-700' :
+                                                    ['accepted','ACCEPTED'].includes(booking.status) ? 'bg-emerald-100 text-emerald-700' :
+                                                    ['checked_in','checked-in','CHECKED_IN'].includes(booking.status) ? 'bg-orange-100 text-orange-700' :
+                                                    ['completed','COMPLETED'].includes(booking.status) ? 'bg-blue-100 text-blue-700' :
                                                     'bg-rose-100 text-rose-700'
                                                 }`}>
-                                                    {booking.status}
+                                                    {booking.status === 'COMPLETED' ? 'Checked Out' : booking.status}
                                                 </Badge>
                                             </div>
 
@@ -934,36 +953,30 @@ export default function DiningReservations() {
                                             )}
 
                                             <div className="flex items-center gap-2">
-                                                {booking.status === 'confirmed' && (
+                                                {/* PENDING → Accept + Decline */}
+                                                {['PENDING','confirmed'].includes(booking.status) && (
                                                     <button
-                                                        onClick={() => handleStatusUpdate(booking._id, 'accepted')}
+                                                        onClick={() => handleStatusUpdate(booking._id, 'ACCEPTED')}
                                                         className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-black rounded-xl hover:bg-emerald-700 transition-colors uppercase tracking-widest"
                                                     >
                                                         Accept
                                                     </button>
                                                 )}
-                                                {booking.status === 'confirmed' && (
+                                                {['PENDING','confirmed'].includes(booking.status) && (
                                                     <button
-                                                        onClick={() => handleStatusUpdate(booking._id, 'cancelled')}
+                                                        onClick={() => handleStatusUpdate(booking._id, 'DECLINED')}
                                                         className="flex-1 py-2.5 bg-slate-100 text-slate-600 text-xs font-black rounded-xl hover:bg-slate-200 transition-colors uppercase tracking-widest"
                                                     >
                                                         Decline
                                                     </button>
                                                 )}
-                                                {booking.status === 'accepted' && (
+                                                {/* ACCEPTED → Check-in (sends table_ready to user) */}
+                                                {['ACCEPTED','accepted'].includes(booking.status) && (
                                                     <button
-                                                        onClick={() => handleStatusUpdate(booking._id, 'checked-in')}
+                                                        onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')}
                                                         className="flex-1 py-2.5 bg-orange-600 text-white text-xs font-black rounded-xl hover:bg-orange-700 transition-colors uppercase tracking-widest"
                                                     >
-                                                        Check-in
-                                                    </button>
-                                                )}
-                                                {booking.status === 'checked-in' && (
-                                                    <button
-                                                        onClick={() => handleStatusUpdate(booking._id, 'completed')}
-                                                        className="flex-1 py-2.5 bg-blue-600 text-white text-xs font-black rounded-xl hover:bg-blue-700 transition-colors uppercase tracking-widest"
-                                                    >
-                                                        Check-out
+                                                        Check-in 🔔
                                                     </button>
                                                 )}
                                             </div>

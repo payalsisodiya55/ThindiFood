@@ -110,11 +110,19 @@ const tableSessionSchema = new mongoose.Schema(
             index: { expireAfterSeconds: 0 },
         },
 
+
         // Optional notes (e.g. "anniversary couple", "allergy note")
         notes: {
             type: String,
             trim: true,
             default: '',
+        },
+
+        // If this session was created from a pre-booked table reservation
+        bookingId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodTableBooking',
+            default: null,
         },
     },
     {

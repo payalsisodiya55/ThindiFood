@@ -143,6 +143,38 @@ export const useUserNotifications = () => {
       dispatchNotificationInboxRefresh();
     });
 
+    // 🆕 Table booking: restaurant accepted booking
+    socketRef.current.on('booking_status_update', (payload) => {
+      debugLog('📋 Booking status update:', payload);
+      const status = payload?.status;
+      if (status === 'ACCEPTED') {
+        toast.success('🎉 Booking Confirmed!', {
+          description: payload?.message || 'Your table booking has been accepted.',
+          duration: 12000,
+        });
+      } else if (status === 'DECLINED') {
+        toast.error('Booking Declined', {
+          description: payload?.message || 'Your booking was declined by the restaurant.',
+          duration: 10000,
+        });
+      }
+      window.dispatchEvent(new CustomEvent('bookingStatusUpdate', { detail: payload }));
+    });
+
+    // 🆕 Table ready: restaurant clicked CHECK-IN → "Scan QR to start ordering"
+    socketRef.current.on('table_ready', (payload) => {
+      debugLog('🍽️ Table ready notification:', payload);
+      toast.message('🪑 Your table is ready!', {
+        description: payload?.message || 'Please scan the QR code on your table to start ordering.',
+        duration: 30000,
+        action: {
+          label: 'Got it',
+          onClick: () => {},
+        },
+      });
+      window.dispatchEvent(new CustomEvent('tableReady', { detail: payload }));
+    });
+
     socketRef.current.on('connect_error', (error) => {
       if (import.meta.env.DEV) {
         // debugLog('❌ Socket connection error:', error.message);

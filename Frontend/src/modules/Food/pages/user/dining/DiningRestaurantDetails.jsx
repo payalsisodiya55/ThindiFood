@@ -21,6 +21,8 @@ import {
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 
+const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
+
 const formatAddress = (restaurant) =>
   restaurant?.location?.formattedAddress ||
   restaurant?.location?.addressLine1 ||
@@ -248,6 +250,15 @@ export default function DiningRestaurantDetails() {
   const handleContinueBooking = () => {
     if (!isDiningEnabled) return
     setIsBookingSheetOpen(false)
+
+    try {
+      const guestPrefPayload = {
+        slug: slug || restaurant?.slug || "",
+        guestCount: selectedGuests,
+      }
+      sessionStorage.setItem(BOOKING_GUESTS_PREF_KEY, JSON.stringify(guestPrefPayload))
+    } catch {}
+
     navigate(`/food/user/dining/book/${slug}`, {
       state: {
         guestCount: selectedGuests,

@@ -4,12 +4,39 @@ import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { motion } from "framer-motion"
 import confetti from "canvas-confetti"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { RED } from "@food/constants/color"
+import { API_BASE_URL } from "@food/api/config"
+import io from "socket.io-client"
+import { toast } from "sonner"
+
+const toImageUrl = (value) => {
+    if (!value) return ""
+    if (typeof value === "string") return value.trim()
+    if (typeof value === "object") return String(value?.url || value?.secure_url || "").trim()
+    return ""
+}
+
+const resolveRestaurant = (booking) => {
+    const raw = booking?.restaurant && typeof booking.restaurant === "object" ? booking.restaurant : {}
+    const image =
+        toImageUrl(raw?.image) ||
+        toImageUrl(raw?.profileImage) ||
+        toImageUrl(raw?.coverImage) ||
+        toImageUrl(raw?.coverImages?.[0]) ||
+        toImageUrl(raw?.menuImages?.[0])
+
+    return {
+        name: String(raw?.name || raw?.restaurantName || booking?.restaurantName || "The Great Indian Restaurant").trim(),
+        image,
+        location: raw?.location || null,
+    }
+}
 
 export default function TableBookingSuccess() {
     const location = useLocation()
     const navigate = useNavigate()
+    const socketRef = useRef(null)
     const booking = useMemo(() => {
         if (location.state?.booking) return location.state.booking
         try {
@@ -19,6 +46,62 @@ export default function TableBookingSuccess() {
             return null
         }
     }, [location.state])
+
+    // Live status — starts from booking.status, updates via socket
+    const [liveStatus, setLiveStatus] = useState(booking?.status || 'PENDING')
+
+    // Connect socket and listen for booking_status_update
+    useEffect(() => {
+        if (!booking?._id && !booking?.bookingId) return
+
+        let socketOrigin = ''
+        try {
+            socketOrigin = new URL(API_BASE_URL).origin
+        } catch {
+            socketOrigin = String(API_BASE_URL || '').replace(/\/api.*$/, '')
+        }
+        if (!socketOrigin) return
+
+        const token = localStorage.getItem('accessToken') || localStorage.getItem('user_accessToken')
+        const socket = io(socketOrigin, {
+            path: '/socket.io/',
+            transports: ['polling'],
+            reconnection: true,
+            auth: { token }
+        })
+        socketRef.current = socket
+
+        socket.on('booking_status_update', (payload) => {
+            const matchId = String(booking._id || '')
+            const payloadId = String(payload?._id || '')
+            const matchBookingId = String(booking.bookingId || '')
+            const payloadBookingId = String(payload?.bookingId || '')
+
+            if ((matchId && matchId === payloadId) || (matchBookingId && matchBookingId === payloadBookingId)) {
+                const newStatus = payload?.status || 'ACCEPTED'
+                setLiveStatus(newStatus)
+                if (newStatus === 'ACCEPTED') {
+                    toast.success('Your booking has been accepted by the restaurant!')
+                } else if (newStatus === 'DECLINED') {
+                    toast.error('Your booking was declined by the restaurant.')
+                }
+            }
+        })
+
+        socket.on('table_ready', (payload) => {
+            const matchId = String(booking._id || '')
+            const payloadId = String(payload?._id || '')
+            if (!matchId || matchId === payloadId) {
+                setLiveStatus('CHECKED_IN')
+                toast.success('Your table is ready! Scan the QR code to start ordering.')
+            }
+        })
+
+        return () => {
+            socket.disconnect()
+            socketRef.current = null
+        }
+    }, [booking?._id, booking?.bookingId])
 
     useEffect(() => {
         if (!location.state?.booking) return
@@ -80,6 +163,7 @@ export default function TableBookingSuccess() {
         )
     }
 
+    const restaurant = resolveRestaurant(booking)
     const formattedDate = new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 
     return (
@@ -98,8 +182,22 @@ export default function TableBookingSuccess() {
                 transition={{ delay: 0.2 }}
                 className="text-center space-y-2 mb-10"
             >
-                <h1 className="text-3xl font-black text-gray-900">Seat Confirmed!</h1>
-                <p className="text-gray-500 font-medium tracking-wide italic">Your table is ready for you</p>
+                <h1 className="text-3xl font-black text-gray-900">
+                    {liveStatus === 'PENDING'
+                        ? 'Booking Requested! 🕐'
+                        : liveStatus === 'DECLINED'
+                        ? 'Booking Declined 😔'
+                        : 'Seat Confirmed! 🎉'
+                    }
+                </h1>
+                <p className="text-gray-500 font-medium tracking-wide italic">
+                    {liveStatus === 'PENDING'
+                        ? 'Waiting for restaurant confirmation'
+                        : liveStatus === 'DECLINED'
+                        ? 'The restaurant could not accommodate your request'
+                        : 'Your table is ready for you'
+                    }
+                </p>
                 <div className="pt-2">
                     <span className="bg-red-50 px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest border border-red-100" style={{ color: RED }}>
                         BOOKING ID: {booking.bookingId}
@@ -122,7 +220,7 @@ export default function TableBookingSuccess() {
                     <div className="flex items-center gap-4">
                         <div className="w-16 h-16 rounded-2xl bg-white border border-slate-100 flex-shrink-0 p-1">
                             <img
-                                src={booking.restaurant?.image || booking.restaurant?.profileImage?.url || ""}
+                                src={restaurant.image || undefined}
                                 className="w-full h-full object-cover rounded-xl"
                                 alt="restaurant"
                                 onError={(e) => {
@@ -131,13 +229,13 @@ export default function TableBookingSuccess() {
                             />
                         </div>
                         <div className="min-w-0">
-                            <h2 className="font-black text-lg text-gray-900 truncate">{booking.restaurant?.name || "The Great Indian Restaurant"}</h2>
+                            <h2 className="font-black text-lg text-gray-900 truncate">{restaurant.name}</h2>
                             <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
                                 <MapPin className="w-3 h-3" />
                                 <span className="truncate">
-                                    {typeof booking.restaurant?.location === 'string'
-                                        ? booking.restaurant.location
-                                        : (booking.restaurant?.location?.formattedAddress || booking.restaurant?.location?.address || `${booking.restaurant?.location?.city || ''}${booking.restaurant?.location?.area ? ', ' + booking.restaurant.location.area : ''}`)}
+                                    {typeof restaurant.location === 'string'
+                                        ? restaurant.location
+                                        : (restaurant.location?.formattedAddress || restaurant.location?.address || `${restaurant.location?.city || ''}${restaurant.location?.area ? ', ' + restaurant.location.area : ''}`)}
                                 </span>
                             </p>
                         </div>
@@ -167,9 +265,27 @@ export default function TableBookingSuccess() {
                         </div>
                         <div className="space-y-1">
                             <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status</p>
-                            <div className="text-white px-2 py-0.5 rounded-lg text-xs font-bold w-fit" style={{ backgroundColor: RED }}>
-                                CONFIRMED
-                            </div>
+                            {liveStatus === 'PENDING' ? (
+                                <div className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-xs font-bold w-fit">
+                                    ⏳ PENDING
+                                </div>
+                            ) : liveStatus === 'ACCEPTED' ? (
+                                <div className="bg-green-100 text-green-700 px-2 py-0.5 rounded-lg text-xs font-bold w-fit">
+                                    ✓ ACCEPTED
+                                </div>
+                            ) : liveStatus === 'CHECKED_IN' ? (
+                                <div className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-lg text-xs font-bold w-fit">
+                                    🔔 TABLE READY
+                                </div>
+                            ) : liveStatus === 'DECLINED' ? (
+                                <div className="bg-red-100 text-red-700 px-2 py-0.5 rounded-lg text-xs font-bold w-fit">
+                                    ✗ DECLINED
+                                </div>
+                            ) : (
+                                <div className="text-white px-2 py-0.5 rounded-lg text-xs font-bold w-fit" style={{ backgroundColor: '#00c87e' }}>
+                                    {liveStatus.toUpperCase()}
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -189,6 +305,25 @@ export default function TableBookingSuccess() {
                 transition={{ delay: 0.6 }}
                 className="mt-12 w-full max-w-sm space-y-3"
             >
+                {['CHECKED_IN'].includes(liveStatus) && (
+                <Button
+                    onClick={() => navigate("/food/user/dining")}
+                    className="w-full h-14 text-white font-bold text-lg rounded-2xl flex items-center justify-center gap-2"
+                    style={{ backgroundColor: '#00c87e' }}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m0 14v1M4 12h1m14 0h1M6.343 6.343l.707.707M16.95 16.95l.707.707M6.343 17.657l.707-.707M16.95 7.05l.707-.707" />
+                        <rect x="3" y="3" width="7" height="7" rx="1" strokeWidth={2} />
+                        <rect x="14" y="3" width="7" height="7" rx="1" strokeWidth={2} />
+                        <rect x="3" y="14" width="7" height="7" rx="1" strokeWidth={2} />
+                        <rect x="15" y="15" width="2" height="2" />
+                        <rect x="19" y="15" width="2" height="2" />
+                        <rect x="15" y="19" width="2" height="2" />
+                        <rect x="19" y="19" width="2" height="2" />
+                    </svg>
+                    Scan QR & Start Ordering
+                </Button>
+                )}
                 <Button
                     onClick={() => navigate("/food/user/bookings")}
                     className="w-full h-14 text-white font-bold text-lg rounded-2xl shadow-xl shadow-red-100 flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
@@ -208,7 +343,12 @@ export default function TableBookingSuccess() {
             </motion.div>
 
             <p className="fixed bottom-10 text-[10px] font-bold text-slate-300 uppercase tracking-widest px-10 text-center">
-                Show this ticket at the restaurant for a smooth entry
+                {liveStatus === 'PENDING'
+                    ? 'You will be notified once the restaurant confirms your booking'
+                    : liveStatus === 'CHECKED_IN'
+                    ? 'Scan the QR code on your table to start ordering'
+                    : 'Show this ticket at the restaurant for a smooth entry'
+                }
             </p>
         </AnimatedPage>
     )

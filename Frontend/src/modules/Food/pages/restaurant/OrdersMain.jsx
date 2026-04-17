@@ -68,6 +68,73 @@ const getAllOrdersTimestamp = (order) =>
   order?.createdAt ||
   new Date().toISOString();
 
+const getBookingGuestName = (bookingLike) => {
+  const value = String(
+    bookingLike?.userName ||
+      bookingLike?.guestName ||
+      bookingLike?.user?.name ||
+      bookingLike?.user?.fullName ||
+      bookingLike?.userId?.name ||
+      bookingLike?.customer?.name ||
+      bookingLike?.customerName ||
+      bookingLike?.bookedBy?.name ||
+      bookingLike?.name ||
+      "Guest",
+  ).trim();
+  return value || "Guest";
+};
+
+const getBookingGuestPhone = (bookingLike) =>
+  String(
+    bookingLike?.guestPhone ||
+    bookingLike?.user?.phone ||
+      bookingLike?.user?.phoneNumber ||
+      bookingLike?.userId?.phone ||
+      bookingLike?.customer?.phone ||
+      bookingLike?.phone ||
+      bookingLike?.phoneNumber ||
+      bookingLike?.mobile ||
+      bookingLike?.bookedBy?.phone ||
+      bookingLike?.customerPhone ||
+      "",
+  ).trim();
+
+const getBookingStatusMeta = (statusLike) => {
+  const normalized = String(statusLike || "")
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, "_");
+
+  if (["ACCEPTED", "CONFIRMED"].includes(normalized)) {
+    return {
+      className: "bg-green-100 text-green-700",
+      label: "CONFIRMED",
+    };
+  }
+  if (normalized === "CHECKED_IN") {
+    return {
+      className: "bg-orange-100 text-orange-700",
+      label: "CHECKED-IN",
+    };
+  }
+  if (normalized === "COMPLETED") {
+    return {
+      className: "bg-blue-100 text-blue-700",
+      label: "COMPLETED",
+    };
+  }
+  if (["DECLINED", "CANCELLED", "CANCELED"].includes(normalized)) {
+    return {
+      className: "bg-gray-100 text-gray-600",
+      label: "CANCELLED",
+    };
+  }
+  return {
+    className: "bg-gray-100 text-gray-600",
+    label: normalized ? normalized.replace(/_/g, "-") : "PENDING",
+  };
+};
+
 const transformOrderForList = (order) => ({
   orderId: order.orderId || order._id,
   mongoId: order._id,
@@ -548,19 +615,29 @@ function TableBookings() {
 
     const fetchBookings = async () => {
       try {
-        const res = await restaurantAPI.getCurrentRestaurant();
-        const restaurant =
-          res.data?.data?.restaurant || res.data?.restaurant || res.data?.data;
-        const restaurantId = restaurant?._id || restaurant?.id;
+        const response = await dineInAPI.getRestaurantBookings();
+        if (isMounted && response?.data?.success) {
+          setBookings(Array.isArray(response?.data?.data) ? response.data.data : []);
+          setLoading(false);
+          return;
+        }
+      } catch (error) {
+        debugError("Error fetching table bookings from dine-in API:", error);
+      }
 
+      // Fallback for local/stub environments
+      try {
+        const res = await restaurantAPI.getCurrentRestaurant();
+        const restaurant = res.data?.data?.restaurant || res.data?.restaurant || res.data?.data;
+        const restaurantId = restaurant?._id || restaurant?.id;
         if (restaurantId) {
-          const response = await diningAPI.getRestaurantBookings(restaurant);
-          if (isMounted && response.data.success) {
-            setBookings(response.data.data);
+          const fallbackResponse = await diningAPI.getRestaurantBookings(restaurant);
+          if (isMounted && fallbackResponse?.data?.success) {
+            setBookings(Array.isArray(fallbackResponse?.data?.data) ? fallbackResponse.data.data : []);
           }
         }
       } catch (error) {
-        debugError("Error fetching table bookings:", error);
+        debugError("Error fetching table bookings fallback:", error);
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -594,28 +671,24 @@ function TableBookings() {
         <div className="space-y-3">
           {bookings.map((booking) => (
             <div
-              key={booking._id}
+              key={booking._id || booking.id || booking.bookingId}
               className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm transition-all hover:border-gray-300">
+              {(() => {
+                const statusMeta = getBookingStatusMeta(booking?.status);
+                return (
+                  <>
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <h3 className="text-sm font-bold text-gray-900">
-                    {booking.user?.name}
+                    {getBookingGuestName(booking)}
                   </h3>
                   <p className="text-[11px] text-gray-500">
-                    {booking.user?.phone || "No phone"}
+                    {getBookingGuestPhone(booking) || "No phone"}
                   </p>
                 </div>
                 <span
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                    booking.status === "confirmed"
-                      ? "bg-green-100 text-green-700"
-                      : booking.status === "checked-in"
-                        ? "bg-orange-100 text-orange-700"
-                        : booking.status === "completed"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-gray-100 text-gray-600"
-                  }`}>
-                  {booking.status}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusMeta.className}`}>
+                  {statusMeta.label}
                 </span>
               </div>
 
@@ -649,6 +722,9 @@ function TableBookings() {
                   </p>
                 </div>
               )}
+                  </>
+                );
+              })()}
             </div>
           ))}
         </div>
@@ -907,7 +983,14 @@ export default function OrdersMain() {
   const [isAcceptingOrder, setIsAcceptingOrder] = useState(false);
   const audioRef = useRef(null);
   const shownOrdersRef = useRef(new Set()); // Track orders already shown in popup
-  const shownBookingsRef = useRef(new Set()); // Track bookings already shown in popup
+  // Persist shown bookings in sessionStorage so page refresh doesn't re-show popup
+  const shownBookingsRef = useRef(null);
+  if (!shownBookingsRef.current) {
+    try {
+      const stored = sessionStorage.getItem('_shown_bookings');
+      shownBookingsRef.current = new Set(stored ? JSON.parse(stored) : []);
+    } catch { shownBookingsRef.current = new Set(); }
+  }
   const acceptSliderRef = useRef(null);
   const acceptSwipeStartXRef = useRef(0);
   const acceptSwipeActiveRef = useRef(false);
@@ -1173,11 +1256,17 @@ export default function OrdersMain() {
     const key = getBookingKey(bookingLike);
     if (!key) return;
     shownBookingsRef.current.add(key);
+    try {
+      sessionStorage.setItem('_shown_bookings', JSON.stringify([...shownBookingsRef.current]));
+    } catch {}
   };
 
   // Show new table booking popup when booking notification arrives (polling)
   useEffect(() => {
     if (!newBooking) return;
+    // Only show popup for PENDING bookings — not for already accepted/declined ones
+    const status = String(newBooking?.status || '').toUpperCase();
+    if (status && status !== 'PENDING') return;
     // Don't stack over order popup; booking will keep polling until accepted/declined.
     if (showNewOrderPopupRef.current) return;
 
@@ -1636,8 +1725,9 @@ export default function OrdersMain() {
     if (!bookingId) return;
 
     try {
-      const res = await diningAPI.updateBookingStatusRestaurant(bookingId, "accepted");
+      const res = await dineInAPI.acceptBooking(bookingId);
       if (res?.data?.success) {
+        markBookingAsShown(booking);
         toast.success("Booking accepted");
       } else {
         toast.error("Failed to accept booking");
@@ -1649,7 +1739,6 @@ export default function OrdersMain() {
     }
 
     handleCloseBookingPopup();
-    // Keep the restaurant in the right place to act on it further if needed.
     navigate("/restaurant/reservations");
   };
 
@@ -1659,8 +1748,9 @@ export default function OrdersMain() {
     if (!bookingId) return;
 
     try {
-      const res = await diningAPI.updateBookingStatusRestaurant(bookingId, "cancelled");
+      const res = await dineInAPI.declineBooking(bookingId);
       if (res?.data?.success) {
+        markBookingAsShown(booking);
         toast.success("Booking declined");
       } else {
         toast.error("Failed to decline booking");
@@ -2722,9 +2812,7 @@ export default function OrdersMain() {
                     <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">
                       <span className="text-gray-600 font-medium">Guest</span>
                       <span className="text-gray-900 font-semibold truncate max-w-[60%] text-right">
-                        {(popupBooking || newBooking)?.user?.name ||
-                          (popupBooking || newBooking)?.customerName ||
-                          "Guest"}
+                        {getBookingGuestName(popupBooking || newBooking)}
                       </span>
                     </div>
                     <div className="flex items-center justify-between rounded-lg bg-gray-50 px-3 py-2">

@@ -354,30 +354,31 @@ export const useRestaurantNotifications = () => {
     pollOrders();
     const intervalId = setInterval(pollOrders, ALERT_POLL_MS);
 
-    // TABLE BOOKING polling logic (localStorage-backed diningAPI).
+    // TABLE BOOKING polling logic (real backend).
     const pollBookings = async () => {
       try {
-        const resResponse = await restaurantAPI.getCurrentRestaurant();
-        const payload = resResponse?.data?.data || {};
-        const restaurant = payload?.restaurant || payload;
-        if (!restaurant) return;
-
-        const bookingsResponse = await diningAPI.getRestaurantBookings(restaurant);
+        const bookingsResponse = await dineInAPI.getRestaurantBookings();
         const rows = Array.isArray(bookingsResponse?.data?.data)
           ? bookingsResponse.data.data
           : [];
 
-        // We alert only for fresh "confirmed" bookings waiting for action.
-        const confirmed = rows
-          .filter((b) => String(b?.status || "").toLowerCase() === "confirmed")
+        // Alert for "PENDING" bookings (new backend status).
+        const pending = rows
+          .filter((b) => ['pending', 'confirmed'].includes(String(b?.status || "").toLowerCase()))
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || a?.date || 0;
             const bt = b?.updatedAt || b?.createdAt || b?.date || 0;
             return new Date(bt).getTime() - new Date(at).getTime();
           });
 
-        if (confirmed.length > 0) {
-          confirmed.slice(0, 3).forEach((b) => handleIncomingBookingAlert(b));
+        if (pending.length > 0) {
+          pending.slice(0, 3).forEach((b) => {
+            // Skip if already handled via socket to prevent double notification
+            const key = getBookingAlertKey(b);
+            if (!shouldSkipBecauseHandled(key)) {
+              handleIncomingBookingAlert(b);
+            }
+          });
         }
       } catch {
         // Non-blocking.
@@ -448,6 +449,26 @@ export const useRestaurantNotifications = () => {
       clearInterval(dineInIntervalId);
     };
   }, [restaurantId]);
+
+  // Rest of socket listeners start here
+  useEffect(() => {
+    if (!socketRef.current) return;
+
+    // Listen for new table booking notifications
+    socketRef.current.on('new_table_booking', (bookingData) => {
+      debugLog('📋 New table booking received:', bookingData);
+      const key = getBookingAlertKey(bookingData);
+      markHandled(key);
+      setNewBooking(bookingData);
+      handleIncomingBookingAlert(bookingData);
+    });
+
+    // Listen for booking cancellations from user
+    socketRef.current.on('booking_cancelled', (payload) => {
+      debugLog('❌ Booking cancelled by user:', payload);
+      // Logic to clear/refresh UI could go here
+    });
+  }, [isConnected]); // Re-attach when connected
 
   useEffect(() => {
     if (!supportsBrowserNotifications()) return;

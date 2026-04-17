@@ -13,13 +13,22 @@ import {
     addTableController,
     listTablesController
 } from '../controllers/dineIn.controller.js';
+import {
+    createBookingController,
+    getUserBookingsController,
+    cancelBookingController,
+    getRestaurantBookingsController,
+    acceptBookingController,
+    declineBookingController,
+    checkInBookingController,
+} from '../controllers/tableBooking.controller.js';
 
 const router = express.Router();
 
-// Publicly accessible to fetch table info (used for QR landing pre-check)
+// ─── Table Info (public) ──────────────────────────────────────────────────────
 router.get('/table-info', getTableInfoController);
 
-// Protected routes (User must be logged in)
+// ─── Sessions (QR flow — untouched) ──────────────────────────────────────────
 router.post('/sessions', authMiddleware, createSessionController);
 router.get('/sessions/:id', authMiddleware, getSessionController);
 
@@ -34,8 +43,23 @@ router.patch('/orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT
 router.get('/sessions/:id/bill', authMiddleware, getSessionBillController);
 router.post('/sessions/:id/pay', authMiddleware, closeSessionController);
 
-// Table Management (Admin/Restaurant)
+// Table Management
 router.post('/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), addTableController);
 router.get('/restaurants/:restaurantId/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), listTablesController);
 
+// ─── Table Bookings (Pre-book flow) ─────────────────────────────────────────
+
+// User routes
+router.post('/bookings', authMiddleware, requireRoles('USER'), createBookingController);
+router.get('/bookings/my', authMiddleware, requireRoles('USER'), getUserBookingsController);
+router.patch('/bookings/:id/cancel', authMiddleware, requireRoles('USER'), cancelBookingController);
+
+// Restaurant routes
+router.get('/bookings/restaurant', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), getRestaurantBookingsController);
+router.patch('/bookings/:id/accept', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), acceptBookingController);
+router.patch('/bookings/:id/decline', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), declineBookingController);
+// CHECK-IN: only sends user notification, does NOT create session
+router.patch('/bookings/:id/check-in', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), checkInBookingController);
+
 export default router;
+

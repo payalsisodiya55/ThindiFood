@@ -3,7 +3,9 @@ import { FoodRestaurantTable } from '../models/restaurantTable.model.js';
 import { FoodTableSession } from '../models/tableSession.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDineInOrder } from '../models/dineInOrder.model.js';
+import { FoodTableBooking } from '../models/tableBooking.model.js';
 import { getIO, rooms } from '../../../../config/socket.js';
+import { findAcceptedBooking, linkBookingToSession } from './tableBooking.service.js';
 
 /**
  * Fetch table information and its current status.
@@ -94,6 +96,19 @@ export async function createTableSession(data) {
     // 4. Link session to table
     table.currentSessionId = session._id;
     await table.save();
+
+    // 5. Check if user has an ACCEPTED pre-booking for this restaurant.
+    //    If yes, attach bookingId to session (non-blocking).
+    try {
+        const acceptedBooking = await findAcceptedBooking(userId, restaurantId);
+        if (acceptedBooking) {
+            session.bookingId = acceptedBooking._id;
+            await session.save();
+            await linkBookingToSession(String(acceptedBooking._id), session._id);
+        }
+    } catch (e) {
+        // Non-blocking: session is valid even without booking linkage
+    }
 
     return session;
 }
@@ -351,7 +366,29 @@ export async function closeSession(sessionId, paymentData) {
         { currentSessionId: null }
     );
 
-    // 3. Real-time notify restaurant clients to refresh their dine-in dashboards.
+    // 3. Mark linked booking as COMPLETED (if any)
+    try {
+        const bookingId = session.bookingId;
+        if (bookingId) {
+            await FoodTableBooking.findByIdAndUpdate(bookingId, {
+                status: 'COMPLETED',
+            });
+        } else {
+            // Also try to find booking by userId + restaurantId in CHECKED_IN state
+            await FoodTableBooking.findOneAndUpdate(
+                {
+                    userId: session.userId,
+                    restaurantId: session.restaurantId,
+                    status: 'CHECKED_IN',
+                },
+                { status: 'COMPLETED' }
+            );
+        }
+    } catch {
+        // Non-blocking
+    }
+
+    // 4. Real-time notify restaurant clients to refresh their dine-in dashboards.
     try {
         const io = getIO();
         if (io) {
