@@ -4,8 +4,9 @@ import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
 import { getFoodDisplayPrice, serializeFoodVariants } from '../../admin/services/foodVariant.service.js';
+import { RestaurantOffer } from '../models/restaurantOffer.model.js';
 
-const buildMenuFromFoods = async (foods = []) => {
+const buildMenuFromFoods = async (foods = [], offers = []) => {
     const categoryIds = Array.from(
         new Set(
             (foods || [])
@@ -42,6 +43,9 @@ const buildMenuFromFoods = async (foods = []) => {
             });
         }
 
+        // Find relevant offer for this food
+        const foodOffer = offers?.find(o => o.products?.some(p => String(p.productId) === String(food._id)));
+
         byCategory.get(groupKey).items.push({
             id: String(food._id),
             _id: food._id,
@@ -63,7 +67,14 @@ const buildMenuFromFoods = async (foods = []) => {
             rejectedAt: food.rejectedAt,
             preparationTime: food.preparationTime || '',
             createdAt: food.createdAt,
-            updatedAt: food.updatedAt
+            updatedAt: food.updatedAt,
+            offer: foodOffer ? {
+                id: foodOffer._id,
+                title: foodOffer.title,
+                discountType: foodOffer.discountType,
+                discountValue: foodOffer.discountValue,
+                maxDiscount: foodOffer.maxDiscount
+            } : null
         });
     }
 
@@ -103,11 +114,15 @@ export async function getRestaurantMenu(restaurantId) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
         throw new ValidationError('Invalid restaurant id');
     }
-    const foods = await FoodItem.find({ restaurantId })
-        .sort({ createdAt: -1 })
-        .limit(5000)
-        .lean();
-    return buildMenuFromFoods(foods);
+    const [foods, offers] = await Promise.all([
+        FoodItem.find({ restaurantId }).sort({ createdAt: -1 }).limit(5000).lean(),
+        RestaurantOffer.find({ 
+            restaurantId, 
+            approvalStatus: 'approved',
+            status: 'active'
+        }).lean()
+    ]);
+    return buildMenuFromFoods(foods, offers);
 }
 
 export async function updateRestaurantMenu(restaurantId, body = {}) {
@@ -135,11 +150,23 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     if (!restaurant?._id) {
         return null;
     }
-    const foods = await FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved' })
-        .sort({ createdAt: -1 })
-        .limit(2000)
-        .lean();
-    return buildMenuFromFoods(foods);
+    const now = new Date();
+    const [foods, offers] = await Promise.all([
+        FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved' })
+            .sort({ createdAt: -1 })
+            .limit(2000)
+            .lean(),
+        RestaurantOffer.find({
+            restaurantId: restaurant._id,
+            approvalStatus: 'approved',
+            status: 'active',
+            $and: [
+                { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+                { $or: [{ endDate: null }, { endDate: { $gte: now } }] }
+            ]
+        }).lean()
+    ]);
+    return buildMenuFromFoods(foods, offers);
 }
 
 export async function syncMenuItemApprovalStatus(restaurantId, itemId, status, rejectionReason = '') {

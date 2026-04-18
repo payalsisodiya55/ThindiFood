@@ -129,6 +129,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     const l = label.toLowerCase()
     const p = path?.toLowerCase() || ""
 
+    if (l.includes("offer approvals")) return badges.productOffers
     if (l.includes("food approval")) return badges.foodApprovals
     if (l === "foods") return badges.foods
     if (l === "restaurants" || l.includes("new joining request")) return badges.restaurants

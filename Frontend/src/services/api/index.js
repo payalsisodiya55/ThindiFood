@@ -905,10 +905,18 @@ export const adminAPI = {
       contextModule: "admin",
     });
   },
+  /** Restaurant Product Offers Approval (admin) */
+  getProductOffers: (params = {}) =>
+    apiClient.get("/food/admin/product-offers", { params, contextModule: "admin" }),
+  approveProductOffer: (id) =>
+    apiClient.patch(`/food/admin/product-offers/${String(id)}/approve`, {}, { contextModule: "admin" }),
+  rejectProductOffer: (id, reason) =>
+    apiClient.patch(`/food/admin/product-offers/${String(id)}/reject`, { reason: String(reason || "") }, { contextModule: "admin" }),
 };
 
 /** Restaurant API - OTP login via new backend; no email/password. */
 export const restaurantAPI = {
+
   sendOTP: (phone, _purpose = "login") => {
     if (!phone) return Promise.reject(new Error("Phone is required"));
     return authService.requestRestaurantOtp(phone);
@@ -1394,7 +1402,26 @@ export const restaurantAPI = {
       params,
       contextModule: "restaurant",
     }),
+  /** Product Offers (restaurant dashboard) - admin approval flow */
+  getMyOffers: (params = {}) =>
+    apiClient.get("/food/restaurant/product-offers", {
+      params,
+      contextModule: "restaurant",
+    }),
+  createOffer: (body) =>
+    apiClient.post("/food/restaurant/product-offers", body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  updateOffer: (id, body) =>
+    apiClient.patch(`/food/restaurant/product-offers/${String(id)}`, body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  deleteOffer: (id) =>
+    apiClient.delete(`/food/restaurant/product-offers/${String(id)}`, {
+      contextModule: "restaurant",
+    }),
 };
+
 
 function stableStringify(value) {
   if (value === null || value === undefined) return String(value);

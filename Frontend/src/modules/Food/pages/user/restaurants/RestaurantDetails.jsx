@@ -1184,7 +1184,8 @@ function RestaurantDetailsContent() {
       description: item.description,
       originalPrice: item.originalPrice,
       isVeg: item.isVeg !== false, // Add isVeg property
-      preparationTime: item.preparationTime // Add preparationTime property
+      preparationTime: item.preparationTime, // Add preparationTime property
+      offer: item.offer // Attach offer for dynamic calculation and validation
     }
 
     // Get source position for animation from event target
@@ -1638,6 +1639,22 @@ function RestaurantDetailsContent() {
     }
     // Otherwise, use price as the final price
     return Math.max(0, item.price || 0);
+  };
+
+  // Helper function to calculate discounted price for an item or variant
+  const getDiscountedPrice = (basePrice, offer) => {
+    if (!offer) return basePrice;
+    const { discountType, discountValue, maxDiscount } = offer;
+    let discount = 0;
+    if (discountType === 'flat') {
+      discount = Number(discountValue) || 0;
+    } else if (discountType === 'percentage') {
+      discount = (basePrice * (Number(discountValue) || 0)) / 100;
+      if (maxDiscount && discount > maxDiscount) {
+        discount = Number(maxDiscount);
+      }
+    }
+    return Math.max(0, basePrice - discount);
   };
 
   // Filter menu items based on active filters
@@ -2401,8 +2418,19 @@ function RestaurantDetailsContent() {
                                 </div>
                               )}
 
-                              <div className="flex items-center gap-3 mt-1">
-                                <p className="font-semibold text-gray-900 dark:text-white">{getFoodPriceLabel(item)}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="font-bold text-gray-900 dark:text-white">
+                                      {item.offer 
+                                        ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
+                                        : getFoodPriceLabel(item)}
+                                    </p>
+                                    {item.offer && (
+                                      <p className="text-sm text-gray-400 line-through">
+                                        ₹{Math.round(getFoodDisplayPrice(item))}
+                                      </p>
+                                    )}
+                                  </div>
                                 {/* Preparation Time - Show if available */}
                                 {item.preparationTime && String(item.preparationTime).trim() && (
                                   <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
@@ -2622,8 +2650,19 @@ function RestaurantDetailsContent() {
                                           </div>
                                         )}
 
-                                        <div className="flex items-center gap-3 mt-1">
-                                          <p className="font-semibold text-gray-900 dark:text-white">{getFoodPriceLabel(item)}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <p className="font-bold text-gray-900 dark:text-white">
+                                              {item.offer 
+                                                ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
+                                                : getFoodPriceLabel(item)}
+                                            </p>
+                                            {item.offer && (
+                                              <p className="text-sm text-gray-400 line-through">
+                                                ₹{Math.round(getFoodDisplayPrice(item))}
+                                              </p>
+                                            )}
+                                          </div>
                                           {/* Preparation Time - Show if available */}
                                           {item.preparationTime && String(item.preparationTime).trim() && (
                                             <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
@@ -2632,6 +2671,14 @@ function RestaurantDetailsContent() {
                                             </div>
                                           )}
                                         </div>
+                                        {item.offer && (
+                                          <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20">
+                                            <Tag className="w-2.5 h-2.5" />
+                                            {item.offer.discountType === 'percentage' 
+                                              ? `${item.offer.discountValue}% OFF` 
+                                              : `₹${item.offer.discountValue} OFF`}
+                                          </div>
+                                        )}
 
                                         {/* Description - Show if available */}
                                         {item.description && (
@@ -3406,20 +3453,29 @@ function RestaurantDetailsContent() {
                       <div className="mb-4">
                         <p className="text-sm font-semibold text-gray-900 dark:text-white mb-2">Choose a variant</p>
                         <div className="flex flex-wrap gap-2">
-                          {getFoodVariants(selectedItem).map((variant) => (
-                            <button
-                              key={variant.id}
-                              type="button"
-                              onClick={() => setSelectedVariantId(variant.id)}
-                              className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
-                                String(selectedVariantId || "") === String(variant.id)
-                                  ? "border-red-500 bg-red-50 text-red-600 dark:border-red-400 dark:bg-red-900/30 dark:text-red-200"
-                                  : "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-[#2a2a2a] dark:text-gray-300"
-                              }`}
-                            >
-                              {variant.name} · {RUPEE_SYMBOL}{Math.round(variant.price)}
-                            </button>
-                          ))}
+                          {getFoodVariants(selectedItem).map((variant) => {
+                            const originalVariantPrice = Number(variant.price) || 0;
+                            const currentDiscountedPrice = getDiscountedPrice(originalVariantPrice, selectedItem.offer);
+                            return (
+                              <button
+                                key={variant.id}
+                                type="button"
+                                onClick={() => setSelectedVariantId(variant.id)}
+                                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                                  String(selectedVariantId || "") === String(variant.id)
+                                    ? "border-[#00c87e] bg-[#FEF2F2] text-[#00c87e] dark:border-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e]"
+                                    : "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-[#2a2a2a] dark:text-gray-300"
+                                }`}
+                              >
+                                {variant.name} · {RUPEE_SYMBOL}{Math.round(currentDiscountedPrice)}
+                                {selectedItem.offer && (
+                                  <span className="ml-1 text-[10px] line-through text-gray-400">
+                                    {RUPEE_SYMBOL}{Math.round(originalVariantPrice)}
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     )}
@@ -3500,15 +3556,18 @@ function RestaurantDetailsContent() {
                       >
                         <span>Add item</span>
                         <div className="flex items-center gap-1">
-                          {selectedItem.originalPrice && selectedItem.originalPrice > selectedItem.price && (
-                            <span className="text-sm line-through text-red-200">
-                              {RUPEE_SYMBOL}{Math.round(selectedItem.originalPrice)}
+                          {selectedItem.offer && (
+                            <span className="text-sm line-through text-red-100 opacity-70">
+                              {RUPEE_SYMBOL}
+                              {hasFoodVariants(selectedItem)
+                                ? Math.round(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price)
+                                : Math.round(selectedItem.price)}
                             </span>
                           )}
                           <span className="text-base font-bold">
                             {hasFoodVariants(selectedItem)
-                              ? `${getVariantForDish(selectedItem, selectedVariantId)?.name || "Default"} · ${RUPEE_SYMBOL}${Math.round(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price)}`
-                              : `${RUPEE_SYMBOL}${Math.round(selectedItem.price)}`}
+                              ? `${getVariantForDish(selectedItem, selectedVariantId)?.name || "Default"} · ${RUPEE_SYMBOL}${Math.round(getDiscountedPrice(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price, selectedItem.offer))}`
+                              : `${RUPEE_SYMBOL}${Math.round(getDiscountedPrice(selectedItem.price, selectedItem.offer))}`}
                           </span>
                         </div>
                       </Button>

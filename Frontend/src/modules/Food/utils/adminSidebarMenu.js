@@ -103,6 +103,12 @@ export const adminSidebarMenu = [
         path: "/admin/food/coupons",
         icon: "Gift",
       },
+      {
+        type: "link",
+        label: "Offer Approvals",
+        path: "/admin/food/offer-approval",
+        icon: "CheckCircle2",
+      },
     ],
   },
   {

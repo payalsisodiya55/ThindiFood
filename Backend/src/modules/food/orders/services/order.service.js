@@ -11,6 +11,7 @@ import { ValidationError, ForbiddenError, NotFoundError } from '../../../../core
 import { buildPaginationOptions, buildPaginatedResult } from '../../../../utils/helpers.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
 import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
+import { RestaurantOffer } from '../../restaurant/models/restaurantOffer.model.js';
 import { FoodDeliveryCommissionRule } from '../../admin/models/deliveryCommissionRule.model.js';
 import { FoodRestaurantCommission } from '../../admin/models/restaurantCommission.model.js';
 import {
@@ -451,6 +452,8 @@ export async function updateDispatchSettings(dispatchMode, adminId) {
 
 // ----- Calculate (validation + return pricing from payload) -----
 export async function calculateOrder(userId, dto) {
+  const now = new Date();
+  const validationErrors = [];
   const orderType = dto.orderType === "quick" ? "quick" : "food";
   const items = Array.isArray(dto.items) ? dto.items : [];
   const subtotal = items.reduce(
@@ -521,7 +524,6 @@ export async function calculateOrder(userId, dto) {
     ? String(dto.couponCode).trim().toUpperCase()
     : "";
   if (codeRaw) {
-    const now = new Date();
     const offer = await FoodOffer.findOne({ couponCode: codeRaw }).lean();
     if (!offer) {
       discount = 0;
@@ -587,9 +589,68 @@ export async function calculateOrder(userId, dto) {
       }
     }
   }
+
+  // --- Calculate Restaurant-level Product Offers ---
+  let restaurantDiscount = 0;
+  try {
+    const restaurantOffers = await RestaurantOffer.find({
+      restaurantId: dto.restaurantId,
+      approvalStatus: 'approved',
+      status: 'active',
+      $and: [
+        { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+        { $or: [{ endDate: null }, { endDate: { $gte: now } }] }
+      ]
+    }).lean();
+
+    logger.info(`Found ${restaurantOffers.length} active restaurant offers for restaurant ${dto.restaurantId}`);
+
+    if (restaurantOffers.length > 0) {
+      items.forEach(item => {
+        const itemOffer = restaurantOffers.find(o => 
+          o.products?.some(p => String(p.productId) === String(item.itemId || item.id))
+        );
+        
+        if (itemOffer) {
+          logger.info(`Applying offer "${itemOffer.title}" to item ${item.name} (${item.itemId || item.id})`);
+          // If maxItemsPerOrder is set, and quantity exceeds it, NO discount is applied as per user requirement
+          if (itemOffer.maxItemsPerOrder && item.quantity > itemOffer.maxItemsPerOrder) {
+            logger.info(`Offer rejected: quantity ${item.quantity} exceeds limit ${itemOffer.maxItemsPerOrder}`);
+            validationErrors.push({
+              itemId: item.itemId || item.id,
+              type: 'OFFER_LIMIT_EXCEEDED',
+              message: `Only ${itemOffer.maxItemsPerOrder} item${itemOffer.maxItemsPerOrder > 1 ? 's are' : ' is'} allowed for this offer in one order.`
+            });
+            return;
+          }
+
+          let itemLevelDiscount = 0;
+          const basePrice = Number(item.price) || 0;
+          const quantity = Number(item.quantity) || 1;
+
+          if (itemOffer.discountType === 'percentage') {
+            itemLevelDiscount = (basePrice * (itemOffer.discountValue / 100)) * quantity;
+            if (itemOffer.maxDiscount) {
+              itemLevelDiscount = Math.min(itemLevelDiscount, itemOffer.maxDiscount);
+            }
+          } else {
+            // Flat discount
+            itemLevelDiscount = itemOffer.discountValue * quantity;
+          }
+          restaurantDiscount += Math.round(itemLevelDiscount);
+        }
+      });
+    }
+  } catch (err) {
+    logger.error(`Error calculating restaurant product offers: ${err.message}`);
+  }
+
+  // Total discount is sum of coupon discount and restaurant product discount
+  const finalDiscount = discount + restaurantDiscount;
+
   const total = Math.max(
     0,
-    subtotal + packagingFee + deliveryFee + platformFee + tax - discount,
+    subtotal + packagingFee + deliveryFee + platformFee + tax - finalDiscount,
   );
   return {
     pricing: {
@@ -598,11 +659,14 @@ export async function calculateOrder(userId, dto) {
       packagingFee,
       deliveryFee,
       platformFee,
-      discount,
+      discount: finalDiscount,
+      couponDiscount: discount,
+      restaurantDiscount: restaurantDiscount,
       total,
       currency: "INR",
       couponCode: appliedCoupon?.code || codeRaw || null,
       appliedCoupon,
+      validationErrors,
     },
   };
 }

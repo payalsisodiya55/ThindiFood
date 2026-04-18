@@ -9,6 +9,11 @@ import * as notificationBroadcastController from '../controllers/notificationBro
 import * as diningAdminController from '../../dining/controllers/diningAdmin.controller.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
+import {
+    getAllRestaurantOffersAdminController,
+    approveRestaurantOfferAdminController,
+    rejectRestaurantOfferAdminController,
+} from '../../restaurant/controllers/restaurantOffer.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 
 const router = express.Router();
@@ -113,6 +118,11 @@ router.patch('/offers/:id/reject', adminController.rejectRestaurantCoupon);
 router.patch('/offers/:id/cart-visibility', adminController.updateAdminOfferCartVisibility);
 router.patch('/offers/:id', adminController.updateAdminOffer);
 router.delete('/offers/:id', adminController.deleteAdminOffer);
+
+// ----- Restaurant Product Offers Approval -----
+router.get('/product-offers', getAllRestaurantOffersAdminController);
+router.patch('/product-offers/:id/approve', approveRestaurantOfferAdminController);
+router.patch('/product-offers/:id/reject', rejectRestaurantOfferAdminController);
 
 // ----- Feedback Experience (Admin) -----
 router.get('/feedback-experiences', feedbackExperienceController.getFeedbackExperiences);

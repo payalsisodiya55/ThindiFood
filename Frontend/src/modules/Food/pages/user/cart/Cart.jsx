@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, MessageCircle, Send, Mail, Copy } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -1053,6 +1053,23 @@ export default function Cart() {
     openShareModal(payload)
   }
 
+  // Validate restaurant product offer limits (maxItemsPerOrder)
+  useEffect(() => {
+    if (cart.length === 0) return
+
+    cart.forEach(item => {
+      if (item.offer && item.offer.maxItemsPerOrder) {
+        if (item.quantity > item.offer.maxItemsPerOrder) {
+          toast.error(`Only ${item.offer.maxItemsPerOrder} item${item.offer.maxItemsPerOrder > 1 ? 's' : ''} allowed for this offer in one order.`, {
+            id: `offer-limit-${item.id}`, // Prevent duplicate toasts for same item
+            duration: 4000,
+            icon: '⚠️'
+          })
+        }
+      }
+    })
+  }, [cart])
+
   const openShareModal = (payload) => {
     setSharePayload(payload)
     setShowShareModal(true)
@@ -1988,46 +2005,61 @@ export default function Cart() {
               {/* Cart Items */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 md:py-5 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="space-y-3 md:space-y-4">
-                  {cart.map((item) => (
-                    <div key={item.id} className="flex items-start gap-3 md:gap-4">
-                      {/* Veg/Non-veg indicator */}
-                      <div className={`w-4 h-4 md:w-5 md:h-5 border-2 ${item.isVeg !== false ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-1 flex-shrink-0`}>
-                        <div className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${item.isVeg !== false ? 'bg-green-600' : 'bg-red-600'}`} />
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 leading-tight">{item.name}</p>
-                        {item.variantName ? (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variantName}</p>
-                        ) : null}
-                      </div>
-
-                      <div className="flex items-center gap-3 md:gap-4">
-                        {/* Quantity controls */}
-                        <div className="flex items-center border border-[#00c87e] dark:border-[#00c87e]/50 rounded">
-                          <button
-                            className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          >
-                            <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                          </button>
-                          <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-[#00c87e] dark:text-[#00c87e] min-w-[20px] md:min-w-[24px] text-center">
-                            {item.quantity}
-                          </span>
-                          <button
-                            className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          >
-                            <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                          </button>
+                  {cart.map((item) => {
+                    const validationError = pricing?.validationErrors?.find(v => v.itemId === item.id || v.itemId === item.itemId);
+                    
+                    return (
+                    <div key={item.id} className="flex flex-col gap-2">
+                      {/* Validation Warning for Offers */}
+                      {validationError && (
+                        <div className="bg-[#3b0a0a] border border-[#5c1313] text-[#fcd5d5] px-3 py-2.5 rounded-xl flex items-center justify-between gap-2 shadow-sm animate-in fade-in zoom-in duration-300">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                            <span className="text-[11px] md:text-xs font-medium tracking-wide">{validationError.message}</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="flex items-start gap-3 md:gap-4 p-2 bg-transparent rounded-lg">
+                        {/* Veg/Non-veg indicator */}
+                        <div className={`w-4 h-4 md:w-5 md:h-5 border-2 ${item.isVeg !== false ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-1 flex-shrink-0`}>
+                          <div className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${item.isVeg !== false ? 'bg-green-600' : 'bg-red-600'}`} />
                         </div>
 
-                        <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 min-w-[50px] md:min-w-[70px] text-right">
-                          {RUPEE_SYMBOL}{((item.price || 0) * (item.quantity || 1)).toFixed(0)}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 leading-tight">{item.name}</p>
+                          {item.variantName ? (
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variantName}</p>
+                          ) : null}
+                        </div>
+
+                        <div className="flex items-center gap-3 md:gap-4">
+                          {/* Quantity controls */}
+                          <div className="flex items-center border border-[#00c87e] dark:border-[#00c87e]/50 rounded">
+                            <button
+                              className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10 transition-colors"
+                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            >
+                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                            </button>
+                            <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-[#00c87e] dark:text-[#00c87e] min-w-[20px] md:min-w-[24px] text-center">
+                              {item.quantity}
+                            </span>
+                            <button
+                              className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10 transition-colors"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            >
+                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                            </button>
+                          </div>
+
+                          <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 min-w-[50px] md:min-w-[70px] text-right">
+                            {RUPEE_SYMBOL}{((item.price || 0) * (item.quantity || 1)).toFixed(0)}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
 
                 {/* Add more items */}
@@ -2567,7 +2599,19 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
                     </div>
-                    {discount > 0 && (
+                    {pricing?.restaurantDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-[#00c87e] font-medium">
+                        <span>Offer Discount</span>
+                        <span>-{RUPEE_SYMBOL}{pricing.restaurantDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pricing?.couponDiscount > 0 && (
+                      <div className="flex justify-between text-sm text-[#00c87e] font-medium">
+                        <span>Coupon Discount</span>
+                        <span>-{RUPEE_SYMBOL}{pricing.couponDiscount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(!pricing && discount > 0) && (
                       <div className="flex justify-between text-sm text-[#00c87e] font-medium">
                         <span>Coupon Discount</span>
                         <span>-{RUPEE_SYMBOL}{discount.toFixed(2)}</span>
