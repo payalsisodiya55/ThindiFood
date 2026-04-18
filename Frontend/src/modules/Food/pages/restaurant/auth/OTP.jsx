@@ -343,7 +343,7 @@ export default function RestaurantOTP() {
       style={keyboardOffset > 0 ? { paddingBottom: `${Math.min(keyboardOffset, 360)}px` } : undefined}
     >
       {/* Curved Header Background */}
-      <div className="relative h-[240px] sm:h-[300px] w-full bg-[#ef4f5f] overflow-hidden">
+      <div className="relative h-[240px] sm:h-[300px] w-full bg-[#00c87e] overflow-hidden">
         {/* Abstract Circles like in the image */}
         <div className="absolute -top-10 -left-10 w-48 h-48 rounded-full bg-white/10" />
         <div className="absolute top-20 -right-10 w-64 h-64 rounded-full bg-white/10" />
@@ -355,7 +355,7 @@ export default function RestaurantOTP() {
         {/* Back Button */}
         <button
           onClick={() => navigate("/food/restaurant/login")}
-          className="absolute top-10 sm:top-12 left-6 sm:left-8 p-2.5 sm:p-3 bg-white shadow-xl rounded-full text-[#ef4f5f] hover:scale-110 active:scale-95 transition-all"
+          className="absolute top-10 sm:top-12 left-6 sm:left-8 p-2.5 sm:p-3 bg-white shadow-xl rounded-full text-[#00c87e] hover:scale-110 active:scale-95 transition-all"
         >
           <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
         </button>
@@ -365,7 +365,7 @@ export default function RestaurantOTP() {
         {/* Central Logo / Branding */}
         <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-4 sm:mb-6 overflow-hidden">
           <div className="text-center">
-             <div className="w-16 h-16 bg-[#ef4f5f] rounded-2xl mx-auto flex items-center justify-center transform rotate-12 shadow-lg mb-1">
+             <div className="w-16 h-16 bg-[#00c87e] rounded-2xl mx-auto flex items-center justify-center transform rotate-12 shadow-lg mb-1">
                 <ShieldCheck className="w-8 h-8 text-white -rotate-12" />
              </div>
           </div>
@@ -376,7 +376,7 @@ export default function RestaurantOTP() {
             verify otp
           </h2>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-relaxed">
-            Sent to <span className="text-[#ef4f5f] font-black">{contactInfo}</span>
+            Sent to <span className="text-[#00c87e] font-black">{contactInfo}</span>
           </p>
         </div>
 
@@ -401,7 +401,7 @@ export default function RestaurantOTP() {
                     error 
                       ? "border-red-500 bg-red-50" 
                       : focusedIndex === index 
-                        ? "border-[#ef4f5f] ring-4 ring-[#ef4f5f]/10 shadow-lg bg-white" 
+                        ? "border-[#00c87e] ring-4 ring-[#00c87e]/10 shadow-lg bg-white" 
                         : "border-slate-100"
                   }`}
                 />
@@ -409,7 +409,7 @@ export default function RestaurantOTP() {
             </div>
 
             {error && (
-              <p className="text-[#ef4f5f] text-xs font-bold text-center italic animate-pulse">
+              <p className="text-red-500 text-xs font-bold text-center italic animate-pulse">
                 {error}
               </p>
             )}
@@ -420,7 +420,7 @@ export default function RestaurantOTP() {
                 disabled={isLoading || !isOtpComplete}
                 className={`w-full h-14 sm:h-16 rounded-[32px] font-black text-base sm:text-lg tracking-widest uppercase shadow-lg transition-all duration-300 ${
                   isOtpComplete && !isLoading
-                    ? "bg-[#ef4f5f] hover:bg-[#d63a4a] text-white shadow-[#ef4f5f]/20 transform active:scale-[0.98]"
+                    ? "bg-[#00c87e] hover:bg-[#00a86b] text-white shadow-[#00c87e]/20 transform active:scale-[0.98]"
                     : "bg-slate-100 text-slate-300 cursor-not-allowed"
                 }`}
               >
@@ -430,14 +430,14 @@ export default function RestaurantOTP() {
               <div className="flex flex-col items-center gap-4">
                 {resendTimer > 0 ? (
                   <div className="flex items-center gap-2 text-slate-400 text-xs font-black tracking-widest uppercase">
-                    <Timer className="w-4 h-4 text-[#ef4f5f]" />
-                    RESEND IN <span className="text-[#ef4f5f]">{resendTimer}S</span>
+                    <Timer className="w-4 h-4 text-[#00c87e]" />
+                    RESEND IN <span className="text-[#00c87e]">{resendTimer}S</span>
                   </div>
                 ) : (
                   <button
                     onClick={handleResend}
                     disabled={isLoading}
-                    className="flex items-center gap-2 text-[#ef4f5f] font-black text-xs tracking-widest uppercase hover:underline"
+                    className="flex items-center gap-2 text-[#00c87e] font-black text-xs tracking-widest uppercase hover:underline"
                   >
                     <RefreshCw className="w-4 h-4" />
                     RESEND CODE

@@ -78,7 +78,7 @@ const tableSessionSchema = new mongoose.Schema(
         // Payment info (filled when session is closed)
         paymentMethod: {
             type: String,
-            enum: ['online', 'cash', 'upi', ''],
+            enum: ['online', 'cash', 'upi', 'counter', ''],
             default: '',
         },
 
@@ -90,6 +90,30 @@ const tableSessionSchema = new mongoose.Schema(
         paidAt: {
             type: Date,
             default: null,
+        },
+
+        // Pay-at-counter flow
+        paymentMode: {
+            type: String,
+            enum: ['ONLINE', 'COUNTER', ''],
+            default: '',
+        },
+
+        paymentStatus: {
+            type: String,
+            enum: ['PENDING', 'PAID', ''],
+            default: '',
+        },
+
+        paymentRequestedAt: {
+            type: Date,
+            default: null,
+        },
+
+        // Once finalized, no new items should be added to this session.
+        isBillFinalized: {
+            type: Boolean,
+            default: false,
         },
 
         // Session timestamps

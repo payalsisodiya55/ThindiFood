@@ -149,3 +149,24 @@ export async function listTablesController(req, res, next) {
         next(error);
     }
 }
+
+export async function requestCounterPaymentController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId || req.user.id;
+        const session = await dineInService.requestCounterPayment(id, userId);
+        return sendResponse(res, 200, 'Counter payment requested', session);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function markCounterPaidController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const session = await dineInService.markCounterPaid(id);
+        return sendResponse(res, 200, 'Payment marked as paid', session);
+    } catch (error) {
+        next(error);
+    }
+}

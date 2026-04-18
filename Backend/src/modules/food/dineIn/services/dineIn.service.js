@@ -64,7 +64,7 @@ export async function createTableSession(data) {
     // 2. Check for existing active session
     if (table.currentSessionId) {
         const existingSession = await FoodTableSession.findById(table.currentSessionId).populate('orders');
-        if (existingSession && existingSession.status === 'active') {
+        if (existingSession && ['active', 'bill_requested'].includes(existingSession.status)) {
             const nonCancelledOrders = (existingSession.orders || []).filter(o => o.status !== 'cancelled');
             
             // If the session has history but EVERYTHING were cancelled, 
@@ -142,6 +142,15 @@ export async function placeOrder(sessionId, userId, orderData) {
 
     if (session.status !== 'active') {
         throw new Error('This session is no longer active and cannot accept new orders');
+    }
+
+    // Block new orders if bill has been finalized for settlement.
+    if (
+        session.isBillFinalized === true ||
+        session.status === 'bill_requested' ||
+        (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING')
+    ) {
+        throw new Error('Bill is finalized. No new orders can be placed after requesting counter payment.');
     }
 
     if (String(session.userId) !== String(userId)) {
@@ -312,8 +321,69 @@ export async function getSessionBill(sessionId) {
             totalAmount: session.totalAmount
         },
         status: session.status,
-        isPaid: session.isPaid
+        isPaid: session.isPaid,
+        paymentMode: session.paymentMode || '',
+        paymentStatus: session.paymentStatus || '',
+        paymentRequestedAt: session.paymentRequestedAt || null,
+        isBillFinalized: session.isBillFinalized === true
     };
+}
+
+/**
+ * User requests Pay at Counter — locks bill, notifies restaurant via socket.
+ */
+export async function requestCounterPayment(sessionId, userId) {
+    const session = await FoodTableSession.findById(sessionId);
+    if (!session) throw new Error('Session not found');
+    if (session.status === 'completed') throw new Error('Session already completed');
+    if (String(session.userId) !== String(userId)) {
+        throw new Error('Unauthorized to request counter payment for this session');
+    }
+    if (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING') {
+        return session; // Already requested, idempotent
+    }
+
+    session.paymentMode = 'COUNTER';
+    session.paymentStatus = 'PENDING';
+    session.status = 'bill_requested';
+    session.isBillFinalized = true;
+    session.paymentRequestedAt = new Date();
+    await session.save();
+
+    // Emit socket event to restaurant
+    try {
+        const io = getIO();
+        if (io) {
+            io.to(rooms.restaurant(session.restaurantId)).emit('payment_pending', {
+                sessionId: String(session._id),
+                tableNumber: session.tableNumber,
+                totalAmount: session.totalAmount,
+                restaurantId: String(session.restaurantId),
+                requestedAt: session.paymentRequestedAt.toISOString(),
+            });
+        }
+    } catch { /* non-blocking */ }
+
+    return session;
+}
+
+/**
+ * Restaurant marks counter payment as paid — closes session and frees table.
+ */
+export async function markCounterPaid(sessionId) {
+    const session = await FoodTableSession.findById(sessionId);
+    if (!session) throw new Error('Session not found');
+    if (session.status === 'completed') throw new Error('Session already completed');
+    if (session.paymentMode !== 'COUNTER' || session.paymentStatus !== 'PENDING') {
+        throw new Error('No pending counter payment found for this session');
+    }
+
+    session.paymentStatus = 'PAID';
+    session.isBillFinalized = true;
+    await session.save();
+
+    // Close the session via existing closeSession logic
+    return closeSession(sessionId, { paymentMethod: 'counter' });
 }
 
 /**
@@ -325,6 +395,14 @@ export async function closeSession(sessionId, paymentData) {
 
     if (session.status === 'completed') {
         throw new Error('Session is already completed');
+    }
+
+    // Prevent switching to online after selecting "Pay at Counter".
+    const requestedMethod = String(paymentData?.paymentMethod || '').toLowerCase();
+    const counterPending = session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING';
+    const isCounterSettlement = ['counter', 'cash'].includes(requestedMethod);
+    if (counterPending && !isCounterSettlement) {
+        throw new Error('Counter payment already requested. Please complete payment at restaurant counter.');
     }
 
     const now = new Date();
@@ -356,6 +434,10 @@ export async function closeSession(sessionId, paymentData) {
     session.status = 'completed';
     session.paymentMethod = paymentData.paymentMethod || 'online';
     session.isPaid = true;
+    if (session.paymentMode === 'COUNTER') {
+        session.paymentStatus = 'PAID';
+    }
+    session.isBillFinalized = true;
     session.paidAt = now;
     session.closedAt = now;
     await session.save();

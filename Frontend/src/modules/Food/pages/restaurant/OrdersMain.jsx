@@ -22,6 +22,7 @@ import {
   Users,
   MessageSquare,
   Utensils,
+  Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders";
@@ -762,7 +763,9 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                 activeTables.map(async (table) => {
                   try {
                     const sRes = await dineInAPI.getSession(table.currentSessionId);
-                    return { table, session: sRes.data?.data || null };
+                    const sessionData = sRes.data?.data || null;
+
+                    return { table, session: sessionData };
                   } catch {
                     return { table, session: null };
                   }
@@ -996,6 +999,11 @@ export default function OrdersMain() {
   // New table booking popup states
   const [showNewBookingPopup, setShowNewBookingPopup] = useState(false);
   const [popupBooking, setPopupBooking] = useState(null);
+  // Counter payment popup states
+  const [showCounterPaymentPopup, setShowCounterPaymentPopup] = useState(false);
+  const [popupPayment, setPopupPayment] = useState(null);
+  const [isMarkingPaid, setIsMarkingPaid] = useState(false);
+  const shownPaymentsRef = useRef(new Set());
   const [restaurantStatus, setRestaurantStatus] = useState({
     isActive: null,
     rejectionReason: null,
@@ -1061,8 +1069,15 @@ export default function OrdersMain() {
   };
 
   // Restaurant notifications hook for real-time orders + table bookings
-  const { newOrder, clearNewOrder, newBooking, clearNewBooking, isConnected } =
-    useRestaurantNotifications();
+  const { 
+    newOrder, 
+    clearNewOrder, 
+    newBooking, 
+    clearNewBooking, 
+    newPaymentRequest, 
+    clearNewPaymentRequest, 
+    isConnected 
+  } = useRestaurantNotifications();
 
   const rejectReasons = [
     "Restaurant is too busy",
@@ -1274,6 +1289,30 @@ export default function OrdersMain() {
     }
   }, [newBooking]);
 
+  // Show counter payment popup when payment request arrives
+  useEffect(() => {
+    if (!newPaymentRequest) return;
+    console.log("DEBUG: newPaymentRequest arrived in OrdersMain:", newPaymentRequest);
+    
+    // Prioritize payment popup - it's crucial for money collection
+    // We only block it if a new order popup is ACTIVE (swipe to accept one)
+    if (showNewOrderPopupRef.current) {
+        console.log("DEBUG: Suppressing payment popup because new order popup is showing");
+        return;
+    }
+    
+    const key = `payment-${newPaymentRequest.sessionId}`;
+    if (!shownPaymentsRef.current.has(key)) {
+      console.log("DEBUG: Showing counter payment popup for key:", key);
+      shownPaymentsRef.current.add(key);
+      setPopupPayment(newPaymentRequest);
+      setShowCounterPaymentPopup(true);
+      toast.info(`Counter payment request for Table ${newPaymentRequest.tableNumber}`);
+    } else {
+      console.log("DEBUG: Payment request already shown for key:", key);
+    }
+  }, [newPaymentRequest]);
+
   // Keep refs in sync to avoid stale state inside one-time event handlers.
   useEffect(() => {
     showNewOrderPopupRef.current = showNewOrderPopup;
@@ -1411,7 +1450,7 @@ export default function OrdersMain() {
     const intervalId = setInterval(checkOrdersToPopup, 60000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [ordersRefreshToken]);
 
   // Play audio when popup opens
   useEffect(() => {
@@ -1713,6 +1752,33 @@ export default function OrdersMain() {
     setShowNewBookingPopup(false);
     setPopupBooking(null);
     clearNewBooking();
+  };
+
+  const handleCloseCounterPopup = () => {
+    setShowCounterPaymentPopup(false);
+    setPopupPayment(null);
+    clearNewPaymentRequest();
+  };
+
+  const handleMarkPaid = async () => {
+    const payment = popupPayment || newPaymentRequest;
+    if (!payment?.sessionId) return;
+
+    try {
+      setIsMarkingPaid(true);
+      const res = await dineInAPI.markCounterPaymentPaid(payment.sessionId);
+      if (res?.data?.success) {
+        toast.success(`Payment marked as PAID for Table ${payment.tableNumber}`);
+        handleCloseCounterPopup();
+        requestOrdersRefresh();
+      } else {
+        toast.error(res?.data?.message || "Failed to mark as paid");
+      }
+    } catch (e) {
+      toast.error(e?.response?.data?.message || "Error marking payment as paid");
+    } finally {
+      setIsMarkingPaid(false);
+    }
   };
 
   const handleAcceptBooking = async () => {
@@ -2754,6 +2820,82 @@ export default function OrdersMain() {
                       disabled={isAcceptingOrder}
                       className="w-full bg-white border-2 border-red-500 text-red-600 py-3 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60">
                       Reject Order
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 💰 Counter Payment Pending Alert */}
+      <AnimatePresence>
+        {showCounterPaymentPopup && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-[65] bg-black/60 flex items-center justify-center p-4"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCloseCounterPopup}
+            >
+              <motion.div
+                className="w-[95%] max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden"
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="bg-orange-500 p-6 text-white text-center">
+                  <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Wallet className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-black leading-tight uppercase tracking-wide">
+                    Payment at Counter
+                  </h3>
+                  <p className="text-sm font-medium opacity-90 mt-1">
+                    Customer is coming to pay
+                  </p>
+                </div>
+
+                <div className="p-6">
+                  <div className="space-y-4 mb-4">
+                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                      <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Table</span>
+                      <span className="text-2xl font-black text-gray-900">
+                        {(popupPayment || newPaymentRequest)?.tableNumber || "—"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pb-3 border-b border-gray-100">
+                      <span className="text-gray-500 font-bold text-xs uppercase tracking-widest">Payable</span>
+                      <span className="text-2xl font-black text-emerald-600">
+                        ₹{(popupPayment || newPaymentRequest)?.totalAmount || 0}
+                      </span>
+                    </div>
+                    <div className="bg-orange-50 border border-orange-100 rounded-2xl p-4 flex items-center gap-3">
+                      <Clock className="w-5 h-5 text-orange-500" />
+                      <p className="text-[11px] font-black text-orange-800 leading-tight">
+                        STATUS: PAYMENT PENDING
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3">
+                    <button
+                      type="button"
+                      disabled={isMarkingPaid}
+                      onClick={handleMarkPaid}
+                      className="w-full bg-emerald-600 text-white py-4 rounded-2xl font-black text-base hover:bg-emerald-700 shadow-lg shadow-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isMarkingPaid ? "Processing..." : "Mark as Paid"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCloseCounterPopup}
+                      className="w-full bg-white border-2 border-gray-100 text-gray-400 py-3 rounded-2xl font-bold text-xs hover:bg-gray-50 active:scale-95 transition-all"
+                    >
+                      Remind later
                     </button>
                   </div>
                 </div>

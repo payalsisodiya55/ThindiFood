@@ -1959,6 +1959,17 @@ export default function Cart() {
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden pb-44 md:pb-52">
+        {/* Takeaway Order Notice */}
+        <div className="bg-[#00c87e]/10 dark:bg-[#00c87e]/5 px-4 md:px-6 py-2 md:py-2.5 flex items-center justify-center">
+          <p className="text-xs md:text-sm font-bold text-[#00c87e] flex items-center gap-2 tracking-wide uppercase">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00c87e] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00c87e]"></span>
+            </span>
+            Takeaway Order
+          </p>
+        </div>
+
         {/* Savings Banner */}
         {savings > 0 && (
           <div className="bg-blue-100 dark:bg-blue-900/20 px-4 md:px-6 py-2 md:py-3 flex-shrink-0">

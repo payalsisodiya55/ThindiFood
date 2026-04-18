@@ -86,8 +86,16 @@ const DineInMenu = () => {
         if (sessionData.status === "completed" || sessionData.isPaid) {
             toast.success("Session completed. Thanks for dining!");
             setTimeout(() => navigate("/food/user/dining"), 800);
+            return;
         }
-    }, [sessionData, navigate]);
+        
+        // If user already opted to pay at counter, prevent them from adding items and redirect to bill
+        if (sessionData.paymentMode === "COUNTER" && sessionData.paymentStatus === "PENDING") {
+            toast.info("Your bill is locked for counter payment.");
+            navigate(`/user/dine-in/bill?sessionId=${sessionId}`);
+        }
+    }, [sessionData, navigate, sessionId]);
+
 
     const fetchSessionAndMenu = async () => {
         try {

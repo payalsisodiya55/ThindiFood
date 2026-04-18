@@ -2732,6 +2732,14 @@ export const dineInAPI = {
     apiClient.post('/food/dine-in/bookings', body, { contextModule: 'user' }),
   cancelBooking: (bookingId) =>
     apiClient.patch(`/food/dine-in/bookings/${bookingId}/cancel`, {}, { contextModule: 'user' }),
+
+  // ─── Counter Payment Flow ───────────────────────────────────────────────────
+  /** User selects "Pay at Counter": locks the bill and notifies the restaurant. */
+  requestCounterPayment: (sessionId) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/request-counter-payment`, {}, { contextModule: 'user' }),
+  /** Restaurant staff marks the counter payment as done (cash/card received). */
+  markCounterPaymentPaid: (sessionId) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/mark-counter-paid`, {}, { contextModule: 'restaurant' }),
 };
 
 export const heroBannerAPI = createStubAPI();

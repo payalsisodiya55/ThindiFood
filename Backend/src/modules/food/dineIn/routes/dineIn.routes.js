@@ -11,7 +11,9 @@ import {
     getSessionBillController,
     closeSessionController,
     addTableController,
-    listTablesController
+    listTablesController,
+    requestCounterPaymentController,
+    markCounterPaidController,
 } from '../controllers/dineIn.controller.js';
 import {
     createBookingController,
@@ -42,6 +44,9 @@ router.patch('/orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT
 // Billing & Payment
 router.get('/sessions/:id/bill', authMiddleware, getSessionBillController);
 router.post('/sessions/:id/pay', authMiddleware, closeSessionController);
+// Pay at Counter
+router.post('/sessions/:id/request-counter-payment', authMiddleware, requireRoles('USER'), requestCounterPaymentController);
+router.post('/sessions/:id/mark-counter-paid', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), markCounterPaidController);
 
 // Table Management
 router.post('/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), addTableController);

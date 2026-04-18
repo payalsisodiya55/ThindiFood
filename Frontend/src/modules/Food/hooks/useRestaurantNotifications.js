@@ -82,6 +82,7 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 export const useRestaurantNotifications = () => {
   const socketRef = useRef(null);
   const [newOrder, setNewOrder] = useState(null);
+  const [newPaymentRequest, setNewPaymentRequest] = useState(null);
   const [newBooking, setNewBooking] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const audioRef = useRef(null);
@@ -202,6 +203,17 @@ export const useRestaurantNotifications = () => {
         booking?.booking_id ||
         "",
     ).trim();
+
+  const handleIncomingPaymentAlert = (paymentData) => {
+    console.log('DEBUG: handleIncomingPaymentAlert called with:', paymentData); if (!paymentData?.sessionId) return;
+    const alertKey = "payment-" + paymentData.sessionId;
+    if (shouldSkipBecauseHandled(alertKey)) return;
+    markHandled(alertKey);
+    activeOrderRef.current = paymentData || { id: Date.now() };
+    playNotificationSound(paymentData);
+    startAlertLoop();
+    setNewPaymentRequest(paymentData);
+  };
 
   const shouldProcessBookingAlert = (booking = {}) => {
     const key = getBookingAlertKey(booking);
@@ -408,6 +420,21 @@ export const useRestaurantNotifications = () => {
                 
                 const session = sessRes.data?.data;
                 if (!session || !session.orders) continue;
+
+                // Counter payment fallback notification:
+                // if socket event is missed, polling should still raise the staff popup.
+                if (
+                  String(session?.paymentMode || '').toUpperCase() === 'COUNTER' &&
+                  String(session?.paymentStatus || '').toUpperCase() === 'PENDING'
+                ) {
+                  handleIncomingPaymentAlert({
+                    sessionId: session._id?.toString?.() || session._id,
+                    tableNumber: table.tableNumber,
+                    totalAmount: Number(session.totalAmount || 0),
+                    restaurantId: session.restaurantId?._id || session.restaurantId,
+                    source: 'polling',
+                  });
+                }
 
                 const rounds = Array.isArray(session.orders) ? session.orders : [];
                 const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
@@ -822,6 +849,11 @@ export const useRestaurantNotifications = () => {
     });
 
     // 🆕 Real-time dine-in order: fired when a customer places a round
+    socketRef.current.on('payment_pending', (payload) => {
+      console.log('DEBUG: Socket payment_pending received:', payload); debugLog('💰 Payment pending request received:', payload);
+      handleIncomingPaymentAlert(payload);
+    });
+
     socketRef.current.on('new_dine_in_order', (payload) => {
       debugLog('🍽️ New dine-in order received:', payload);
       handleIncomingOrderAlert({
@@ -961,6 +993,12 @@ export const useRestaurantNotifications = () => {
     setNewOrder(null);
   };
 
+  const clearNewPaymentRequest = () => {
+    stopAlertLoop();
+    activeOrderRef.current = null;
+    setNewPaymentRequest(null);
+  };
+
   const clearNewBooking = () => {
     stopAlertLoop();
     activeOrderRef.current = null;
@@ -970,6 +1008,8 @@ export const useRestaurantNotifications = () => {
   return {
     newOrder,
     clearNewOrder,
+    newPaymentRequest,
+    clearNewPaymentRequest,
     newBooking,
     clearNewBooking,
     isConnected,
