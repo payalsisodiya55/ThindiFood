@@ -20,32 +20,6 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
-const getDiscountBreakdown = (transaction = {}) => {
-  const platformCouponDiscount = Number(transaction.platformCouponDiscount ?? transaction.pricing?.platformCouponDiscount ?? 0)
-  const restaurantCouponDiscount = Number(transaction.restaurantCouponDiscount ?? transaction.pricing?.restaurantCouponDiscount ?? 0)
-  const restaurantOfferDiscount = Number(
-    transaction.restaurantOfferDiscount ??
-    transaction.restaurantDiscount ??
-    transaction.pricing?.restaurantOfferDiscount ??
-    transaction.pricing?.restaurantDiscount ??
-    0
-  )
-  const totalDiscount = Number(
-    transaction.couponDiscount ??
-    transaction.pricing?.couponDiscount ??
-    transaction.pricing?.discount ??
-    (platformCouponDiscount + restaurantCouponDiscount + restaurantOfferDiscount)
-  )
-
-  return {
-    platformCouponDiscount,
-    restaurantCouponDiscount,
-    restaurantOfferDiscount,
-    totalDiscount,
-  }
-}
-
-
 export default function TransactionReport() {
   const [searchQuery, setSearchQuery] = useState("")
   const [transactions, setTransactions] = useState([])
@@ -56,7 +30,10 @@ export default function TransactionReport() {
     refundedTransaction: 0,
     adminEarning: 0,
     restaurantEarning: 0,
-    deliverymanEarning: 0
+    deliverymanEarning: 0,
+    adminCouponDiscount: 0,
+    restaurantCouponDiscount: 0,
+    restaurantOfferDiscount: 0,
   })
   const [filters, setFilters] = useState({
     zone: "All Zones",
@@ -131,7 +108,10 @@ export default function TransactionReport() {
             refundedTransaction: 0,
             adminEarning: 0,
             restaurantEarning: 0,
-            deliverymanEarning: 0
+            deliverymanEarning: 0,
+            adminCouponDiscount: 0,
+            restaurantCouponDiscount: 0,
+            restaurantOfferDiscount: 0,
           })
         } else {
           setTransactions([])
@@ -243,10 +223,10 @@ export default function TransactionReport() {
                 onChange={(e) => setFilters(prev => ({ ...prev, zone: e.target.value }))}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All Zones">All Zones</option>
-                {zones.map(zone => (
-                  <option key={zone._id} value={zone.zoneName || zone.name}>{zone.zoneName || zone.name}</option>
-                ))}
+                  <option value="All Zones">All Zones</option>
+                  {zones.map(zone => (
+                  <option key={zone._id} value={zone._id}>{zone.zoneName || zone.name}</option>
+                 ))}
               </select>
               <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
             </div>
@@ -257,10 +237,10 @@ export default function TransactionReport() {
                 onChange={(e) => setFilters(prev => ({ ...prev, restaurant: e.target.value }))}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All restaurants">All restaurants</option>
-                {restaurants.map(restaurant => (
-                  <option key={restaurant._id} value={restaurant.restaurantName || restaurant.name}>{restaurant.restaurantName || restaurant.name}</option>
-                ))}
+                  <option value="All restaurants">All restaurants</option>
+                  {restaurants.map(restaurant => (
+                  <option key={restaurant._id} value={restaurant._id}>{restaurant.restaurantName || restaurant.name}</option>
+                 ))}
               </select>
               <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-500 pointer-events-none" />
             </div>
@@ -376,6 +356,21 @@ export default function TransactionReport() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[11px] font-semibold text-slate-500">Coupon By Admin</p>
+                <p className="mt-1 text-sm font-bold text-blue-600">{formatFullCurrency(summary.adminCouponDiscount || 0)}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[11px] font-semibold text-slate-500">Coupon By Restaurant</p>
+                <p className="mt-1 text-sm font-bold text-amber-600">{formatFullCurrency(summary.restaurantCouponDiscount || 0)}</p>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <p className="text-[11px] font-semibold text-slate-500">Offer By Restaurant</p>
+                <p className="mt-1 text-sm font-bold text-emerald-600">{formatFullCurrency(summary.restaurantOfferDiscount || 0)}</p>
+              </div>
+            </div>
+
             {/* Deliveryman Earning */}
             <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
               <div className="flex items-center justify-between">
@@ -455,27 +450,28 @@ export default function TransactionReport() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto scrollbar-hide">
-            <table className="w-full" style={{ tableLayout: 'fixed', width: '100%' }}>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px]" style={{ tableLayout: 'fixed' }}>
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '3%' }}>SI</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '7%' }}>Order Id</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Restaurant</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Customer Name</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '11%' }}>Total Item Amount</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '12%' }}>Total Discount</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Vat/Tax</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Delivery Charge</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Platform Fee</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Order Amount</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Total Item Amount</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Coupon By Admin</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Coupon By Restaurant</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Offer By Restaurant</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '7%' }}>VAT/Tax</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '7%' }}>Platform Fee</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Order Amount</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '8%' }}>Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-6 py-20 text-center">
+                    <td colSpan={12} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No transactions match your search</p>
@@ -510,23 +506,16 @@ export default function TransactionReport() {
                         <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.totalItemAmount)}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        {(() => {
-                          const discountBreakdown = getDiscountBreakdown(transaction)
-                          return (
-                            <div className="space-y-0.5">
-                              <span className="text-[10px] text-slate-700 block">{formatFullCurrency(discountBreakdown.totalDiscount)}</span>
-                              <span className="text-[9px] text-slate-400 block truncate">
-                                P {formatFullCurrency(discountBreakdown.platformCouponDiscount)} | RC {formatFullCurrency(discountBreakdown.restaurantCouponDiscount)} | RO {formatFullCurrency(discountBreakdown.restaurantOfferDiscount)}
-                              </span>
-                            </div>
-                          )
-                        })()}
+                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.couponByAdmin || 0)}</span>
+                      </td>
+                      <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.couponByRestaurant || 0)}</span>
+                      </td>
+                      <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.offerByRestaurant || 0)}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.vatTax)}</span>
-                      </td>
-                      <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.deliveryCharge)}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.platformFee || 0)}</span>

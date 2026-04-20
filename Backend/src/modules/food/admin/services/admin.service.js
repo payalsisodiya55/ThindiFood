@@ -694,9 +694,50 @@ export async function getTransactionReport(query = {}) {
     let restaurantIds = null;
     if (zone || restaurant) {
         const restFilter = {};
-        if (zone) restFilter.zoneId = zone; // Assuming zone is an ID or we need to lookup
+        if (zone) {
+            const zoneValue = String(zone).trim();
+            if (mongoose.Types.ObjectId.isValid(zoneValue)) {
+                restFilter.zoneId = new mongoose.Types.ObjectId(zoneValue);
+            } else {
+                const zoneDoc = await FoodZone.findOne({
+                    $or: [
+                        { _id: mongoose.Types.ObjectId.isValid(zoneValue) ? new mongoose.Types.ObjectId(zoneValue) : null },
+                        { name: zoneValue },
+                        { zoneName: zoneValue }
+                    ]
+                })
+                    .select('_id')
+                    .lean();
+                if (zoneDoc?._id) {
+                    restFilter.zoneId = zoneDoc._id;
+                } else {
+                    return {
+                        transactions: [],
+                        summary: {
+                            completedTransaction: 0,
+                            refundedTransaction: 0,
+                            adminEarning: 0,
+                            restaurantEarning: 0,
+                            deliverymanEarning: 0,
+                            adminCouponDiscount: 0,
+                            restaurantCouponDiscount: 0,
+                            restaurantOfferDiscount: 0,
+                        }
+                    };
+                }
+            }
+        }
         if (restaurant && restaurant !== 'All restaurants') {
-            const restDoc = await mongoose.model('FoodRestaurant').findOne({ restaurantName: restaurant }).lean();
+            const restaurantValue = String(restaurant).trim();
+            const restaurantFilter = mongoose.Types.ObjectId.isValid(restaurantValue)
+                ? { _id: new mongoose.Types.ObjectId(restaurantValue) }
+                : {
+                    $or: [
+                        { restaurantName: restaurantValue },
+                        { name: restaurantValue }
+                    ]
+                };
+            const restDoc = await mongoose.model('FoodRestaurant').findOne(restaurantFilter).lean();
             if (restDoc) restFilter._id = restDoc._id;
         }
         
@@ -718,20 +759,34 @@ export async function getTransactionReport(query = {}) {
 
     const transactions = transactionRows.map((tx) => {
         const order = tx.orderId || {};
-        const pricing = order.pricing || {};
+        const pricing = tx.pricing || order.pricing || {};
+        const originalSubtotal = Number(pricing.originalSubtotal ?? pricing.subtotal ?? 0) || 0;
+        const offerAdjustedSubtotal = Number(pricing.offerAdjustedSubtotal ?? pricing.subtotal ?? 0) || 0;
         const subtotal = Number(pricing.subtotal || 0) || 0;
         const packagingFee = Number(pricing.packagingFee || 0) || 0;
         const deliveryFee = Number(pricing.deliveryFee || 0) || 0;
         const tax = Number(pricing.tax || 0) || 0;
-        const discount = Number(pricing.discount || 0) || 0;
         const total = Number(pricing.total || 0) || 0;
+        const platformCouponDiscount = Number(pricing.platformCouponDiscount || 0) || 0;
+        const restaurantCouponDiscount = Number(pricing.restaurantCouponDiscount || 0) || 0;
+        const restaurantOfferDiscount = Number(
+            pricing.restaurantOfferDiscount ?? pricing.restaurantDiscount ?? 0
+        ) || 0;
+        const totalDiscount =
+            platformCouponDiscount + restaurantCouponDiscount + restaurantOfferDiscount;
+        const restaurantCommission =
+            Number(tx.amounts?.restaurantCommission ?? pricing.restaurantCommission ?? 0) || 0;
+        const restaurantShare =
+            Number(tx.amounts?.restaurantShare ?? pricing.payoutAdjustments?.netPayout ?? 0) || 0;
+        const adminEarningValue =
+            Number(tx.amounts?.platformNetProfit ?? pricing.platformFee ?? 0) || 0;
 
         // "Platform fee" should come from pricing.platformFee when available.
         // For older orders where pricing.platformFee isn't stored, derive it from the pricing equation:
         // total = subtotal + packagingFee + deliveryFee + platformFee + tax - discount
         const platformFeeDerived = Math.max(
             0,
-            total - subtotal - packagingFee - deliveryFee - tax + discount
+            total - subtotal - packagingFee - deliveryFee - tax + totalDiscount
         );
         const platformFee =
             pricing.platformFee !== undefined && pricing.platformFee !== null
@@ -742,16 +797,21 @@ export async function getTransactionReport(query = {}) {
             orderId: tx.orderReadableId || order.orderId || 'N/A',
             restaurant: tx.restaurantId?.restaurantName || 'N/A',
             customerName: tx.userId?.name || 'Guest',
-            totalItemAmount: subtotal,
-            itemDiscount: pricing.discount || 0,
-            couponDiscount: 0, // Placeholder if you add coupon logic
-            referralDiscount: 0, // Placeholder
-            discountedAmount: Math.max(0, (pricing.subtotal || 0) - (pricing.discount || 0)),
+            totalItemAmount: originalSubtotal,
+            offerAdjustedItemAmount: offerAdjustedSubtotal,
+            totalDiscount,
+            couponByAdmin: platformCouponDiscount,
+            couponByRestaurant: restaurantCouponDiscount,
+            offerByRestaurant: restaurantOfferDiscount,
             vatTax: tx.amounts?.taxAmount || pricing.tax || 0,
             deliveryCharge: pricing.deliveryFee || 0,
             platformFee,
+            adminEarning: adminEarningValue,
+            restaurantEarning: restaurantShare,
+            restaurantCommission,
             orderAmount: tx.amounts?.totalCustomerPaid || pricing.total || 0,
-            status: tx.status
+            status: tx.status,
+            orderStatus: order.orderStatus || ''
         };
     });
 
@@ -760,14 +820,26 @@ export async function getTransactionReport(query = {}) {
     let adminEarning = 0;
     let restaurantEarning = 0;
     let deliverymanEarning = 0;
+    let adminCouponDiscount = 0;
+    let restaurantCouponTotal = 0;
+    let restaurantOfferTotal = 0;
 
     for (const tx of transactionRows) {
+        const pricing = tx.pricing || tx.orderId?.pricing || {};
+        const platformCouponDiscount = Number(pricing.platformCouponDiscount || 0) || 0;
+        const restaurantCouponDiscount = Number(pricing.restaurantCouponDiscount || 0) || 0;
+        const restaurantOfferDiscount = Number(
+            pricing.restaurantOfferDiscount ?? pricing.restaurantDiscount ?? 0
+        ) || 0;
         // Calculate Summary
         if (tx.status === 'captured' || tx.status === 'settled' || (tx.orderId && tx.orderId.orderStatus === 'delivered')) {
             completedTransaction += tx.amounts?.totalCustomerPaid || 0;
             adminEarning += tx.amounts?.platformNetProfit || 0;
             restaurantEarning += tx.amounts?.restaurantShare || 0;
             deliverymanEarning += tx.amounts?.riderShare || 0;
+            adminCouponDiscount += platformCouponDiscount;
+            restaurantCouponTotal += restaurantCouponDiscount;
+            restaurantOfferTotal += restaurantOfferDiscount;
         }
         if (tx.status === 'refunded' || (tx.orderId && tx.orderId.orderStatus === 'cancelled_by_admin')) {
             // Count number of refunded transactions according to old logic or sum them
@@ -781,6 +853,9 @@ export async function getTransactionReport(query = {}) {
         adminEarning,
         restaurantEarning,
         deliverymanEarning,
+        adminCouponDiscount,
+        restaurantCouponDiscount: restaurantCouponTotal,
+        restaurantOfferDiscount: restaurantOfferTotal,
     };
 
     return { transactions, summary };
