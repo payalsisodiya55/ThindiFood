@@ -2,15 +2,28 @@ import { FoodHeroBanner } from '../models/heroBanner.model.js';
 import { v2 as cloudinary } from 'cloudinary';
 import mongoose from 'mongoose';
 
+const normalizeHeroBanner = (banner, fallbackOrder = 0) => {
+    if (!banner) return banner;
+    const numericSortOrder = Number(banner.sortOrder);
+
+    return {
+        ...banner,
+        order: Number.isFinite(numericSortOrder) ? numericSortOrder : fallbackOrder
+    };
+};
+
 export const listHeroBanners = async () => {
-    return FoodHeroBanner.find()
+    const banners = await FoodHeroBanner.find()
         .sort({ sortOrder: 1, createdAt: -1 })
         .populate('zoneId', 'name zoneName serviceLocation')
         .lean();
+
+    return banners.map((banner, index) => normalizeHeroBanner(banner, index));
 };
 
 export const getHeroBannerById = async (id) => {
-    return FoodHeroBanner.findById(id).lean();
+    const banner = await FoodHeroBanner.findById(id).lean();
+    return normalizeHeroBanner(banner);
 };
 
 export const createHeroBannersFromFiles = async (files, meta = {}) => {
@@ -19,6 +32,13 @@ export const createHeroBannersFromFiles = async (files, meta = {}) => {
     }
 
     const results = [];
+    const lastBanner = await FoodHeroBanner.findOne()
+        .sort({ sortOrder: -1, createdAt: -1 })
+        .select('sortOrder')
+        .lean();
+    let nextSortOrder = Number.isFinite(Number(lastBanner?.sortOrder))
+        ? Number(lastBanner.sortOrder) + 1
+        : 0;
 
     for (const file of files) {
         try {
@@ -44,11 +64,12 @@ export const createHeroBannersFromFiles = async (files, meta = {}) => {
                     meta.zoneId && mongoose.Types.ObjectId.isValid(meta.zoneId)
                         ? new mongoose.Types.ObjectId(meta.zoneId)
                         : undefined,
-                sortOrder: meta.sortOrder ?? 0,
+                sortOrder: meta.sortOrder ?? nextSortOrder,
                 isActive: true
             });
 
-            results.push({ success: true, banner: banner.toObject() });
+            results.push({ success: true, banner: normalizeHeroBanner(banner.toObject(), nextSortOrder) });
+            nextSortOrder += 1;
         } catch (error) {
             results.push({ success: false, error: error.message });
         }
@@ -81,7 +102,7 @@ export const updateHeroBannerOrder = async (id, sortOrder) => {
         { sortOrder },
         { new: true }
     ).lean();
-    return updated;
+    return normalizeHeroBanner(updated, sortOrder);
 };
 
 export const toggleHeroBannerStatus = async (id, isActive) => {
@@ -90,7 +111,7 @@ export const toggleHeroBannerStatus = async (id, isActive) => {
         { isActive },
         { new: true }
     ).lean();
-    return updated;
+    return normalizeHeroBanner(updated);
 };
 
 export const linkHeroBannerRestaurants = async (id, restaurantIds = []) => {
@@ -99,7 +120,7 @@ export const linkHeroBannerRestaurants = async (id, restaurantIds = []) => {
         { linkedRestaurantIds: restaurantIds },
         { new: true }
     ).lean();
-    return updated;
+    return normalizeHeroBanner(updated);
 };
 
 export const updateHeroBannerZone = async (id, zoneId) => {
@@ -116,6 +137,6 @@ export const updateHeroBannerZone = async (id, zoneId) => {
         .populate('zoneId', 'name zoneName serviceLocation')
         .lean();
 
-    return updated;
+    return normalizeHeroBanner(updated);
 };
 

@@ -226,6 +226,16 @@ export default function LandingPageManagement() {
     return zone?.zoneName || zone?.name || zone?.serviceLocation || "Zone"
   }
 
+  const getBannerOrderValue = (banner, fallbackIndex = 0) => {
+    const directOrder = Number(banner?.order)
+    if (Number.isFinite(directOrder)) return directOrder
+
+    const sortOrder = Number(banner?.sortOrder)
+    if (Number.isFinite(sortOrder)) return sortOrder
+
+    return fallbackIndex
+  }
+
   const handleBannerFileSelect = (e) => {
     const files = Array.from(e.target?.files || e.files || [])
     if (files.length === 0) return
@@ -374,20 +384,46 @@ export default function LandingPageManagement() {
   }
 
   const handleBannerOrderChange = async (id, direction) => {
-    const banner = banners.find(b => b._id === id)
-    if (!banner) return
-    const newOrder = direction === 'up' ? banner.order - 1 : banner.order + 1
-    const otherBanner = banners.find(b => b.order === newOrder && b._id !== id)
-    if (!otherBanner && newOrder < 0) return
+    const orderedBanners = [...banners].sort((a, b) => {
+      const firstOrder = getBannerOrderValue(a)
+      const secondOrder = getBannerOrderValue(b)
+      if (firstOrder !== secondOrder) return firstOrder - secondOrder
+      return String(a?._id || "").localeCompare(String(b?._id || ""))
+    })
+
+    const currentIndex = orderedBanners.findIndex((banner) => banner._id === id)
+    if (currentIndex < 0) return
+
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (targetIndex < 0 || targetIndex >= orderedBanners.length) return
+
+    const reorderedBanners = [...orderedBanners]
+    const [movedBanner] = reorderedBanners.splice(currentIndex, 1)
+    reorderedBanners.splice(targetIndex, 0, movedBanner)
+
     try {
       setError(null)
-      await api.patch(`/food/hero-banners/${id}/order`, { order: newOrder }, getAuthConfig())
-      if (otherBanner) {
-        await api.patch(`/food/hero-banners/${otherBanner._id}/order`, { order: banner.order }, getAuthConfig())
+      await Promise.all(
+        reorderedBanners.map((banner, index) =>
+          api.patch(`/food/hero-banners/${banner._id}/order`, { order: index }, getAuthConfig())
+        )
+      )
+      setBanners(
+        reorderedBanners.map((banner, index) => ({
+          ...banner,
+          order: index,
+          sortOrder: index,
+        }))
+      )
+      if (import.meta.env.DEV) {
+        debugLog('[LandingPageManagement] Hero banner order updated', reorderedBanners.map((banner, index) => ({
+          id: banner._id,
+          order: index,
+        })))
       }
-      await fetchBanners()
     } catch (err) {
       setErrorSafely('Failed to update banner order.')
+      await fetchBanners()
     }
   }
 
@@ -1497,7 +1533,14 @@ export default function LandingPageManagement() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {banners.map((banner, index) => (
+                  {[...banners]
+                    .sort((a, b) => {
+                      const firstOrder = getBannerOrderValue(a)
+                      const secondOrder = getBannerOrderValue(b)
+                      if (firstOrder !== secondOrder) return firstOrder - secondOrder
+                      return String(a?._id || "").localeCompare(String(b?._id || ""))
+                    })
+                    .map((banner, index) => (
                     <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                       <div className="relative aspect-video bg-slate-100">
                         <img src={banner.imageUrl} alt={`Hero Banner ${index + 1}`} className="w-full h-full object-cover" />
@@ -1507,7 +1550,7 @@ export default function LandingPageManagement() {
                           </span>
                         </div>
                         <div className="absolute top-2 left-2">
-                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">Order: {banner.order}</span>
+                          <span className="px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">Order: {index + 1}</span>
                         </div>
                       </div>
                       <div className="p-4 bg-white">
