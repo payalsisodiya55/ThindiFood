@@ -16,7 +16,8 @@ const normalizeCouponDoc = (doc) => {
         ...draft,
         id: String(draft._id),
         _id: String(draft._id),
-        restaurantId: draft.restaurantId ? String(draft.restaurantId) : null
+        restaurantId: draft.restaurantId ? String(draft.restaurantId) : null,
+        fundedBy: draft.fundedBy === 'restaurant' || (!draft.fundedBy && draft.restaurantId) ? 'restaurant' : 'platform'
     };
 };
 
@@ -32,6 +33,7 @@ export const createRestaurantCoupon = async (restaurantId, payload) => {
         couponCode: payload.couponCode,
         discountType: payload.discountType,
         discountValue: payload.discountValue,
+        fundedBy: 'restaurant',
         customerScope: payload.customerScope || 'all',
         restaurantScope: 'selected',
         restaurantId: rid,
@@ -95,6 +97,7 @@ export const updateMyRestaurantCoupon = async (restaurantId, couponId, payload) 
 
     const set = {
         ...payload,
+        fundedBy: 'restaurant',
         restaurantScope: 'selected',
         restaurantId: rid,
         status: 'inactive'

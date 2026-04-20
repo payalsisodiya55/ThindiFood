@@ -20,6 +20,31 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const getDiscountBreakdown = (transaction = {}) => {
+  const platformCouponDiscount = Number(transaction.platformCouponDiscount ?? transaction.pricing?.platformCouponDiscount ?? 0)
+  const restaurantCouponDiscount = Number(transaction.restaurantCouponDiscount ?? transaction.pricing?.restaurantCouponDiscount ?? 0)
+  const restaurantOfferDiscount = Number(
+    transaction.restaurantOfferDiscount ??
+    transaction.restaurantDiscount ??
+    transaction.pricing?.restaurantOfferDiscount ??
+    transaction.pricing?.restaurantDiscount ??
+    0
+  )
+  const totalDiscount = Number(
+    transaction.couponDiscount ??
+    transaction.pricing?.couponDiscount ??
+    transaction.pricing?.discount ??
+    (platformCouponDiscount + restaurantCouponDiscount + restaurantOfferDiscount)
+  )
+
+  return {
+    platformCouponDiscount,
+    restaurantCouponDiscount,
+    restaurantOfferDiscount,
+    totalDiscount,
+  }
+}
+
 
 export default function TransactionReport() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -439,7 +464,7 @@ export default function TransactionReport() {
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Restaurant</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Customer Name</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '11%' }}>Total Item Amount</th>
-                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Coupon Discount</th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '12%' }}>Total Discount</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Vat/Tax</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '10%' }}>Delivery Charge</th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: '9%' }}>Platform Fee</th>
@@ -485,7 +510,17 @@ export default function TransactionReport() {
                         <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.totalItemAmount)}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.couponDiscount)}</span>
+                        {(() => {
+                          const discountBreakdown = getDiscountBreakdown(transaction)
+                          return (
+                            <div className="space-y-0.5">
+                              <span className="text-[10px] text-slate-700 block">{formatFullCurrency(discountBreakdown.totalDiscount)}</span>
+                              <span className="text-[9px] text-slate-400 block truncate">
+                                P {formatFullCurrency(discountBreakdown.platformCouponDiscount)} | RC {formatFullCurrency(discountBreakdown.restaurantCouponDiscount)} | RO {formatFullCurrency(discountBreakdown.restaurantOfferDiscount)}
+                              </span>
+                            </div>
+                          )
+                        })()}
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{formatFullCurrency(transaction.vatTax)}</span>

@@ -458,6 +458,15 @@ export default function Home() {
   const [exploreMoreHeading, setExploreMoreHeading] = useState("Explore More");
   const [headerVideoUrl, setHeaderVideoUrl] = useState("");
   const [headerVideoUrls, setHeaderVideoUrls] = useState([]);
+  const { location, loading, requestLocation } = useLocation();
+  const {
+    zoneId,
+    zoneStatus,
+    isInService,
+    isOutOfService,
+    loading: zoneLoading,
+    error: zoneError,
+  } = useZone(location);
   const [recommendedRestaurantIds, setRecommendedRestaurantIds] = useState([]);
   const [
     recommendedRestaurantsFromSettings,
@@ -884,7 +893,9 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     setLoadingBanners(true);
-    publicGetOnce("/food/hero-banners/public")
+    publicGetOnce("/food/hero-banners/public", {
+      params: zoneId ? { zoneId } : {},
+    })
       .then((response) => {
         if (cancelled) return;
         const data = response?.data?.data;
@@ -913,7 +924,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [zoneId]);
 
   // Old backend endpoint removed: keep UI stable with empty categories.
   useEffect(() => {
@@ -1150,15 +1161,6 @@ export default function Home() {
     getDefaultAddress,
   } = profileContext;
   const { addToCart, cart } = useCart();
-  const { location, loading, requestLocation } = useLocation();
-  const {
-    zoneId,
-    zoneStatus,
-    isInService,
-    isOutOfService,
-    loading: zoneLoading,
-    error: zoneError,
-  } = useZone(location);
   const [showToast, setShowToast] = useState(false);
   const [showManageCollections, setShowManageCollections] = useState(false);
   const [selectedRestaurantSlug, setSelectedRestaurantSlug] = useState(null);

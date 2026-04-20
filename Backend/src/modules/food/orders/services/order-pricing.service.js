@@ -104,11 +104,11 @@ export async function calculateOrderPricing(userId, dto) {
           const capped = Number(offer.maxDiscount)
             ? Math.min(raw, Number(offer.maxDiscount))
             : raw;
-          discount = Math.max(0, Math.min(subtotal, Math.floor(capped)));
+          discount = Math.max(0, Math.min(subtotal, Math.round(capped)));
         } else {
           discount = Math.max(
             0,
-            Math.min(subtotal, Math.floor(Number(offer.discountValue) || 0)),
+            Math.min(subtotal, Math.round(Number(offer.discountValue) || 0)),
           );
         }
         appliedCoupon = { code: codeRaw, discount };

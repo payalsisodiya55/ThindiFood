@@ -24,6 +24,12 @@ const foodHeroBannerSchema = new mongoose.Schema(
             ref: 'FoodRestaurant',
             default: []
         },
+        zoneId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodZone',
+            default: undefined,
+            index: true
+        },
         sortOrder: {
             type: Number,
             default: 0,
@@ -41,7 +47,7 @@ const foodHeroBannerSchema = new mongoose.Schema(
     }
 );
 
-foodHeroBannerSchema.index({ isActive: 1, sortOrder: 1 });
+foodHeroBannerSchema.index({ isActive: 1, sortOrder: 1, zoneId: 1 });
 
 export const FoodHeroBanner = mongoose.model('FoodHeroBanner', foodHeroBannerSchema);
 

@@ -48,7 +48,10 @@ export function computeRestaurantCommissionAmount(baseAmount, rule) {
 }
 
 export async function getRestaurantCommissionSnapshot(orderDoc) {
-  const baseAmount = Number(orderDoc?.pricing?.subtotal ?? 0) || 0;
+  const baseAmount =
+    Number(
+      orderDoc?.pricing?.commissionBaseAmount ?? orderDoc?.pricing?.subtotal ?? 0,
+    ) || 0;
   const restaurantIdRaw =
     orderDoc?.restaurantId?._id ?? orderDoc?.restaurantId ?? null;
 
@@ -96,8 +99,14 @@ export async function createInitialTransaction(order) {
         Number.isFinite(restaurantCommissionFromOrder) && restaurantCommissionFromOrder > 0
             ? restaurantCommissionFromOrder
             : (commissionAmount || 0);
-    const restaurantNet = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission;
-    const platformNetProfit = (order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare;
+    const restaurantNetFromOrder = Number(order.pricing?.payoutAdjustments?.netPayout);
+    const restaurantNet = Number.isFinite(restaurantNetFromOrder)
+        ? restaurantNetFromOrder
+        : ((order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission);
+    const platformNetProfitFromOrder = Number(order.platformProfit);
+    const platformNetProfit = Number.isFinite(platformNetProfitFromOrder)
+        ? platformNetProfitFromOrder
+        : ((order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare);
 
     const transaction = new FoodTransaction({
         orderId: order._id,
@@ -126,6 +135,8 @@ export async function createInitialTransaction(order) {
             }
         },
         pricing: {
+            originalSubtotal: Number(order.pricing?.originalSubtotal || order.pricing?.subtotal || 0) || 0,
+            offerAdjustedSubtotal: Number(order.pricing?.offerAdjustedSubtotal || order.pricing?.subtotal || 0) || 0,
             subtotal: Number(order.pricing?.subtotal || 0) || 0,
             tax: Number(order.pricing?.tax || 0) || 0,
             packagingFee: Number(order.pricing?.packagingFee || 0) || 0,
@@ -133,6 +144,21 @@ export async function createInitialTransaction(order) {
             platformFee: Number(order.pricing?.platformFee || 0) || 0,
             restaurantCommission,
             discount: Number(order.pricing?.discount || 0) || 0,
+            couponDiscount: Number(order.pricing?.couponDiscount || 0) || 0,
+            restaurantDiscount: Number(order.pricing?.restaurantDiscount || 0) || 0,
+            platformCouponDiscount: Number(order.pricing?.platformCouponDiscount || 0) || 0,
+            restaurantCouponDiscount: Number(order.pricing?.restaurantCouponDiscount || 0) || 0,
+            restaurantOfferDiscount: Number(order.pricing?.restaurantOfferDiscount || 0) || 0,
+            commissionBaseAmount: Number(order.pricing?.commissionBaseAmount || order.pricing?.subtotal || 0) || 0,
+            restaurantGrossBeforeDiscount: Number(order.pricing?.restaurantGrossBeforeDiscount || 0) || 0,
+            couponFundingType: String(order.pricing?.couponFundingType || 'none'),
+            payoutAdjustments: {
+                platformCouponDiscount: Number(order.pricing?.payoutAdjustments?.platformCouponDiscount || 0) || 0,
+                restaurantCouponDiscount: Number(order.pricing?.payoutAdjustments?.restaurantCouponDiscount || 0) || 0,
+                restaurantOfferDiscount: Number(order.pricing?.payoutAdjustments?.restaurantOfferDiscount || 0) || 0,
+                commission: Number(order.pricing?.payoutAdjustments?.commission || restaurantCommission || 0) || 0,
+                netPayout: Number(order.pricing?.payoutAdjustments?.netPayout || restaurantNet || 0) || 0
+            },
             total: Number(order.pricing?.total || 0) || 0,
             currency: String(order.pricing?.currency || order.currency || 'INR'),
         },

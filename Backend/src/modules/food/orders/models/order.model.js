@@ -32,6 +32,8 @@ const deliveryAddressSchema = new mongoose.Schema(
 
 const pricingSchema = new mongoose.Schema(
     {
+        originalSubtotal: { type: Number, default: 0, min: 0 },
+        offerAdjustedSubtotal: { type: Number, default: 0, min: 0 },
         subtotal: { type: Number, required: true, min: 0 },
         tax: { type: Number, default: 0, min: 0 },
         packagingFee: { type: Number, default: 0, min: 0 },
@@ -39,6 +41,21 @@ const pricingSchema = new mongoose.Schema(
         platformFee: { type: Number, default: 0, min: 0 },
         restaurantCommission: { type: Number, default: 0, min: 0 },
         discount: { type: Number, default: 0, min: 0 },
+        couponDiscount: { type: Number, default: 0, min: 0 },
+        restaurantDiscount: { type: Number, default: 0, min: 0 },
+        platformCouponDiscount: { type: Number, default: 0, min: 0 },
+        restaurantCouponDiscount: { type: Number, default: 0, min: 0 },
+        restaurantOfferDiscount: { type: Number, default: 0, min: 0 },
+        commissionBaseAmount: { type: Number, default: 0, min: 0 },
+        restaurantGrossBeforeDiscount: { type: Number, default: 0, min: 0 },
+        couponFundingType: { type: String, enum: ['platform', 'restaurant', 'none'], default: 'none' },
+        payoutAdjustments: {
+            platformCouponDiscount: { type: Number, default: 0, min: 0 },
+            restaurantCouponDiscount: { type: Number, default: 0, min: 0 },
+            restaurantOfferDiscount: { type: Number, default: 0, min: 0 },
+            commission: { type: Number, default: 0, min: 0 },
+            netPayout: { type: Number, default: 0, min: 0 }
+        },
         total: { type: Number, required: true, min: 0 },
         currency: { type: String, default: 'INR' }
     },

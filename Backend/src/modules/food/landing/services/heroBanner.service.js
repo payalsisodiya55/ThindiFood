@@ -1,8 +1,12 @@
 import { FoodHeroBanner } from '../models/heroBanner.model.js';
 import { v2 as cloudinary } from 'cloudinary';
+import mongoose from 'mongoose';
 
 export const listHeroBanners = async () => {
-    return FoodHeroBanner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
+    return FoodHeroBanner.find()
+        .sort({ sortOrder: 1, createdAt: -1 })
+        .populate('zoneId', 'name zoneName serviceLocation')
+        .lean();
 };
 
 export const getHeroBannerById = async (id) => {
@@ -36,6 +40,10 @@ export const createHeroBannersFromFiles = async (files, meta = {}) => {
                 ctaText: meta.ctaText,
                 ctaLink: meta.ctaLink,
                 linkedRestaurantIds: meta.linkedRestaurantIds || [],
+                zoneId:
+                    meta.zoneId && mongoose.Types.ObjectId.isValid(meta.zoneId)
+                        ? new mongoose.Types.ObjectId(meta.zoneId)
+                        : undefined,
                 sortOrder: meta.sortOrder ?? 0,
                 isActive: true
             });
@@ -91,6 +99,23 @@ export const linkHeroBannerRestaurants = async (id, restaurantIds = []) => {
         { linkedRestaurantIds: restaurantIds },
         { new: true }
     ).lean();
+    return updated;
+};
+
+export const updateHeroBannerZone = async (id, zoneId) => {
+    const nextZoneId =
+        zoneId && mongoose.Types.ObjectId.isValid(zoneId)
+            ? new mongoose.Types.ObjectId(zoneId)
+            : undefined;
+
+    const updated = await FoodHeroBanner.findByIdAndUpdate(
+        id,
+        { zoneId: nextZoneId },
+        { new: true }
+    )
+        .populate('zoneId', 'name zoneName serviceLocation')
+        .lean();
+
     return updated;
 };
 

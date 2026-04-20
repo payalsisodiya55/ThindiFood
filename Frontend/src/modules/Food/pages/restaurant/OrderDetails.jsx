@@ -103,6 +103,12 @@ export default function OrderDetails() {
           const platformFee = firstNumber(pricing.platformFee, order.platformFee) ?? 0
           const discount = firstNumber(pricing.discount, order.discount) ?? 0
           const couponDiscount = firstNumber(pricing.couponDiscount, order.couponDiscount) ?? 0
+          const platformCouponDiscount = firstNumber(pricing.platformCouponDiscount, order.platformCouponDiscount) ?? 0
+          const restaurantCouponDiscount = firstNumber(pricing.restaurantCouponDiscount, order.restaurantCouponDiscount) ?? 0
+          const restaurantOfferDiscount = firstNumber(pricing.restaurantOfferDiscount, order.restaurantOfferDiscount, pricing.restaurantDiscount, order.restaurantDiscount) ?? 0
+          const commissionBaseAmount = firstNumber(pricing.commissionBaseAmount, order.commissionBaseAmount) ?? itemSubtotal
+          const restaurantCommission = firstNumber(pricing.restaurantCommission, order.restaurantCommission, pricing?.payoutAdjustments?.commission) ?? 0
+          const restaurantNetPayout = firstNumber(pricing?.payoutAdjustments?.netPayout, order.restaurantNetPayout) ?? 0
           const referralDiscount = firstNumber(pricing.referralDiscount, order.referralDiscount) ?? 0
 
           const total =
@@ -218,6 +224,12 @@ export default function OrderDetails() {
               platformFee,
               discount,
               couponDiscount,
+              platformCouponDiscount,
+              restaurantCouponDiscount,
+              restaurantOfferDiscount,
+              commissionBaseAmount,
+              restaurantCommission,
+              restaurantNetPayout,
               referralDiscount,
               total,
               paidAmount,
@@ -460,8 +472,26 @@ export default function OrderDetails() {
     if (Number(orderData.billing.discount) > 0) {
       billRows.push(["Discount:", formatDiscount(orderData.billing.discount)])
     }
+    if (Number(orderData.billing.platformCouponDiscount) > 0) {
+      billRows.push(["Platform Coupon:", formatDiscount(orderData.billing.platformCouponDiscount)])
+    }
+    if (Number(orderData.billing.restaurantCouponDiscount) > 0) {
+      billRows.push(["Restaurant Coupon:", formatDiscount(orderData.billing.restaurantCouponDiscount)])
+    }
+    if (Number(orderData.billing.restaurantOfferDiscount) > 0) {
+      billRows.push(["Restaurant Offer:", formatDiscount(orderData.billing.restaurantOfferDiscount)])
+    }
     if (Number(orderData.billing.couponDiscount) > 0) {
       billRows.push(["Coupon Discount:", formatDiscount(orderData.billing.couponDiscount)])
+    }
+    if (Number(orderData.billing.commissionBaseAmount) > 0) {
+      billRows.push(["Commission Base:", formatMoney(orderData.billing.commissionBaseAmount)])
+    }
+    if (Number(orderData.billing.restaurantCommission) > 0) {
+      billRows.push(["Commission Paid:", formatDiscount(orderData.billing.restaurantCommission)])
+    }
+    if (Number(orderData.billing.restaurantNetPayout) > 0) {
+      billRows.push(["Restaurant Payout:", formatMoney(orderData.billing.restaurantNetPayout)])
     }
     if (Number(orderData.billing.referralDiscount) > 0) {
       billRows.push(["Referral Discount:", formatDiscount(orderData.billing.referralDiscount)])
@@ -828,6 +858,30 @@ export default function OrderDetails() {
                 <span className="text-sm text-green-700">{formatDiscount(orderData.billing.couponDiscount)}</span>
               </div>
             )}
+            {Number(orderData.billing.platformCouponDiscount) > 0 && (
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-green-700">Platform coupon</span>
+                <span className="text-sm text-green-700">{formatDiscount(orderData.billing.platformCouponDiscount)}</span>
+              </div>
+            )}
+            {Number(orderData.billing.restaurantCouponDiscount) > 0 && (
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-red-600">Restaurant coupon</span>
+                <span className="text-sm text-red-600">{formatDiscount(orderData.billing.restaurantCouponDiscount)}</span>
+              </div>
+            )}
+            {Number(orderData.billing.restaurantOfferDiscount) > 0 && (
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-red-600">Restaurant offer</span>
+                <span className="text-sm text-red-600">{formatDiscount(orderData.billing.restaurantOfferDiscount)}</span>
+              </div>
+            )}
+            {Number(orderData.billing.restaurantCommission) > 0 && (
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-red-600">Commission paid</span>
+                <span className="text-sm text-red-600">{formatDiscount(orderData.billing.restaurantCommission)}</span>
+              </div>
+            )}
             {Number(orderData.billing.referralDiscount) > 0 && (
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm text-green-700">Referral discount</span>
@@ -848,6 +902,12 @@ export default function OrderDetails() {
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm text-gray-600">Amount paid</span>
                 <span className="text-sm font-medium text-gray-900">{formatMoney(orderData.billing.paidAmount)}</span>
+              </div>
+            )}
+            {Number(orderData.billing.restaurantNetPayout) > 0 && (
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-sm text-gray-600">Restaurant payout</span>
+                <span className="text-sm font-medium text-gray-900">{formatMoney(orderData.billing.restaurantNetPayout)}</span>
               </div>
             )}
           </div>

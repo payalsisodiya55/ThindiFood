@@ -113,20 +113,51 @@ export const exportReportsToJSON = (data, filename = "report") => {
 }
 
 // Specific export functions for Transaction Report
+const getTransactionDiscountBreakdown = (transaction = {}) => {
+  const platformCouponDiscount = Number(transaction.platformCouponDiscount ?? transaction.pricing?.platformCouponDiscount ?? 0)
+  const restaurantCouponDiscount = Number(transaction.restaurantCouponDiscount ?? transaction.pricing?.restaurantCouponDiscount ?? 0)
+  const restaurantOfferDiscount = Number(
+    transaction.restaurantOfferDiscount ??
+    transaction.restaurantDiscount ??
+    transaction.pricing?.restaurantOfferDiscount ??
+    transaction.pricing?.restaurantDiscount ??
+    0
+  )
+  const totalDiscount = Number(
+    transaction.couponDiscount ??
+    transaction.pricing?.couponDiscount ??
+    transaction.pricing?.discount ??
+    (platformCouponDiscount + restaurantCouponDiscount + restaurantOfferDiscount)
+  )
+
+  return {
+    platformCouponDiscount,
+    restaurantCouponDiscount,
+    restaurantOfferDiscount,
+    totalDiscount,
+  }
+}
+
 export const exportTransactionReportToCSV = (transactions, filename = "transaction_report") => {
-  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Coupon Discount", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
-  const rows = transactions.map((transaction, index) => [
-    index + 1,
-    transaction.orderId,
-    transaction.restaurant,
-    transaction.customerName,
-    transaction.totalItemAmount.toFixed(2),
-    transaction.couponDiscount.toFixed(2),
-    transaction.vatTax.toFixed(2),
-    transaction.deliveryCharge.toFixed(2),
-    Number(transaction.platformFee || 0).toFixed(2),
-    transaction.orderAmount.toFixed(2)
-  ])
+  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Total Discount", "Platform Coupon", "Restaurant Coupon", "Restaurant Offer", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
+  const rows = transactions.map((transaction, index) => {
+    const discountBreakdown = getTransactionDiscountBreakdown(transaction)
+    return [
+      index + 1,
+      transaction.orderId,
+      transaction.restaurant,
+      transaction.customerName,
+      transaction.totalItemAmount.toFixed(2),
+      discountBreakdown.totalDiscount.toFixed(2),
+      discountBreakdown.platformCouponDiscount.toFixed(2),
+      discountBreakdown.restaurantCouponDiscount.toFixed(2),
+      discountBreakdown.restaurantOfferDiscount.toFixed(2),
+      transaction.vatTax.toFixed(2),
+      transaction.deliveryCharge.toFixed(2),
+      Number(transaction.platformFee || 0).toFixed(2),
+      transaction.orderAmount.toFixed(2),
+    ]
+  })
   
   const csvContent = [
     headers.join(","),
@@ -145,19 +176,25 @@ export const exportTransactionReportToCSV = (transactions, filename = "transacti
 }
 
 export const exportTransactionReportToExcel = (transactions, filename = "transaction_report") => {
-  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Coupon Discount", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
-  const rows = transactions.map((transaction, index) => [
-    index + 1,
-    transaction.orderId,
-    transaction.restaurant,
-    transaction.customerName,
-    transaction.totalItemAmount.toFixed(2),
-    transaction.couponDiscount.toFixed(2),
-    transaction.vatTax.toFixed(2),
-    transaction.deliveryCharge.toFixed(2),
-    Number(transaction.platformFee || 0).toFixed(2),
-    transaction.orderAmount.toFixed(2)
-  ])
+  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Total Discount", "Platform Coupon", "Restaurant Coupon", "Restaurant Offer", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
+  const rows = transactions.map((transaction, index) => {
+    const discountBreakdown = getTransactionDiscountBreakdown(transaction)
+    return [
+      index + 1,
+      transaction.orderId,
+      transaction.restaurant,
+      transaction.customerName,
+      transaction.totalItemAmount.toFixed(2),
+      discountBreakdown.totalDiscount.toFixed(2),
+      discountBreakdown.platformCouponDiscount.toFixed(2),
+      discountBreakdown.restaurantCouponDiscount.toFixed(2),
+      discountBreakdown.restaurantOfferDiscount.toFixed(2),
+      transaction.vatTax.toFixed(2),
+      transaction.deliveryCharge.toFixed(2),
+      Number(transaction.platformFee || 0).toFixed(2),
+      transaction.orderAmount.toFixed(2),
+    ]
+  })
   
   const csvContent = [
     headers.join("\t"),
@@ -176,7 +213,7 @@ export const exportTransactionReportToExcel = (transactions, filename = "transac
 }
 
 export const exportTransactionReportToPDF = (transactions, filename = "transaction_report") => {
-  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Coupon Discount", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
+  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Total Discount", "Platform Coupon", "Restaurant Coupon", "Restaurant Offer", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
   
   let htmlContent = `
     <!DOCTYPE html>
@@ -202,20 +239,26 @@ export const exportTransactionReportToPDF = (transactions, filename = "transacti
           </tr>
         </thead>
         <tbody>
-          ${transactions.map((transaction, index) => `
+          ${transactions.map((transaction, index) => {
+            const discountBreakdown = getTransactionDiscountBreakdown(transaction)
+            return `
             <tr>
               <td>${index + 1}</td>
               <td>${transaction.orderId}</td>
               <td>${transaction.restaurant}</td>
               <td>${transaction.customerName}</td>
               <td>₹${transaction.totalItemAmount.toFixed(2)}</td>
-              <td>₹${transaction.couponDiscount.toFixed(2)}</td>
+              <td>₹${discountBreakdown.totalDiscount.toFixed(2)}</td>
+              <td>₹${discountBreakdown.platformCouponDiscount.toFixed(2)}</td>
+              <td>₹${discountBreakdown.restaurantCouponDiscount.toFixed(2)}</td>
+              <td>₹${discountBreakdown.restaurantOfferDiscount.toFixed(2)}</td>
               <td>₹${transaction.vatTax.toFixed(2)}</td>
               <td>₹${transaction.deliveryCharge.toFixed(2)}</td>
               <td>₹${Number(transaction.platformFee || 0).toFixed(2)}</td>
               <td>₹${transaction.orderAmount.toFixed(2)}</td>
             </tr>
-          `).join("")}
+          `
+          }).join("")}
         </tbody>
       </table>
     </body>

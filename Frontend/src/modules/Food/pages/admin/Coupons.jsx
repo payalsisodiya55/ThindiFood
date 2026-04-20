@@ -32,6 +32,7 @@ export default function Coupons() {
     couponCode: "",
     discountType: "percentage",
     discountValue: "",
+    fundedBy: "platform",
     customerScope: "all",
     restaurantScope: "all",
     restaurantId: "",
@@ -206,6 +207,7 @@ export default function Coupons() {
       couponCode: "",
       discountType: "percentage",
       discountValue: "",
+      fundedBy: "platform",
       customerScope: "all",
       restaurantScope: "all",
       restaurantId: "",
@@ -252,6 +254,7 @@ export default function Coupons() {
         discountType: formData.discountType,
         discountValue: parsedDiscountValue,
         customerScope: formData.customerScope,
+        fundedBy: formData.fundedBy,
         restaurantScope: formData.restaurantScope,
         restaurantId: formData.restaurantScope === "selected" ? formData.restaurantId : undefined,
         endDate: formData.endDate || undefined,
@@ -289,6 +292,7 @@ export default function Coupons() {
           ? String(Number(offer.originalPrice || 0))
           : String(Number(offer.discountPercentage || 0)),
       customerScope: offer.customerGroup === "new" ? "first-time" : "all",
+      fundedBy: offer.fundedBy === "restaurant" ? "restaurant" : "platform",
       restaurantScope: offer.restaurantScope === "selected" ? "selected" : "all",
       restaurantId: String(offer.restaurantId || ""),
       endDate: toInputDate(offer.endDate),
@@ -505,6 +509,18 @@ export default function Coupons() {
                 </div>
 
                 <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Discount Funding</label>
+                  <select
+                    value={formData.fundedBy}
+                    onChange={(e) => handleFormChange("fundedBy", e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="platform">Platform-funded</option>
+                    <option value="restaurant">Restaurant-funded</option>
+                  </select>
+                </div>
+
+                <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Restaurant Scope</label>
                   <select
                     value={formData.restaurantScope}
@@ -709,6 +725,7 @@ export default function Coupons() {
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Dish</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Coupon Code</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Customer Scope</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Funding</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Discount</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Price</th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Min Order</th>
@@ -747,6 +764,15 @@ export default function Coupons() {
                             : "bg-slate-100 text-slate-700"
                         }`}>
                           {offer.customerGroup === "new" ? "First-time Users" : "All Users"}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          offer.fundedBy === "restaurant"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                        }`}>
+                          {offer.fundedBy === "restaurant" ? "Restaurant-funded" : "Platform-funded"}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -890,6 +916,7 @@ export default function Coupons() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Coupon</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Restaurant</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Funding</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Discount</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Dates</th>
                     <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">Actions</th>
@@ -907,6 +934,15 @@ export default function Coupons() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-slate-800">{coupon?.restaurantName || "-"}</span>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            coupon?.fundedBy === "restaurant"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-emerald-100 text-emerald-700"
+                          }`}>
+                            {coupon?.fundedBy === "restaurant" ? "Restaurant-funded" : "Platform-funded"}
+                          </span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <span className="text-sm text-slate-700">
@@ -998,6 +1034,12 @@ export default function Coupons() {
                     {viewTarget?.discountType === "flat-price"
                       ? `Flat ₹${Number(viewTarget?.discountValue || 0)}`
                       : `${Number(viewTarget?.discountValue || 0)}% OFF${viewTarget?.maxDiscount != null ? ` (up to ₹${Number(viewTarget.maxDiscount)})` : ""}`}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                  <p className="text-[11px] uppercase tracking-wide text-slate-500">Funding</p>
+                  <p className="text-sm font-semibold text-slate-900">
+                    {viewTarget?.fundedBy === "restaurant" ? "Restaurant-funded" : "Platform-funded"}
                   </p>
                 </div>
                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">

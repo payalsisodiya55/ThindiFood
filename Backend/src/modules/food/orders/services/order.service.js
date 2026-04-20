@@ -450,6 +450,355 @@ export async function updateDispatchSettings(dispatchMode, adminId) {
   return getDispatchSettings();
 }
 
+function roundMoney(value) {
+  const n = Number(value) || 0;
+  return Math.round(n);
+}
+
+async function resolveCouponBreakdown({
+  userId,
+  restaurantId,
+  originalSubtotal,
+  couponCode,
+  now,
+}) {
+  const codeRaw = couponCode ? String(couponCode).trim().toUpperCase() : "";
+  if (!codeRaw) {
+    return {
+      codeRaw,
+      couponDiscount: 0,
+      platformCouponDiscount: 0,
+      restaurantCouponDiscount: 0,
+      couponFundingType: "none",
+      appliedCoupon: null,
+    };
+  }
+
+  const offer = await FoodOffer.findOne({ couponCode: codeRaw }).lean();
+  if (!offer) {
+    return {
+      codeRaw,
+      couponDiscount: 0,
+      platformCouponDiscount: 0,
+      restaurantCouponDiscount: 0,
+      couponFundingType: "none",
+      appliedCoupon: null,
+    };
+  }
+
+  const statusOk = offer.status === "active";
+  const startOk = !offer.startDate || now >= new Date(offer.startDate);
+  const endOk = !offer.endDate || now < new Date(offer.endDate);
+  const scopeOk =
+    offer.restaurantScope !== "selected" ||
+    String(offer.restaurantId || "") === String(restaurantId || "");
+  const minOk = originalSubtotal >= (Number(offer.minOrderValue) || 0);
+
+  let usageOk = true;
+  if (
+    Number(offer.usageLimit) > 0 &&
+    Number(offer.usedCount || 0) >= Number(offer.usageLimit)
+  ) {
+    usageOk = false;
+  }
+
+  let perUserOk = true;
+  if (userId && Number(offer.perUserLimit) > 0) {
+    const usage = await FoodOfferUsage.findOne({
+      offerId: offer._id,
+      userId,
+    }).lean();
+    if (usage && Number(usage.count) >= Number(offer.perUserLimit)) {
+      perUserOk = false;
+    }
+  }
+
+  let firstOrderOk = true;
+  if (userId && offer.customerScope === "first-time") {
+    const c = await FoodOrder.countDocuments({
+      userId: new mongoose.Types.ObjectId(userId),
+    });
+    firstOrderOk = c === 0;
+  }
+  if (userId && offer.isFirstOrderOnly === true) {
+    const c2 = await FoodOrder.countDocuments({
+      userId: new mongoose.Types.ObjectId(userId),
+    });
+    if (c2 > 0) firstOrderOk = false;
+  }
+
+  const allowed =
+    statusOk &&
+    startOk &&
+    endOk &&
+    scopeOk &&
+    minOk &&
+    usageOk &&
+    perUserOk &&
+    firstOrderOk;
+
+  if (!allowed) {
+    return {
+      codeRaw,
+      couponDiscount: 0,
+      platformCouponDiscount: 0,
+      restaurantCouponDiscount: 0,
+      couponFundingType: "none",
+      appliedCoupon: null,
+    };
+  }
+
+  let couponDiscount = 0;
+  if (offer.discountType === "percentage") {
+    const raw = originalSubtotal * (Number(offer.discountValue) / 100);
+    const capped = Number(offer.maxDiscount)
+      ? Math.min(raw, Number(offer.maxDiscount))
+      : raw;
+    couponDiscount = Math.max(
+      0,
+      Math.min(originalSubtotal, roundMoney(capped)),
+    );
+  } else {
+    couponDiscount = Math.max(
+      0,
+      Math.min(originalSubtotal, roundMoney(Number(offer.discountValue) || 0)),
+    );
+  }
+
+  const fundedBy =
+    offer.fundedBy === "restaurant" ||
+    (!offer.fundedBy && offer.restaurantId)
+      ? "restaurant"
+      : "platform";
+
+  return {
+    codeRaw,
+    couponDiscount,
+    platformCouponDiscount: fundedBy === "platform" ? couponDiscount : 0,
+    restaurantCouponDiscount: fundedBy === "restaurant" ? couponDiscount : 0,
+    couponFundingType: fundedBy,
+    appliedCoupon: { code: codeRaw, discount: couponDiscount, fundedBy },
+  };
+}
+
+async function resolveRestaurantOfferBreakdown({
+  restaurantId,
+  items,
+  now,
+  validationErrors,
+}) {
+  let restaurantOfferDiscount = 0;
+
+  try {
+    const restaurantOffers = await RestaurantOffer.find({
+      restaurantId,
+      approvalStatus: "approved",
+      status: "active",
+      $and: [
+        { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+        { $or: [{ endDate: null }, { endDate: { $gte: now } }] },
+      ],
+    }).lean();
+
+    logger.info(
+      `Found ${restaurantOffers.length} active restaurant offers for restaurant ${restaurantId}`,
+    );
+
+    if (restaurantOffers.length > 0) {
+      items.forEach((item) => {
+        const itemOffer = restaurantOffers.find((o) =>
+          o.products?.some(
+            (p) => String(p.productId) === String(item.itemId || item.id),
+          ),
+        );
+
+        if (!itemOffer) return;
+
+        logger.info(
+          `Applying offer "${itemOffer.title}" to item ${item.name} (${item.itemId || item.id})`,
+        );
+        if (
+          itemOffer.maxItemsPerOrder &&
+          item.quantity > itemOffer.maxItemsPerOrder
+        ) {
+          logger.info(
+            `Offer rejected: quantity ${item.quantity} exceeds limit ${itemOffer.maxItemsPerOrder}`,
+          );
+          validationErrors.push({
+            itemId: item.itemId || item.id,
+            type: "OFFER_LIMIT_EXCEEDED",
+            message: `Only ${itemOffer.maxItemsPerOrder} item${itemOffer.maxItemsPerOrder > 1 ? "s are" : " is"} allowed for this offer in one order.`,
+          });
+          return;
+        }
+
+        let itemLevelDiscount = 0;
+        const basePrice = Number(item.price) || 0;
+        const quantity = Number(item.quantity) || 1;
+
+        if (itemOffer.discountType === "percentage") {
+          itemLevelDiscount =
+            basePrice * (itemOffer.discountValue / 100) * quantity;
+          if (itemOffer.maxDiscount) {
+            itemLevelDiscount = Math.min(itemLevelDiscount, itemOffer.maxDiscount);
+          }
+        } else {
+          itemLevelDiscount = itemOffer.discountValue * quantity;
+        }
+
+        restaurantOfferDiscount += roundMoney(itemLevelDiscount);
+      });
+    }
+  } catch (err) {
+    logger.error(`Error calculating restaurant product offers: ${err.message}`);
+  }
+
+  return { restaurantOfferDiscount: roundMoney(restaurantOfferDiscount) };
+}
+
+async function buildFoodPricingBreakdown(userId, dto, context = {}) {
+  const now = context.now || new Date();
+  const validationErrors = context.validationErrors || [];
+  const items = Array.isArray(dto.items) ? dto.items : [];
+  const originalSubtotal = roundMoney(
+    items.reduce(
+      (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),
+      0,
+    ),
+  );
+
+  const feeDoc = await FoodFeeSettings.findOne({ isActive: true })
+    .sort({ createdAt: -1 })
+    .lean();
+  const feeSettings = feeDoc || { platformFee: 5, gstRate: 5 };
+
+  const packagingFee = 0;
+  const platformFee = Number(feeSettings.platformFee || 0);
+  const deliveryFee = 0;
+  const gstRate = Number(feeSettings.gstRate || 0);
+  const tax =
+    Number.isFinite(gstRate) && gstRate > 0
+      ? Math.round(originalSubtotal * (gstRate / 100))
+      : 0;
+
+  const couponPromise = resolveCouponBreakdown({
+    userId,
+    restaurantId: dto.restaurantId,
+    originalSubtotal,
+    couponCode: dto.couponCode,
+    now,
+  });
+  const restaurantOfferPromise = resolveRestaurantOfferBreakdown({
+    restaurantId: dto.restaurantId,
+    items,
+    now,
+    validationErrors,
+  });
+
+  const [couponBreakdown, restaurantOfferBreakdown] = await Promise.all([
+    couponPromise,
+    restaurantOfferPromise,
+  ]);
+
+  const restaurantOfferDiscount = Math.min(
+    originalSubtotal,
+    roundMoney(restaurantOfferBreakdown.restaurantOfferDiscount),
+  );
+  const offerAdjustedSubtotal = Math.max(
+    0,
+    roundMoney(originalSubtotal - restaurantOfferDiscount),
+  );
+
+  const { commissionAmount: restaurantCommission } =
+    await foodTransactionService.getRestaurantCommissionSnapshot({
+      pricing: { subtotal: originalSubtotal, commissionBaseAmount: offerAdjustedSubtotal },
+      restaurantId: dto.restaurantId,
+    });
+
+  const commissionBaseAmount = offerAdjustedSubtotal;
+  const couponDiscount = roundMoney(couponBreakdown.couponDiscount);
+  const finalDiscount = roundMoney(couponDiscount + restaurantOfferDiscount);
+  const total = Math.max(
+    0,
+    roundMoney(
+      offerAdjustedSubtotal +
+        packagingFee +
+        deliveryFee +
+        platformFee +
+        tax -
+        couponDiscount,
+    ),
+  );
+
+  const restaurantGrossBeforeDiscount = roundMoney(
+    offerAdjustedSubtotal + packagingFee,
+  );
+  const restaurantPayoutBeforeCoupon = Math.max(
+    0,
+    roundMoney(restaurantGrossBeforeDiscount - restaurantCommission),
+  );
+  const finalRestaurantPayout = Math.max(
+    0,
+    roundMoney(
+      restaurantPayoutBeforeCoupon - couponBreakdown.restaurantCouponDiscount,
+    ),
+  );
+
+  return {
+    pricing: {
+      originalSubtotal,
+      offerAdjustedSubtotal,
+      subtotal: originalSubtotal,
+      tax,
+      packagingFee,
+      deliveryFee,
+      platformFee,
+      restaurantCommission: roundMoney(restaurantCommission),
+      commissionBaseAmount,
+      restaurantGrossBeforeDiscount,
+      discount: finalDiscount,
+      couponDiscount,
+      restaurantDiscount: restaurantOfferDiscount,
+      platformCouponDiscount: roundMoney(
+        couponBreakdown.platformCouponDiscount,
+      ),
+      restaurantCouponDiscount: roundMoney(
+        couponBreakdown.restaurantCouponDiscount,
+      ),
+      restaurantOfferDiscount,
+      couponFundingType: couponBreakdown.couponFundingType,
+      payoutAdjustments: {
+        platformCouponDiscount: roundMoney(
+          couponBreakdown.platformCouponDiscount,
+        ),
+        restaurantCouponDiscount: roundMoney(
+          couponBreakdown.restaurantCouponDiscount,
+        ),
+        restaurantOfferDiscount,
+        commission: roundMoney(restaurantCommission),
+        netPayout: finalRestaurantPayout,
+      },
+      total,
+      currency: "INR",
+      couponCode: couponBreakdown.appliedCoupon?.code || couponBreakdown.codeRaw || null,
+      appliedCoupon: couponBreakdown.appliedCoupon,
+      validationErrors,
+    },
+    settlement: {
+      customerPayable: total,
+      restaurantPayout: finalRestaurantPayout,
+      restaurantPayoutBeforeCoupon,
+      platformCouponDiscount: roundMoney(couponBreakdown.platformCouponDiscount),
+      restaurantCouponDiscount: roundMoney(
+        couponBreakdown.restaurantCouponDiscount,
+      ),
+      restaurantOfferDiscount,
+      commissionAmount: roundMoney(restaurantCommission),
+      commissionBaseAmount,
+    },
+  };
+}
+
 // ----- Calculate (validation + return pricing from payload) -----
 export async function calculateOrder(userId, dto) {
   const now = new Date();
@@ -508,167 +857,7 @@ export async function calculateOrder(userId, dto) {
   if (restaurant.status !== "approved")
     throw new ValidationError("Restaurant not available");
 
-  const packagingFee = 0;
-  const platformFee = Number(feeSettings.platformFee || 0);
-  const deliveryFee = 0;
-
-  const gstRate = Number(feeSettings.gstRate || 0);
-  const tax =
-    Number.isFinite(gstRate) && gstRate > 0
-      ? Math.round(subtotal * (gstRate / 100))
-      : 0;
-
-  let discount = 0;
-  let appliedCoupon = null;
-  const codeRaw = dto.couponCode
-    ? String(dto.couponCode).trim().toUpperCase()
-    : "";
-  if (codeRaw) {
-    const offer = await FoodOffer.findOne({ couponCode: codeRaw }).lean();
-    if (!offer) {
-      discount = 0;
-    } else {
-      const statusOk = offer.status === "active";
-      const startOk = !offer.startDate || now >= new Date(offer.startDate);
-      const endOk = !offer.endDate || now < new Date(offer.endDate);
-      const scopeOk =
-        offer.restaurantScope !== "selected" ||
-        String(offer.restaurantId || "") === String(dto.restaurantId || "");
-      const minOk = subtotal >= (Number(offer.minOrderValue) || 0);
-      let usageOk = true;
-      if (
-        Number(offer.usageLimit) > 0 &&
-        Number(offer.usedCount || 0) >= Number(offer.usageLimit)
-      )
-        usageOk = false;
-      let perUserOk = true;
-      if (userId && Number(offer.perUserLimit) > 0) {
-        const usage = await FoodOfferUsage.findOne({
-          offerId: offer._id,
-          userId,
-        }).lean();
-        if (usage && Number(usage.count) >= Number(offer.perUserLimit))
-          perUserOk = false;
-      }
-      let firstOrderOk = true;
-      if (userId && offer.customerScope === "first-time") {
-        const c = await FoodOrder.countDocuments({
-          userId: new mongoose.Types.ObjectId(userId),
-        });
-        firstOrderOk = c === 0;
-      }
-      if (userId && offer.isFirstOrderOnly === true) {
-        const c2 = await FoodOrder.countDocuments({
-          userId: new mongoose.Types.ObjectId(userId),
-        });
-        if (c2 > 0) firstOrderOk = false;
-      }
-      const allowed =
-        statusOk &&
-        startOk &&
-        endOk &&
-        scopeOk &&
-        minOk &&
-        usageOk &&
-        perUserOk &&
-        firstOrderOk;
-      if (allowed) {
-        if (offer.discountType === "percentage") {
-          const raw = subtotal * (Number(offer.discountValue) / 100);
-          const capped = Number(offer.maxDiscount)
-            ? Math.min(raw, Number(offer.maxDiscount))
-            : raw;
-          discount = Math.max(0, Math.min(subtotal, Math.floor(capped)));
-        } else {
-          discount = Math.max(
-            0,
-            Math.min(subtotal, Math.floor(Number(offer.discountValue) || 0)),
-          );
-        }
-        appliedCoupon = { code: codeRaw, discount };
-      }
-    }
-  }
-
-  // --- Calculate Restaurant-level Product Offers ---
-  let restaurantDiscount = 0;
-  try {
-    const restaurantOffers = await RestaurantOffer.find({
-      restaurantId: dto.restaurantId,
-      approvalStatus: 'approved',
-      status: 'active',
-      $and: [
-        { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
-        { $or: [{ endDate: null }, { endDate: { $gte: now } }] }
-      ]
-    }).lean();
-
-    logger.info(`Found ${restaurantOffers.length} active restaurant offers for restaurant ${dto.restaurantId}`);
-
-    if (restaurantOffers.length > 0) {
-      items.forEach(item => {
-        const itemOffer = restaurantOffers.find(o => 
-          o.products?.some(p => String(p.productId) === String(item.itemId || item.id))
-        );
-        
-        if (itemOffer) {
-          logger.info(`Applying offer "${itemOffer.title}" to item ${item.name} (${item.itemId || item.id})`);
-          // If maxItemsPerOrder is set, and quantity exceeds it, NO discount is applied as per user requirement
-          if (itemOffer.maxItemsPerOrder && item.quantity > itemOffer.maxItemsPerOrder) {
-            logger.info(`Offer rejected: quantity ${item.quantity} exceeds limit ${itemOffer.maxItemsPerOrder}`);
-            validationErrors.push({
-              itemId: item.itemId || item.id,
-              type: 'OFFER_LIMIT_EXCEEDED',
-              message: `Only ${itemOffer.maxItemsPerOrder} item${itemOffer.maxItemsPerOrder > 1 ? 's are' : ' is'} allowed for this offer in one order.`
-            });
-            return;
-          }
-
-          let itemLevelDiscount = 0;
-          const basePrice = Number(item.price) || 0;
-          const quantity = Number(item.quantity) || 1;
-
-          if (itemOffer.discountType === 'percentage') {
-            itemLevelDiscount = (basePrice * (itemOffer.discountValue / 100)) * quantity;
-            if (itemOffer.maxDiscount) {
-              itemLevelDiscount = Math.min(itemLevelDiscount, itemOffer.maxDiscount);
-            }
-          } else {
-            // Flat discount
-            itemLevelDiscount = itemOffer.discountValue * quantity;
-          }
-          restaurantDiscount += Math.round(itemLevelDiscount);
-        }
-      });
-    }
-  } catch (err) {
-    logger.error(`Error calculating restaurant product offers: ${err.message}`);
-  }
-
-  // Total discount is sum of coupon discount and restaurant product discount
-  const finalDiscount = discount + restaurantDiscount;
-
-  const total = Math.max(
-    0,
-    subtotal + packagingFee + deliveryFee + platformFee + tax - finalDiscount,
-  );
-  return {
-    pricing: {
-      subtotal,
-      tax,
-      packagingFee,
-      deliveryFee,
-      platformFee,
-      discount: finalDiscount,
-      couponDiscount: discount,
-      restaurantDiscount: restaurantDiscount,
-      total,
-      currency: "INR",
-      couponCode: appliedCoupon?.code || codeRaw || null,
-      appliedCoupon,
-      validationErrors,
-    },
-  };
+  return buildFoodPricingBreakdown(userId, dto, { now, validationErrors });
 }
 
 // ----- Create order -----
@@ -740,19 +929,69 @@ export async function createOrder(userId, dto) {
     return sum + Math.max(0, price) * Math.max(0, qty);
   }, 0);
   const normalizedPricing = {
+    originalSubtotal: toMoney(
+      dto.pricing?.originalSubtotal,
+      computedSubtotal,
+    ),
+    offerAdjustedSubtotal: toMoney(
+      dto.pricing?.offerAdjustedSubtotal,
+      dto.pricing?.originalSubtotal ?? dto.pricing?.subtotal ?? computedSubtotal,
+    ),
     subtotal: toMoney(dto.pricing?.subtotal, computedSubtotal),
     tax: toMoney(dto.pricing?.tax, 0),
     packagingFee: toMoney(dto.pricing?.packagingFee, 0),
     deliveryFee: 0,
     platformFee: toMoney(dto.pricing?.platformFee, 0),
+    restaurantCommission: toMoney(dto.pricing?.restaurantCommission, 0),
+    commissionBaseAmount: toMoney(
+      dto.pricing?.commissionBaseAmount,
+      dto.pricing?.offerAdjustedSubtotal ??
+        dto.pricing?.originalSubtotal ??
+        dto.pricing?.subtotal ??
+        computedSubtotal,
+    ),
+    restaurantGrossBeforeDiscount: toMoney(
+      dto.pricing?.restaurantGrossBeforeDiscount,
+      (dto.pricing?.offerAdjustedSubtotal ??
+        dto.pricing?.originalSubtotal ??
+        dto.pricing?.subtotal ??
+        computedSubtotal) + (dto.pricing?.packagingFee ?? 0),
+    ),
     discount: toMoney(dto.pricing?.discount, 0),
+    couponDiscount: toMoney(dto.pricing?.couponDiscount, 0),
+    restaurantDiscount: toMoney(dto.pricing?.restaurantDiscount, 0),
+    platformCouponDiscount: toMoney(dto.pricing?.platformCouponDiscount, 0),
+    restaurantCouponDiscount: toMoney(dto.pricing?.restaurantCouponDiscount, 0),
+    restaurantOfferDiscount: toMoney(dto.pricing?.restaurantOfferDiscount, 0),
+    couponFundingType: String(dto.pricing?.couponFundingType || "none"),
+    payoutAdjustments: {
+      platformCouponDiscount: toMoney(
+        dto.pricing?.payoutAdjustments?.platformCouponDiscount,
+        dto.pricing?.platformCouponDiscount,
+      ),
+      restaurantCouponDiscount: toMoney(
+        dto.pricing?.payoutAdjustments?.restaurantCouponDiscount,
+        dto.pricing?.restaurantCouponDiscount,
+      ),
+      restaurantOfferDiscount: toMoney(
+        dto.pricing?.payoutAdjustments?.restaurantOfferDiscount,
+        dto.pricing?.restaurantOfferDiscount,
+      ),
+      commission: toMoney(
+        dto.pricing?.payoutAdjustments?.commission,
+        dto.pricing?.restaurantCommission,
+      ),
+      netPayout: toMoney(dto.pricing?.payoutAdjustments?.netPayout, 0),
+    },
     total: toMoney(dto.pricing?.total, 0),
     currency: String(dto.pricing?.currency || "INR"),
+    couponCode: dto.pricing?.couponCode || null,
+    appliedCoupon: dto.pricing?.appliedCoupon || null,
   };
   const computedTotal = Math.max(
     0,
-    (Number.isFinite(normalizedPricing.subtotal)
-      ? normalizedPricing.subtotal
+    (Number.isFinite(normalizedPricing.offerAdjustedSubtotal)
+      ? normalizedPricing.offerAdjustedSubtotal
       : 0) +
       (Number.isFinite(normalizedPricing.tax) ? normalizedPricing.tax : 0) +
       (Number.isFinite(normalizedPricing.packagingFee)
@@ -770,6 +1009,17 @@ export async function createOrder(userId, dto) {
     normalizedPricing.total <= 0
   ) {
     normalizedPricing.total = computedTotal;
+  }
+
+  if (!(normalizedPricing.payoutAdjustments.netPayout > 0)) {
+    normalizedPricing.payoutAdjustments.netPayout = Math.max(
+      0,
+      roundMoney(
+        normalizedPricing.restaurantGrossBeforeDiscount -
+          normalizedPricing.restaurantCommission -
+          normalizedPricing.restaurantCouponDiscount,
+      ),
+    );
   }
 
   const payment = {
@@ -798,24 +1048,14 @@ export async function createOrder(userId, dto) {
 
   const riderEarning =
     orderType === "food" ? await getRiderEarning(distanceKm) : 0;
-  
-  // Calculate restaurant commission from subtotal
-  const { commissionAmount: restaurantCommission } =
-    orderType === "food"
-      ? await foodTransactionService.getRestaurantCommissionSnapshot({
-          pricing: normalizedPricing,
-          restaurantId: dto.restaurantId,
-        })
-      : { commissionAmount: 0 };
-
-  normalizedPricing.restaurantCommission = restaurantCommission || 0;
 
   const platformProfit = Math.max(
     0,
     (Number.isFinite(normalizedPricing.platformFee)
       ? normalizedPricing.platformFee
       : 0) +
-      restaurantCommission -
+      normalizedPricing.restaurantCommission -
+      normalizedPricing.platformCouponDiscount -
       riderEarning,
   );
 

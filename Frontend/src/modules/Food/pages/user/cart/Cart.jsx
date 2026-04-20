@@ -1010,14 +1010,14 @@ export default function Cart() {
   }, [])
 
   // Use backend pricing if available, otherwise fallback to database fee settings
-  const subtotal = pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0)
+  const subtotal = Math.round(pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0))
   const deliveryFee = 0
-  const platformFee = pricing?.platformFee || feeSettings.platformFee
-  const gstCharges = pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100))
-  const discount = pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
-  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges
-  const total = pricing?.total || (totalBeforeDiscount - discount)
-  const savings = pricing?.savings ?? Math.max(0, totalBeforeDiscount - total)
+  const platformFee = Math.round(pricing?.platformFee || feeSettings.platformFee)
+  const gstCharges = Math.round(pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100)))
+  const discount = Math.round(pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0))
+  const totalBeforeDiscount = Math.round(subtotal + deliveryFee + platformFee + gstCharges)
+  const total = Math.round(pricing?.total || (totalBeforeDiscount - discount))
+  const savings = Math.round(pricing?.savings ?? Math.max(0, totalBeforeDiscount - total))
   const selectedPaymentLabel =
     selectedPaymentMethod === "wallet"
       ? "Wallet"
@@ -1992,7 +1992,7 @@ export default function Cart() {
           <div className="bg-blue-100 dark:bg-blue-900/20 px-4 md:px-6 py-2 md:py-3 flex-shrink-0">
             <div className="max-w-7xl mx-auto">
               <p className="text-sm md:text-base font-medium text-blue-800 dark:text-blue-200">
-                Saved {RUPEE_SYMBOL}{savings} on this order
+                Saved {RUPEE_SYMBOL}{Math.round(savings)} on this order
               </p>
             </div>
           </div>
@@ -2569,14 +2569,14 @@ export default function Cart() {
                         <span className="text-base text-gray-800 dark:text-gray-200 font-semibold tracking-wide">Total Bill</span>
                         {savings > 0 ? (
                           <>
-                            <span className="text-base text-gray-400 dark:text-gray-500 line-through font-medium">{RUPEE_SYMBOL}{totalBeforeDiscount.toFixed(2)}</span>
-                            <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
+                            <span className="text-base text-gray-400 dark:text-gray-500 line-through font-medium">{RUPEE_SYMBOL}{Math.round(totalBeforeDiscount)}</span>
+                            <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{Math.round(total)}</span>
                             <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-center ml-1 font-semibold border border-blue-200 dark:border-blue-800">
-                              You saved {RUPEE_SYMBOL}{savings.toFixed(0)}
+                              You saved {RUPEE_SYMBOL}{Math.round(savings)}
                             </span>
                           </>
                         ) : (
-                          <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
+                          <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{Math.round(total)}</span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Incl. taxes and charges</p>

@@ -6,17 +6,30 @@ import { FoodDiningBanner } from '../models/diningBanner.model.js';
 import { FoodExploreIcon } from '../models/exploreIcon.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { sendResponse } from '../../../../utils/response.js';
+import mongoose from 'mongoose';
 
 /** Public hero banners for user home: active only, sorted, with linkedRestaurants populated for click-through */
 export const getPublicHeroBannersController = async (req, res, next) => {
     try {
-        const docs = await FoodHeroBanner.find({ isActive: true })
+        const zoneIdRaw = String(req.query?.zoneId || '').trim();
+        const filter = { isActive: true };
+
+        if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
+            filter.$or = [
+                { zoneId: new mongoose.Types.ObjectId(zoneIdRaw) },
+                { zoneId: { $exists: false } },
+                { zoneId: null }
+            ];
+        }
+
+        const docs = await FoodHeroBanner.find(filter)
             .sort({ sortOrder: 1, createdAt: -1 })
             .populate({
                 path: 'linkedRestaurantIds',
                 select: '_id restaurantName slug area city rating cuisines profileImage pureVegRestaurant',
                 model: 'FoodRestaurant'
             })
+            .populate('zoneId', 'name zoneName serviceLocation')
             .lean();
         const banners = (docs || []).map((b) => {
             const { linkedRestaurantIds, ...rest } = b;

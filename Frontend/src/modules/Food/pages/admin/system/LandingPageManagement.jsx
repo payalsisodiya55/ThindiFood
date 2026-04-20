@@ -23,7 +23,11 @@ export default function LandingPageManagement() {
   const [bannersUploading, setBannersUploading] = useState(false)
   const [bannersUploadProgress, setBannersUploadProgress] = useState({ current: 0, total: 0 })
   const [bannersDeleting, setBannersDeleting] = useState(null)
+  const [bannerZoneId, setBannerZoneId] = useState("global")
+  const [bannerZoneUpdatingId, setBannerZoneUpdatingId] = useState(null)
   const bannersFileInputRef = useRef(null)
+  const [zones, setZones] = useState([])
+  const [zonesLoading, setZonesLoading] = useState(false)
 
   // Categories
   const [categories, setCategories] = useState([])
@@ -141,6 +145,7 @@ export default function LandingPageManagement() {
   // Fetch data on mount (authentication is handled by ProtectedRoute)
   useEffect(() => {
     fetchBanners()
+    fetchZones()
     fetchUnder250Banners()
     fetchDiningBanners()
     fetchAllRestaurants()
@@ -191,6 +196,36 @@ export default function LandingPageManagement() {
     }
   }
 
+  const fetchZones = async () => {
+    try {
+      setZonesLoading(true)
+      const response = await adminAPI.getZones({ limit: 1000 })
+      const list =
+        response?.data?.data?.zones ||
+        response?.data?.data?.data?.zones ||
+        response?.data?.data ||
+        []
+      setZones(Array.isArray(list) ? list : [])
+    } catch (err) {
+      debugError("Failed to fetch zones for hero banners:", err)
+      setZones([])
+    } finally {
+      setZonesLoading(false)
+    }
+  }
+
+  const getZoneLabel = (zone) => {
+    if (!zone) return "Global (all zones)"
+    if (typeof zone === "string") {
+      const matched = zones.find((item) => String(item?._id || item?.id || "") === zone)
+      if (matched) {
+        return matched?.zoneName || matched?.name || matched?.serviceLocation || "Zone"
+      }
+      return "Zone"
+    }
+    return zone?.zoneName || zone?.name || zone?.serviceLocation || "Zone"
+  }
+
   const handleBannerFileSelect = (e) => {
     const files = Array.from(e.target?.files || e.files || [])
     if (files.length === 0) return
@@ -221,6 +256,9 @@ export default function LandingPageManagement() {
         // Backend expects field name "files" (upload.array('files'))
         formData.append('files', file)
       })
+      if (bannerZoneId && bannerZoneId !== "global") {
+        formData.append('zoneId', bannerZoneId)
+      }
 
       // Use getAuthConfig to ensure proper Authorization header
       // Don't set Content-Type - axios will set it automatically with boundary for FormData
@@ -277,6 +315,27 @@ export default function LandingPageManagement() {
       setBannersUploadProgress({ current: 0, total: 0 })
     } finally {
       setBannersUploading(false)
+    }
+  }
+
+  const handleBannerZoneChange = async (bannerId, nextZoneId) => {
+    try {
+      setBannerZoneUpdatingId(bannerId)
+      setError(null)
+      setSuccess(null)
+      const payload = {
+        zoneId: nextZoneId === "global" ? "" : nextZoneId,
+      }
+      const response = await api.patch(`/food/hero-banners/${bannerId}/zone`, payload, getAuthConfig())
+      if (response?.data?.success) {
+        setSuccess("Banner zone updated successfully!")
+        await fetchBanners()
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || "Failed to update banner zone.")
+    } finally {
+      setBannerZoneUpdatingId(null)
     }
   }
 
@@ -1346,6 +1405,27 @@ export default function LandingPageManagement() {
             {/* Upload Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Upload New Banner(s)</h2>
+              <div className="mb-4 max-w-sm">
+                <Label htmlFor="hero-banner-zone">Select Zone</Label>
+                <select
+                  id="hero-banner-zone"
+                  value={bannerZoneId}
+                  onChange={(e) => setBannerZoneId(e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={bannersUploading || zonesLoading}
+                >
+                  <option value="global">Global (all zones)</option>
+                  {zones.map((zone) => {
+                    const zoneId = String(zone?._id || zone?.id || "")
+                    const zoneLabel = zone?.zoneName || zone?.name || zone?.serviceLocation || zoneId
+                    return (
+                      <option key={zoneId} value={zoneId}>
+                        {zoneLabel}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
               <div
                 className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -1431,6 +1511,29 @@ export default function LandingPageManagement() {
                         </div>
                       </div>
                       <div className="p-4 bg-white">
+                        <div className="mb-3">
+                          <Label className="text-xs font-semibold text-slate-600">Selected Zone</Label>
+                          <select
+                            value={banner?.zoneId?._id || banner?.zoneId || "global"}
+                            onChange={(e) => handleBannerZoneChange(banner._id, e.target.value)}
+                            disabled={bannerZoneUpdatingId === banner._id || zonesLoading}
+                            className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="global">Global (all zones)</option>
+                            {zones.map((zone) => {
+                              const zoneId = String(zone?._id || zone?.id || "")
+                              const zoneLabel = zone?.zoneName || zone?.name || zone?.serviceLocation || zoneId
+                              return (
+                                <option key={zoneId} value={zoneId}>
+                                  {zoneLabel}
+                                </option>
+                              )
+                            })}
+                          </select>
+                          <p className="mt-1 text-xs text-slate-500">
+                            Showing in: {getZoneLabel(banner?.zoneId)}
+                          </p>
+                        </div>
                         <div className="flex items-center justify-between gap-2 flex-wrap">
                           <div className="flex items-center gap-1">
                             <button onClick={() => handleBannerOrderChange(banner._id, 'up')} disabled={index === 0} className="p-1.5 rounded hover:bg-slate-100 disabled:opacity-50">

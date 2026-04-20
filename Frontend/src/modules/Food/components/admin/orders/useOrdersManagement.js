@@ -11,6 +11,39 @@ const toNumber = (value) => {
 }
 
 const formatMoney = (value) => `INR ${toNumber(value).toFixed(2)}`
+const getDiscountBreakdown = (source = {}) => {
+  const pricing = source?.pricing || {}
+  const platformCouponDiscount = toNumber(
+    source.platformCouponDiscount ??
+    pricing.platformCouponDiscount
+  )
+  const restaurantCouponDiscount = toNumber(
+    source.restaurantCouponDiscount ??
+    pricing.restaurantCouponDiscount
+  )
+  const restaurantOfferDiscount = toNumber(
+    source.restaurantOfferDiscount ??
+    source.restaurantDiscount ??
+    pricing.restaurantOfferDiscount ??
+    pricing.restaurantDiscount
+  )
+  const totalDiscount = toNumber(
+    source.couponDiscount ??
+    source.itemDiscount ??
+    source.discountAmount ??
+    pricing.discount ??
+    pricing.couponDiscount ??
+    (platformCouponDiscount + restaurantCouponDiscount + restaurantOfferDiscount)
+  )
+
+  return {
+    platformCouponDiscount,
+    restaurantCouponDiscount,
+    restaurantOfferDiscount,
+    totalDiscount,
+  }
+}
+
 const formatDisplayText = (value, fallback = "N/A") => {
   if (value === null || value === undefined) return fallback
   const normalized = String(value).trim()
@@ -329,12 +362,8 @@ export function useOrdersManagement(orders, statusKey, title) {
         order.tax ??
         order.pricing?.tax
       )
-      const discountAmount = toNumber(
-        order.couponDiscount ??
-        order.itemDiscount ??
-        order.discountAmount ??
-        order.pricing?.discount
-      )
+      const discountBreakdown = getDiscountBreakdown(order)
+      const discountAmount = discountBreakdown.totalDiscount
       const computedTotal = subtotal + deliveryFee + taxAmount - discountAmount
       const totalAmount = toNumber(
         order.totalAmount ??
@@ -543,7 +572,10 @@ export function useOrdersManagement(orders, statusKey, title) {
           ["Subtotal", formatMoney(subtotal)],
           ["Delivery Fee", formatMoney(deliveryFee)],
           ["Tax", formatMoney(taxAmount)],
-          ["Discount", `- ${formatMoney(discountAmount)}`],
+          ["Platform Coupon", `- ${formatMoney(discountBreakdown.platformCouponDiscount)}`],
+          ["Restaurant Coupon", `- ${formatMoney(discountBreakdown.restaurantCouponDiscount)}`],
+          ["Restaurant Offer", `- ${formatMoney(discountBreakdown.restaurantOfferDiscount)}`],
+          ["Total Discount", `- ${formatMoney(discountAmount)}`],
           ["Grand Total", formatMoney(totalAmount)],
         ],
         theme: "plain",

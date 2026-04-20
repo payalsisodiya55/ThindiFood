@@ -168,6 +168,9 @@ export default function CouponListPage() {
                         {getDiscountLabel(coupon)}
                       </p>
                       <p className="mt-2 text-sm text-slate-600">For your restaurant</p>
+                      <p className="mt-1 text-xs font-medium text-emerald-700">
+                        {coupon.fundedBy === "restaurant" ? "Restaurant-funded" : "Platform-funded"}
+                      </p>
                     </div>
 
                     <div className="relative rounded-xl bg-white px-2 py-1">

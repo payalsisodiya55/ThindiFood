@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, useMemo } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -74,17 +74,30 @@ export default function FinanceDetailsPage() {
 
   // Settlement data with real values from financeData
   const settlementData = useMemo(() => {
-    const cycle = financeData?.currentCycle || {};
-    const summary = financeData?.invoiceSummary || {};
-    
+    const cycle = financeData?.currentCycle || {}
+    const summary = financeData?.invoiceSummary || {}
+    const discountBreakdown = cycle?.discountBreakdown || {}
+    const orders = Array.isArray(cycle?.orders) ? cycle.orders : []
+    const subtotalFromOrders = orders.reduce(
+      (sum, order) => sum + Number(order?.restaurantGrossBeforeDiscount || order?.subtotal || 0),
+      0,
+    )
+    const subtotal = Number(summary.subtotal || subtotalFromOrders || 0)
+    const platformCoupons = Number(discountBreakdown.platformCoupons || 0)
+    const restaurantCoupons = Number(discountBreakdown.restaurantCoupons || 0)
+    const restaurantOffers = Number(discountBreakdown.restaurantOffers || 0)
+    const commissionPaid = Number(discountBreakdown.commissionPaid || 0)
+    const taxes = Number(summary.taxes || 0)
+
     return {
       totalOrders: cycle.totalOrders || 0,
       netOrderValue: {
-        itemSubtotal: summary.subtotal || 0,
-        totalGSTCollected: summary.taxes || 0,
-        restaurantDiscountPromos: 0,
-        restaurantDiscountOthers: 0,
-        total: summary.subtotal || 0
+        itemSubtotal: subtotal,
+        totalGSTCollected: taxes,
+        platformCouponDiscount: platformCoupons,
+        restaurantCouponDiscount: restaurantCoupons,
+        restaurantOfferDiscount: restaurantOffers,
+        total: subtotal
       },
       additions: {
         tds194H: 0,
@@ -92,13 +105,17 @@ export default function FinanceDetailsPage() {
         total: 0
       },
       orderLevelDeductions: {
-        total: 0
+        platformCouponDiscount: platformCoupons,
+        restaurantCouponDiscount: restaurantCoupons,
+        restaurantOfferDiscount: restaurantOffers,
+        commissionPaid,
+        total: restaurantCoupons + restaurantOffers + commissionPaid
       },
       taxDeductions: {
         gstOnServiceFees: 0,
         tds194O: 0,
         gstPaidByZomato: 0,
-        total: summary.taxes || 0
+        total: taxes
       },
       investmentsInGrowth: {
         onlineOrderingAds: 0,
@@ -311,20 +328,29 @@ export default function FinanceDetailsPage() {
                               </div>
                               <div className="flex items-center justify-between py-2 border-t border-dashed border-gray-200">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-sm text-gray-700">Restaurant discount (Promos)</span>
+                                  <span className="text-sm text-gray-700">Platform-funded coupons</span>
                                   <Info className="w-3.5 h-3.5 text-gray-400" />
                                 </div>
                                 <span className="text-sm font-medium text-gray-900">
-                                  ₹{settlementData.netOrderValue.restaurantDiscountPromos.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  ₹{settlementData.netOrderValue.platformCouponDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between py-2 border-t border-dashed border-gray-200">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="text-sm text-gray-700">Restaurant discount (Flat offs, Freebies, Gold, relisted orders and others)</span>
+                                  <span className="text-sm text-gray-700">Restaurant-funded coupons</span>
                                   <Info className="w-3.5 h-3.5 text-gray-400" />
                                 </div>
                                 <span className="text-sm font-medium text-gray-900">
-                                  ₹{(settlementData.netOrderValue?.restaurantDiscountOthers || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                  ₹{(settlementData.netOrderValue?.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between py-2 border-t border-dashed border-gray-200">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-gray-700">Restaurant offers</span>
+                                  <Info className="w-3.5 h-3.5 text-gray-400" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  ₹{(settlementData.netOrderValue?.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                                 </span>
                               </div>
                             </div>
@@ -403,10 +429,60 @@ export default function FinanceDetailsPage() {
                           {expandedSections.orderLevelDeductions ? (
                             <ChevronUp className="w-4 h-4 text-gray-500" />
                           ) : (
-                            <ChevronDown className="w-4 h-4 text-gray-500" />
-                          )}
-                        </div>
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        )}
+                      </div>
                       </button>
+                      <AnimatePresence>
+                        {expandedSections.orderLevelDeductions && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-3 space-y-2 border-t border-dashed border-gray-200">
+                              <div className="flex items-center justify-between py-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-gray-700">Platform coupons</span>
+                                  <Info className="w-3.5 h-3.5 text-gray-400" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  ₹{(settlementData.orderLevelDeductions?.platformCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between py-2 border-t border-dashed border-gray-200">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-gray-700">Your coupons</span>
+                                  <Info className="w-3.5 h-3.5 text-gray-400" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  ₹{(settlementData.orderLevelDeductions?.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between py-2 border-t border-dashed border-gray-200">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-gray-700">Your offers</span>
+                                  <Info className="w-3.5 h-3.5 text-gray-400" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  ₹{(settlementData.orderLevelDeductions?.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between py-2 border-t border-dashed border-gray-200">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-sm text-gray-700">Commission paid</span>
+                                  <Info className="w-3.5 h-3.5 text-gray-400" />
+                                </div>
+                                <span className="text-sm font-medium text-gray-900">
+                                  ₹{(settlementData.orderLevelDeductions?.commissionPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
 
                     {/* Tax deductions (D) */}
@@ -532,10 +608,41 @@ export default function FinanceDetailsPage() {
             )}
 
             {activeTab === "orders" && (
-              <div className=" rounded-lg p-4">
-                <p className="text-sm text-gray-800 text-center py-8">
-                  Orders data will be displayed here
-                </p>
+              <div className="space-y-3">
+                {(financeData?.currentCycle?.orders || []).length === 0 ? (
+                  <div className="bg-white rounded-lg p-4">
+                    <p className="text-sm text-gray-800 text-center py-8">
+                      No payout-ready orders found in this cycle.
+                    </p>
+                  </div>
+                ) : (
+                  (financeData?.currentCycle?.orders || []).map((order, index) => (
+                    <div key={order?.orderId || index} className="bg-white rounded-lg p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            Order ID: {order?.orderId || "N/A"}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Commission base: ₹{Number(order?.commissionBaseAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-gray-900">
+                            ₹{Number(order?.payout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-xs text-gray-500">Net payout</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                        <p>Platform coupon: ₹{Number(order?.platformCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Your coupon: ₹{Number(order?.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Your offer: ₹{Number(order?.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Commission: ₹{Number(order?.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 

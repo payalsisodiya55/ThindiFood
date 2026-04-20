@@ -39,9 +39,14 @@ export default function HubFinance() {
       try {
         setLoading(true)
         const response = await restaurantAPI.getFinance()
+        console.log("[HubFinance] GET /food/restaurant/finance raw response:", response?.data)
         if (response.data?.success && response.data?.data) {
           const data = response.data.data
           setFinanceData(data)
+          console.log("[HubFinance] finance payload:", data)
+          console.log("[HubFinance] currentCycle:", data?.currentCycle)
+          console.log("[HubFinance] currentCycle.orders:", data?.currentCycle?.orders)
+          console.log("[HubFinance] invoiceSummary:", data?.invoiceSummary)
           debugLog('? Finance data fetched:', data)
         }
       } catch (error) {
@@ -62,6 +67,7 @@ export default function HubFinance() {
       try {
         setLoadingWithdrawals(true)
         const response = await restaurantAPI.getWithdrawalHistory()
+        console.log("[HubFinance] GET /food/restaurant/withdrawals raw response:", response?.data)
         const payload = response?.data?.data
         const list = Array.isArray(payload)
           ? payload
@@ -69,6 +75,7 @@ export default function HubFinance() {
             ? payload.withdrawals
             : []
         setWithdrawalRequests(list)
+        console.log("[HubFinance] withdrawal list:", list)
       } catch (error) {
         if (error?.response?.status !== 401) {
           debugError('Error fetching withdrawal history:', error)
@@ -333,6 +340,17 @@ export default function HubFinance() {
       setPastCyclesData(null)
     }
   }, [selectedDateRange])
+
+  useEffect(() => {
+    if (!financeData) return
+    console.log("[HubFinance] rendered financeData state:", financeData)
+    console.log("[HubFinance] rendered estimatedPayout:", financeData?.currentCycle?.estimatedPayout)
+    console.log("[HubFinance] rendered totalOrders:", financeData?.currentCycle?.totalOrders)
+  }, [financeData])
+
+  useEffect(() => {
+    console.log("[HubFinance] rendered withdrawalRequests state:", withdrawalRequests)
+  }, [withdrawalRequests])
 
 
   // Prepare report data from real finance data
@@ -809,6 +827,38 @@ export default function HubFinance() {
                       <Wallet className="h-5 w-5" />
                       Withdraw
                     </button>
+                    <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 mb-2">Discount breakdown</p>
+                      <div className="space-y-1.5 text-sm">
+                        <div className="flex items-center justify-between text-gray-700">
+                          <span>Platform Coupons</span>
+                          <span className="font-medium text-emerald-700">
+                            ₹{Number(financeData?.currentCycle?.discountBreakdown?.platformCoupons || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-700">
+                          <span>Your Coupons</span>
+                          <span className="font-medium text-red-600">
+                            -₹{Number(financeData?.currentCycle?.discountBreakdown?.restaurantCoupons || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-700">
+                          <span>Your Offers</span>
+                          <span className="font-medium text-red-600">
+                            -₹{Number(financeData?.currentCycle?.discountBreakdown?.restaurantOffers || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-gray-700">
+                          <span>Commission Paid</span>
+                          <span className="font-medium text-red-600">
+                            -₹{Number(financeData?.currentCycle?.discountBreakdown?.commissionPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="mt-2 text-xs text-slate-600">
+                        Platform coupons don&apos;t reduce your payout. Your coupons and offers do.
+                      </p>
+                    </div>
                   </>
                 )}
               </div>
@@ -1084,6 +1134,12 @@ export default function HubFinance() {
                                 </p>
                               </div>
                             </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                              <p>Platform coupon: ₹{Number(order.platformCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Your coupon: ₹{Number(order.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Your offer: ₹{Number(order.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Commission: ₹{Number(order.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1115,6 +1171,12 @@ export default function HubFinance() {
                                   Earning
                                 </p>
                               </div>
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                              <p>Platform coupon: ₹{Number(order.platformCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Your coupon: ₹{Number(order.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Your offer: ₹{Number(order.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Commission: ₹{Number(order.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
                           </div>
                         ))}

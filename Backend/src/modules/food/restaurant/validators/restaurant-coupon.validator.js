@@ -58,6 +58,7 @@ export const validateRestaurantCreateCouponDto = (body = {}) => {
         couponCode: String(data.couponCode).trim().toUpperCase(),
         discountType,
         discountValue,
+        fundedBy: 'restaurant',
         maxDiscount,
         minOrderValue: data.minOrderValue !== undefined ? Number(data.minOrderValue) : 0,
         usageLimit: data.usageLimit !== undefined ? Number(data.usageLimit) : null,

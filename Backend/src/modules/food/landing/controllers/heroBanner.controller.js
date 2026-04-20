@@ -5,7 +5,8 @@ import {
     updateHeroBannerOrder,
     toggleHeroBannerStatus,
     getHeroBannerById,
-    linkHeroBannerRestaurants
+    linkHeroBannerRestaurants,
+    updateHeroBannerZone
 } from '../services/heroBanner.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
@@ -29,7 +30,8 @@ export const uploadHeroBannersController = async (req, res, next) => {
         const meta = {
             title: req.body.title,
             ctaText: req.body.ctaText,
-            ctaLink: req.body.ctaLink
+            ctaLink: req.body.ctaLink,
+            zoneId: req.body.zoneId
         };
 
         const results = await createHeroBannersFromFiles(req.files, meta);
@@ -104,6 +106,25 @@ export const linkHeroBannerRestaurantsController = async (req, res, next) => {
             throw new ValidationError('Hero banner not found');
         }
         return sendResponse(res, 200, 'Restaurants linked to hero banner', updated);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateHeroBannerZoneController = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            throw new ValidationError('Banner id is required');
+        }
+
+        const zoneIdRaw = String(req.body?.zoneId || '').trim();
+        const updated = await updateHeroBannerZone(id, zoneIdRaw || undefined);
+        if (!updated) {
+            throw new ValidationError('Hero banner not found');
+        }
+
+        return sendResponse(res, 200, 'Hero banner zone updated', updated);
     } catch (error) {
         next(error);
     }

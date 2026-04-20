@@ -416,9 +416,29 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
                   <span className="font-medium text-emerald-600">-₹{order.itemDiscount.toFixed(2)}</span>
                 </div>
               )}
-              {order.couponDiscount !== undefined && order.couponDiscount > 0 && (
+              {order.platformCouponDiscount !== undefined && order.platformCouponDiscount > 0 && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Coupon Discount</span>
+                  <span className="text-slate-600">Platform Coupon</span>
+                  <span className="font-medium text-emerald-600">-₹{order.platformCouponDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {order.restaurantCouponDiscount !== undefined && order.restaurantCouponDiscount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Restaurant Coupon</span>
+                  <span className="font-medium text-emerald-600">-₹{order.restaurantCouponDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {order.restaurantOfferDiscount !== undefined && order.restaurantOfferDiscount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Restaurant Offer</span>
+                  <span className="font-medium text-emerald-600">-₹{order.restaurantOfferDiscount.toFixed(2)}</span>
+                </div>
+              )}
+              {order.couponDiscount !== undefined &&
+                order.couponDiscount > 0 &&
+                !(order.platformCouponDiscount > 0 || order.restaurantCouponDiscount > 0 || order.restaurantOfferDiscount > 0) && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">Total Discount</span>
                   <span className="font-medium text-emerald-600">-₹{order.couponDiscount.toFixed(2)}</span>
                 </div>
               )}

@@ -413,7 +413,21 @@ export default function OrdersPage({ statusKey = "all" }) {
       const deliveryFee = Number(pricing.deliveryFee || 0)
       const platformFee = Number(pricing.platformFee || 0)
       const taxAmount = Number(pricing.tax || 0)
-      const discountAmount = Number(pricing.discount || 0)
+      const platformCouponDiscount = Number(order.platformCouponDiscount ?? pricing.platformCouponDiscount ?? 0)
+      const restaurantCouponDiscount = Number(order.restaurantCouponDiscount ?? pricing.restaurantCouponDiscount ?? 0)
+      const restaurantOfferDiscount = Number(
+        order.restaurantOfferDiscount ??
+        order.restaurantDiscount ??
+        pricing.restaurantOfferDiscount ??
+        pricing.restaurantDiscount ??
+        0
+      )
+      const discountAmount = Number(
+        order.couponDiscount ??
+        pricing.couponDiscount ??
+        pricing.discount ??
+        (platformCouponDiscount + restaurantCouponDiscount + restaurantOfferDiscount)
+      )
       const computedTotal = subtotal + deliveryFee + platformFee + taxAmount - discountAmount
       const totalAmount = Number(
         pricing.total != null ? pricing.total : computedTotal
@@ -495,6 +509,9 @@ export default function OrdersPage({ statusKey = "all" }) {
         subtotal,
         totalItemAmount: subtotal,
         couponDiscount: discountAmount,
+        platformCouponDiscount,
+        restaurantCouponDiscount,
+        restaurantOfferDiscount,
         itemDiscount: 0,
         deliveryCharge: deliveryFee,
         vatTax: taxAmount,

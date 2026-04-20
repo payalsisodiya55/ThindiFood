@@ -33,18 +33,37 @@ const addressSchema = z.object({
 });
 
 const pricingSchema = z.object({
+    originalSubtotal: z.number().min(0).optional(),
+    offerAdjustedSubtotal: z.number().min(0).optional(),
     subtotal: z.number().min(0),
     tax: z.number().min(0).optional(),
     packagingFee: z.number().min(0).optional(),
     deliveryFee: z.number().min(0).optional(),
     platformFee: z.number().min(0).optional(),
     discount: z.number().min(0).optional(),
+    couponDiscount: z.number().min(0).optional(),
+    restaurantDiscount: z.number().min(0).optional(),
+    platformCouponDiscount: z.number().min(0).optional(),
+    restaurantCouponDiscount: z.number().min(0).optional(),
+    restaurantOfferDiscount: z.number().min(0).optional(),
+    commissionBaseAmount: z.number().min(0).optional(),
+    restaurantCommission: z.number().min(0).optional(),
+    restaurantGrossBeforeDiscount: z.number().min(0).optional(),
+    couponFundingType: z.enum(['platform', 'restaurant', 'none']).optional(),
+    payoutAdjustments: z.object({
+        platformCouponDiscount: z.number().min(0).optional(),
+        restaurantCouponDiscount: z.number().min(0).optional(),
+        restaurantOfferDiscount: z.number().min(0).optional(),
+        commission: z.number().min(0).optional(),
+        netPayout: z.number().min(0).optional()
+    }).optional(),
     total: z.number().min(0),
     currency: z.string().optional(),
     couponCode: z.string().optional().nullable(),
     appliedCoupon: z.object({
         code: z.string().optional(),
-        discount: z.number().optional()
+        discount: z.number().optional(),
+        fundedBy: z.enum(['platform', 'restaurant']).optional()
     }).optional().nullable()
 });
 
