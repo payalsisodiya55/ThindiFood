@@ -51,6 +51,10 @@ const zoneSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
             index: true
+        },
+        takeawayCodEnabled: {
+            type: Boolean,
+            default: true
         }
     },
     {

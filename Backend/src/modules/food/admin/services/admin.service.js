@@ -4665,7 +4665,8 @@ export async function createZone(body) {
         serviceLocation: (body.serviceLocation && body.serviceLocation.trim()) || name,
         unit: body.unit === 'miles' ? 'miles' : 'kilometer',
         coordinates: normalized,
-        isActive: body.isActive !== false
+        isActive: body.isActive !== false,
+        takeawayCodEnabled: body.takeawayCodEnabled !== false
     });
     await zone.save();
     return { zone: zone.toObject() };
@@ -4681,6 +4682,7 @@ export async function updateZone(id, body) {
     if (body.serviceLocation !== undefined) zone.serviceLocation = String(body.serviceLocation).trim();
     if (body.unit !== undefined) zone.unit = body.unit === 'miles' ? 'miles' : 'kilometer';
     if (body.isActive !== undefined) zone.isActive = body.isActive !== false;
+    if (body.takeawayCodEnabled !== undefined) zone.takeawayCodEnabled = body.takeawayCodEnabled !== false;
     if (Array.isArray(body.coordinates) && body.coordinates.length >= 3) {
         zone.coordinates = body.coordinates.map((c) => ({
             latitude: Number(c.latitude) || 0,

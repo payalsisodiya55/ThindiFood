@@ -56,7 +56,8 @@ export function useZone(location) {
   const debounceTimerRef = useRef(null)
 
   // Detect zone when location is available
-  const detectZone = useCallback(async (lat, lng) => {
+  const detectZone = useCallback(async (lat, lng, options = {}) => {
+    const { force = false } = options
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
       setZoneStatus("OUT_OF_SERVICE");
       setZoneId(null);
@@ -70,7 +71,7 @@ export function useZone(location) {
 
       const key = zoneKeyFromCoords(lat, lng)
       const now = Date.now()
-      if (key) {
+      if (key && !force) {
         const cached = zoneCache.get(key)
         if (cached && now - cached.ts < ZONE_CACHE_TTL_MS) {
           applyZonePayload(cached.payload, { setZoneId, setZone, setZoneStatus })
@@ -79,7 +80,7 @@ export function useZone(location) {
       }
 
       const promise = (() => {
-        if (key && zoneInFlight.has(key)) return zoneInFlight.get(key)
+        if (!force && key && zoneInFlight.has(key)) return zoneInFlight.get(key)
         const p = zoneAPI
           .detectZone(lat, lng)
           .then((response) => {
@@ -91,7 +92,7 @@ export function useZone(location) {
           .finally(() => {
             if (key) zoneInFlight.delete(key)
           })
-        if (key) zoneInFlight.set(key, p)
+        if (!force && key) zoneInFlight.set(key, p)
         return p
       })()
 
@@ -169,11 +170,11 @@ export function useZone(location) {
   }, [location?.latitude, location?.longitude, detectZone])
 
   // Manual refresh zone
-  const refreshZone = useCallback(() => {
+  const refreshZone = useCallback((options = {}) => {
     const lat = location?.latitude;
     const lng = location?.longitude;
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      detectZone(lat, lng);
+      detectZone(lat, lng, options);
     }
   }, [location?.latitude, location?.longitude, detectZone]);
 

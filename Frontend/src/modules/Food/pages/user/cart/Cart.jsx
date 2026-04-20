@@ -425,8 +425,9 @@ export default function Cart() {
       longitude: selectedAddressCoordinates[0]
     }
     : currentLocation
-  const { zoneId } = useZone(zoneLocation) // Prefer selected/saved address zone
+  const { zoneId, zone, refreshZone } = useZone(zoneLocation) // Prefer selected/saved address zone
   const defaultPayment = getDefaultPaymentMethod()
+  const isTakeawayCodEnabled = zone?.takeawayCodEnabled === true
 
   useEffect(() => {
     // Sync delivery mode from overlay/localStorage changes.
@@ -439,6 +440,17 @@ export default function Cart() {
       // ignore
     }
   })
+
+  useEffect(() => {
+    if (!isTakeawayCodEnabled && selectedPaymentMethod === "cash") {
+      setSelectedPaymentMethod("razorpay")
+    }
+  }, [isTakeawayCodEnabled, selectedPaymentMethod])
+
+  useEffect(() => {
+    if (!zoneLocation?.latitude || !zoneLocation?.longitude) return
+    refreshZone({ force: true })
+  }, [zoneLocation?.latitude, zoneLocation?.longitude, refreshZone])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -1017,6 +1029,38 @@ export default function Cart() {
   const discount = Math.round(pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0))
   const totalBeforeDiscount = Math.round(subtotal + deliveryFee + platformFee + gstCharges)
   const total = Math.round(pricing?.total || (totalBeforeDiscount - discount))
+  const paymentOptions = [
+    {
+      id: 'razorpay',
+      name: 'Online Payment',
+      description: 'UPI, Cards, Netbanking',
+      icon: <Zap className="w-5 h-5" />,
+      color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
+      selectedColor: 'bg-emerald-500 text-white',
+      badge: 'SECURE'
+    },
+    {
+      id: 'wallet',
+      name: 'Quick Wallet',
+      description: 'Pay from your wallet',
+      icon: <Wallet className="w-5 h-5" />,
+      color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
+      selectedColor: 'bg-blue-500 text-white',
+      subInfo: `Bal: ${RUPEE_SYMBOL}${walletBalance.toFixed(0)}`,
+      disabled: walletBalance < total,
+      disabledText: 'Low Balance'
+    },
+    ...(isTakeawayCodEnabled
+      ? [{
+          id: 'cash',
+          name: 'Cash on Delivery',
+          description: 'Pay when order arrives',
+          icon: <Banknote className="w-5 h-5" />,
+          color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
+          selectedColor: 'bg-red-500 text-white'
+        }]
+      : [])
+  ]
   const savings = Math.round(pricing?.savings ?? Math.max(0, totalBeforeDiscount - total))
   const selectedPaymentLabel =
     selectedPaymentMethod === "wallet"
@@ -1664,6 +1708,13 @@ export default function Cart() {
 
       if (fulfillmentType === "takeaway" && !pickupAtIso) {
         toast.error("Pickup time is required for takeaway orders")
+        setIsPlacingOrder(false)
+        return
+      }
+
+      if (fulfillmentType === "takeaway" && selectedPaymentMethod === "cash" && !isTakeawayCodEnabled) {
+        toast.error("Cash on Delivery is not available in your zone")
+        setSelectedPaymentMethod("razorpay")
         setIsPlacingOrder(false)
         return
       }
@@ -2937,36 +2988,7 @@ export default function Cart() {
                     </div>
 
                     <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
-                      {[
-                        {
-                          id: 'razorpay',
-                          name: 'Online Payment',
-                          description: 'UPI, Cards, Netbanking',
-                          icon: <Zap className="w-5 h-5" />,
-                          color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
-                          selectedColor: 'bg-emerald-500 text-white',
-                          badge: 'SECURE'
-                        },
-                        {
-                          id: 'wallet',
-                          name: 'Quick Wallet',
-                          description: 'Pay from your wallet',
-                          icon: <Wallet className="w-5 h-5" />,
-                          color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
-                          selectedColor: 'bg-blue-500 text-white',
-                          subInfo: `Bal: ${RUPEE_SYMBOL}${walletBalance.toFixed(0)}`,
-                          disabled: walletBalance < total,
-                          disabledText: 'Low Balance'
-                        },
-                        {
-                          id: 'cash',
-                          name: 'Cash on Delivery',
-                          description: 'Pay when order arrives',
-                          icon: <Banknote className="w-5 h-5" />,
-                          color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
-                          selectedColor: 'bg-red-500 text-white'
-                        }
-                      ].map((option) => (
+                      {paymentOptions.map((option) => (
                         <button
                           key={option.id}
                           onClick={() => {

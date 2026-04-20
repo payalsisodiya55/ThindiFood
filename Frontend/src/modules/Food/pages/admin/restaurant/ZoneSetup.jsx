@@ -12,6 +12,7 @@ export default function ZoneSetup() {
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [updatingCodZoneId, setUpdatingCodZoneId] = useState(null)
 
   useEffect(() => {
     fetchZones()
@@ -44,6 +45,30 @@ export default function ZoneSetup() {
     } catch (error) {
       debugError("Error deleting zone:", error)
       alert(error.response?.data?.message || "Failed to delete zone")
+    }
+  }
+
+  const handleToggleTakeawayCod = async (zone) => {
+    const zoneId = zone._id || zone.id
+    if (!zoneId) return
+
+    try {
+      setUpdatingCodZoneId(zoneId)
+      await adminAPI.updateZone(zoneId, {
+        takeawayCodEnabled: !(zone.takeawayCodEnabled !== false),
+      })
+      setZones((prevZones) =>
+        prevZones.map((currentZone) =>
+          (currentZone._id || currentZone.id) === zoneId
+            ? { ...currentZone, takeawayCodEnabled: !(zone.takeawayCodEnabled !== false) }
+            : currentZone,
+        ),
+      )
+    } catch (error) {
+      debugError("Error updating takeaway COD:", error)
+      alert(error.response?.data?.message || "Failed to update takeaway COD")
+    } finally {
+      setUpdatingCodZoneId(null)
     }
   }
 
@@ -176,6 +201,42 @@ export default function ZoneSetup() {
                       <span className="font-medium text-slate-900">{zone.coordinates.length}</span>
                     </div>
                   )}
+                  <div className="pt-3 mt-3 border-t border-slate-100">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">Takeaway COD</p>
+                        <p className="text-xs text-slate-500">
+                          Show cash on delivery only for this zone in takeaway checkout.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTakeawayCod(zone)}
+                        disabled={updatingCodZoneId === (zone._id || zone.id)}
+                        className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border transition-colors ${
+                          zone.takeawayCodEnabled !== false
+                            ? "border-green-500 bg-green-500"
+                            : "border-slate-300 bg-slate-200"
+                        } ${
+                          updatingCodZoneId === (zone._id || zone.id)
+                            ? "cursor-wait opacity-70"
+                            : "cursor-pointer"
+                        }`}
+                        title="Toggle takeaway COD"
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                            zone.takeawayCodEnabled !== false ? "translate-x-8" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    <p className={`mt-2 text-xs font-semibold ${
+                      zone.takeawayCodEnabled !== false ? "text-green-600" : "text-slate-500"
+                    }`}>
+                      {zone.takeawayCodEnabled !== false ? "COD enabled for takeaway" : "COD hidden for takeaway"}
+                    </p>
+                  </div>
                 </div>
               </div>
             ))}
