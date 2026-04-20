@@ -15,7 +15,7 @@ import {
   ChefHat,
   Soup,
   Coffee,
-  ShoppingCart,
+  Wallet,
 } from "lucide-react";
 import { Switch } from "@food/components/ui/switch";
 import {
@@ -324,15 +324,10 @@ export default function HomeHeader({
               </Popover>
 
               <Link
-                to="/cart"
+                to="/wallet"
                 className={cartButtonClassName}
               >
-                <ShoppingCart className={actionIconClassName} strokeWidth={2.2} />
-                {cartCount > 0 && (
-                  <span className="absolute -right-1 -top-1 min-w-[18px] rounded-full px-1 py-[1px] text-center text-[10px] font-bold leading-none text-white" style={{ backgroundColor: RED }}>
-                    {cartCount > 99 ? "99+" : cartCount}
-                  </span>
-                )}
+                <Wallet className={actionIconClassName} strokeWidth={2.2} />
               </Link>
             </div>
           </div>
