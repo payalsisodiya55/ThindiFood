@@ -11,10 +11,12 @@ import {
     updateOrderStatusController,
     getSessionBillController,
     closeSessionController,
+    cancelEmptySessionController,
     addTableController,
     listTablesController,
     requestCounterPaymentController,
     markCounterPaidController,
+    listRestaurantSessionsController,
 } from '../controllers/dineIn.controller.js';
 import {
     createBookingController,
@@ -46,6 +48,7 @@ router.patch('/orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT
 // Billing & Payment
 router.get('/sessions/:id/bill', authMiddleware, getSessionBillController);
 router.post('/sessions/:id/pay', authMiddleware, closeSessionController);
+router.post('/sessions/:id/cancel-empty', authMiddleware, requireRoles('USER'), cancelEmptySessionController);
 // Pay at Counter
 router.post('/sessions/:id/request-counter-payment', authMiddleware, requireRoles('USER'), requestCounterPaymentController);
 router.post('/sessions/:id/mark-counter-paid', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), markCounterPaidController);
@@ -53,6 +56,7 @@ router.post('/sessions/:id/mark-counter-paid', authMiddleware, requireRoles('RES
 // Table Management
 router.post('/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), addTableController);
 router.get('/restaurants/:restaurantId/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), listTablesController);
+router.get('/restaurants/current/sessions', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), listRestaurantSessionsController);
 
 // ─── Table Bookings (Pre-book flow) ─────────────────────────────────────────
 

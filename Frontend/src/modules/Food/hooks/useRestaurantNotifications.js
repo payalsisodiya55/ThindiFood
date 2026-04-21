@@ -84,6 +84,7 @@ export const useRestaurantNotifications = () => {
   const [newOrder, setNewOrder] = useState(null);
   const [newPaymentRequest, setNewPaymentRequest] = useState(null);
   const [newBooking, setNewBooking] = useState(null);
+  const [newClosedSession, setNewClosedSession] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const audioRef = useRef(null);
   const activeOrderRef = useRef(null);
@@ -338,7 +339,10 @@ export const useRestaurantNotifications = () => {
         // - backend "created" -> UI "confirmed"
         // We alert only for "confirmed/new order waiting for review".
         const confirmed = (rows || [])
-          .filter((o) => String(o?.status || "").toLowerCase() === "confirmed")
+          .filter((o) => {
+            const status = String(o?.status || "").toLowerCase();
+            return status === "confirmed" || status === "created";
+          })
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || 0;
             const bt = b?.updatedAt || b?.createdAt || 0;
@@ -415,8 +419,14 @@ export const useRestaurantNotifications = () => {
         if (tablesRes.data?.success) {
             const activeTables = tablesRes.data.data.filter(t => t.currentSessionId);
             for (const table of activeTables) {
-                // Fetch session to see if there's a new "received" round
-                const sessRes = await dineInAPI.getSession(table.currentSessionId);
+                const sessionIdentity =
+                  table?.currentSessionId?._id ||
+                  table?.currentSessionId?.id ||
+                  table?.currentSessionId;
+                if (!sessionIdentity) continue;
+                try {
+                  // Fetch session to see if there's a new "received" round
+                  const sessRes = await dineInAPI.getSession(sessionIdentity);
                 
                 const session = sessRes.data?.data;
                 if (!session || !session.orders) continue;
@@ -445,19 +455,22 @@ export const useRestaurantNotifications = () => {
                   ? latestRound.items.some((item) => item?.status === 'received')
                   : false;
 
-                if (hasReceivedItems) {
-                    // Trigger alert for this table. Use the *round id* as the key so accept can update it.
-                    handleIncomingOrderAlert({
-                        orderId: `Table ${table.tableNumber}`,
-                        orderMongoId: latestRound._id?.toString?.() || latestRound._id || `${session._id}-${rounds.length}`,
-                        sessionId: session._id?.toString?.() || session._id,
-                        tableNumber: table.tableNumber,
-                        tableLabel: table.tableLabel,
-                        type: 'Dine-In',
-                        total: session.totalAmount,
-                        items: latestRound.items,
-                        isDineIn: true
-                    });
+                  if (hasReceivedItems) {
+                      // Trigger alert for this table. Use the *round id* as the key so accept can update it.
+                      handleIncomingOrderAlert({
+                          orderId: `Table ${table.tableNumber}`,
+                          orderMongoId: latestRound._id?.toString?.() || latestRound._id || `${session._id}-${rounds.length}`,
+                          sessionId: session._id?.toString?.() || session._id,
+                          tableNumber: table.tableNumber,
+                          tableLabel: table.tableLabel,
+                          type: 'Dine-In',
+                          total: session.totalAmount,
+                          items: latestRound.items,
+                          isDineIn: true
+                      });
+                  }
+                } catch {
+                  // Non-blocking per table: a single bad session should not stop other table alerts.
                 }
             }
         }
@@ -706,10 +719,10 @@ export const useRestaurantNotifications = () => {
     debugLog('?? Is Production Deployment:', isProductionDeployment);
 
     // Initialize socket connection (default namespace)
-    // Use polling only to avoid repeated "WebSocket connection failed" when backend is down
+    // Keep both transports so local/dev setups with websocket upgrades still work.
     socketRef.current = io(socketUrl, {
       path: '/socket.io/',
-      transports: ['polling'],
+      transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
@@ -841,10 +854,10 @@ export const useRestaurantNotifications = () => {
     });
 
     socketRef.current.on('dine_in_session_closed', (payload) => {
-      debugLog('🔔 Dine-in session closed:', payload);
-      // Clear any active dine-in alert loop and refresh in-app inbox.
+      debugLog('dine-in session closed:', payload);
       stopAlertLoop();
       activeOrderRef.current = null;
+      setNewClosedSession(payload || null);
       dispatchNotificationInboxRefresh();
     });
 
@@ -1005,6 +1018,10 @@ export const useRestaurantNotifications = () => {
     setNewBooking(null);
   };
 
+  const clearNewClosedSession = () => {
+    setNewClosedSession(null);
+  };
+
   return {
     newOrder,
     clearNewOrder,
@@ -1012,10 +1029,13 @@ export const useRestaurantNotifications = () => {
     clearNewPaymentRequest,
     newBooking,
     clearNewBooking,
+    newClosedSession,
+    clearNewClosedSession,
     isConnected,
     playNotificationSound
   };
 };
+
 
 
 

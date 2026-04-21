@@ -185,6 +185,58 @@ export default function HubFinance() {
     return { earnings, commission, gross, count: invoiceOrders.length }
   }, [invoiceOrders])
 
+  const codSettlementInsight = useMemo(() => {
+    const currentOrders = Array.isArray(financeData?.currentCycle?.orders) ? financeData.currentCycle.orders : []
+    const codOrders = currentOrders.filter((order) => Boolean(order?.isCodLike))
+    const onlineOrdersCount = currentOrders.filter((order) => !order?.isCodLike).length
+
+    const adjustedCodOrders = codOrders.filter(
+      (order) => Boolean(order?.settlementApplied) && Number(order?.walletNetAdjustment || 0) < -0.009
+    )
+    const totalAdjustedFromCod = Math.abs(
+      adjustedCodOrders.reduce((sum, order) => sum + Number(order?.walletNetAdjustment || 0), 0)
+    )
+    const totalAdjustedAdminRecoverable = adjustedCodOrders.reduce(
+      (sum, order) => sum + Number(order?.adminChargesRecoverable || 0),
+      0
+    )
+
+    const settlement = financeData?.currentCycle?.settlementBreakdown || {}
+    const pendingAdminRecoverable = Number(settlement?.adminChargesRecoverable || 0)
+    const pendingPlatformComp = Number(settlement?.platformDiscountCompensation || 0)
+    const pendingNetDue = Math.max(0, pendingAdminRecoverable - pendingPlatformComp)
+
+    return {
+      hasPendingDue: pendingNetDue > 0.009,
+      pendingNetDue,
+      pendingAdminRecoverable,
+      pendingPlatformComp,
+      hasAdjustedHistory: totalAdjustedFromCod > 0.009,
+      totalAdjustedFromCod,
+      totalAdjustedAdminRecoverable,
+      adjustedOrdersCount: adjustedCodOrders.length,
+      onlineOrdersCount,
+    }
+  }, [financeData])
+
+  const payoutDeductionNote = useMemo(() => {
+    const breakdown = financeData?.currentCycle?.discountBreakdown || {}
+    const reasons = []
+
+    const restaurantCoupons = Number(breakdown?.restaurantCoupons || 0)
+    const restaurantOffers = Number(breakdown?.restaurantOffers || 0)
+
+    if (restaurantCoupons > 0.009) {
+      reasons.push({ key: "restaurant_coupon", label: "Your Coupon Discount", amount: restaurantCoupons })
+    }
+    if (restaurantOffers > 0.009) {
+      reasons.push({ key: "restaurant_offer", label: "Your Offer Discount", amount: restaurantOffers })
+    }
+
+    const totalDeduction = reasons.reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    return { reasons, totalDeduction, hasDeduction: totalDeduction > 0.009 }
+  }, [financeData])
+
   const handleViewDetails = () => {
     navigate("/restaurant/finance-details", { state: { financeData, restaurantData } })
   }
@@ -859,27 +911,78 @@ export default function HubFinance() {
                         Platform coupons don&apos;t reduce your payout. Your coupons and offers do.
                       </p>
                     </div>
-                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">COD / Counter note</p>
-                      <p className="text-xs text-amber-900">
-                        Admin recoverable (commission + platform fee + tax):{" "}
-                        <span className="font-semibold">
-                          ₹{Number(financeData?.currentCycle?.settlementBreakdown?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </p>
-                      <p className="text-xs text-amber-900 mt-1">
-                        Platform discount compensation:{" "}
-                        <span className="font-semibold">
-                          ₹{Number(financeData?.currentCycle?.settlementBreakdown?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </p>
-                      <p className="text-xs text-amber-900 mt-1">
-                        Wallet net adjustment:{" "}
-                        <span className="font-semibold">
-                          ₹{Number(financeData?.currentCycle?.settlementBreakdown?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </span>
-                      </p>
-                    </div>
+                    {payoutDeductionNote.hasDeduction && (
+                      <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-rose-800 mb-1">
+                          Why payout reduced
+                        </p>
+                        <p className="text-xs text-rose-900">
+                          Total deduction this cycle:{" "}
+                          <span className="font-semibold">
+                            ₹{Number(payoutDeductionNote.totalDeduction || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </p>
+                        <div className="mt-1 space-y-1">
+                          {payoutDeductionNote.reasons.map((reason) => (
+                            <p key={reason.key} className="text-xs text-rose-900">
+                              {reason.label}:{" "}
+                              <span className="font-semibold">
+                                -₹{Number(reason.amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {codSettlementInsight.hasPendingDue && (
+                      <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">COD / Counter note</p>
+                        <p className="text-xs text-amber-900">
+                          <span className="font-semibold">₹{Number(codSettlementInsight.pendingNetDue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span> is pending to be paid to admin from COD orders. It will be adjusted in the next online payout.
+                        </p>
+                        <p className="text-xs text-amber-900">
+                          Admin recoverable (commission + platform fee + tax):{" "}
+                          <span className="font-semibold">
+                            ₹{Number(codSettlementInsight.pendingAdminRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </p>
+                        <p className="text-xs text-amber-900 mt-1">
+                          Platform discount compensation:{" "}
+                          <span className="font-semibold">
+                            ₹{Number(codSettlementInsight.pendingPlatformComp || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </p>
+                        <p className="text-xs text-amber-900 mt-1">
+                          Wallet net adjustment:{" "}
+                          <span className="font-semibold">
+                            ₹{Number(financeData?.currentCycle?.settlementBreakdown?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </p>
+                      </div>
+                    )}
+                    {!codSettlementInsight.hasPendingDue && codSettlementInsight.hasAdjustedHistory && (
+                      <div className="mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-sky-800 mb-1">COD adjustment done</p>
+                        <p className="text-xs text-sky-900">
+                          Previous COD dues were adjusted, so{" "}
+                          <span className="font-semibold">
+                            ₹{Number(codSettlementInsight.totalAdjustedFromCod || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>{" "}
+                          was deducted from payout.
+                        </p>
+                        <p className="text-xs text-sky-900 mt-1">
+                          Adjusted COD orders:{" "}
+                          <span className="font-semibold">{codSettlementInsight.adjustedOrdersCount}</span>
+                          {codSettlementInsight.onlineOrdersCount > 0 ? ` • Current cycle online orders: ${codSettlementInsight.onlineOrdersCount}` : ""}
+                        </p>
+                        <p className="text-xs text-sky-900 mt-1">
+                          Admin recoverable covered from COD orders:{" "}
+                          <span className="font-semibold">
+                            ₹{Number(codSettlementInsight.totalAdjustedAdminRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </p>
+                      </div>
+                    )}
                   </>
                 )}
               </div>

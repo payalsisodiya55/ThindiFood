@@ -187,6 +187,10 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         .lean();
 
     const currentCycleOrders = currentTransactions.map(mapFinanceOrder);
+    const currentCycleOnlineOrders = currentCycleOrders.filter((order) => !order.isCodLike);
+    const currentCyclePendingCodOrders = currentCycleOrders.filter(
+        (order) => order.isCodLike && !order.settlementApplied
+    );
 
     const currentCycleEstimatedPayout = currentCycleOrders.reduce(
         (sum, o) => sum + (Number(o.payout) || 0),
@@ -205,39 +209,43 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         0
     );
 
-    // Block only pending withdrawals from available balance.
-    // Approved/rejected requests are processed records and should not keep locking payout.
-    const pendingWithdrawalsAgg = await FoodRestaurantWithdrawal.aggregate([
+    // Deduct all committed withdrawal requests (pending + approved) from available payout.
+    // This prevents balance from bouncing back after admin approves a request.
+    const committedWithdrawalsAgg = await FoodRestaurantWithdrawal.aggregate([
         {
             $match: {
                 restaurantId: rid,
                 $expr: {
-                    $eq: [{ $toLower: { $trim: { input: '$status' } } }, 'pending']
+                    $in: [{ $toLower: { $trim: { input: '$status' } } }, ['pending', 'approved', 'processed']]
                 }
             }
         },
         { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    const totalPendingWithdrawals = Number(pendingWithdrawalsAgg?.[0]?.total || 0);
-    const availableBalance = Math.max(0, globalEstimatedPayout - totalPendingWithdrawals);
+    const totalCommittedWithdrawals = Number(committedWithdrawalsAgg?.[0]?.total || 0);
+    const availableBalance = Math.max(0, globalEstimatedPayout - totalCommittedWithdrawals);
 
     const currentCycle = {
         start: { ...nowWindow.startMeta },
         end: { ...nowWindow.endMeta },
         totalEarnings: currentCycleEstimatedPayout, // We still show current cycle earnings label
-        totalWithdrawn: totalPendingWithdrawals,
+        totalWithdrawn: totalCommittedWithdrawals,
         estimatedPayout: availableBalance, // This is what UI shows as "Estimated Payout" (Available Balance)
         discountBreakdown: {
             platformCoupons: currentCycleOrders.reduce((sum, order) => sum + (Number(order.platformCouponDiscount) || 0), 0),
             restaurantCoupons: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantCouponDiscount) || 0), 0),
             restaurantOffers: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantOfferDiscount) || 0), 0),
-            commissionPaid: currentCycleOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
+            // "Commission Paid" in payout card should reflect ONLINE payouts only.
+            // COD/counter recoveries are shown separately in settlement note.
+            commissionPaid: currentCycleOnlineOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
             netPayout: currentCycleEstimatedPayout
         },
         settlementBreakdown: {
-            adminChargesRecoverable: currentCycleOrders.reduce((sum, order) => sum + (Number(order.adminChargesRecoverable) || 0), 0),
-            platformDiscountCompensation: currentCycleOrders.reduce((sum, order) => sum + (Number(order.platformDiscountCompensation) || 0), 0),
-            walletNetAdjustment: currentCycleOrders.reduce((sum, order) => sum + (Number(order.walletNetAdjustment) || 0), 0),
+            // Show only pending COD/counter settlement exposure in top note.
+            // Applied settlements remain visible in per-order details/history.
+            adminChargesRecoverable: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.adminChargesRecoverable) || 0), 0),
+            platformDiscountCompensation: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.platformDiscountCompensation) || 0), 0),
+            walletNetAdjustment: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.walletNetAdjustment) || 0), 0),
         },
         totalOrders: currentCycleOrders.length,
         payoutDate: null,

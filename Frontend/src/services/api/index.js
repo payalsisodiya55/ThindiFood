@@ -794,6 +794,39 @@ export const adminAPI = {
       {},
       { contextModule: "admin" },
     ),
+  getDiningRestaurantCommissionBootstrap: () =>
+    apiClient.get("/food/admin/dining-restaurant-commissions/bootstrap", {
+      contextModule: "admin",
+    }),
+  getDiningRestaurantCommissions: (params = {}) =>
+    apiClient.get("/food/admin/dining-restaurant-commissions", {
+      params,
+      contextModule: "admin",
+    }),
+  getDiningRestaurantCommissionById: (id) =>
+    apiClient.get(`/food/admin/dining-restaurant-commissions/${String(id)}`, {
+      contextModule: "admin",
+    }),
+  createDiningRestaurantCommission: (body) =>
+    apiClient.post("/food/admin/dining-restaurant-commissions", body ?? {}, {
+      contextModule: "admin",
+    }),
+  updateDiningRestaurantCommission: (id, body) =>
+    apiClient.patch(
+      `/food/admin/dining-restaurant-commissions/${String(id)}`,
+      body ?? {},
+      { contextModule: "admin" },
+    ),
+  deleteDiningRestaurantCommission: (id) =>
+    apiClient.delete(`/food/admin/dining-restaurant-commissions/${String(id)}`, {
+      contextModule: "admin",
+    }),
+  toggleDiningRestaurantCommissionStatus: (id) =>
+    apiClient.patch(
+      `/food/admin/dining-restaurant-commissions/${String(id)}/toggle`,
+      {},
+      { contextModule: "admin" },
+    ),
   /** Backward-compatible alias used in UI */
   getApprovedRestaurants: (params = {}) =>
     apiClient.get("/food/admin/restaurants", {
@@ -832,6 +865,12 @@ export const adminAPI = {
     apiClient.get("/food/admin/fee-settings", { contextModule: "admin" }),
   createOrUpdateFeeSettings: (body) =>
     apiClient.put("/food/admin/fee-settings", body ?? {}, {
+      contextModule: "admin",
+    }),
+  getDiningFeeSettings: () =>
+    apiClient.get("/food/admin/dining-fee-settings", { contextModule: "admin" }),
+  createOrUpdateDiningFeeSettings: (body) =>
+    apiClient.put("/food/admin/dining-fee-settings", body ?? {}, {
       contextModule: "admin",
     }),
 
@@ -2780,10 +2819,14 @@ export const dineInAPI = {
     apiClient.get(`/food/dine-in/sessions/${sessionId}/bill`, { contextModule: "user" }),
   payBill: (sessionId, body) =>
     apiClient.post(`/food/dine-in/sessions/${sessionId}/pay`, body, { contextModule: "user" }),
+  cancelEmptySession: (sessionId, body) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/cancel-empty`, body ?? {}, { contextModule: "user" }),
   addTable: (body) =>
     apiClient.post('/food/dine-in/tables', body, { contextModule: "restaurant" }),
   listTables: (restaurantId) =>
     apiClient.get(`/food/dine-in/restaurants/${restaurantId}/tables`, { contextModule: "restaurant" }),
+  getRestaurantSessions: (params = {}) =>
+    apiClient.get('/food/dine-in/restaurants/current/sessions', { params, contextModule: "restaurant" }),
 
   // ─── Table Booking Management (Restaurant side) ────────────────────────────
   getRestaurantBookings: () =>
@@ -2813,3 +2856,4 @@ export const dineInAPI = {
 
 export const heroBannerAPI = createStubAPI();
 export const publicAPI = createStubAPI();
+

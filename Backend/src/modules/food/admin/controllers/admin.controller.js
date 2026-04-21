@@ -832,6 +832,99 @@ export async function getRestaurantCommissionBootstrap(req, res, next) {
     }
 }
 
+export async function getDiningRestaurantCommissions(req, res, next) {
+    try {
+        const data = await adminService.getDiningRestaurantCommissions();
+        res.status(200).json({ success: true, message: 'Dining commissions fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningRestaurantCommissionBootstrap(req, res, next) {
+    try {
+        const data = await adminService.getDiningRestaurantCommissionBootstrap();
+        res.status(200).json({ success: true, message: 'Dining commission bootstrap fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningRestaurantCommissionById(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid dining commission id' });
+        }
+        const commission = await adminService.getDiningRestaurantCommissionById(id);
+        if (!commission) {
+            return res.status(404).json({ success: false, message: 'Dining commission not found' });
+        }
+        res.status(200).json({ success: true, message: 'Dining commission fetched successfully', data: { commission } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function createDiningRestaurantCommission(req, res, next) {
+    try {
+        const body = validateRestaurantCommissionUpsertDto(req.body || {});
+        const created = await adminService.createDiningRestaurantCommission(body);
+        res.status(201).json({ success: true, message: 'Dining commission created successfully', data: { commission: created } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateDiningRestaurantCommission(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid dining commission id' });
+        }
+        const body = validateRestaurantCommissionUpsertDto(req.body || {});
+        const updated = await adminService.updateDiningRestaurantCommission(id, body);
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Dining commission not found' });
+        }
+        res.status(200).json({ success: true, message: 'Dining commission updated successfully', data: { commission: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deleteDiningRestaurantCommission(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid dining commission id' });
+        }
+        const result = await adminService.deleteDiningRestaurantCommission(id);
+        if (!result) {
+            return res.status(404).json({ success: false, message: 'Dining commission not found' });
+        }
+        res.status(200).json({ success: true, message: 'Dining commission deleted successfully', data: result });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function toggleDiningRestaurantCommissionStatus(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid dining commission id' });
+        }
+        const updated = await adminService.toggleDiningRestaurantCommissionStatus(id);
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Dining commission not found' });
+        }
+        res.status(200).json({ success: true, message: 'Dining commission status updated successfully', data: { commission: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getRestaurantCommissionById(req, res, next) {
     try {
         const { id } = req.params;
@@ -995,6 +1088,25 @@ export async function createOrUpdateFeeSettings(req, res, next) {
         const body = validateFeeSettingsUpsertDto(req.body || {});
         const feeSettings = await adminService.upsertFeeSettings(body);
         res.status(200).json({ success: true, message: 'Fee settings saved successfully', data: { feeSettings } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningFeeSettings(req, res, next) {
+    try {
+        const data = await adminService.getDiningFeeSettings();
+        res.status(200).json({ success: true, message: 'Dining fee settings fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function createOrUpdateDiningFeeSettings(req, res, next) {
+    try {
+        const body = validateFeeSettingsUpsertDto(req.body || {});
+        const feeSettings = await adminService.upsertDiningFeeSettings(body);
+        res.status(200).json({ success: true, message: 'Dining fee settings saved successfully', data: { feeSettings } });
     } catch (error) {
         next(error);
     }

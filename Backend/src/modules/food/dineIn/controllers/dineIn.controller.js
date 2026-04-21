@@ -127,6 +127,18 @@ export async function closeSessionController(req, res, next) {
     }
 }
 
+export async function cancelEmptySessionController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId || req.user.id;
+        const { reason } = req.body || {};
+        const session = await dineInService.cancelEmptySession(id, userId, reason);
+        return sendResponse(res, 200, 'Empty session closed successfully', session);
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function addTableController(req, res, next) {
     try {
         const { restaurantId, tableNumber, tableLabel, capacity } = req.body;
@@ -176,6 +188,16 @@ export async function markCounterPaidController(req, res, next) {
         const { id } = req.params;
         const session = await dineInService.markCounterPaid(id);
         return sendResponse(res, 200, 'Payment marked as paid', session);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function listRestaurantSessionsController(req, res, next) {
+    try {
+        const restaurantId = req.user?.userId || req.user?.id;
+        const sessions = await dineInService.listRestaurantSessions(restaurantId, req.query || {});
+        return sendResponse(res, 200, 'Restaurant dine-in sessions fetched successfully', sessions);
     } catch (error) {
         next(error);
     }

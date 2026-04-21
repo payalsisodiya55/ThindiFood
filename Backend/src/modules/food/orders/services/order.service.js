@@ -113,7 +113,12 @@ function buildOrderIdentityFilter(orderIdOrMongoId) {
   if (!raw) return null;
   if (mongoose.isValidObjectId(raw))
     return { _id: new mongoose.Types.ObjectId(raw) };
-  return { orderId: raw };
+  return {
+    $or: [
+      { orderId: raw },
+      { order_id: raw },
+    ],
+  };
 }
 
 function generateOrderId() {
@@ -309,19 +314,12 @@ function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
 }
 
 function canExposeOrderToRestaurant(orderLike) {
-  // Restaurants must be able to see and act on newly created orders even if
-  // an online payment is still in-flight (otherwise "new order popup" never triggers).
-  const orderStatus = String(orderLike?.orderStatus || orderLike?.status || "")
-    .toLowerCase()
-    .trim();
-  if (["created", "confirmed"].includes(orderStatus)) return true;
-
   const method = String(orderLike?.payment?.method || "").toLowerCase();
   const status = String(orderLike?.payment?.status || "").toLowerCase();
 
   // Cash and Wallet are considered confirmed immediately
-  if (["cash", "wallet"].includes(method)) return true;
-  // Online payments must be successful
+  if (["cash", "wallet", "razorpay_qr", "counter"].includes(method)) return true;
+  // Online payments must be successful before restaurant can see order.
   return ["paid", "authorized", "captured", "settled"].includes(status);
 }
 
@@ -1734,6 +1732,15 @@ export async function listOrdersRestaurant(restaurantId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const filter = {
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
+    $or: [
+      // Show all non-online orders immediately.
+      { "payment.method": { $ne: "razorpay" } },
+      // Show online orders only after successful payment.
+      {
+        "payment.method": "razorpay",
+        "payment.status": { $in: ["paid", "authorized", "captured", "settled"] },
+      },
+    ],
   };
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)
@@ -1752,8 +1759,11 @@ export async function updateOrderStatusRestaurant(
   restaurantId,
   orderStatus,
 ) {
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+
   let order = await FoodOrder.findOne({
-    _id: new mongoose.Types.ObjectId(orderId),
+    ...identity,
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
   });
   if (!order) throw new NotFoundError("Order not found");
@@ -1835,6 +1845,9 @@ export async function updateOrderStatusRestaurant(
 
   // Real-time: status update to restaurant room.
   try {
+    let title = `Order ${order.orderId} updated`;
+    let body = `Status changed to ${String(orderStatus).replace(/_/g, " ")}`;
+
     const io = getIO();
     if (io) {
       console.log(
@@ -1853,9 +1866,6 @@ export async function updateOrderStatusRestaurant(
       );
       io.to(rooms.user(order.userId)).emit("order_status_update", payload);
     }
-
-    let title = `Order ${order.orderId} updated`;
-    let body = `Status changed to ${String(orderStatus).replace(/_/g, " ")}`;
 
     // Custom messages for customer based on status
     if (orderStatus === "confirmed") {

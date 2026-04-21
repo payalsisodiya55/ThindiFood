@@ -4,8 +4,8 @@ import { FoodTableSession } from '../models/tableSession.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDineInOrder } from '../models/dineInOrder.model.js';
 import { FoodTableBooking } from '../models/tableBooking.model.js';
-import { FoodRestaurantCommission } from '../../admin/models/restaurantCommission.model.js';
-import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
+import { FoodDiningRestaurantCommission } from '../../admin/models/diningRestaurantCommission.model.js';
+import { FoodDiningFeeSettings } from '../../admin/models/diningFeeSettings.model.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { findAcceptedBooking, linkBookingToSession } from './tableBooking.service.js';
 import { getBestApplicableDiningOffer, getDisplayDiningOfferForRestaurant } from './diningOffer.service.js';
@@ -14,9 +14,52 @@ import { calculateWalletSettlement, deriveFundingType } from '../../orders/servi
 
 const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
 const roundStandard = (value) => Math.round(Number(value) || 0);
+const createHttpError = (message, statusCode = 400) => {
+    const error = new Error(message);
+    error.statusCode = statusCode;
+    return error;
+};
+
+const normalizeDineInOrderItems = (items = []) => {
+    if (!Array.isArray(items) || items.length === 0) {
+        throw createHttpError('At least one valid item is required to place an order', 400);
+    }
+
+    return items.map((item, index) => {
+        const rawItemId = item?.itemId || item?._id || item?.id;
+        const itemId = String(rawItemId || '').trim();
+        if (!mongoose.Types.ObjectId.isValid(itemId)) {
+            throw createHttpError(`Invalid itemId at position ${index + 1}`, 400);
+        }
+
+        const name = String(item?.name || '').trim();
+        if (!name) {
+            throw createHttpError(`Item name is required at position ${index + 1}`, 400);
+        }
+
+        const price = Number(item?.price);
+        if (!Number.isFinite(price) || price < 0) {
+            throw createHttpError(`Invalid item price at position ${index + 1}`, 400);
+        }
+
+        const quantity = Number(item?.quantity);
+        if (!Number.isInteger(quantity) || quantity < 1) {
+            throw createHttpError(`Invalid item quantity at position ${index + 1}`, 400);
+        }
+
+        return {
+            itemId,
+            name,
+            price: roundMoney(price),
+            quantity,
+            isVeg: Boolean(item?.isVeg),
+            notes: String(item?.notes || '').trim(),
+        };
+    });
+};
 
 const getCommissionConfig = async (restaurantId) => {
-    const commissionDoc = await FoodRestaurantCommission.findOne({
+    const commissionDoc = await FoodDiningRestaurantCommission.findOne({
         restaurantId,
         status: { $ne: false },
     }).lean();
@@ -37,7 +80,7 @@ const calculateCommissionAmount = (commissionConfig, baseAmount) => {
 };
 
 const getFeeSettings = async () => {
-    const feeDoc = await FoodFeeSettings.findOne({ isActive: true })
+    const feeDoc = await FoodDiningFeeSettings.findOne({ isActive: true })
         .sort({ createdAt: -1 })
         .lean();
 
@@ -291,8 +334,8 @@ export async function createTableSession(data) {
  * Get session details by ID.
  */
 export async function getSessionById(sessionId) {
-    if (!mongoose.Types.ObjectId.isValid(sessionId)) {
-        throw new Error('Invalid Session ID');
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid Session ID', 400);
     }
 
     const session = await FoodTableSession.findById(sessionId)
@@ -301,7 +344,7 @@ export async function getSessionById(sessionId) {
         .lean();
 
     if (!session) {
-        throw new Error('Session not found');
+        throw createHttpError('Session not found', 404);
     }
 
     return session;
@@ -311,11 +354,15 @@ export async function getSessionById(sessionId) {
  * Place a new order round in a session.
  */
 export async function placeOrder(sessionId, userId, orderData) {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid session id', 400);
+    }
+
     const session = await FoodTableSession.findById(sessionId);
-    if (!session) throw new Error('Session not found');
+    if (!session) throw createHttpError('Session not found', 404);
 
     if (session.status !== 'active') {
-        throw new Error('This session is no longer active and cannot accept new orders');
+        throw createHttpError('This session is no longer active and cannot accept new orders', 409);
     }
 
     // Block new orders if bill has been finalized for settlement.
@@ -324,28 +371,37 @@ export async function placeOrder(sessionId, userId, orderData) {
         session.status === 'bill_requested' ||
         (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING')
     ) {
-        throw new Error('Bill is finalized. No new orders can be placed after requesting counter payment.');
+        throw createHttpError('Bill is finalized. No new orders can be placed after requesting counter payment.', 409);
     }
 
     if (String(session.userId) !== String(userId)) {
-        throw new Error('Unauthorized to place order for this session');
+        throw createHttpError('Unauthorized to place order for this session', 403);
     }
 
+    const normalizedItems = normalizeDineInOrderItems(orderData?.items);
+
     // 1. Calculate round number
-    const roundNumber = session.orders.length + 1;
+    const roundNumber = (Array.isArray(session.orders) ? session.orders.length : 0) + 1;
 
     // 2. Create Order
     const order = new FoodDineInOrder({
         sessionId: session._id,
         restaurantId: session.restaurantId,
         tableNumber: session.tableNumber,
-        items: orderData.items,
+        items: normalizedItems,
         roundNumber,
-        specialRequest: orderData.specialRequest || '',
+        specialRequest: String(orderData?.specialRequest || '').trim(),
         status: 'received'
     });
 
-    await order.save();
+    try {
+        await order.save();
+    } catch (error) {
+        if (error?.name === 'ValidationError' || error?.name === 'CastError') {
+            throw createHttpError(error.message || 'Invalid order payload', 400);
+        }
+        throw error;
+    }
 
     // 3. Update Session
     session.orders.push(order._id);
@@ -577,11 +633,15 @@ export async function requestCounterPayment(sessionId, userId) {
  * Restaurant marks counter payment as paid — closes session and frees table.
  */
 export async function markCounterPaid(sessionId) {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid session id', 400);
+    }
+
     const session = await FoodTableSession.findById(sessionId);
-    if (!session) throw new Error('Session not found');
-    if (session.status === 'completed') throw new Error('Session already completed');
+    if (!session) throw createHttpError('Session not found', 404);
+    if (session.status === 'completed') return session;
     if (session.paymentMode !== 'COUNTER' || session.paymentStatus !== 'PENDING') {
-        throw new Error('No pending counter payment found for this session');
+        throw createHttpError('No pending counter payment found for this session', 409);
     }
 
     session.paymentStatus = 'PAID';
@@ -592,15 +652,92 @@ export async function markCounterPaid(sessionId) {
     return closeSession(sessionId, { paymentMethod: 'counter' });
 }
 
+export async function cancelEmptySession(sessionId, userId, reason) {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid session id', 400);
+    }
+
+    const normalizedReason = String(reason || '').trim();
+    if (!normalizedReason) {
+        throw createHttpError('Reason is required to close the session', 400);
+    }
+
+    const session = await FoodTableSession.findById(sessionId);
+    if (!session) throw createHttpError('Session not found', 404);
+
+    if (String(session.userId) !== String(userId)) {
+        throw createHttpError('Unauthorized to close this session', 403);
+    }
+
+    if (session.status !== 'active') {
+        throw createHttpError('Only active empty sessions can be closed', 409);
+    }
+
+    if (session.isPaid || session.isBillFinalized) {
+        throw createHttpError('This session is already in billing flow and cannot be closed this way', 409);
+    }
+
+    const existingOrderCount = await FoodDineInOrder.countDocuments({ sessionId: session._id });
+    if (existingOrderCount > 0 || (Array.isArray(session.orders) && session.orders.length > 0)) {
+        throw createHttpError('Session cannot be closed after placing an order', 409);
+    }
+
+    const now = new Date();
+    session.status = 'completed';
+    session.closedAt = now;
+    session.closedByRole = 'USER';
+    session.closureType = 'EMPTY_CANCELLED';
+    session.closeReason = normalizedReason;
+    session.notes = normalizedReason;
+    await session.save();
+
+    const tableReleaseFilter = session.tableId
+        ? { _id: session.tableId }
+        : {
+              $or: [
+                  { currentSessionId: session._id },
+                  {
+                      restaurantId: session.restaurantId,
+                      tableNumber: String(session.tableNumber || '').trim(),
+                  },
+              ],
+          };
+    await FoodRestaurantTable.updateMany(tableReleaseFilter, { currentSessionId: null });
+
+    try {
+        const io = getIO();
+        if (io) {
+            io.to(rooms.restaurant(session.restaurantId)).emit('dine_in_session_closed', {
+                sessionId: session._id?.toString?.() || String(session._id),
+                restaurantId: session.restaurantId?.toString?.() || String(session.restaurantId),
+                tableNumber: String(session.tableNumber || ''),
+                status: 'completed',
+                closeReason: normalizedReason,
+                closureType: 'EMPTY_CANCELLED',
+                closedByRole: 'USER',
+                closedAt: now.toISOString(),
+            });
+        }
+    } catch {
+        // ignore
+    }
+
+    return session;
+}
+
 /**
  * Mark session as closed and release the table.
  */
 export async function closeSession(sessionId, paymentData) {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid session id', 400);
+    }
+
     const session = await FoodTableSession.findById(sessionId);
-    if (!session) throw new Error('Session not found');
+    if (!session) throw createHttpError('Session not found', 404);
 
     if (session.status === 'completed') {
-        throw new Error('Session is already completed');
+        throw createHttpError('Session is already completed', 409);
     }
 
     // Prevent switching to online after selecting "Pay at Counter".
@@ -608,18 +745,45 @@ export async function closeSession(sessionId, paymentData) {
     const counterPending = session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING';
     const isCounterSettlement = ['counter', 'cash'].includes(requestedMethod);
     if (counterPending && !isCounterSettlement) {
-        throw new Error('Counter payment already requested. Please complete payment at restaurant counter.');
+        throw createHttpError('Counter payment already requested. Please complete payment at restaurant counter.', 409);
     }
 
     const now = new Date();
     const billingSnapshot = await buildBillingSnapshot(session);
     const settlementPaymentMode = session.paymentMode === 'COUNTER' ? 'counter' : 'online';
-    const walletSettlement = await applyWalletSettlementForDiningSession(
-        session,
-        billingSnapshot,
-        settlementPaymentMode,
-        paymentData?.paymentMethod || '',
-    );
+    let walletSettlement = null;
+    try {
+        walletSettlement = await applyWalletSettlementForDiningSession(
+            session,
+            billingSnapshot,
+            settlementPaymentMode,
+            paymentData?.paymentMethod || '',
+        );
+    } catch (error) {
+        // Non-blocking: payment close must not fail due wallet sync issues.
+        walletSettlement = {
+            applied: false,
+            appliedAt: new Date(),
+            paymentMode: settlementPaymentMode,
+            fundingType: 'unknown',
+            restaurantShouldRetain: Number(billingSnapshot?.pricing?.restaurantPayout || 0),
+            customerCashCollected: settlementPaymentMode === 'counter'
+                ? Number(billingSnapshot?.summary?.totalAmount || 0)
+                : 0,
+            adminChargesRecoverable: 0,
+            adminChargesRecoverableBreakdown: {
+                commission: 0,
+                platformFee: 0,
+                tax: 0,
+                deliveryFee: 0,
+                total: 0,
+            },
+            platformDiscountCompensation: 0,
+            walletNetAdjustment: 0,
+            settlementApplied: false,
+            note: `Wallet settlement skipped: ${error?.message || 'unknown error'}`,
+        };
+    }
     billingSnapshot.walletSettlement = walletSettlement;
 
     // 0. Finalize all order rounds/items for this session.
@@ -649,8 +813,11 @@ export async function closeSession(sessionId, paymentData) {
     session.status = 'completed';
     session.paymentMethod = paymentData.paymentMethod || 'online';
     session.isPaid = true;
+    session.closedByRole = 'USER';
+    session.closureType = 'PAID';
     if (session.paymentMode === 'COUNTER') {
         session.paymentStatus = 'PAID';
+        session.closedByRole = 'RESTAURANT';
     }
     session.isBillFinalized = true;
     session.billingSnapshot = billingSnapshot;
@@ -659,10 +826,19 @@ export async function closeSession(sessionId, paymentData) {
     await session.save();
 
     // 2. Release Table
-    await FoodRestaurantTable.findOneAndUpdate(
-        { restaurantId: session.restaurantId, tableNumber: session.tableNumber },
-        { currentSessionId: null }
-    );
+    // Prefer deterministic table linkage; fall back to restaurantId + tableNumber for legacy rows.
+    const tableReleaseFilter = session.tableId
+        ? { _id: session.tableId }
+        : {
+              $or: [
+                  { currentSessionId: session._id },
+                  {
+                      restaurantId: session.restaurantId,
+                      tableNumber: String(session.tableNumber || '').trim(),
+                  },
+              ],
+          };
+    await FoodRestaurantTable.updateMany(tableReleaseFilter, { currentSessionId: null });
 
     // 3. Mark linked booking as COMPLETED (if any)
     try {
@@ -695,6 +871,9 @@ export async function closeSession(sessionId, paymentData) {
                 restaurantId: session.restaurantId?.toString?.() || String(session.restaurantId),
                 tableNumber: String(session.tableNumber || ''),
                 status: 'completed',
+                closeReason: session.closeReason || '',
+                closureType: session.closureType || 'PAID',
+                closedByRole: session.closedByRole || '',
                 paidAt: now.toISOString(),
             });
         }
@@ -765,7 +944,75 @@ export async function addTable(data) {
  */
 export async function listTables(restaurantId) {
     const rId = new mongoose.Types.ObjectId(restaurantId);
-    return await FoodRestaurantTable.find({ restaurantId: rId }).sort({ tableNumber: 1 }).lean();
+    const tables = await FoodRestaurantTable.find({ restaurantId: rId }).sort({ tableNumber: 1 }).lean();
+
+    const sessionIds = tables
+        .map((table) => table?.currentSessionId)
+        .filter((value) => mongoose.Types.ObjectId.isValid(String(value || '')))
+        .map((value) => new mongoose.Types.ObjectId(String(value)));
+
+    if (!sessionIds.length) {
+        return tables;
+    }
+
+    const sessions = await FoodTableSession.find({ _id: { $in: sessionIds } })
+        .select('_id status')
+        .lean();
+    const sessionMap = new Map(sessions.map((session) => [String(session._id), session]));
+
+    const staleTableIds = [];
+    const normalizedTables = tables.map((table) => {
+        const currentSessionId = table?.currentSessionId ? String(table.currentSessionId) : '';
+        if (!currentSessionId) return table;
+
+        const currentSession = sessionMap.get(currentSessionId);
+        const status = String(currentSession?.status || '').toLowerCase();
+        const isActiveSession = status === 'active' || status === 'bill_requested';
+
+        if (isActiveSession) {
+            return table;
+        }
+
+        staleTableIds.push(table._id);
+        return {
+            ...table,
+            currentSessionId: null,
+        };
+    });
+
+    if (staleTableIds.length) {
+        await FoodRestaurantTable.updateMany(
+            { _id: { $in: staleTableIds } },
+            { currentSessionId: null }
+        );
+    }
+
+    return normalizedTables;
+}
+
+export async function listRestaurantSessions(restaurantId, filters = {}) {
+    const normalizedRestaurantId = String(restaurantId || '').trim();
+    if (!mongoose.Types.ObjectId.isValid(normalizedRestaurantId)) {
+        throw createHttpError('Invalid restaurant id', 400);
+    }
+
+    const statusFilter = String(filters?.status || '').trim().toLowerCase();
+    const query = {
+        restaurantId: new mongoose.Types.ObjectId(normalizedRestaurantId),
+    };
+
+    if (statusFilter) {
+        query.status = statusFilter;
+    }
+
+    const limit = Math.min(Math.max(Number(filters?.limit) || 50, 1), 200);
+
+    return FoodTableSession.find(query)
+        .populate('orders')
+        .populate('userId', 'name phone email')
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .limit(limit)
+        .lean();
 }
 
 export async function getRestaurantDiningOfferPreview(restaurantId) {

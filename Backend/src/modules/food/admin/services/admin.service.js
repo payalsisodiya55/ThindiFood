@@ -12,8 +12,10 @@ import { DeliveryBonusTransaction } from '../models/deliveryBonusTransaction.mod
 import { FoodEarningAddon } from '../models/earningAddon.model.js';
 import { FoodEarningAddonHistory } from '../models/earningAddonHistory.model.js';
 import { FoodRestaurantCommission } from '../models/restaurantCommission.model.js';
+import { FoodDiningRestaurantCommission } from '../models/diningRestaurantCommission.model.js';
 import { FoodDeliveryCommissionRule } from '../models/deliveryCommissionRule.model.js';
 import { FoodFeeSettings } from '../models/feeSettings.model.js';
+import { FoodDiningFeeSettings } from '../models/diningFeeSettings.model.js';
 import { FeedbackExperience } from '../models/feedbackExperience.model.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRefreshToken } from '../../../../core/refreshTokens/refreshToken.model.js';
@@ -30,6 +32,7 @@ import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurantWithdrawal } from '../../restaurant/models/foodRestaurantWithdrawal.model.js';
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
+import { FoodRestaurantWallet } from '../../restaurant/models/restaurantWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { RestaurantOffer } from '../../restaurant/models/restaurantOffer.model.js';
 import {
@@ -1600,6 +1603,103 @@ export async function getRestaurantCommissionBootstrap() {
     return { commissions: commissionsData.commissions || [], restaurants };
 }
 
+export async function getDiningRestaurantCommissions() {
+    const list = await FoodDiningRestaurantCommission.find({})
+        .sort({ createdAt: -1 })
+        .populate({ path: 'restaurantId', select: 'restaurantName' })
+        .lean();
+
+    const commissions = list.map((c, index) => ({
+        _id: c._id,
+        sl: index + 1,
+        restaurantId: c.restaurantId?._id ? String(c.restaurantId._id) : String(c.restaurantId),
+        restaurantName: c.restaurantId?.restaurantName || '',
+        restaurant: c.restaurantId?._id ? { _id: c.restaurantId._id, name: c.restaurantId.restaurantName } : null,
+        defaultCommission: c.defaultCommission || { type: 'percentage', value: 0 },
+        notes: c.notes || '',
+        status: c.status !== false
+    }));
+
+    return { commissions };
+}
+
+export async function getDiningRestaurantCommissionBootstrap() {
+    const [commissionsData, restaurantsData] = await Promise.all([
+        getDiningRestaurantCommissions(),
+        getRestaurants({ status: 'approved', limit: 1000, page: 1 })
+    ]);
+
+    const commissionByRestaurantId = new Set(
+        (commissionsData.commissions || []).map((c) => String(c.restaurantId))
+    );
+
+    const restaurants = (restaurantsData.restaurants || []).map((r) => ({
+        _id: r._id,
+        name: r.restaurantName || r.name || '',
+        restaurantId: r._id ? `REST${r._id.toString().slice(-6).padStart(6, '0')}` : '',
+        ownerName: r.ownerName || '',
+        hasCommissionSetup: commissionByRestaurantId.has(String(r._id))
+    }));
+
+    return { commissions: commissionsData.commissions || [], restaurants };
+}
+
+export async function getDiningRestaurantCommissionById(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const doc = await FoodDiningRestaurantCommission.findById(id)
+        .populate({ path: 'restaurantId', select: 'restaurantName' })
+        .lean();
+    if (!doc) return null;
+    return {
+        _id: doc._id,
+        restaurantId: doc.restaurantId?._id ? String(doc.restaurantId._id) : String(doc.restaurantId),
+        restaurant: doc.restaurantId?._id ? { _id: doc.restaurantId._id, name: doc.restaurantId.restaurantName } : null,
+        restaurantName: doc.restaurantId?.restaurantName || '',
+        defaultCommission: doc.defaultCommission || { type: 'percentage', value: 0 },
+        notes: doc.notes || '',
+        status: doc.status !== false
+    };
+}
+
+export async function createDiningRestaurantCommission(body) {
+    const exists = await FoodDiningRestaurantCommission.findOne({ restaurantId: body.restaurantId }).lean();
+    if (exists) {
+        throw new ValidationError('Dining commission already exists for this restaurant');
+    }
+    const created = await FoodDiningRestaurantCommission.create({
+        restaurantId: body.restaurantId,
+        defaultCommission: body.defaultCommission,
+        notes: body.notes || '',
+        status: true
+    });
+    return created.toObject();
+}
+
+export async function updateDiningRestaurantCommission(id, body) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const updated = await FoodDiningRestaurantCommission.findByIdAndUpdate(
+        id,
+        { $set: { defaultCommission: body.defaultCommission, notes: body.notes || '' } },
+        { new: true }
+    ).lean();
+    return updated;
+}
+
+export async function deleteDiningRestaurantCommission(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const deleted = await FoodDiningRestaurantCommission.findByIdAndDelete(id).lean();
+    return deleted ? { id } : null;
+}
+
+export async function toggleDiningRestaurantCommissionStatus(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const doc = await FoodDiningRestaurantCommission.findById(id);
+    if (!doc) return null;
+    doc.status = !Boolean(doc.status);
+    await doc.save();
+    return doc.toObject();
+}
+
 export async function getRestaurantCommissionById(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const doc = await FoodRestaurantCommission.findById(id)
@@ -1819,6 +1919,44 @@ export async function upsertFeeSettings(body) {
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
 
     const created = await FoodFeeSettings.create(payload);
+    return created.toObject();
+}
+
+export async function getDiningFeeSettings() {
+    const doc = await FoodDiningFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
+    return { feeSettings: doc || null };
+}
+
+export async function upsertDiningFeeSettings(body) {
+    const existing = await FoodDiningFeeSettings.findOne({ isActive: true }).sort({ createdAt: -1 });
+    if (existing) {
+        const $set = {};
+        const $unset = {};
+
+        if (body.platformFee === null) $unset.platformFee = 1;
+        else if (body.platformFee !== undefined) $set.platformFee = body.platformFee;
+
+        if (body.gstRate === null) $unset.gstRate = 1;
+        else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
+
+        if (body.isActive !== undefined) $set.isActive = body.isActive;
+
+        const update = {};
+        if (Object.keys($set).length) update.$set = $set;
+        if (Object.keys($unset).length) update.$unset = $unset;
+        if (!Object.keys(update).length) return existing.toObject();
+
+        const updated = await FoodDiningFeeSettings.findByIdAndUpdate(existing._id, update, { new: true }).lean();
+        return updated;
+    }
+
+    const payload = {
+        isActive: body.isActive !== false
+    };
+    if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
+    if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
+
+    const created = await FoodDiningFeeSettings.create(payload);
     return created.toObject();
 }
 
@@ -4746,9 +4884,16 @@ export async function getWithdrawals(query = {}) {
 
 export async function updateWithdrawalStatus(id, { status, adminNote, rejectionReason, transactionId }) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) throw new ValidationError('Invalid withdrawal ID');
-    
+
+    const normalizedStatus = String(status || '').toLowerCase();
+    if (!normalizedStatus) throw new ValidationError('Status is required');
+
+    const existing = await FoodRestaurantWithdrawal.findById(id).lean();
+    if (!existing) throw new ValidationError('Withdrawal request not found');
+    const previousStatus = String(existing.status || '').toLowerCase();
+
     const update = {
-        status: String(status).toLowerCase(),
+        status: normalizedStatus,
         adminNote,
         rejectionReason,
         transactionId,
@@ -4762,6 +4907,25 @@ export async function updateWithdrawalStatus(id, { status, adminNote, rejectionR
     ).populate('restaurantId', 'restaurantName').lean();
 
     if (!updated) throw new ValidationError('Withdrawal request not found');
+
+    // One-time wallet settlement on approval: deduct approved amount from restaurant wallet.
+    // Idempotency: only when transitioning from non-approved -> approved.
+    if (normalizedStatus === 'approved' && previousStatus !== 'approved') {
+        const amount = Number(updated.amount || 0);
+        if (amount > 0) {
+            await FoodRestaurantWallet.findOneAndUpdate(
+                { restaurantId: updated.restaurantId?._id || updated.restaurantId },
+                {
+                    $inc: {
+                        balance: -amount,
+                        totalSettled: amount
+                    }
+                },
+                { upsert: true, setDefaultsOnInsert: true }
+            );
+        }
+    }
+
     return updated;
 }
 

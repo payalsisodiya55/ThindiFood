@@ -127,6 +127,24 @@ const tableSessionSchema = new mongoose.Schema(
             default: null,
         },
 
+        closedByRole: {
+            type: String,
+            enum: ['USER', 'RESTAURANT', 'SYSTEM', ''],
+            default: '',
+        },
+
+        closureType: {
+            type: String,
+            enum: ['PAID', 'EMPTY_CANCELLED', 'EXPIRED', ''],
+            default: '',
+        },
+
+        closeReason: {
+            type: String,
+            trim: true,
+            default: '',
+        },
+
         // Auto-expire sessions older than 4 hours if not closed
         expiresAt: {
             type: Date,

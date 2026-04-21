@@ -53,6 +53,9 @@ const DineInMenu = () => {
     // Draft Cart for the current round
     const [roundCart, setRoundCart] = useState({});
     const [showCartDrawer, setShowCartDrawer] = useState(false);
+    const [showCloseSessionModal, setShowCloseSessionModal] = useState(false);
+    const [closeReason, setCloseReason] = useState("");
+    const [closingSession, setClosingSession] = useState(false);
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState("");
@@ -129,7 +132,8 @@ const DineInMenu = () => {
     };
 
     const updateRoundCart = (item, delta) => {
-        const itemId = item._id || item.id;
+        const itemId = item._id || item.id || item.itemId;
+        if (!itemId) return;
         setRoundCart(prev => {
             const currentQty = prev[itemId]?.quantity || 0;
             const newQty = Math.max(0, currentQty + delta);
@@ -157,6 +161,11 @@ const DineInMenu = () => {
     const cartItems = Object.values(roundCart);
     const cartCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
     const cartSubtotal = cartItems.reduce((sum, item) => sum + item.itemTotal, 0);
+    const canCloseEmptySession =
+        sessionData?.status === "active" &&
+        Array.isArray(sessionData?.orders) &&
+        sessionData.orders.length === 0 &&
+        cartItems.length === 0;
 
     const handlePlaceOrderRound = async () => {
         if (cartItems.length === 0) return;
@@ -177,9 +186,45 @@ const DineInMenu = () => {
                 toast.error(res.data?.message || "Failed to place order");
             }
         } catch (err) {
-            toast.error("Something went wrong");
+            const errorMessage =
+                err?.response?.data?.error ||
+                err?.response?.data?.message ||
+                err?.message ||
+                "Something went wrong";
+            toast.error(errorMessage);
         } finally {
             setPlacingOrder(false);
+        }
+    };
+
+    const handleCloseEmptySession = async () => {
+        const normalizedReason = closeReason.trim();
+        if (!normalizedReason) {
+            toast.error("Please share a reason before closing the session");
+            return;
+        }
+
+        try {
+            setClosingSession(true);
+            const res = await dineInAPI.cancelEmptySession(sessionId, { reason: normalizedReason });
+
+            if (res.data?.success) {
+                toast.success("Session closed successfully");
+                setShowCloseSessionModal(false);
+                setCloseReason("");
+                navigate("/food/user/dining");
+            } else {
+                toast.error(res.data?.message || "Failed to close session");
+            }
+        } catch (err) {
+            toast.error(
+                err?.response?.data?.error ||
+                err?.response?.data?.message ||
+                err?.message ||
+                "Failed to close session"
+            );
+        } finally {
+            setClosingSession(false);
         }
     };
 
@@ -285,13 +330,24 @@ const DineInMenu = () => {
                                 <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Running Total</p>
                                 <h3 className="text-3xl font-black">{RUPEE_SYMBOL}{sessionData.totalAmount || 0}</h3>
                             </div>
-                            <Button 
-                                onClick={() => navigate(`/user/dine-in/bill?sessionId=${sessionId}`)}
-                                variant="ghost" 
-                                className="bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-bold"
-                            >
-                                View Bill
-                            </Button>
+                            <div className="flex flex-col items-end gap-2">
+                                <Button 
+                                    onClick={() => navigate(`/user/dine-in/bill?sessionId=${sessionId}`)}
+                                    variant="ghost" 
+                                    className="bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-bold"
+                                >
+                                    View Bill
+                                </Button>
+                                {canCloseEmptySession && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowCloseSessionModal(true)}
+                                        className="text-[10px] font-black uppercase tracking-widest text-white/85 border border-white/30 rounded-full px-3 py-1 hover:bg-white/10 transition-colors"
+                                    >
+                                        Close Session
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <div className="flex items-center gap-2">
                              <div className="h-1.5 flex-1 bg-white/20 rounded-full overflow-hidden">
@@ -369,9 +425,10 @@ const DineInMenu = () => {
                         
                         <div className="space-y-6">
                             {(section.items || []).map((item) => {
-                                const qty = roundCart[item._id || item.id]?.quantity || 0;
+                                const itemKey = item._id || item.id || item.itemId;
+                                const qty = roundCart[itemKey]?.quantity || 0;
                                 return (
-                                    <div key={item._id || item.id} className="flex gap-4">
+                                    <div key={itemKey} className="flex gap-4">
                                         <div className="flex-1 py-1">
                                             <div className="mb-1">
                                                 {(item.isVeg || item.foodType === 'Veg') ? (
@@ -524,6 +581,91 @@ const DineInMenu = () => {
                                             <Check className="w-6 h-6" />
                                             <span>Place Round</span>
                                         </>
+                                    )}
+                                </Button>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {showCloseSessionModal && canCloseEmptySession && (
+                    <>
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => !closingSession && setShowCloseSessionModal(false)}
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110]"
+                        />
+                        <motion.div 
+                            initial={{ y: '100%' }}
+                            animate={{ y: 0 }}
+                            exit={{ y: '100%' }}
+                            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3rem] z-[111] max-h-[85vh] overflow-y-auto"
+                        >
+                            <div className="p-8">
+                                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
+                                <div className="flex items-start justify-between gap-4 mb-6">
+                                    <div>
+                                        <h3 className="text-2xl font-black text-gray-900">Close Empty Session</h3>
+                                        <p className="text-sm text-gray-500 mt-2">
+                                            You can only do this before placing any order. The restaurant will see your reason.
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => !closingSession && setShowCloseSessionModal(false)}
+                                        className="p-2 bg-gray-100 rounded-full leading-none"
+                                    >
+                                        <X className="w-5 h-5 text-gray-500" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3 mb-6">
+                                    {[
+                                        "Started by mistake",
+                                        "Wrong table scanned",
+                                        "Just checking menu",
+                                        "Leaving without ordering",
+                                    ].map((option) => (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            onClick={() => setCloseReason(option)}
+                                            className={`w-full text-left px-4 py-3 rounded-2xl border text-sm font-semibold transition-colors ${
+                                                closeReason === option
+                                                    ? "border-[#00c87e] bg-green-50 text-[#00c87e]"
+                                                    : "border-gray-200 text-gray-700"
+                                            }`}
+                                        >
+                                            {option}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <textarea
+                                    value={closeReason}
+                                    onChange={(e) => setCloseReason(e.target.value)}
+                                    rows={4}
+                                    maxLength={160}
+                                    placeholder="Tell the restaurant why you are closing this session..."
+                                    className="w-full rounded-[2rem] border border-gray-200 px-4 py-4 text-sm text-gray-700 resize-none focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20"
+                                />
+                                <div className="text-right text-xs text-gray-400 mt-2 mb-6">
+                                    {closeReason.trim().length}/160
+                                </div>
+
+                                <Button
+                                    disabled={closingSession}
+                                    onClick={handleCloseEmptySession}
+                                    className="w-full py-8 rounded-3xl bg-[#00c87e] hover:bg-[#00b06f] text-white text-xl font-black shadow-xl shadow-green-100 flex items-center justify-center gap-3"
+                                >
+                                    {closingSession ? (
+                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                    ) : (
+                                        <span>Confirm Close</span>
                                     )}
                                 </Button>
                             </div>

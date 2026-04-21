@@ -168,6 +168,69 @@ const transformOrderForList = (order) => ({
   sortTimestamp: new Date(getAllOrdersTimestamp(order)).getTime(),
 });
 
+const getDineInSessionLatestRound = (session) => {
+  const rounds = Array.isArray(session?.orders) ? session.orders : [];
+  return rounds.length ? rounds[rounds.length - 1] : null;
+};
+
+const getDineInItemsSummary = (session) => {
+  const rounds = Array.isArray(session?.orders) ? session.orders : [];
+  const items = rounds.flatMap((round) => (Array.isArray(round?.items) ? round.items : []));
+  return items.length
+    ? items.map((item) => `${item.quantity}x ${item.name}`).join(", ")
+    : "No items";
+};
+
+const transformDineInSessionForList = (session, tableLike = null) => {
+  if (!session?._id) return null;
+
+  const latestRound = getDineInSessionLatestRound(session);
+  const sessionStatus = String(session?.status || "").toLowerCase();
+  const latestStatus = String(latestRound?.status || "").toLowerCase();
+  const displayStatus =
+    sessionStatus === "completed"
+      ? "completed"
+      : latestStatus === "received"
+        ? "active"
+        : latestStatus || sessionStatus || "active";
+  const tableNumber = tableLike?.tableNumber || session?.tableNumber || "Table";
+  const tableLabel = tableLike?.tableLabel || `Table ${tableNumber}`;
+  const displayTimeSource =
+    sessionStatus === "completed"
+      ? session?.closedAt || session?.paidAt || session?.updatedAt || session?.createdAt
+      : latestRound?.createdAt || session?.updatedAt || session?.createdAt;
+
+  return {
+    orderId: `Table ${tableNumber}`,
+    mongoId: session._id,
+    status: displayStatus,
+    isDineIn: true,
+    customerName:
+      session?.userId?.name ||
+      `Table ${tableNumber} (${tableLabel || "Default"})`,
+    type: "Dine-In",
+    tableOrToken: tableLabel || `Table ${tableNumber}`,
+    timePlaced: new Date(displayTimeSource || Date.now()).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    itemsSummary:
+      sessionStatus === "completed"
+        ? getDineInItemsSummary(session)
+        : (latestRound?.items || []).map((item) => `${item.quantity}x ${item.name}`).join(", ") || "Active Session",
+    photoUrl: null,
+    photoAlt: "Dine-In",
+    sortTimestamp: new Date(displayTimeSource || Date.now()).getTime(),
+    deliveredAt: session?.closedAt || session?.paidAt || session?.updatedAt || session?.createdAt,
+    amount: Number(session?.totalAmount || 0),
+    paymentMethod: session?.paymentMethod || session?.paymentMode || null,
+    closureType: session?.closureType || "",
+    closeReason: session?.closeReason || "",
+  };
+};
+
 // Completed Orders List Component
 function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
   const [orders, setOrders] = useState([]);
@@ -178,9 +241,19 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
 
     const fetchOrders = async () => {
       try {
-        const response = await restaurantAPI.getOrders();
+        const [response, dineInSessionsRes] = await Promise.all([
+          restaurantAPI.getOrders(),
+          dineInAPI.getRestaurantSessions({ status: "completed", limit: 100 }),
+        ]);
 
         if (!isMounted) return;
+
+        const dineInCompletedOrders = Array.isArray(dineInSessionsRes?.data?.data)
+          ? dineInSessionsRes.data.data
+              .filter((session) => session?.isPaid || String(session?.closureType || "").toUpperCase() === "PAID")
+              .map((session) => transformDineInSessionForList(session))
+              .filter(Boolean)
+          : [];
 
         if (response.data?.success && response.data.data?.orders) {
           const completedOrders = response.data.data.orders.filter(
@@ -211,19 +284,21 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
           }));
 
-          transformedOrders.sort((a, b) => {
+          const mergedOrders = [...transformedOrders, ...dineInCompletedOrders];
+
+          mergedOrders.sort((a, b) => {
             const dateA = new Date(a.deliveredAt);
             const dateB = new Date(b.deliveredAt);
             return dateB - dateA;
           });
 
           if (isMounted) {
-            setOrders(transformedOrders);
+            setOrders(mergedOrders);
             setLoading(false);
           }
         } else {
           if (isMounted) {
-            setOrders([]);
+            setOrders(dineInCompletedOrders);
             setLoading(false);
           }
         }
@@ -287,7 +362,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
 
             return (
               <div
-                key={order.orderId || order.mongoId}
+                key={order.mongoId || order.orderId}
                 className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
                 <button
                   type="button"
@@ -503,7 +578,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
 
             return (
               <div
-                key={order.orderId || order.mongoId}
+                key={order.mongoId || order.orderId}
                 className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200">
                 <button
                   type="button"
@@ -747,7 +822,10 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
 
     const fetchOrders = async () => {
       try {
-        const response = await restaurantAPI.getOrders();
+        const [response, dineInSessionsRes] = await Promise.all([
+          restaurantAPI.getOrders(),
+          dineInAPI.getRestaurantSessions({ limit: 100 }),
+        ]);
         
         // --- ADD DINE-IN FETCHING ---
         let dineInOrdersTransformed = [];
@@ -762,7 +840,14 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
               const sessions = await Promise.all(
                 activeTables.map(async (table) => {
                   try {
-                    const sRes = await dineInAPI.getSession(table.currentSessionId);
+                    const sessionIdentity =
+                      table?.currentSessionId?._id ||
+                      table?.currentSessionId?.id ||
+                      table?.currentSessionId;
+                    if (!sessionIdentity) {
+                      return { table, session: null };
+                    }
+                    const sRes = await dineInAPI.getSession(sessionIdentity);
                     const sessionData = sRes.data?.data || null;
 
                     return { table, session: sessionData };
@@ -811,6 +896,18 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
         }
         // ----------------------------
 
+        const historicalDineInOrders = Array.isArray(dineInSessionsRes?.data?.data)
+          ? dineInSessionsRes.data.data
+              .map((session) => transformDineInSessionForList(session))
+              .filter((session) => Boolean(session) && String(session.status || "").toLowerCase() !== "active")
+          : [];
+
+        const activeDineInSessionIds = new Set(
+          dineInOrdersTransformed
+            .map((entry) => String(entry?.mongoId || "").trim())
+            .filter(Boolean),
+        );
+
         if (!isMounted) return;
 
         let regularOrders = [];
@@ -819,7 +916,13 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
         }
 
         // Combine and Sort
-        const combined = [...regularOrders, ...dineInOrdersTransformed].sort((a, b) => {
+        const combined = [
+          ...regularOrders,
+          ...dineInOrdersTransformed,
+          ...historicalDineInOrders.filter(
+            (entry) => !activeDineInSessionIds.has(String(entry?.mongoId || "").trim()),
+          ),
+        ].sort((a, b) => {
           if (a.isDineIn && !b.isDineIn) return -1; // Prioritize active Dine-In
           if (!a.isDineIn && b.isDineIn) return 1;
           return b.sortTimestamp - a.sortTimestamp;
@@ -932,7 +1035,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
 
             return (
               <OrderCard
-                key={order.orderId || order.mongoId}
+                key={order.mongoId || order.orderId}
                 {...order}
                 eta={etaDisplay}
                 onSelect={onSelectOrder}
@@ -1076,6 +1179,8 @@ export default function OrdersMain() {
     clearNewBooking, 
     newPaymentRequest, 
     clearNewPaymentRequest, 
+    newClosedSession,
+    clearNewClosedSession,
     isConnected 
   } = useRestaurantNotifications();
 
@@ -1312,6 +1417,23 @@ export default function OrdersMain() {
       console.log("DEBUG: Payment request already shown for key:", key);
     }
   }, [newPaymentRequest]);
+
+  useEffect(() => {
+    if (!newClosedSession?.sessionId) return;
+
+    const closureType = String(newClosedSession?.closureType || "").toUpperCase();
+    if (closureType === "EMPTY_CANCELLED") {
+      const reasonText = String(newClosedSession?.closeReason || "").trim();
+      toast.info(
+        reasonText
+          ? `Table ${newClosedSession.tableNumber} session closed by user: ${reasonText}`
+          : `Table ${newClosedSession.tableNumber} empty session was closed by user`
+      );
+      requestOrdersRefresh();
+    }
+
+    clearNewClosedSession();
+  }, [newClosedSession]);
 
   // Keep refs in sync to avoid stale state inside one-time event handlers.
   useEffect(() => {
@@ -1775,7 +1897,11 @@ export default function OrdersMain() {
         toast.error(res?.data?.message || "Failed to mark as paid");
       }
     } catch (e) {
-      toast.error(e?.response?.data?.message || "Error marking payment as paid");
+      toast.error(
+        e?.response?.data?.error ||
+        e?.response?.data?.message ||
+        "Error marking payment as paid"
+      );
     } finally {
       setIsMarkingPaid(false);
     }
@@ -3892,7 +4018,7 @@ function PreparingOrders({
 
             return (
               <OrderCard
-                key={order.orderId || order.mongoId}
+                key={order.mongoId || order.orderId}
                 orderId={order.orderId}
                 mongoId={order.mongoId}
                 status={order.status}
@@ -4148,7 +4274,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
         <div>
           {orders.map((order) => (
             <OrderCard
-              key={order.orderId || order.mongoId}
+              key={order.mongoId || order.orderId}
               {...order}
               onSelect={onSelectOrder}
               onVerifyOtp={order.isDineIn ? undefined : handleOpenOtpModal}

@@ -191,6 +191,8 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "Dining Banners", path: "/admin/food/dining-management", icon: "UtensilsCrossed" },
       { type: "link", label: "Dining List", path: "/admin/food/dining-list", icon: "FileText" },
+      { type: "link", label: "Dining Commission", path: "/admin/food/dining/restaurants/commission", icon: "Percent" },
+      { type: "link", label: "Dining Fee Settings", path: "/admin/food/dining/fee-settings", icon: "IndianRupee" },
     ],
   },
   {

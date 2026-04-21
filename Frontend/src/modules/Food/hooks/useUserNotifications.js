@@ -129,9 +129,16 @@ export const useUserNotifications = () => {
       );
       const title = orderId ? `Order ${orderId}` : 'Delivery OTP';
       const parts = [message, otp ? `OTP: ${otp}` : ''].filter(Boolean);
+      const toastId = orderId ? `delivery-drop-otp-${orderId}` : `delivery-drop-otp-${Date.now()}`;
       toast.message(title, {
-        description: parts.join(' — ') || 'Handover OTP from your delivery partner.',
-        duration: 90_000
+        id: toastId,
+        description: parts.join(' - ') || 'Handover OTP from your delivery partner.',
+        duration: 90_000,
+
+        action: {
+          label: 'Dismiss',
+          onClick: () => toast.dismiss(toastId)
+        }
       });
     });
 
@@ -199,3 +206,4 @@ export const useUserNotifications = () => {
 
   return { isConnected };
 };
+

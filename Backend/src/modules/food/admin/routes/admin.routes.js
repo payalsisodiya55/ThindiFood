@@ -90,6 +90,15 @@ router.patch('/restaurant-commissions/:id', adminController.updateRestaurantComm
 router.delete('/restaurant-commissions/:id', adminController.deleteRestaurantCommission);
 router.patch('/restaurant-commissions/:id/toggle', adminController.toggleRestaurantCommissionStatus);
 
+// ----- Dining Restaurant Commission -----
+router.get('/dining-restaurant-commissions/bootstrap', adminController.getDiningRestaurantCommissionBootstrap);
+router.get('/dining-restaurant-commissions', adminController.getDiningRestaurantCommissions);
+router.post('/dining-restaurant-commissions', adminController.createDiningRestaurantCommission);
+router.get('/dining-restaurant-commissions/:id', adminController.getDiningRestaurantCommissionById);
+router.patch('/dining-restaurant-commissions/:id', adminController.updateDiningRestaurantCommission);
+router.delete('/dining-restaurant-commissions/:id', adminController.deleteDiningRestaurantCommission);
+router.patch('/dining-restaurant-commissions/:id/toggle', adminController.toggleDiningRestaurantCommissionStatus);
+
 // ----- Categories -----
 router.get('/categories', adminController.getCategories);
 router.post('/categories', adminController.createCategory);
@@ -143,6 +152,8 @@ router.delete('/feedback-experiences/:id', feedbackExperienceController.deleteFe
 // ----- Fee Settings -----
 router.get('/fee-settings', adminController.getFeeSettings);
 router.put('/fee-settings', adminController.createOrUpdateFeeSettings);
+router.get('/dining-fee-settings', adminController.getDiningFeeSettings);
+router.put('/dining-fee-settings', adminController.createOrUpdateDiningFeeSettings);
 
 // ----- Referral Settings -----
 router.get('/referral-settings', adminController.getReferralSettings);
