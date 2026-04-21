@@ -109,6 +109,12 @@ export const adminSidebarMenu = [
         path: "/admin/food/offer-approval",
         icon: "CheckCircle2",
       },
+      {
+        type: "link",
+        label: "Dining Offers",
+        path: "/admin/food/dining-offers",
+        icon: "Gift",
+      },
     ],
   },
   {

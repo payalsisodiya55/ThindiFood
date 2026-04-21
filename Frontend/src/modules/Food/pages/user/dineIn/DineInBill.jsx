@@ -187,7 +187,7 @@ const DineInBill = () => {
         </div>
     );
 
-    const { itemized, summary, tableNumber } = billData;
+    const { itemized, summary, tableNumber, appliedOffer } = billData;
 
     // ─── Payment completed screen ────────────────────────────────────────────
     if (counterPaymentCompleted) {
@@ -272,9 +272,27 @@ const DineInBill = () => {
                                 <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{summary.subtotal}</span>
                             </div>
                             <div className="flex justify-between text-sm">
+                                <span className="text-gray-500 font-medium">Platform Fee</span>
+                                <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{summary.platformFee || 0}</span>
+                            </div>
+                            {summary.offerDiscount > 0 && (
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-[#00c87e] font-medium">
+                                        {appliedOffer?.title || "Dining Offer"}
+                                    </span>
+                                    <span className="text-[#00c87e] font-bold">-{RUPEE_SYMBOL}{summary.offerDiscount}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between text-sm">
                                 <span className="text-gray-500 font-medium">Taxes &amp; GST (5%)</span>
                                 <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{summary.taxAmount}</span>
                             </div>
+                            {summary.offerDiscount > 0 && summary.grossTotalAmount != null && (
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-gray-400 font-medium">Original bill total</span>
+                                    <span className="text-gray-500 font-semibold">{RUPEE_SYMBOL}{summary.grossTotalAmount}</span>
+                                </div>
+                            )}
                             <div className="flex justify-between text-lg pt-2">
                                 <span className="text-gray-900 font-black">Grand Total</span>
                                 <span className="text-[#00c87e] font-black">{RUPEE_SYMBOL}{summary.totalAmount}</span>

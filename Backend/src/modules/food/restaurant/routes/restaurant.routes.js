@@ -59,6 +59,12 @@ import {
     updateMyRestaurantOfferController,
     deleteMyRestaurantOfferController,
 } from '../controllers/restaurantOffer.controller.js';
+import {
+    createRestaurantDiningOfferController,
+    getMyRestaurantDiningOffersController,
+    updateMyRestaurantDiningOfferController,
+    deleteMyRestaurantDiningOfferController,
+} from '../../dineIn/controllers/diningOffer.controller.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
@@ -206,6 +212,12 @@ router.get('/product-offers', authMiddleware, requireRestaurant, getMyRestaurant
 router.post('/product-offers', authMiddleware, requireRestaurant, createRestaurantOfferController);
 router.patch('/product-offers/:id', authMiddleware, requireRestaurant, updateMyRestaurantOfferController);
 router.delete('/product-offers/:id', authMiddleware, requireRestaurant, deleteMyRestaurantOfferController);
+
+// Dining Overall Offers (restaurant dashboard) - admin approval flow
+router.get('/dining-offers', authMiddleware, requireRestaurant, getMyRestaurantDiningOffersController);
+router.post('/dining-offers', authMiddleware, requireRestaurant, createRestaurantDiningOfferController);
+router.patch('/dining-offers/:id', authMiddleware, requireRestaurant, updateMyRestaurantDiningOfferController);
+router.delete('/dining-offers/:id', authMiddleware, requireRestaurant, deleteMyRestaurantDiningOfferController);
 
 // Orders (restaurant dashboard)
 router.get('/orders', authMiddleware, requireRestaurant, orderController.listOrdersRestaurantController);

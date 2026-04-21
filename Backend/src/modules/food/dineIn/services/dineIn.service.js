@@ -4,8 +4,182 @@ import { FoodTableSession } from '../models/tableSession.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDineInOrder } from '../models/dineInOrder.model.js';
 import { FoodTableBooking } from '../models/tableBooking.model.js';
+import { FoodRestaurantCommission } from '../../admin/models/restaurantCommission.model.js';
+import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { findAcceptedBooking, linkBookingToSession } from './tableBooking.service.js';
+import { getBestApplicableDiningOffer, getDisplayDiningOfferForRestaurant } from './diningOffer.service.js';
+import { creditWallet, debitWallet } from '../../../../core/payments/wallet.service.js';
+import { calculateWalletSettlement, deriveFundingType } from '../../orders/services/settlement-calculator.service.js';
+
+const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
+const roundStandard = (value) => Math.round(Number(value) || 0);
+
+const getCommissionConfig = async (restaurantId) => {
+    const commissionDoc = await FoodRestaurantCommission.findOne({
+        restaurantId,
+        status: { $ne: false },
+    }).lean();
+
+    return {
+        type: commissionDoc?.defaultCommission?.type || 'percentage',
+        value: Number(commissionDoc?.defaultCommission?.value || 0) || 0,
+    };
+};
+
+const calculateCommissionAmount = (commissionConfig, baseAmount) => {
+    const base = roundMoney(baseAmount);
+    if (base <= 0) return 0;
+    if (commissionConfig.type === 'amount') {
+        return roundMoney(Math.min(base, commissionConfig.value));
+    }
+    return roundMoney((base * commissionConfig.value) / 100);
+};
+
+const getFeeSettings = async () => {
+    const feeDoc = await FoodFeeSettings.findOne({ isActive: true })
+        .sort({ createdAt: -1 })
+        .lean();
+
+    return feeDoc || {
+        platformFee: 5,
+        gstRate: 5,
+    };
+};
+
+const buildBillingSnapshot = async (session) => {
+    const subtotal = roundMoney(session?.subtotal || 0);
+    const feeSettings = await getFeeSettings();
+    const gstRate = Number(feeSettings?.gstRate || 5);
+    const taxAmount = roundStandard((subtotal * gstRate) / 100);
+    const platformFee = roundMoney(feeSettings?.platformFee || 0);
+    const grossTotalAmount = roundMoney(subtotal + platformFee + taxAmount);
+    const applicableOffer = await getBestApplicableDiningOffer({
+        restaurantId: session.restaurantId,
+        subtotal,
+    });
+    const offerDiscount = roundMoney(applicableOffer?.discountAmount || 0);
+    const payableSubtotal = roundMoney(Math.max(0, subtotal - offerDiscount));
+    const totalAmount = roundMoney(Math.max(0, payableSubtotal + platformFee + taxAmount));
+    const commissionConfig = await getCommissionConfig(session.restaurantId);
+    const commissionBaseAmount = applicableOffer?.fundedBy === 'restaurant' ? payableSubtotal : subtotal;
+    const restaurantCommission = calculateCommissionAmount(commissionConfig, commissionBaseAmount);
+    const restaurantPayout =
+        applicableOffer?.fundedBy === 'restaurant'
+            ? roundMoney(Math.max(0, payableSubtotal - restaurantCommission))
+            : roundMoney(Math.max(0, subtotal - restaurantCommission));
+
+    return {
+        appliedOffer: applicableOffer
+            ? {
+                  id: applicableOffer._id,
+                  title: applicableOffer.title,
+                  fundedBy: applicableOffer.fundedBy,
+                  fundingType: deriveFundingType(applicableOffer.fundedBy, {
+                      platformOverallOfferDiscount: applicableOffer?.fundedBy === 'platform' ? offerDiscount : 0,
+                      restaurantOverallOfferDiscount: applicableOffer?.fundedBy === 'restaurant' ? offerDiscount : 0,
+                  }),
+                  createdByRole: applicableOffer.createdByRole,
+                  discountType: applicableOffer.discountType,
+                  discountValue: applicableOffer.discountValue,
+                  discountAmount: offerDiscount,
+                  minBillAmount: applicableOffer.minBillAmount || 0,
+              }
+            : null,
+        summary: {
+            subtotal,
+            platformFee,
+            taxAmount,
+            grossTotalAmount,
+            offerDiscount,
+            totalAmount,
+        },
+        pricing: {
+            commissionType: commissionConfig.type,
+            commissionRate: commissionConfig.value,
+            commissionBaseAmount: roundMoney(commissionBaseAmount),
+            restaurantCommission,
+            restaurantPayout,
+            platformOverallOfferDiscount: applicableOffer?.fundedBy === 'platform' ? offerDiscount : 0,
+            restaurantOverallOfferDiscount: applicableOffer?.fundedBy === 'restaurant' ? offerDiscount : 0,
+            fundingType: deriveFundingType(applicableOffer?.fundedBy, {
+                platformOverallOfferDiscount: applicableOffer?.fundedBy === 'platform' ? offerDiscount : 0,
+                restaurantOverallOfferDiscount: applicableOffer?.fundedBy === 'restaurant' ? offerDiscount : 0,
+            }),
+        },
+    };
+};
+
+const applyWalletSettlementForDiningSession = async (session, billingSnapshot, paymentMode, paymentMethod) => {
+    const existing = session?.billingSnapshot?.walletSettlement;
+    if (existing?.applied === true) {
+        return existing;
+    }
+
+    const settlement = calculateWalletSettlement({
+        paymentMode,
+        pricing: {
+            total: Number(billingSnapshot?.summary?.totalAmount || 0),
+            tax: Number(billingSnapshot?.summary?.taxAmount || 0),
+            platformFee: Number(billingSnapshot?.summary?.platformFee || 0),
+            deliveryFee: 0,
+            platformOverallOfferDiscount: Number(billingSnapshot?.pricing?.platformOverallOfferDiscount || 0),
+            restaurantOverallOfferDiscount: Number(billingSnapshot?.pricing?.restaurantOverallOfferDiscount || 0),
+            fundedBy: billingSnapshot?.appliedOffer?.fundedBy,
+            payoutAdjustments: {
+                commission: Number(billingSnapshot?.pricing?.restaurantCommission || 0),
+                netPayout: Number(billingSnapshot?.pricing?.restaurantPayout || 0),
+            },
+        },
+        restaurantShouldRetain: Number(billingSnapshot?.pricing?.restaurantPayout || 0),
+        customerCashCollected:
+            String(paymentMode || '').toLowerCase() === 'counter'
+                ? Number(billingSnapshot?.summary?.totalAmount || 0)
+                : 0,
+    });
+
+    const walletNetAdjustment = Number(settlement.walletNetAdjustment || 0);
+    const adjustmentAmount = Math.abs(walletNetAdjustment);
+    if (settlement.isCodLike && adjustmentAmount > 0.009) {
+        const walletPayload = {
+            entityType: 'restaurant',
+            entityId: String(session.restaurantId),
+            amount: adjustmentAmount,
+            description: `Dining session ${String(session._id)} counter settlement adjustment`,
+            category: 'adjustment',
+            metadata: {
+                settlementType: 'DINING_COUNTER_WALLET_ADJUSTMENT',
+                sessionId: String(session._id),
+                paymentMethod: paymentMethod || '',
+                walletNetAdjustment,
+                adminChargesRecoverable: settlement.adminChargesRecoverable,
+                platformDiscountCompensation: settlement.platformDiscountCompensation,
+            },
+        };
+        if (walletNetAdjustment > 0) {
+            await creditWallet(walletPayload);
+        } else {
+            await debitWallet(walletPayload);
+        }
+    }
+
+    return {
+        applied: true,
+        appliedAt: new Date(),
+        paymentMode: settlement.paymentMode,
+        fundingType: settlement.fundingType,
+        restaurantShouldRetain: settlement.restaurantShouldRetain,
+        customerCashCollected: settlement.customerCashCollected,
+        adminChargesRecoverable: settlement.adminChargesRecoverable,
+        adminChargesRecoverableBreakdown: settlement.adminChargesRecoverableBreakdown,
+        platformDiscountCompensation: settlement.platformDiscountCompensation,
+        walletNetAdjustment: settlement.walletNetAdjustment,
+        settlementApplied: true,
+        note: settlement.isCodLike
+            ? 'Counter/COD settlement applied'
+            : 'Online flow kept unchanged. Metadata only.',
+    };
+};
 
 /**
  * Fetch table information and its current status.
@@ -267,13 +441,13 @@ async function recalculateSessionTotal(sessionId) {
 
     const subtotal = activeOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
     
-    // GST logic (consistent across app)
-    const GST_PERCENT = 5; 
-    const taxAmount = Number(((subtotal * GST_PERCENT) / 100).toFixed(2));
+    // GST logic with standard rounding: decimals >= 0.5 round up, else down.
+    const GST_PERCENT = 5;
+    const taxAmount = roundStandard((subtotal * GST_PERCENT) / 100);
 
     session.subtotal = subtotal;
     session.taxAmount = taxAmount;
-    session.totalAmount = Number((subtotal + taxAmount).toFixed(2));
+    session.totalAmount = roundMoney(subtotal + taxAmount);
 
     await session.save();
     return session;
@@ -310,16 +484,46 @@ export async function getSessionBill(sessionId) {
         });
     });
 
+    const billingSnapshot =
+        session?.billingSnapshot && session?.isBillFinalized
+            ? session.billingSnapshot
+            : await buildBillingSnapshot(session);
+
     return {
         sessionId: session._id,
         restaurantId: session.restaurantId,
         tableNumber: session.tableNumber,
         itemized: Object.values(itemMap),
-        summary: {
-            subtotal: session.subtotal,
-            taxAmount: session.taxAmount,
-            totalAmount: session.totalAmount
-        },
+        summary: billingSnapshot.summary,
+        appliedOffer: billingSnapshot.appliedOffer,
+        pricing: billingSnapshot.pricing,
+        settlement: billingSnapshot.walletSettlement
+            ? {
+                  adminChargesRecoverable: Number(billingSnapshot.walletSettlement.adminChargesRecoverable || 0),
+                  adminChargesRecoverableBreakdown: billingSnapshot.walletSettlement.adminChargesRecoverableBreakdown || {
+                      commission: 0,
+                      platformFee: 0,
+                      tax: 0,
+                      deliveryFee: 0,
+                      total: 0,
+                  },
+                  platformDiscountCompensation: Number(billingSnapshot.walletSettlement.platformDiscountCompensation || 0),
+                  walletNetAdjustment: Number(billingSnapshot.walletSettlement.walletNetAdjustment || 0),
+                  settlementApplied: billingSnapshot.walletSettlement.settlementApplied === true,
+              }
+            : {
+                  adminChargesRecoverable: 0,
+                  adminChargesRecoverableBreakdown: {
+                      commission: 0,
+                      platformFee: 0,
+                      tax: 0,
+                      deliveryFee: 0,
+                      total: 0,
+                  },
+                  platformDiscountCompensation: 0,
+                  walletNetAdjustment: 0,
+                  settlementApplied: false,
+              },
         status: session.status,
         isPaid: session.isPaid,
         paymentMode: session.paymentMode || '',
@@ -343,11 +547,13 @@ export async function requestCounterPayment(sessionId, userId) {
         return session; // Already requested, idempotent
     }
 
+    const billingSnapshot = await buildBillingSnapshot(session);
     session.paymentMode = 'COUNTER';
     session.paymentStatus = 'PENDING';
     session.status = 'bill_requested';
     session.isBillFinalized = true;
     session.paymentRequestedAt = new Date();
+    session.billingSnapshot = billingSnapshot;
     await session.save();
 
     // Emit socket event to restaurant
@@ -357,7 +563,7 @@ export async function requestCounterPayment(sessionId, userId) {
             io.to(rooms.restaurant(session.restaurantId)).emit('payment_pending', {
                 sessionId: String(session._id),
                 tableNumber: session.tableNumber,
-                totalAmount: session.totalAmount,
+                totalAmount: billingSnapshot.summary.totalAmount,
                 restaurantId: String(session.restaurantId),
                 requestedAt: session.paymentRequestedAt.toISOString(),
             });
@@ -406,6 +612,15 @@ export async function closeSession(sessionId, paymentData) {
     }
 
     const now = new Date();
+    const billingSnapshot = await buildBillingSnapshot(session);
+    const settlementPaymentMode = session.paymentMode === 'COUNTER' ? 'counter' : 'online';
+    const walletSettlement = await applyWalletSettlementForDiningSession(
+        session,
+        billingSnapshot,
+        settlementPaymentMode,
+        paymentData?.paymentMethod || '',
+    );
+    billingSnapshot.walletSettlement = walletSettlement;
 
     // 0. Finalize all order rounds/items for this session.
     // UX expectation: once the bill is paid, the session is "complete" and all rounds are closed.
@@ -438,6 +653,7 @@ export async function closeSession(sessionId, paymentData) {
         session.paymentStatus = 'PAID';
     }
     session.isBillFinalized = true;
+    session.billingSnapshot = billingSnapshot;
     session.paidAt = now;
     session.closedAt = now;
     await session.save();
@@ -550,4 +766,9 @@ export async function addTable(data) {
 export async function listTables(restaurantId) {
     const rId = new mongoose.Types.ObjectId(restaurantId);
     return await FoodRestaurantTable.find({ restaurantId: rId }).sort({ tableNumber: 1 }).lean();
+}
+
+export async function getRestaurantDiningOfferPreview(restaurantId) {
+    const offer = await getDisplayDiningOfferForRestaurant(restaurantId);
+    return { offer };
 }

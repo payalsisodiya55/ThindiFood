@@ -68,6 +68,8 @@ const DineInTableManagement = lazy(() => import("@food/pages/restaurant/DineInTa
 const DineInOrders = lazy(() => import("@food/pages/restaurant/DineInOrders"))
 const OfferListPage = lazy(() => import("@food/pages/restaurant/OfferListPage"))
 const OfferFormPage = lazy(() => import("@food/pages/restaurant/OfferFormPage"))
+const DiningOfferListPage = lazy(() => import("@food/pages/restaurant/DiningOfferListPage"))
+const DiningOfferFormPage = lazy(() => import("@food/pages/restaurant/DiningOfferFormPage"))
 const Welcome = lazy(() => import("@food/pages/restaurant/auth/Welcome"))
 const Login = lazy(() => import("@food/pages/restaurant/auth/Login"))
 const OTP = lazy(() => import("@food/pages/restaurant/auth/OTP"))
@@ -156,6 +158,9 @@ export default function RestaurantRouter() {
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OfferListPage /></ProtectedRoute>} path="offers" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OfferFormPage mode="create" /></ProtectedRoute>} path="offers/new" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OfferFormPage mode="edit" /></ProtectedRoute>} path="offers/:id/edit" />
+        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningOfferListPage /></ProtectedRoute>} path="dining-offers" />
+        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningOfferFormPage mode="create" /></ProtectedRoute>} path="dining-offers/new" />
+        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningOfferFormPage mode="edit" /></ProtectedRoute>} path="dining-offers/:id/edit" />
       </Routes>
     </Suspense>
   )

@@ -41,6 +41,7 @@ const NewAdvertisement = lazy(() => import("@food/pages/admin/advertisement/NewA
 const AdRequests = lazy(() => import("@food/pages/admin/advertisement/AdRequests"));
 const AdsList = lazy(() => import("@food/pages/admin/advertisement/AdsList"));
 const OfferApproval = lazy(() => import("@food/pages/admin/restaurant/OfferApproval"));
+const DiningOfferManagement = lazy(() => import("@food/pages/admin/restaurant/DiningOfferManagement"));
 
 // Help & Support
 const Chattings = lazy(() => import("@food/pages/admin/Chattings"));
@@ -198,6 +199,7 @@ export default function AdminRouter() {
             <Route path="advertisement/new" element={<NewAdvertisement />} />
             <Route path="advertisement/requests" element={<AdRequests />} />
             <Route path="offer-approval" element={<OfferApproval />} />
+            <Route path="dining-offers" element={<DiningOfferManagement />} />
             
             <Route path="chattings" element={<Chattings />} />
             <Route path="contact-messages" element={<ContactMessages />} />

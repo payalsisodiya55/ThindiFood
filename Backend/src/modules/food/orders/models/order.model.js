@@ -49,6 +49,7 @@ const pricingSchema = new mongoose.Schema(
         commissionBaseAmount: { type: Number, default: 0, min: 0 },
         restaurantGrossBeforeDiscount: { type: Number, default: 0, min: 0 },
         couponFundingType: { type: String, enum: ['platform', 'restaurant', 'none'], default: 'none' },
+        fundingType: { type: String, enum: ['PLATFORM', 'RESTAURANT', 'NONE'], default: 'NONE' },
         payoutAdjustments: {
             platformCouponDiscount: { type: Number, default: 0, min: 0 },
             restaurantCouponDiscount: { type: Number, default: 0, min: 0 },

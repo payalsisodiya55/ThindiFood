@@ -80,7 +80,8 @@ export async function recordTransaction(payload) {
         entityType, entityId, type, amount,
         description = '', category = 'other',
         orderId = null, paymentId = null,
-        metadata = undefined, module = 'food'
+        metadata = undefined, module = 'food',
+        allowNegative = false
     } = payload;
 
     if (!['credit', 'debit'].includes(type)) throw new Error('type must be credit or debit');
@@ -105,7 +106,7 @@ export async function recordTransaction(payload) {
             : currentBalance - amount;
 
         // Debit guard: prevent negative balance (except admin wallet which can go negative)
-        if (type === 'debit' && entityType !== 'admin' && newBalance < 0) {
+        if (type === 'debit' && entityType !== 'admin' && !allowNegative && newBalance < 0) {
             throw new Error(`Insufficient balance. Current: ${currentBalance}, Debit: ${amount}`);
         }
 

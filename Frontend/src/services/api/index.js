@@ -406,6 +406,29 @@ export const adminAPI = {
       body ?? {},
       { contextModule: "admin" },
     ),
+  getDiningOffers: (params = {}) =>
+    apiClient.get("/food/admin/dining/offers", {
+      params,
+      contextModule: "admin",
+    }),
+  createDiningOffer: (body) =>
+    apiClient.post("/food/admin/dining/offers", body ?? {}, {
+      contextModule: "admin",
+    }),
+  updateDiningOffer: (id, body) =>
+    apiClient.patch(`/food/admin/dining/offers/${String(id)}`, body ?? {}, {
+      contextModule: "admin",
+    }),
+  approveDiningOffer: (id) =>
+    apiClient.patch(`/food/admin/dining/offers/${String(id)}/approve`, {}, {
+      contextModule: "admin",
+    }),
+  rejectDiningOffer: (id, reason) =>
+    apiClient.patch(
+      `/food/admin/dining/offers/${String(id)}/reject`,
+      { reason: String(reason || "") },
+      { contextModule: "admin" },
+    ),
   createCategory: (body) =>
     apiClient.post("/food/admin/categories", body ?? {}, {
       contextModule: "admin",
@@ -1418,6 +1441,23 @@ export const restaurantAPI = {
     }),
   deleteOffer: (id) =>
     apiClient.delete(`/food/restaurant/product-offers/${String(id)}`, {
+      contextModule: "restaurant",
+    }),
+  getMyDiningOffers: (params = {}) =>
+    apiClient.get("/food/restaurant/dining-offers", {
+      params,
+      contextModule: "restaurant",
+    }),
+  createDiningOffer: (body) =>
+    apiClient.post("/food/restaurant/dining-offers", body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  updateDiningOffer: (id, body) =>
+    apiClient.patch(`/food/restaurant/dining-offers/${String(id)}`, body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  deleteDiningOffer: (id) =>
+    apiClient.delete(`/food/restaurant/dining-offers/${String(id)}`, {
       contextModule: "restaurant",
     }),
 };
@@ -2512,6 +2552,8 @@ export const diningAPI = {
   getHeroBanners: () => apiClient.get("/food/hero-banners/dining/public"),
   getRestaurantBySlug: (slug) =>
     apiClient.get(`/food/restaurant/restaurants/${String(slug)}`),
+  getRestaurantOverallOffer: (restaurantId) =>
+    apiClient.get(`/food/dine-in/restaurants/${String(restaurantId)}/overall-offer`),
   getOfferBanners: () => Promise.resolve({ data: { success: true, data: [] } }),
   getStories: () => Promise.resolve({ data: { success: true, data: [] } }),
   getBankOffers: () => Promise.resolve({ data: { success: true, data: [] } }),

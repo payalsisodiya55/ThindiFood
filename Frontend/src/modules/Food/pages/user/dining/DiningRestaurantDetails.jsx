@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
-import { restaurantAPI } from "@food/api"
+import { diningAPI, restaurantAPI } from "@food/api"
 import { useProfile } from "@food/context/ProfileContext"
 import { getMenuFromResponse } from "@food/utils/menuItems"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
@@ -92,6 +92,14 @@ const scrollToSection = (id) => {
   }
 }
 
+const getOfferHeadline = (offer) => {
+  if (!offer) return ""
+  const discountType = String(offer.discountType || "").toLowerCase()
+  const discountValue = Number(offer.discountValue || 0)
+  if (discountType === "flat") return `Flat ${"\u20B9"}${discountValue} OFF`
+  return `${discountValue}% OFF`
+}
+
 export default function DiningRestaurantDetails() {
   const { category, slug } = useParams()
   const location = useLocation()
@@ -106,6 +114,7 @@ export default function DiningRestaurantDetails() {
   const [selectedGuests, setSelectedGuests] = useState(2)
   const [isBookingSheetOpen, setIsBookingSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("prebook")
+  const [diningOffer, setDiningOffer] = useState(null)
 
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -142,11 +151,19 @@ export default function DiningRestaurantDetails() {
         const menuResponse = await restaurantAPI.getMenuByRestaurantId(restaurantId).catch(() => null)
         const resolvedMenu = menuResponse ? getMenuFromResponse(menuResponse) : null
 
+        const offerResponse = await diningAPI.getRestaurantOverallOffer(restaurantId).catch(() => null)
+        const resolvedOffer =
+          offerResponse?.data?.data?.offer ||
+          offerResponse?.data?.offer ||
+          null
+
         setRestaurant(resolvedRestaurant)
         setMenuSections(Array.isArray(resolvedMenu?.sections) ? resolvedMenu.sections : [])
+        setDiningOffer(resolvedOffer)
       } catch {
         setError("Failed to load restaurant")
         setRestaurant(null)
+        setDiningOffer(null)
       } finally {
         setLoading(false)
       }
@@ -191,6 +208,9 @@ export default function DiningRestaurantDetails() {
   const openingTime = formatTimeLabel(restaurant?.openingTime || restaurant?.diningSettings?.openingTime || "12:00")
   const closingTime = formatTimeLabel(restaurant?.closingTime || restaurant?.diningSettings?.closingTime || "23:59")
   const isDiningEnabled = restaurant?.diningSettings?.isEnabled !== false
+  const offerHeadline = getOfferHeadline(diningOffer)
+  const offerDescription = String(diningOffer?.description || "").trim()
+  const offerMinBillAmount = Number(diningOffer?.minBillAmount || 0)
   const topTabs = [
     { id: "prebook", label: "Pre-book offers", target: "restaurant-prebook" },
     { id: "walkin", label: "Walk-in offers", target: "restaurant-prebook" },
@@ -359,20 +379,24 @@ export default function DiningRestaurantDetails() {
               </div>
             )}
 
-          <div className="mt-4 overflow-hidden rounded-[18px] px-4 py-4 shadow-[0_8px_24px_rgba(226,40,27,0.12)]" style={{ background: `linear-gradient(180deg, ${RED}15, ${RED}05)` }}>
-            <div className="flex items-center justify-between gap-3">
-              <div className="rounded-full bg-red-100 p-2 text-red-600">
-                <Percent className="h-5 w-5" />
-              </div>
-              <div className="flex-1 text-center">
-                <p className="text-[33px] font-black leading-none tracking-[-0.04em] text-red-900">20% CASHBACK</p>
-                <p className="mt-1 text-[14px] font-medium text-red-800">on every dining bill</p>
-              </div>
-              <div className="rounded-full bg-red-100 p-2 text-red-600">
-                <Percent className="h-5 w-5" />
+          {diningOffer && (
+            <div className="mt-4 overflow-hidden rounded-[18px] px-4 py-4 shadow-[0_8px_24px_rgba(226,40,27,0.12)]" style={{ background: `linear-gradient(180deg, ${RED}15, ${RED}05)` }}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="rounded-full bg-red-100 p-2 text-red-600">
+                  <Percent className="h-5 w-5" />
+                </div>
+                <div className="flex-1 text-center">
+                  <p className="text-[33px] font-black leading-none tracking-[-0.04em] text-red-900">{offerHeadline}</p>
+                  <p className="mt-1 text-[14px] font-medium text-red-800">
+                    {offerDescription || (offerMinBillAmount > 0 ? `on bills above ${"\u20B9"}${offerMinBillAmount}` : "on your dining bill")}
+                  </p>
+                </div>
+                <div className="rounded-full bg-red-100 p-2 text-red-600">
+                  <Percent className="h-5 w-5" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
 
@@ -407,20 +431,30 @@ export default function DiningRestaurantDetails() {
             <p className="mt-1 text-[15px]" style={{ color: RED }}>Limited slots with extra offers</p>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-[18px] text-white shadow-[0_10px_26px_rgba(226,40,27,0.2)]" style={{ background: `linear-gradient(135deg, ${RED}, #b31d14)` }}>
-            <div className="flex items-start justify-between px-4 pb-3 pt-4">
-              <div>
-                <p className="text-[28px] font-black leading-none">Flat 50% OFF</p>
-                <p className="mt-2 text-[14px] text-white/80">Dining Carnival offer</p>
+          {diningOffer ? (
+            <div className="mt-3 overflow-hidden rounded-[18px] text-white shadow-[0_10px_26px_rgba(226,40,27,0.2)]" style={{ background: `linear-gradient(135deg, ${RED}, #b31d14)` }}>
+              <div className="flex items-start justify-between px-4 pb-3 pt-4">
+                <div>
+                  <p className="text-[28px] font-black leading-none">{offerHeadline}</p>
+                  <p className="mt-2 text-[14px] text-white/80">{offerDescription || diningOffer?.title || "Dining offer"}</p>
+                </div>
+                <button
+                  onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
+                  disabled={!isDiningEnabled}
+                  className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm disabled:opacity-60"
+                >
+                  Book now
+                </button>
               </div>
-              <button className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm">
-                Book now
-              </button>
+              <div className="border-t border-white/10 px-4 py-2 text-center text-[12px] text-white/75">
+                {offerMinBillAmount > 0 ? `Valid on bills above ${"\u20B9"}${offerMinBillAmount}` : "Valid on your dining bill"}
+              </div>
             </div>
-            <div className="border-t border-white/10 px-4 py-2 text-center text-[12px] text-white/75">
-              3 slots available from 3:30 PM today
+          ) : (
+            <div className="mt-3 rounded-[18px] border border-[#efe4dc] bg-white px-4 py-4 text-[14px] text-[#7f6f63]">
+              No active dining offers right now.
             </div>
-          </div>
+          )}
         </section>
 
         <section id="restaurant-menu" className="mt-5 border-t border-[#e8e8ef] pt-4">

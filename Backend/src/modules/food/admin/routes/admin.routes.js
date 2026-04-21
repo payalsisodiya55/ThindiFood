@@ -14,6 +14,13 @@ import {
     approveRestaurantOfferAdminController,
     rejectRestaurantOfferAdminController,
 } from '../../restaurant/controllers/restaurantOffer.controller.js';
+import {
+    getAllDiningOffersAdminController,
+    createAdminDiningOfferController,
+    updateAdminDiningOfferController,
+    approveDiningOfferAdminController,
+    rejectDiningOfferAdminController,
+} from '../../dineIn/controllers/diningOffer.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 
 const router = express.Router();
@@ -123,6 +130,11 @@ router.delete('/offers/:id', adminController.deleteAdminOffer);
 router.get('/product-offers', getAllRestaurantOffersAdminController);
 router.patch('/product-offers/:id/approve', approveRestaurantOfferAdminController);
 router.patch('/product-offers/:id/reject', rejectRestaurantOfferAdminController);
+router.get('/dining/offers', getAllDiningOffersAdminController);
+router.post('/dining/offers', createAdminDiningOfferController);
+router.patch('/dining/offers/:id', updateAdminDiningOfferController);
+router.patch('/dining/offers/:id/approve', approveDiningOfferAdminController);
+router.patch('/dining/offers/:id/reject', rejectDiningOfferAdminController);
 
 // ----- Feedback Experience (Admin) -----
 router.get('/feedback-experiences', feedbackExperienceController.getFeedbackExperiences);

@@ -77,6 +77,7 @@ export default function FinanceDetailsPage() {
     const cycle = financeData?.currentCycle || {}
     const summary = financeData?.invoiceSummary || {}
     const discountBreakdown = cycle?.discountBreakdown || {}
+    const settlementBreakdown = cycle?.settlementBreakdown || {}
     const orders = Array.isArray(cycle?.orders) ? cycle.orders : []
     const subtotalFromOrders = orders.reduce(
       (sum, order) => sum + Number(order?.restaurantGrossBeforeDiscount || order?.subtotal || 0),
@@ -122,6 +123,11 @@ export default function FinanceDetailsPage() {
         total: 0
       },
       estimatedPayout: cycle.estimatedPayout || 0,
+      settlement: {
+        adminChargesRecoverable: Number(settlementBreakdown.adminChargesRecoverable || 0),
+        platformDiscountCompensation: Number(settlementBreakdown.platformDiscountCompensation || 0),
+        walletNetAdjustment: Number(settlementBreakdown.walletNetAdjustment || 0),
+      },
       start: cycle.start?.day || "15",
       end: cycle.end?.day || "21",
       month: cycle.start?.month || "Dec",
@@ -247,6 +253,17 @@ export default function FinanceDetailsPage() {
                       <p className="text-xs text-gray-600 mb-1">Payout for</p>
                       <p className="text-sm font-semibold text-gray-900">{settlementData.start} - {settlementData.end} {settlementData.month}'{settlementData.year}</p>
                     </div>
+                  </div>
+                  <div className="mt-4 border-t border-dashed border-gray-200 pt-3">
+                    <p className="text-xs text-gray-600">
+                      COD/Counter admin recoverable: <span className="font-semibold text-gray-900">₹{(settlementData?.settlement?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Platform compensation: <span className="font-semibold text-gray-900">₹{(settlementData?.settlement?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </p>
+                    <p className="text-xs text-gray-600 mt-1">
+                      Wallet net adjustment: <span className="font-semibold text-gray-900">₹{(settlementData?.settlement?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </p>
                   </div>
                 </div>
 
@@ -639,6 +656,10 @@ export default function FinanceDetailsPage() {
                         <p>Your coupon: ₹{Number(order?.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                         <p>Your offer: ₹{Number(order?.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
                         <p>Commission: ₹{Number(order?.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Admin recoverable: ₹{Number(order?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Platform comp.: ₹{Number(order?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Wallet adj.: ₹{Number(order?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</p>
+                        <p>Settlement: {order?.settlementApplied ? "Applied" : "Pending"}</p>
                       </div>
                     </div>
                   ))

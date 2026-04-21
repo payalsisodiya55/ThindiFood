@@ -859,6 +859,27 @@ export default function HubFinance() {
                         Platform coupons don&apos;t reduce your payout. Your coupons and offers do.
                       </p>
                     </div>
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 mb-1">COD / Counter note</p>
+                      <p className="text-xs text-amber-900">
+                        Admin recoverable (commission + platform fee + tax):{" "}
+                        <span className="font-semibold">
+                          ₹{Number(financeData?.currentCycle?.settlementBreakdown?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                      <p className="text-xs text-amber-900 mt-1">
+                        Platform discount compensation:{" "}
+                        <span className="font-semibold">
+                          ₹{Number(financeData?.currentCycle?.settlementBreakdown?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                      <p className="text-xs text-amber-900 mt-1">
+                        Wallet net adjustment:{" "}
+                        <span className="font-semibold">
+                          ₹{Number(financeData?.currentCycle?.settlementBreakdown?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </p>
+                    </div>
                   </>
                 )}
               </div>
@@ -1130,7 +1151,7 @@ export default function HubFinance() {
                                   ₹{(order.payout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  Earning
+                                  {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) ? "Wallet Adjustment" : "Earning"}
                                 </p>
                               </div>
                             </div>
@@ -1140,6 +1161,16 @@ export default function HubFinance() {
                               <p>Your offer: ₹{Number(order.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               <p>Commission: ₹{Number(order.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
+                            {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) && (
+                              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
+                                <p>
+                                  Admin recoverable: ₹{Number(order?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Platform comp: ₹{Number(order?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                                <p className="mt-0.5">
+                                  Wallet adjustment: ₹{Number(order?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -1168,7 +1199,7 @@ export default function HubFinance() {
                                   ₹{(order.payout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  Earning
+                                  {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) ? "Wallet Adjustment" : "Earning"}
                                 </p>
                               </div>
                             </div>
@@ -1178,6 +1209,16 @@ export default function HubFinance() {
                               <p>Your offer: ₹{Number(order.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               <p>Commission: ₹{Number(order.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                             </div>
+                            {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) && (
+                              <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
+                                <p>
+                                  Admin recoverable: ₹{Number(order?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Platform comp: ₹{Number(order?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                                <p className="mt-0.5">
+                                  Wallet adjustment: ₹{Number(order?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

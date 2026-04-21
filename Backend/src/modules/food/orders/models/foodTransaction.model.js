@@ -41,6 +41,7 @@ const foodTransactionSchema = new mongoose.Schema({
         commissionBaseAmount: { type: Number, default: 0, min: 0 },
         restaurantGrossBeforeDiscount: { type: Number, default: 0, min: 0 },
         couponFundingType: { type: String, enum: ['platform', 'restaurant', 'none'], default: 'none' },
+        fundingType: { type: String, enum: ['PLATFORM', 'RESTAURANT', 'NONE'], default: 'NONE' },
         payoutAdjustments: {
             platformCouponDiscount: { type: Number, default: 0, min: 0 },
             restaurantCouponDiscount: { type: Number, default: 0, min: 0 },
@@ -97,7 +98,30 @@ const foodTransactionSchema = new mongoose.Schema({
         isRestaurantSettled: { type: Boolean, default: false },
         restaurantSettledAt: Date,
         isRiderSettled: { type: Boolean, default: false },
-        riderSettledAt: Date
+        riderSettledAt: Date,
+        walletSettlement: {
+            processing: { type: Boolean, default: false },
+            applied: { type: Boolean, default: false },
+            appliedAt: { type: Date, default: null },
+            paymentMode: { type: String, default: '' },
+            fundingType: { type: String, enum: ['PLATFORM', 'RESTAURANT', 'NONE'], default: 'NONE' },
+            restaurantShouldRetain: { type: Number, default: 0, min: 0 },
+            customerCashCollected: { type: Number, default: 0, min: 0 },
+            platformDiscountCompensation: { type: Number, default: 0, min: 0 },
+            walletNetAdjustment: { type: Number, default: 0 },
+            adminChargesRecoverable: {
+                commission: { type: Number, default: 0, min: 0 },
+                platformFee: { type: Number, default: 0, min: 0 },
+                tax: { type: Number, default: 0, min: 0 },
+                deliveryFee: { type: Number, default: 0, min: 0 },
+                total: { type: Number, default: 0, min: 0 }
+            },
+            note: { type: String, default: '' },
+            recordedBy: {
+                role: { type: String, default: 'SYSTEM' },
+                id: { type: mongoose.Schema.Types.ObjectId, default: null }
+            }
+        }
     },
 
     // Audit History (Replacing FoodOrderPayment ledger)

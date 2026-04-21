@@ -36,7 +36,7 @@ export async function creditWallet({
  */
 export async function debitWallet({
     entityType, entityId, amount, description,
-    category = 'other', orderId, paymentId, metadata
+    category = 'other', orderId, paymentId, metadata, allowNegative = false
 }) {
     return recordTransaction({
         entityType,
@@ -47,7 +47,8 @@ export async function debitWallet({
         category,
         orderId: orderId ? String(orderId) : null,
         paymentId: paymentId ? String(paymentId) : null,
-        metadata
+        metadata,
+        allowNegative: Boolean(allowNegative)
     });
 }
 

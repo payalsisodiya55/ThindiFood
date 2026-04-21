@@ -744,6 +744,7 @@ export default function ExploreMore() {
     { id: 6, label: "Menu categories", icon: Settings, route: "/food/restaurant/menu-categories" },
     { id: 10, label: "Coupons", icon: TicketPercent, route: "/food/restaurant/coupons" },
     { id: 11, label: "Offers", icon: Gift, route: "/food/restaurant/offers" },
+    { id: 12, label: "Dining Offers", icon: Gift, route: "/food/restaurant/dining-offers" },
   ]
 
   const settingsItems = [

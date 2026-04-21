@@ -148,6 +148,10 @@ const tableSessionSchema = new mongoose.Schema(
             ref: 'FoodTableBooking',
             default: null,
         },
+        billingSnapshot: {
+            type: mongoose.Schema.Types.Mixed,
+            default: null,
+        },
     },
     {
         collection: 'food_table_sessions',

@@ -1,6 +1,8 @@
 import { FoodTransaction } from '../models/foodTransaction.model.js';
 import { FoodRestaurantCommission } from '../../admin/models/restaurantCommission.model.js';
 import mongoose from 'mongoose';
+import { creditWallet, debitWallet } from '../../../../core/payments/wallet.service.js';
+import { calculateWalletSettlement, deriveFundingType } from './settlement-calculator.service.js';
 
 const RESTAURANT_COMMISSION_CACHE_MS = 60 * 1000;
 let restaurantCommissionRulesCache = null;
@@ -152,6 +154,7 @@ export async function createInitialTransaction(order) {
             commissionBaseAmount: Number(order.pricing?.commissionBaseAmount || order.pricing?.subtotal || 0) || 0,
             restaurantGrossBeforeDiscount: Number(order.pricing?.restaurantGrossBeforeDiscount || 0) || 0,
             couponFundingType: String(order.pricing?.couponFundingType || 'none'),
+            fundingType: deriveFundingType(order.pricing?.couponFundingType, order.pricing),
             payoutAdjustments: {
                 platformCouponDiscount: Number(order.pricing?.payoutAdjustments?.platformCouponDiscount || 0) || 0,
                 restaurantCouponDiscount: Number(order.pricing?.payoutAdjustments?.restaurantCouponDiscount || 0) || 0,
@@ -194,6 +197,131 @@ export async function createInitialTransaction(order) {
     }
 
     return transaction;
+}
+
+export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
+    const orderObjectId = mongoose.Types.ObjectId.isValid(orderId)
+        ? new mongoose.Types.ObjectId(orderId)
+        : null;
+    if (!orderObjectId) return null;
+
+    const claimFilter = {
+        orderId: orderObjectId,
+        $or: [
+            { 'settlement.walletSettlement.applied': { $exists: false } },
+            { 'settlement.walletSettlement.applied': { $ne: true } },
+        ],
+        'settlement.walletSettlement.processing': { $ne: true },
+    };
+
+    const now = new Date();
+    const tx = await FoodTransaction.findOneAndUpdate(
+        claimFilter,
+        {
+            $set: {
+                'settlement.walletSettlement.processing': true,
+            },
+        },
+        { new: true },
+    );
+
+    if (!tx) {
+        return { applied: false, reason: 'already_applied_or_missing' };
+    }
+
+    try {
+        const paymentMethod = String(tx.payment?.method || tx.paymentMethod || '').trim().toLowerCase();
+        const pricing = tx.pricing || {};
+        const settlement = calculateWalletSettlement({
+            paymentMode: paymentMethod,
+            pricing,
+            charges: {
+                commission: Number(tx.amounts?.restaurantCommission ?? pricing?.payoutAdjustments?.commission ?? pricing?.restaurantCommission ?? 0),
+                platformFee: Number(pricing?.platformFee ?? 0),
+                tax: Number(pricing?.tax ?? 0),
+                deliveryFee: Number(pricing?.deliveryFee ?? 0),
+            },
+            contributions: {
+                platformDiscount: Number(pricing?.platformCouponDiscount ?? 0) + Number(pricing?.platformOverallOfferDiscount ?? 0),
+            },
+            restaurantShouldRetain: Number(tx.amounts?.restaurantShare || pricing?.payoutAdjustments?.netPayout || 0),
+            customerCashCollected:
+                paymentMethod === 'cash' || paymentMethod === 'razorpay_qr' || paymentMethod === 'counter'
+                    ? Number(tx.amounts?.totalCustomerPaid || pricing?.total || 0)
+                    : 0,
+        });
+
+        const walletNetAdjustment = Number(settlement.walletNetAdjustment || 0);
+        const adjustmentAmount = Math.abs(walletNetAdjustment);
+
+        if (settlement.isCodLike && adjustmentAmount > 0.009) {
+            const walletPayload = {
+                entityType: 'restaurant',
+                entityId: String(tx.restaurantId),
+                amount: adjustmentAmount,
+                description: `Order ${String(tx.orderId)} COD settlement adjustment`,
+                category: 'adjustment',
+                orderId: String(tx.orderId),
+                allowNegative: true,
+                metadata: {
+                    settlementType: 'COD_WALLET_ADJUSTMENT',
+                    walletNetAdjustment,
+                    adminChargesRecoverable: settlement.adminChargesRecoverable,
+                    platformDiscountCompensation: settlement.platformDiscountCompensation,
+                    paymentMethod,
+                },
+            };
+
+            if (walletNetAdjustment > 0) {
+                await creditWallet(walletPayload);
+            } else {
+                await debitWallet(walletPayload);
+            }
+        }
+
+        tx.settlement = tx.settlement || {};
+        tx.settlement.walletSettlement = {
+            processing: false,
+            applied: true,
+            appliedAt: now,
+            paymentMode: settlement.paymentMode,
+            fundingType: settlement.fundingType,
+            restaurantShouldRetain: settlement.restaurantShouldRetain,
+            customerCashCollected: settlement.customerCashCollected,
+            platformDiscountCompensation: settlement.platformDiscountCompensation,
+            walletNetAdjustment: settlement.walletNetAdjustment,
+            adminChargesRecoverable: settlement.adminChargesRecoverableBreakdown,
+            note: settlement.isCodLike
+                ? 'COD-like settlement applied'
+                : 'Online flow kept unchanged. Metadata only.',
+            recordedBy: {
+                role: opts.recordedByRole || 'SYSTEM',
+                id: opts.recordedById || null,
+            },
+        };
+
+        tx.history.push({
+            kind: 'wallet_settlement_applied',
+            amount: adjustmentAmount > 0.009 ? adjustmentAmount : 0,
+            at: now,
+            note: `Wallet settlement applied (${paymentMethod || 'unknown'})`,
+            recordedBy: { role: opts.recordedByRole || 'SYSTEM', id: opts.recordedById || null },
+        });
+
+        await tx.save();
+        return tx;
+    } catch (error) {
+        await FoodTransaction.updateOne(
+            { _id: tx._id },
+            {
+                $set: {
+                    'settlement.walletSettlement.processing': false,
+                    'settlement.walletSettlement.note': `Settlement failed: ${error?.message || 'unknown error'}`,
+                },
+            },
+        );
+        throw error;
+    }
 }
 
 /**

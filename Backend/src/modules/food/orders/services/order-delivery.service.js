@@ -854,6 +854,12 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     note: `Delivery completed. Prev status: ${prevPayStatus}`,
   });
 
+  // Ensure COD/counter wallet settlement is applied even on delivery-service flow.
+  await foodTransactionService.applyWalletSettlementForFoodOrder(order._id, {
+    recordedByRole: 'DELIVERY_PARTNER',
+    recordedById: deliveryPartnerId,
+  });
+
   emitOrderUpdate(order, deliveryPartnerId);
   enqueueOrderEvent('delivery_completed', {
     orderMongoId: order._id?.toString?.(),

@@ -110,6 +110,18 @@ export default function OrderDetails() {
           const restaurantCommission = firstNumber(pricing.restaurantCommission, order.restaurantCommission, pricing?.payoutAdjustments?.commission) ?? 0
           const restaurantNetPayout = firstNumber(pricing?.payoutAdjustments?.netPayout, order.restaurantNetPayout) ?? 0
           const referralDiscount = firstNumber(pricing.referralDiscount, order.referralDiscount) ?? 0
+          const settlement = order.settlementSummary || pricing?.settlement || {}
+          const adminChargesRecoverable = firstNumber(settlement.adminChargesRecoverable) ?? 0
+          const platformDiscountCompensation = firstNumber(settlement.platformDiscountCompensation) ?? 0
+          const walletNetAdjustment = firstNumber(settlement.walletNetAdjustment) ?? 0
+          const settlementApplied = settlement.settlementApplied === true
+          const adminChargesRecoverableBreakdown = settlement.adminChargesRecoverableBreakdown || {
+            commission: 0,
+            platformFee: 0,
+            tax: 0,
+            deliveryFee: 0,
+            total: 0
+          }
 
           const total =
             firstNumber(
@@ -231,6 +243,12 @@ export default function OrderDetails() {
               restaurantCommission,
               restaurantNetPayout,
               referralDiscount,
+              paymentMethod,
+              adminChargesRecoverable,
+              adminChargesRecoverableBreakdown,
+              platformDiscountCompensation,
+              walletNetAdjustment,
+              settlementApplied,
               total,
               paidAmount,
               paymentStatus
@@ -908,6 +926,22 @@ export default function OrderDetails() {
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm text-gray-600">Restaurant payout</span>
                 <span className="text-sm font-medium text-gray-900">{formatMoney(orderData.billing.restaurantNetPayout)}</span>
+              </div>
+            )}
+            {["cash", "razorpay_qr", "counter"].includes(String(orderData.billing.paymentMethod || "").toLowerCase()) && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-semibold text-amber-900">
+                  COD/Counter settlement note
+                </p>
+                <p className="mt-1 text-xs text-amber-800">
+                  Admin recoverable: {formatMoney(orderData.billing.adminChargesRecoverable)} (Commission {formatMoney(orderData.billing.adminChargesRecoverableBreakdown?.commission || 0)}, Platform fee {formatMoney(orderData.billing.adminChargesRecoverableBreakdown?.platformFee || 0)}, Tax {formatMoney(orderData.billing.adminChargesRecoverableBreakdown?.tax || 0)}).
+                </p>
+                <p className="mt-1 text-xs text-amber-800">
+                  Platform compensation: {formatMoney(orderData.billing.platformDiscountCompensation)}. Wallet adjustment: {formatMoney(orderData.billing.walletNetAdjustment)}.
+                </p>
+                <p className="mt-1 text-[11px] text-amber-700">
+                  Settlement status: {orderData.billing.settlementApplied ? "Applied" : "Pending"}.
+                </p>
               </div>
             )}
           </div>

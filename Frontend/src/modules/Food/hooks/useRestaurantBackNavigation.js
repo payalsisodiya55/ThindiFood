@@ -58,6 +58,13 @@ const resolveRestaurantBackPath = ({ pathname, state }) => {
   }
 
   if (
+    normalizedPath === "/dining-offers/new" ||
+    /^\/dining-offers\/[^/]+\/edit$/.test(normalizedPath)
+  ) {
+    return explicitBackPath || "/food/restaurant/dining-offers"
+  }
+
+  if (
     normalizedPath === "/edit" ||
     normalizedPath === "/edit-owner" ||
     normalizedPath === "/edit-cuisines" ||

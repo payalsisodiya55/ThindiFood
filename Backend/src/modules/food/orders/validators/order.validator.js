@@ -50,6 +50,7 @@ const pricingSchema = z.object({
     restaurantCommission: z.number().min(0).optional(),
     restaurantGrossBeforeDiscount: z.number().min(0).optional(),
     couponFundingType: z.enum(['platform', 'restaurant', 'none']).optional(),
+    fundingType: z.enum(['PLATFORM', 'RESTAURANT', 'NONE']).optional(),
     payoutAdjustments: z.object({
         platformCouponDiscount: z.number().min(0).optional(),
         restaurantCouponDiscount: z.number().min(0).optional(),

@@ -4,6 +4,8 @@ import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 
+const COD_LIKE_METHODS = new Set(['cash', 'razorpay_qr', 'counter']);
+
 function toTwoDigitYearString(dateObj) {
     const y = String(dateObj.getFullYear());
     return y.slice(-2);
@@ -62,16 +64,59 @@ function parseISODateParamEnd(v) {
     return d;
 }
 
+function toMoney(v) {
+    const n = Number(v || 0);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function normalizePaymentMethod(tx, order = {}) {
+    return String(
+        tx?.payment?.method ||
+        tx?.paymentMethod ||
+        order?.payment?.method ||
+        ''
+    ).trim().toLowerCase();
+}
+
+function isCodLike(tx, order = {}) {
+    return COD_LIKE_METHODS.has(normalizePaymentMethod(tx, order));
+}
+
+function resolveWalletImpact(tx, order = {}) {
+    const settlement = tx?.settlement?.walletSettlement || {};
+    if (isCodLike(tx, order)) {
+        // COD/counter impacts wallet only via settlement adjustment.
+        if (settlement.applied === true) return toMoney(settlement.walletNetAdjustment);
+        return 0;
+    }
+    // ONLINE flow remains unchanged: payout is restaurant share.
+    const pricing = tx?.pricing || order?.pricing || {};
+    return toMoney(tx?.amounts?.restaurantShare ?? pricing?.payoutAdjustments?.netPayout ?? 0);
+}
+
 function mapFinanceOrder(tx) {
     const order = tx.orderId || {};
     const items = Array.isArray(order.items) ? order.items : [];
     const foodNames = items.map((it) => it?.name).filter(Boolean).join(', ');
     const pricing = tx.pricing || order.pricing || {};
     const payoutAdjustments = pricing.payoutAdjustments || {};
+    const walletSettlement = tx.settlement?.walletSettlement || {};
     const orderTotalExclTax = Math.max(
         0,
         Number(order?.pricing?.total ?? pricing.total ?? 0) - Number(order?.pricing?.tax ?? pricing.tax ?? 0) || 0
     );
+    const walletImpact = resolveWalletImpact(tx, order);
+    const paymentMethod = normalizePaymentMethod(tx, order);
+    const codLike = COD_LIKE_METHODS.has(paymentMethod);
+    const commissionFromSettlement = toMoney(walletSettlement?.adminChargesRecoverable?.commission);
+    const commissionFromPricing = Number(
+        tx.amounts?.restaurantCommission || pricing.restaurantCommission || payoutAdjustments.commission || 0
+    );
+    // For COD/counter, commission shown in finance should come from settlement recovery,
+    // not from stale pricing snapshots.
+    const commission = codLike
+        ? commissionFromSettlement
+        : (Number.isFinite(commissionFromPricing) ? commissionFromPricing : 0);
 
     return {
         orderId: order?.orderId || tx.orderReadableId,
@@ -80,17 +125,30 @@ function mapFinanceOrder(tx) {
         foodNames,
         orderTotal: orderTotalExclTax,
         totalAmount: tx.amounts?.totalCustomerPaid || 0,
-        payout: Number(tx.amounts?.restaurantShare || payoutAdjustments.netPayout || 0),
-        commission: Number(tx.amounts?.restaurantCommission || pricing.restaurantCommission || payoutAdjustments.commission || 0),
+        payout: walletImpact,
+        commission,
         platformCouponDiscount: Number(pricing.platformCouponDiscount || payoutAdjustments.platformCouponDiscount || 0),
         restaurantCouponDiscount: Number(pricing.restaurantCouponDiscount || payoutAdjustments.restaurantCouponDiscount || 0),
         restaurantOfferDiscount: Number(pricing.restaurantOfferDiscount || payoutAdjustments.restaurantOfferDiscount || 0),
         couponFundingType: String(pricing.couponFundingType || 'none'),
+        fundingType: String(pricing.fundingType || '').toUpperCase() || 'NONE',
         commissionBaseAmount: Number(pricing.commissionBaseAmount || pricing.offerAdjustedSubtotal || pricing.subtotal || 0),
         restaurantGrossBeforeDiscount: Number(pricing.restaurantGrossBeforeDiscount || 0),
-        paymentMethod: tx.paymentMethod || order?.payment?.method,
+        paymentMethod,
+        isCodLike: codLike,
         orderStatus: order?.orderStatus || order?.deliveryState?.currentPhase || order?.deliveryState?.status,
-        status: tx.status
+        status: tx.status,
+        settlementApplied: walletSettlement.applied === true,
+        adminChargesRecoverable: Number(walletSettlement?.adminChargesRecoverable?.total || 0),
+        adminChargesRecoverableBreakdown: {
+            commission: Number(walletSettlement?.adminChargesRecoverable?.commission || 0),
+            platformFee: Number(walletSettlement?.adminChargesRecoverable?.platformFee || 0),
+            tax: Number(walletSettlement?.adminChargesRecoverable?.tax || 0),
+            deliveryFee: Number(walletSettlement?.adminChargesRecoverable?.deliveryFee || 0),
+            total: Number(walletSettlement?.adminChargesRecoverable?.total || 0),
+        },
+        platformDiscountCompensation: Number(walletSettlement?.platformDiscountCompensation || 0),
+        walletNetAdjustment: Number(walletSettlement?.walletNetAdjustment || 0),
     };
 }
 
@@ -140,10 +198,10 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         restaurantId: rid,
         ...financeEligibilityMatch,
         'settlement.isRestaurantSettled': { $ne: true }
-    }).select('amounts.restaurantShare').lean();
+    }).select('amounts.restaurantShare pricing payoutAdjustments payment paymentMethod settlement').lean();
 
     const globalEstimatedPayout = allUnsettledTransactions.reduce(
-        (sum, tx) => sum + (Number(tx.amounts?.restaurantShare) || 0),
+        (sum, tx) => sum + resolveWalletImpact(tx, {}),
         0
     );
 
@@ -175,6 +233,11 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
             restaurantOffers: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantOfferDiscount) || 0), 0),
             commissionPaid: currentCycleOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
             netPayout: currentCycleEstimatedPayout
+        },
+        settlementBreakdown: {
+            adminChargesRecoverable: currentCycleOrders.reduce((sum, order) => sum + (Number(order.adminChargesRecoverable) || 0), 0),
+            platformDiscountCompensation: currentCycleOrders.reduce((sum, order) => sum + (Number(order.platformDiscountCompensation) || 0), 0),
+            walletNetAdjustment: currentCycleOrders.reduce((sum, order) => sum + (Number(order.walletNetAdjustment) || 0), 0),
         },
         totalOrders: currentCycleOrders.length,
         payoutDate: null,

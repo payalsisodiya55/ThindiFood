@@ -3,6 +3,7 @@ import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { requireRoles } from '../../../../core/roles/role.middleware.js';
 import {
     getTableInfoController,
+    getRestaurantDiningOfferPreviewController,
     createSessionController,
     getSessionController,
     placeOrderController,
@@ -29,6 +30,7 @@ const router = express.Router();
 
 // ─── Table Info (public) ──────────────────────────────────────────────────────
 router.get('/table-info', getTableInfoController);
+router.get('/restaurants/:restaurantId/overall-offer', getRestaurantDiningOfferPreviewController);
 
 // ─── Sessions (QR flow — untouched) ──────────────────────────────────────────
 router.post('/sessions', authMiddleware, createSessionController);
@@ -67,4 +69,3 @@ router.patch('/bookings/:id/decline', authMiddleware, requireRoles('RESTAURANT',
 router.patch('/bookings/:id/check-in', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), checkInBookingController);
 
 export default router;
-

@@ -35,6 +35,7 @@ import { fetchPolyline } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
 import { invalidateCache } from '../../../../middleware/cache.js';
 import * as foodTransactionService from './foodTransaction.service.js';
+import { deriveFundingType } from './settlement-calculator.service.js';
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
@@ -767,6 +768,11 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
       ),
       restaurantOfferDiscount,
       couponFundingType: couponBreakdown.couponFundingType,
+      fundingType: deriveFundingType(couponBreakdown.couponFundingType, {
+        platformCouponDiscount: couponBreakdown.platformCouponDiscount,
+        restaurantCouponDiscount: couponBreakdown.restaurantCouponDiscount,
+        restaurantOfferDiscount,
+      }),
       payoutAdjustments: {
         platformCouponDiscount: roundMoney(
           couponBreakdown.platformCouponDiscount,
@@ -964,6 +970,10 @@ export async function createOrder(userId, dto) {
     restaurantCouponDiscount: toMoney(dto.pricing?.restaurantCouponDiscount, 0),
     restaurantOfferDiscount: toMoney(dto.pricing?.restaurantOfferDiscount, 0),
     couponFundingType: String(dto.pricing?.couponFundingType || "none"),
+    fundingType: String(
+      dto.pricing?.fundingType ||
+        deriveFundingType(dto.pricing?.couponFundingType, dto.pricing),
+    ).toUpperCase(),
     payoutAdjustments: {
       platformCouponDiscount: toMoney(
         dto.pricing?.payoutAdjustments?.platformCouponDiscount,
@@ -1482,6 +1492,40 @@ export async function getOrderById(
     .lean();
   if (!order) throw new NotFoundError("Order not found");
 
+  const tx = await FoodTransaction.findOne({ orderId: order._id })
+    .select('pricing settlement payment paymentMethod amounts')
+    .lean();
+  const pricingSnapshot = tx?.pricing || order?.pricing || {};
+  const walletSettlement = tx?.settlement?.walletSettlement || null;
+  const fundingType = deriveFundingType(
+    pricingSnapshot?.couponFundingType,
+    pricingSnapshot,
+  );
+  const settlementSummary = {
+    adminChargesRecoverable:
+      walletSettlement?.adminChargesRecoverable?.total || 0,
+    adminChargesRecoverableBreakdown: {
+      commission: walletSettlement?.adminChargesRecoverable?.commission || 0,
+      platformFee: walletSettlement?.adminChargesRecoverable?.platformFee || 0,
+      tax: walletSettlement?.adminChargesRecoverable?.tax || 0,
+      deliveryFee: walletSettlement?.adminChargesRecoverable?.deliveryFee || 0,
+      total: walletSettlement?.adminChargesRecoverable?.total || 0,
+    },
+    platformDiscountCompensation:
+      walletSettlement?.platformDiscountCompensation || 0,
+    walletNetAdjustment: walletSettlement?.walletNetAdjustment || 0,
+    settlementApplied: walletSettlement?.applied === true,
+  };
+  order.pricing = {
+    ...(order.pricing || {}),
+    couponFundingType: String(
+      order?.pricing?.couponFundingType || pricingSnapshot?.couponFundingType || 'none',
+    ).toLowerCase(),
+    fundingType,
+    settlement: settlementSummary,
+  };
+  order.settlementSummary = settlementSummary;
+
   if (admin) return normalizeOrderForClient(order);
 
   const orderUserId = order.userId?._id?.toString() || order.userId?.toString();
@@ -1760,6 +1804,31 @@ export async function updateOrderStatusRestaurant(
     to: orderStatus,
   });
   await order.save();
+  if (String(orderStatus || "").toLowerCase() === "delivered") {
+    const recordedById = mongoose.Types.ObjectId.isValid(restaurantId)
+      ? new mongoose.Types.ObjectId(restaurantId)
+      : null;
+    try {
+      await foodTransactionService.updateTransactionStatus(
+        order._id,
+        "restaurant_marked_delivered",
+        {
+          status: "captured",
+          recordedByRole: "RESTAURANT",
+          recordedById,
+          note: "Order delivered by restaurant flow",
+        },
+      );
+      await foodTransactionService.applyWalletSettlementForFoodOrder(order._id, {
+        recordedByRole: "RESTAURANT",
+        recordedById,
+      });
+    } catch (err) {
+      logger.warn(
+        `updateOrderStatusRestaurant settlement sync failed: ${err?.message || err}`,
+      );
+    }
+  }
   if (generatedDropOtp) {
     emitDeliveryDropOtpToUser(order, generatedDropOtp);
   }
@@ -2521,6 +2590,10 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
     recordedByRole: "DELIVERY_PARTNER",
     recordedById: deliveryPartnerId,
     note: `Delivery completed. Prev status: ${prevPayStatus}`
+  });
+  await foodTransactionService.applyWalletSettlementForFoodOrder(order._id, {
+    recordedByRole: "DELIVERY_PARTNER",
+    recordedById: deliveryPartnerId,
   });
 
   emitOrderUpdate(order, deliveryPartnerId);

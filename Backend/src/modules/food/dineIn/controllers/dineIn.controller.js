@@ -15,6 +15,16 @@ export async function getTableInfoController(req, res, next) {
     }
 }
 
+export async function getRestaurantDiningOfferPreviewController(req, res, next) {
+    try {
+        const { restaurantId } = req.params;
+        const data = await dineInService.getRestaurantDiningOfferPreview(restaurantId);
+        return sendResponse(res, 200, 'Restaurant dining offer fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function createSessionController(req, res, next) {
     try {
         const { restaurantId, tableNumber } = req.body;
