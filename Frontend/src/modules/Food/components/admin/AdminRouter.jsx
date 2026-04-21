@@ -156,7 +156,6 @@ export default function AdminRouter() {
             {/* ... other order routes ... */}
             <Route path="orders/accepted" element={<OrdersPage statusKey="accepted" />} />
             <Route path="orders/processing" element={<OrdersPage statusKey="processing" />} />
-            <Route path="orders/food-on-the-way" element={<OrdersPage statusKey="food-on-the-way" />} />
             <Route path="orders/delivered" element={<OrdersPage statusKey="delivered" />} />
             <Route path="orders/canceled" element={<OrdersPage statusKey="canceled" />} />
             <Route path="orders/restaurant-cancelled" element={<OrdersPage statusKey="restaurant-cancelled" />} />

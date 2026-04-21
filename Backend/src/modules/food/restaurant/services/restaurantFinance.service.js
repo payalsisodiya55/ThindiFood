@@ -241,6 +241,45 @@ function sortByCreatedDesc(list = []) {
     return [...list].sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
 }
 
+function getTransactionPriority(status = '') {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'captured') return 3;
+    if (normalized === 'authorized') return 2;
+    if (normalized === 'pending') return 1;
+    return 0;
+}
+
+function dedupeTakeawayTransactions(transactions = []) {
+    const byOrder = new Map();
+
+    for (const tx of transactions) {
+        const orderKeyRaw = tx?.orderId?._id || tx?.orderId || tx?.orderReadableId || tx?._id;
+        if (!orderKeyRaw) continue;
+        const key = String(orderKeyRaw);
+        const existing = byOrder.get(key);
+        if (!existing) {
+            byOrder.set(key, tx);
+            continue;
+        }
+
+        const existingPriority = getTransactionPriority(existing?.status);
+        const currentPriority = getTransactionPriority(tx?.status);
+        if (currentPriority > existingPriority) {
+            byOrder.set(key, tx);
+            continue;
+        }
+        if (currentPriority === existingPriority) {
+            const existingAt = new Date(existing?.createdAt || 0).getTime();
+            const currentAt = new Date(tx?.createdAt || 0).getTime();
+            if (currentAt > existingAt) {
+                byOrder.set(key, tx);
+            }
+        }
+    }
+
+    return sortByCreatedDesc(Array.from(byOrder.values()));
+}
+
 async function reconcileTakeawayOnlineWalletCredits(transactions = []) {
     for (const tx of transactions) {
         const paymentMethod = normalizePaymentMethod(tx, tx?.orderId || {});
@@ -368,6 +407,14 @@ function summarizeDiningBreakdown(orders = [], walletAvailableBalance = 0) {
         ? Math.min(totalDeduction, Math.max(0, Math.abs(Math.min(0, Number(walletAvailableBalance || 0)))))
         : 0;
     const adjustedAmount = Math.max(0, totalDeduction - outstandingDue);
+    const outstandingRatio = totalDeduction > 0.009 ? outstandingDue / totalDeduction : 0;
+    const adjustedRatio = totalDeduction > 0.009 ? adjustedAmount / totalDeduction : 0;
+    const pendingCommission = commission * outstandingRatio;
+    const pendingPlatformFee = platformFee * outstandingRatio;
+    const pendingGst = gst * outstandingRatio;
+    const adjustedCommission = commission * adjustedRatio;
+    const adjustedPlatformFee = platformFee * adjustedRatio;
+    const adjustedGst = gst * adjustedRatio;
 
     return {
         ordersCount: diningCashOrders.length,
@@ -377,9 +424,17 @@ function summarizeDiningBreakdown(orders = [], walletAvailableBalance = 0) {
         totalDeduction,
         outstandingDue,
         adjustedAmount,
+        pendingCommission,
+        pendingPlatformFee,
+        pendingGst,
+        adjustedCommission,
+        adjustedPlatformFee,
+        adjustedGst,
         hasDeductions: totalDeduction > 0.009,
         isFullyAdjusted: totalDeduction > 0.009 && outstandingDue <= 0.009,
-        note: 'Commission, platform fee, and GST from dining COD orders will be adjusted automatically in the next payout.',
+        note: outstandingDue > 0.009
+            ? 'Pending dining COD dues will be adjusted automatically in the next payout.'
+            : 'Dining COD dues for this cycle are already adjusted from takeaway earnings.',
     };
 }
 
@@ -413,22 +468,54 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         billingSnapshot: { $ne: null },
     };
 
-    const [currentTransactions, currentDiningSessions] = await Promise.all([
+    const latestSettledWithdrawal = await FoodRestaurantWithdrawal.findOne({
+        restaurantId: rid,
+        $expr: {
+            $in: [{ $toLower: { $trim: { input: '$status' } } }, ['approved', 'processed']]
+        }
+    })
+        .sort({ processedAt: -1, updatedAt: -1, createdAt: -1 })
+        .select('processedAt updatedAt createdAt')
+        .lean();
+
+    const latestSettlementAtRaw =
+        latestSettledWithdrawal?.processedAt ||
+        latestSettledWithdrawal?.updatedAt ||
+        latestSettledWithdrawal?.createdAt ||
+        null;
+    const latestSettlementAt = latestSettlementAtRaw ? new Date(latestSettlementAtRaw) : null;
+    const hasValidSettlementAt = latestSettlementAt && !Number.isNaN(latestSettlementAt.getTime());
+
+    const effectiveCurrentStart =
+        hasValidSettlementAt && latestSettlementAt > nowWindow.start
+            ? latestSettlementAt
+            : nowWindow.start;
+    const currentWindowMeta = {
+        start: {
+            day: String(effectiveCurrentStart.getDate()),
+            month: monthShort(effectiveCurrentStart.getMonth()),
+            year: toTwoDigitYearString(effectiveCurrentStart),
+        },
+        end: { ...nowWindow.endMeta },
+    };
+
+    const [currentTransactionsRaw, currentDiningSessions] = await Promise.all([
         FoodTransaction.find({
             restaurantId: rid,
             ...financeEligibilityMatch,
-            createdAt: { $gte: nowWindow.start, $lte: nowWindow.end }
+            createdAt: { $gte: effectiveCurrentStart, $lte: nowWindow.end }
         })
             .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
             .sort({ createdAt: -1 })
             .lean(),
         FoodTableSession.find({
             ...diningCompletedMatch,
-            closedAt: { $gte: nowWindow.start, $lte: nowWindow.end }
+            closedAt: { $gte: effectiveCurrentStart, $lte: nowWindow.end }
         })
             .select('restaurantId tableNumber subtotal totalAmount paymentMethod paymentMode paymentStatus status isPaid paidAt closedAt updatedAt createdAt billingSnapshot')
             .sort({ closedAt: -1, updatedAt: -1 }),
     ]);
+    const currentTransactions = dedupeTakeawayTransactions(currentTransactionsRaw);
 
     await reconcileTakeawayOnlineWalletCredits(currentTransactions);
     await reconcileDiningOnlineWalletCredits(currentDiningSessions);
@@ -443,7 +530,8 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         ...currentDiningOrders,
     ]);
 
-    const currentCycleOnlineOrders = currentCycleOrders.filter((order) => !order.isCodLike);
+    const currentCycleTakeawayOrders = currentCycleOrders.filter((order) => order?.sourceModule === 'takeaway');
+    const currentCycleTakeawayOnlineOrders = currentCycleTakeawayOrders.filter((order) => !order.isCodLike);
     const currentCyclePendingCodOrders = currentCycleOrders.filter(
         (order) => order.isCodLike && !order.settlementApplied
     );
@@ -452,37 +540,53 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         0
     );
 
-    const committedWithdrawalsAgg = await FoodRestaurantWithdrawal.aggregate([
-        {
-            $match: {
-                restaurantId: rid,
-                $expr: {
-                    $in: [{ $toLower: { $trim: { input: '$status' } } }, ['pending', 'approved', 'processed']]
+    const [pendingWithdrawalsAgg, withdrawnAmountAgg] = await Promise.all([
+        FoodRestaurantWithdrawal.aggregate([
+            {
+                $match: {
+                    restaurantId: rid,
+                    $expr: {
+                        $eq: [{ $toLower: { $trim: { input: '$status' } } }, 'pending']
+                    }
                 }
-            }
-        },
-        { $group: { _id: null, total: { $sum: '$amount' } } }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]),
+        FoodRestaurantWithdrawal.aggregate([
+            {
+                $match: {
+                    restaurantId: rid,
+                    $expr: {
+                        $in: [{ $toLower: { $trim: { input: '$status' } } }, ['approved', 'processed']]
+                    }
+                }
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } }
+        ]),
     ]);
 
-    const totalCommittedWithdrawals = Number(committedWithdrawalsAgg?.[0]?.total || 0);
+    const totalPendingWithdrawals = Number(pendingWithdrawalsAgg?.[0]?.total || 0);
+    const totalWithdrawnAmount = Number(withdrawnAmountAgg?.[0]?.total || 0);
     const walletAvailableBalance = Number(walletSnapshot?.availableBalance || 0);
-    const availableBalance = Math.max(0, walletAvailableBalance - totalCommittedWithdrawals);
+    const availableBalance = Math.max(0, walletAvailableBalance - totalPendingWithdrawals);
     const diningBreakdown = summarizeDiningBreakdown(currentCycleOrders, walletAvailableBalance);
 
     const currentCycle = {
-        start: { ...nowWindow.startMeta },
-        end: { ...nowWindow.endMeta },
+        start: { ...currentWindowMeta.start },
+        end: { ...currentWindowMeta.end },
         totalEarnings: currentCycleEstimatedPayout,
-        totalWithdrawn: totalCommittedWithdrawals,
+        totalWithdrawn: totalWithdrawnAmount,
+        pendingWithdrawals: totalPendingWithdrawals,
         estimatedPayout: availableBalance,
         walletBalance: Number(walletSnapshot?.balance || 0),
         walletAvailableBalance,
         discountBreakdown: {
-            platformCoupons: currentCycleOrders.reduce((sum, order) => sum + (Number(order.platformCouponDiscount) || 0), 0),
-            restaurantCoupons: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantCouponDiscount) || 0), 0),
-            restaurantOffers: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantOfferDiscount) || 0), 0),
-            commissionPaid: currentCycleOnlineOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
-            netPayout: currentCycleEstimatedPayout
+            platformCoupons: currentCycleTakeawayOrders.reduce((sum, order) => sum + (Number(order.platformCouponDiscount) || 0), 0),
+            restaurantCoupons: currentCycleTakeawayOrders.reduce((sum, order) => sum + (Number(order.restaurantCouponDiscount) || 0), 0),
+            restaurantOffers: currentCycleTakeawayOrders.reduce((sum, order) => sum + (Number(order.restaurantOfferDiscount) || 0), 0),
+            commissionPaid: currentCycleTakeawayOnlineOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
+            netPayout: currentCycleTakeawayOrders.reduce((sum, order) => sum + (Number(order.payout) || 0), 0),
+            totalOrders: currentCycleTakeawayOrders.length,
         },
         settlementBreakdown: {
             adminChargesRecoverable: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.adminChargesRecoverable) || 0), 0),
@@ -510,7 +614,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
 
     let pastCyclesResult = { orders: [], totalOrders: 0 };
     if (startDate && endDate) {
-        const [pastTransactions, pastDiningSessions] = await Promise.all([
+        const [pastTransactionsRaw, pastDiningSessions] = await Promise.all([
             FoodTransaction.find({
                 restaurantId: rid,
                 ...financeEligibilityMatch,
@@ -526,6 +630,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
                 .select('restaurantId tableNumber subtotal totalAmount paymentMethod paymentMode paymentStatus status isPaid paidAt closedAt updatedAt createdAt billingSnapshot')
                 .sort({ closedAt: -1, updatedAt: -1 }),
         ]);
+        const pastTransactions = dedupeTakeawayTransactions(pastTransactionsRaw);
 
         await reconcileTakeawayOnlineWalletCredits(pastTransactions);
         await reconcileDiningOnlineWalletCredits(pastDiningSessions);

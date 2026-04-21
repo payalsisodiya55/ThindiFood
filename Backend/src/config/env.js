@@ -2,6 +2,40 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const normalizeOrigin = (value) => {
+    if (typeof value !== 'string') return '';
+    const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
+    if (!trimmed) return '';
+    if (trimmed === '*') return '*';
+    try {
+        return new URL(trimmed).origin;
+    } catch {
+        return trimmed.replace(/\/+$/, '');
+    }
+};
+
+const parseOriginList = (...values) => {
+    const items = values
+        .filter((value) => value !== undefined && value !== null)
+        .flatMap((value) => String(value).split(','))
+        .map((value) => normalizeOrigin(value))
+        .filter(Boolean);
+    return Array.from(new Set(items));
+};
+
+const socketCorsOrigins = parseOriginList(
+    process.env.SOCKET_CORS_ORIGIN,
+    process.env.FRONTEND_URL,
+    'http://localhost:5173'
+);
+
+const isSocketOriginAllowed = (origin) => {
+    if (!origin) return true;
+    if (socketCorsOrigins.includes('*')) return true;
+    const normalizedRequestOrigin = normalizeOrigin(origin);
+    return socketCorsOrigins.includes(normalizedRequestOrigin);
+};
+
 export const config = {
     // Basic server config
     port: process.env.PORT || 5000,
@@ -72,6 +106,8 @@ export const config = {
 
     // Socket.io
     socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
+    socketCorsOrigins,
+    isSocketOriginAllowed,
 
     // Razorpay (payments)
     razorpayKeyId: process.env.RAZORPAY_KEY_ID,

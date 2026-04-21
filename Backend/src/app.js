@@ -41,7 +41,15 @@ app.use(helmet({
     noSniff: true,
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
 }));
-app.use(cors());
+app.use(cors({
+    origin: (origin, callback) => {
+        if (config.isSocketOriginAllowed(origin)) {
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+}));
 app.use(morgan('dev'));
 app.use(express.json({
     verify: (req, res, buf) => {

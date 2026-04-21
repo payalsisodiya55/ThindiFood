@@ -9,13 +9,14 @@ import {
 import { Button } from "@food/components/ui/button";
 import { Card, CardContent } from "@food/components/ui/card";
 import { Badge } from "@food/components/ui/badge";
-import { dineInAPI, restaurantAPI } from "@food/api";
+import { dineInAPI, restaurantAPI, diningAPI } from "@food/api";
 import { useProfile } from "@food/context/ProfileContext";
 import AnimatedPage from "@food/components/user/AnimatedPage";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { toast } from "sonner";
 
 const RUPEE_SYMBOL = "\u20B9";
+const formatMoney = (value) => Number(value || 0).toFixed(2);
 
 const resolveRestaurantPayload = (response) =>
     response?.data?.data?.restaurant ||
@@ -47,6 +48,8 @@ const DineInMenu = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [error, setError] = useState(null);
     const [sessionData, setSessionData] = useState(null);
+    const [billPreview, setBillPreview] = useState({ summary: null, appliedOffer: null });
+    const [restaurantOfferPreview, setRestaurantOfferPreview] = useState(null);
     const [restaurant, setRestaurant] = useState(null);
     const [menuSections, setMenuSections] = useState([]);
     
@@ -111,9 +114,11 @@ const DineInMenu = () => {
 
             // 2. Fetch Restaurant & Menu
             const rId = session.restaurantId._id || session.restaurantId;
-            const [rRes, mRes] = await Promise.all([
+            const [rRes, mRes, billRes, offerRes] = await Promise.all([
                 restaurantAPI.getRestaurantById(rId),
-                restaurantAPI.getMenuByRestaurantId(rId)
+                restaurantAPI.getMenuByRestaurantId(rId),
+                dineInAPI.getSessionBill(sessionId).catch(() => null),
+                diningAPI.getRestaurantOverallOffer(rId).catch(() => null),
             ]);
 
             if (rRes.data?.success) {
@@ -123,6 +128,16 @@ const DineInMenu = () => {
                 const rawSections = mRes.data.data.menu?.sections || [];
                 setMenuSections(Array.isArray(rawSections) ? rawSections : Object.values(rawSections));
             }
+            const summaryFromBill = billRes?.data?.success ? billRes?.data?.data?.summary : null;
+            const appliedOfferFromBill = billRes?.data?.success ? billRes?.data?.data?.appliedOffer : null;
+            setBillPreview({
+                summary: summaryFromBill || null,
+                appliedOffer: appliedOfferFromBill || null,
+            });
+            const activeDisplayOffer = offerRes?.data?.success
+                ? (offerRes?.data?.data?.offer || offerRes?.data?.offer || null)
+                : null;
+            setRestaurantOfferPreview(activeDisplayOffer || null);
 
         } catch (err) {
             setError(err.message || "Failed to load session data");
@@ -239,6 +254,65 @@ const DineInMenu = () => {
         }).filter(section => section.items.length > 0);
     }, [menuSections, searchQuery, vegOnly]);
 
+    const runningPayableTotal = useMemo(() => {
+        const snapshotTotal = Number(sessionData?.billingSnapshot?.summary?.totalAmount || 0);
+        if (snapshotTotal > 0) return snapshotTotal;
+        return Number(sessionData?.totalAmount || 0);
+    }, [sessionData]);
+
+    const roundBillPreview = useMemo(() => {
+        const snapshot = sessionData?.billingSnapshot || {};
+        const summary = snapshot?.summary || billPreview?.summary || {};
+        const appliedOffer = snapshot?.appliedOffer || billPreview?.appliedOffer || restaurantOfferPreview || null;
+
+        const currentSubtotal = Number(summary?.subtotal ?? sessionData?.subtotal ?? 0);
+        const currentPlatformFee = Number(summary?.platformFee ?? 0);
+        const currentTaxAmount = Number(summary?.taxAmount ?? sessionData?.taxAmount ?? 0);
+        const configuredGstRate = Number(summary?.gstRate ?? 0);
+        const inferredGstRate =
+            configuredGstRate > 0
+                ? configuredGstRate
+                : currentSubtotal > 0.009
+                    ? (currentTaxAmount / currentSubtotal) * 100
+                    : 5;
+
+        const projectedSubtotal = currentSubtotal + Number(cartSubtotal || 0);
+        let projectedOfferDiscount = 0;
+
+        const minBillAmount = Number(appliedOffer?.minBillAmount || 0);
+        if (appliedOffer && projectedSubtotal >= minBillAmount) {
+            const discountType = String(appliedOffer?.discountType || "").toLowerCase();
+            const discountValue = Number(appliedOffer?.discountValue || 0);
+            if (discountType === "flat") {
+                projectedOfferDiscount = discountValue;
+            } else {
+                projectedOfferDiscount = (projectedSubtotal * discountValue) / 100;
+            }
+            const maxDiscount = Number(appliedOffer?.maxDiscount || 0);
+            if (maxDiscount > 0) {
+                projectedOfferDiscount = Math.min(projectedOfferDiscount, maxDiscount);
+            }
+            projectedOfferDiscount = Math.min(projectedOfferDiscount, projectedSubtotal);
+        }
+
+        const projectedTaxAmount = Math.round((projectedSubtotal * inferredGstRate) / 100);
+        const projectedGrossTotal = Math.max(0, Number((projectedSubtotal + currentPlatformFee + projectedTaxAmount).toFixed(2)));
+        const projectedTotal = Math.max(
+            0,
+            Number((projectedSubtotal - projectedOfferDiscount + currentPlatformFee + projectedTaxAmount).toFixed(2))
+        );
+
+        return {
+            subtotal: projectedSubtotal,
+            platformFee: currentPlatformFee,
+            taxAmount: projectedTaxAmount,
+            grossTotalAmount: projectedGrossTotal,
+            offerDiscount: projectedOfferDiscount,
+            totalAmount: projectedTotal,
+            offerTitle: String(appliedOffer?.title || "").trim(),
+        };
+    }, [sessionData, billPreview, restaurantOfferPreview, cartSubtotal]);
+
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-white">
             <Loader2 className="w-12 h-12 text-[#00c87e] animate-spin" />
@@ -328,7 +402,7 @@ const DineInMenu = () => {
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Running Total</p>
-                                <h3 className="text-3xl font-black">{RUPEE_SYMBOL}{sessionData.totalAmount || 0}</h3>
+                                <h3 className="text-3xl font-black">{RUPEE_SYMBOL}{runningPayableTotal}</h3>
                             </div>
                             <div className="flex flex-col items-end gap-2">
                                 <Button 
@@ -560,6 +634,54 @@ const DineInMenu = () => {
                                             <p className="font-black text-gray-900">{RUPEE_SYMBOL}{item.itemTotal}</p>
                                         </div>
                                     ))}
+                                    <div className="border-t border-gray-100 pt-4 space-y-2">
+                                        <div className="flex items-center justify-between text-sm">
+                                            <p className="font-semibold text-gray-500">Round Total</p>
+                                            <p className="font-black text-gray-900">{RUPEE_SYMBOL}{formatMoney(cartSubtotal)}</p>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <p className="font-semibold text-gray-500">Current Payable</p>
+                                            <p className="font-black text-gray-900">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.totalAmount)}</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border border-gray-100 rounded-2xl p-4 mb-6">
+                                    <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">
+                                        Bill Details (After Place Round)
+                                    </p>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-600 font-medium">Item Total</span>
+                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.subtotal)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-600 font-medium">Platform Fee</span>
+                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.platformFee)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-600 font-medium">GST and Restaurant Charges</span>
+                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.taxAmount)}</span>
+                                        </div>
+                                        {roundBillPreview.offerDiscount > 0 && (
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[#00c87e] font-medium">
+                                                    {roundBillPreview.offerTitle || "Dining Offer"}
+                                                </span>
+                                                <span className="text-[#00c87e] font-bold">-{RUPEE_SYMBOL}{formatMoney(roundBillPreview.offerDiscount)}</span>
+                                            </div>
+                                        )}
+                                        {roundBillPreview.offerDiscount > 0 && (
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-gray-400 font-medium">Original bill total</span>
+                                                <span className="text-gray-500 font-semibold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.grossTotalAmount)}</span>
+                                            </div>
+                                        )}
+                                        <div className="border-t border-gray-200 pt-2 flex items-center justify-between">
+                                            <span className="text-gray-900 font-black">To Pay</span>
+                                            <span className="text-gray-900 font-black">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.totalAmount)}</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4 mb-10">

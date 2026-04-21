@@ -922,11 +922,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
           ...historicalDineInOrders.filter(
             (entry) => !activeDineInSessionIds.has(String(entry?.mongoId || "").trim()),
           ),
-        ].sort((a, b) => {
-          if (a.isDineIn && !b.isDineIn) return -1; // Prioritize active Dine-In
-          if (!a.isDineIn && b.isDineIn) return 1;
-          return b.sortTimestamp - a.sortTimestamp;
-        });
+        ].sort((a, b) => b.sortTimestamp - a.sortTimestamp);
 
         setOrders(combined);
       } catch (error) {
@@ -3714,6 +3710,7 @@ function PreparingOrders({
                 "en-US",
                 { hour: "2-digit", minute: "2-digit" },
               ),
+              sortTimestamp: preparingTimestamp.getTime(),
               initialETA, // Store initial ETA in minutes
               preparingTimestamp, // Store when order started preparing
               itemsSummary:
@@ -3773,6 +3770,7 @@ function PreparingOrders({
                       ),
                       initialETA: 30,
                       preparingTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()),
+                      sortTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()).getTime(),
                       itemsSummary:
                         (latestRound?.items || [])
                           .map((item) => `${item.quantity}x ${item.name}`)
@@ -3790,7 +3788,7 @@ function PreparingOrders({
           } catch (_) {}
 
           if (isMounted) {
-            setOrders([...dineInPreparingOrders, ...transformedOrders]);
+            setOrders([...dineInPreparingOrders, ...transformedOrders].sort((a, b) => b.sortTimestamp - a.sortTimestamp));
             setLoading(false);
           }
         } else {
@@ -4087,6 +4085,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
               hour: "2-digit",
               minute: "2-digit",
             }),
+            sortTimestamp: new Date(order.createdAt).getTime(),
             eta: null, // Don't show ETA for ready orders
             itemsSummary:
               order.items
@@ -4141,6 +4140,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                         hour: "2-digit",
                         minute: "2-digit",
                       }),
+                      sortTimestamp: new Date(latestRound?.createdAt || session.createdAt).getTime(),
                       eta: null,
                       itemsSummary:
                         (latestRound?.items || [])
@@ -4159,7 +4159,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
           } catch (_) {}
 
           if (isMounted) {
-            setOrders([...dineInReadyOrders, ...transformedOrders]);
+            setOrders([...dineInReadyOrders, ...transformedOrders].sort((a, b) => b.sortTimestamp - a.sortTimestamp));
             setLoading(false);
           }
         } else {

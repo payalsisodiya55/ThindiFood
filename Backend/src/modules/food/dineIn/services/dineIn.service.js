@@ -151,6 +151,7 @@ const buildBillingSnapshot = async (session) => {
             : null,
         summary: {
             subtotal,
+            gstRate,
             platformFee,
             taxAmount,
             grossTotalAmount,
@@ -595,14 +596,15 @@ async function recalculateSessionTotal(sessionId) {
     });
 
     const subtotal = activeOrders.reduce((sum, o) => sum + (o.subtotal || 0), 0);
-    
-    // GST logic with standard rounding: decimals >= 0.5 round up, else down.
-    const GST_PERCENT = 5;
-    const taxAmount = roundStandard((subtotal * GST_PERCENT) / 100);
+    session.subtotal = roundMoney(subtotal);
 
-    session.subtotal = subtotal;
-    session.taxAmount = taxAmount;
-    session.totalAmount = roundMoney(subtotal + taxAmount);
+    // Keep live session totals in sync with final-bill calculation:
+    // platform fee + GST + dining offer discount.
+    const billingSnapshot = await buildBillingSnapshot(session);
+    session.taxAmount = roundMoney(Number(billingSnapshot?.summary?.taxAmount || 0));
+    session.totalAmount = roundMoney(Number(billingSnapshot?.summary?.totalAmount || 0));
+    session.billingSnapshot = billingSnapshot;
+    session.markModified('billingSnapshot');
 
     await session.save();
     return session;

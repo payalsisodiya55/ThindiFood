@@ -44,8 +44,18 @@ const roomNames = {
 export const initSocket = async (server) => {
     io = new Server(server, {
         cors: {
-            origin: config.socketCorsOrigin,
-            methods: ['GET', 'POST']
+            origin: (origin, callback) => {
+                if (config.isSocketOriginAllowed(origin)) {
+                    return callback(null, true);
+                }
+                logger.warn('Socket CORS blocked request', {
+                    requestOrigin: origin || null,
+                    allowedOrigins: config.socketCorsOrigins,
+                });
+                return callback(new Error('Not allowed by CORS'));
+            },
+            methods: ['GET', 'POST'],
+            credentials: true,
         }
     });
 

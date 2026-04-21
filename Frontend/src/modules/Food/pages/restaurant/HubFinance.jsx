@@ -194,16 +194,19 @@ export default function HubFinance() {
   const diningFinanceInsight = useMemo(() => {
     const breakdown = financeData?.currentCycle?.diningBreakdown || {}
     return {
-      commission: Number(breakdown?.commission || 0),
-      platformFee: Number(breakdown?.platformFee || 0),
-      gst: Number(breakdown?.gst || 0),
+      commission: Number(breakdown?.pendingCommission || 0),
+      platformFee: Number(breakdown?.pendingPlatformFee || 0),
+      gst: Number(breakdown?.pendingGst || 0),
       totalDeduction: Number(breakdown?.totalDeduction || 0),
       outstandingDue: Number(breakdown?.outstandingDue || 0),
       adjustedAmount: Number(breakdown?.adjustedAmount || 0),
+      adjustedCommission: Number(breakdown?.adjustedCommission || 0),
+      adjustedPlatformFee: Number(breakdown?.adjustedPlatformFee || 0),
+      adjustedGst: Number(breakdown?.adjustedGst || 0),
       ordersCount: Number(breakdown?.ordersCount || 0),
       hasDeductions: Boolean(breakdown?.hasDeductions),
       isFullyAdjusted: Boolean(breakdown?.isFullyAdjusted),
-      note: breakdown?.note || "Commission, platform fee, and GST from dining COD orders will be adjusted automatically in the next payout.",
+      note: breakdown?.note || "Pending dining COD dues will be adjusted automatically in the next payout.",
     }
   }, [financeData])
 
@@ -258,6 +261,17 @@ export default function HubFinance() {
 
     const totalDeduction = reasons.reduce((sum, item) => sum + Number(item.amount || 0), 0)
     return { reasons, totalDeduction, hasDeduction: totalDeduction > 0.009 }
+  }, [financeData])
+
+  const takeawayBreakdown = useMemo(() => {
+    const breakdown = financeData?.currentCycle?.discountBreakdown || {}
+    return {
+      platformCoupons: Number(breakdown?.platformCoupons || 0),
+      restaurantCoupons: Number(breakdown?.restaurantCoupons || 0),
+      restaurantOffers: Number(breakdown?.restaurantOffers || 0),
+      commissionPaid: Number(breakdown?.commissionPaid || 0),
+      netPayout: Number(breakdown?.netPayout || 0),
+    }
   }, [financeData])
 
   const handleViewDetails = () => {
@@ -903,30 +917,36 @@ export default function HubFinance() {
                       Withdraw
                     </button>
                     <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 mb-2">Discount breakdown</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 mb-2">Takeaway breakdown</p>
                       <div className="space-y-1.5 text-sm">
                         <div className="flex items-center justify-between text-gray-700">
-                          <span>Platform Coupons</span>
-                          <span className="font-medium text-emerald-700">
-                            ₹{Number(financeData?.currentCycle?.discountBreakdown?.platformCoupons || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <span>Platform Coupons (platform-funded)</span>
+                          <span className="font-medium text-gray-700">
+                            ₹{takeawayBreakdown.platformCoupons.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-gray-700">
                           <span>Your Coupons</span>
                           <span className="font-medium text-red-600">
-                            -₹{Number(financeData?.currentCycle?.discountBreakdown?.restaurantCoupons || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            -₹{takeawayBreakdown.restaurantCoupons.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-gray-700">
                           <span>Your Offers</span>
                           <span className="font-medium text-red-600">
-                            -₹{Number(financeData?.currentCycle?.discountBreakdown?.restaurantOffers || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            -₹{takeawayBreakdown.restaurantOffers.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="flex items-center justify-between text-gray-700">
                           <span>Commission Paid</span>
                           <span className="font-medium text-red-600">
-                            -₹{Number(financeData?.currentCycle?.discountBreakdown?.commissionPaid || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            -₹{takeawayBreakdown.commissionPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-emerald-200 pt-1.5 text-gray-900">
+                          <span className="font-semibold">Takeaway Net Payout</span>
+                          <span className="font-semibold">
+                            ₹{takeawayBreakdown.netPayout.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                       </div>
@@ -939,27 +959,27 @@ export default function HubFinance() {
                         <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 mb-2">Dining breakdown</p>
                         <div className="space-y-1.5 text-sm">
                           <div className="flex items-center justify-between text-gray-700">
-                            <span>Dining Commission</span>
+                            <span>Pending Dining Commission</span>
                             <span className="font-medium text-red-600">
                               -₹{formatRoundedCurrency(diningFinanceInsight.commission)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-gray-700">
-                            <span>Dining Platform Fee</span>
+                            <span>Pending Dining Platform Fee</span>
                             <span className="font-medium text-red-600">
                               -₹{formatRoundedCurrency(diningFinanceInsight.platformFee)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-gray-700">
-                            <span>Dining GST</span>
+                            <span>Pending Dining GST</span>
                             <span className="font-medium text-red-600">
                               -₹{formatRoundedCurrency(diningFinanceInsight.gst)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between border-t border-amber-200 pt-1.5 text-gray-900">
-                            <span className="font-semibold">Total Dining Deductions</span>
+                            <span className="font-semibold">Pending Dining Dues</span>
                             <span className="font-semibold text-red-600">
-                              -₹{formatRoundedCurrency(diningFinanceInsight.totalDeduction)}
+                              -₹{formatRoundedCurrency(diningFinanceInsight.outstandingDue)}
                             </span>
                           </div>
                         </div>
@@ -973,7 +993,7 @@ export default function HubFinance() {
                         )}
                         {diningFinanceInsight.outstandingDue <= 0.009 && diningFinanceInsight.adjustedAmount > 0.009 && (
                           <p className="mt-2 text-xs font-medium text-emerald-700">
-                            Dining dues adjusted from takeaway earnings
+                            Dining dues adjusted from takeaway earnings: commission ₹{formatRoundedCurrency(diningFinanceInsight.adjustedCommission)}, fee ₹{formatRoundedCurrency(diningFinanceInsight.adjustedPlatformFee)}, GST ₹{formatRoundedCurrency(diningFinanceInsight.adjustedGst)}
                           </p>
                         )}
                       </div>
