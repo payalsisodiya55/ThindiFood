@@ -9,6 +9,7 @@ import { useEffect } from "react"
 import { toast } from "sonner"
 import Loader from "@food/components/Loader"
 import { RED } from "@food/constants/color"
+import { isModuleAuthenticated } from "@food/utils/auth"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -71,6 +72,31 @@ export default function TableBookingConfirmation() {
     const [user, setUser] = useState(null)
     const [loading, setLoading] = useState(true)
     const [bookingInProgress, setBookingInProgress] = useState(false)
+    const [requiresLogin, setRequiresLogin] = useState(() => !isModuleAuthenticated("user"))
+
+    const isAuthError = (error) => {
+        const status = Number(error?.response?.status || 0)
+        if (status === 401 || status === 403) return true
+        const message = String(
+            error?.response?.data?.message ||
+            error?.response?.data?.error ||
+            error?.message ||
+            ""
+        ).toLowerCase()
+        return (
+            message.includes("authentication token missing") ||
+            message.includes("unauthorized") ||
+            message.includes("token missing") ||
+            message.includes("not authenticated")
+        )
+    }
+
+    const redirectToLogin = () => {
+        const nextPath = `${window.location.pathname}${window.location.search || ""}`
+        navigate(`/user/auth/login?next=${encodeURIComponent(nextPath)}`, {
+            state: { from: nextPath }
+        })
+    }
 
     useEffect(() => {
         if (!restaurant) {
@@ -88,9 +114,13 @@ export default function TableBookingConfirmation() {
                         response?.data?.user ||
                         null
                     setUser(userData)
+                    setRequiresLogin(false)
                 }
             } catch (error) {
                 debugError("Error fetching user:", error)
+                if (isAuthError(error)) {
+                    setRequiresLogin(true)
+                }
             } finally {
                 setLoading(false)
             }
@@ -99,6 +129,12 @@ export default function TableBookingConfirmation() {
     }, [restaurant, navigate])
 
     const handleBooking = async () => {
+        if (requiresLogin || !isModuleAuthenticated("user")) {
+            toast.error("Please login to book your seat.")
+            redirectToLogin()
+            return
+        }
+
         try {
             setBookingInProgress(true)
             const sanitizedSpecialRequest = String(specialRequest || "").trim()
@@ -145,7 +181,13 @@ export default function TableBookingConfirmation() {
             }
         } catch (error) {
             debugError("Booking error:", error)
-            toast.error(error.response?.data?.message || "Failed to confirm booking")
+            if (isAuthError(error)) {
+                setRequiresLogin(true)
+                toast.error("Please login to book your seat.")
+                redirectToLogin()
+            } else {
+                toast.error(error.response?.data?.message || "Failed to confirm booking")
+            }
         } finally {
             setBookingInProgress(false)
         }
@@ -196,6 +238,19 @@ export default function TableBookingConfirmation() {
                 </div>
 
                 <div className="p-4 space-y-4">
+                    {requiresLogin && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                            <p className="text-sm font-semibold text-amber-900">Please login to book your seat.</p>
+                            <button
+                                onClick={redirectToLogin}
+                                className="mt-2 text-sm font-bold underline underline-offset-2"
+                                style={{ color: RED }}
+                            >
+                                Login now
+                            </button>
+                        </div>
+                    )}
+
                     {/* Booking Summary Card */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                         <div className="p-4 space-y-4">
@@ -346,7 +401,7 @@ export default function TableBookingConfirmation() {
                         className="w-full h-14 text-white font-bold text-lg rounded-2xl shadow-xl transition-all active:scale-[0.98]"
                         style={{ backgroundColor: RED }}
                     >
-                        {bookingInProgress ? "Confirming..." : "Confirm your seat"}
+                        {bookingInProgress ? "Confirming..." : requiresLogin ? "Login to book seat" : "Confirm your seat"}
                     </Button>
                 </div>
             </AnimatedPage>

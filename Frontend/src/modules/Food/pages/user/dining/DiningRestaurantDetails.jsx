@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { diningAPI, restaurantAPI } from "@food/api"
 import { useProfile } from "@food/context/ProfileContext"
 import { getMenuFromResponse } from "@food/utils/menuItems"
+import { isModuleAuthenticated } from "@food/utils/auth"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { RED } from "@food/constants/color"
 import {
@@ -20,6 +21,7 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
+import { toast } from "sonner"
 
 const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
 
@@ -287,6 +289,21 @@ export default function DiningRestaurantDetails() {
     })
   }
 
+  const handleOpenBookingSheet = () => {
+    if (!isDiningEnabled) return
+
+    if (!isModuleAuthenticated("user")) {
+      toast.error("Please login to book your seat.")
+      const nextPath = `${window.location.pathname}${window.location.search || ""}`
+      navigate(`/user/auth/login?next=${encodeURIComponent(nextPath)}`, {
+        state: { from: nextPath },
+      })
+      return
+    }
+
+    setIsBookingSheetOpen(true)
+  }
+
   return (
     <div className="min-h-screen bg-[#f6f7fb] pb-28">
       <section className="mx-auto max-w-md bg-[#f6f7fb]">
@@ -354,7 +371,7 @@ export default function DiningRestaurantDetails() {
           <div className="px-3 pb-1 pt-3">
             <div className="grid grid-cols-[1.62fr_0.72fr_0.72fr] gap-2.5">
               <button
-                onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
+                onClick={handleOpenBookingSheet}
                 disabled={!isDiningEnabled}
                 className={`flex h-[52px] items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
                   isDiningEnabled
@@ -439,7 +456,7 @@ export default function DiningRestaurantDetails() {
                   <p className="mt-2 text-[14px] text-white/80">{offerDescription || diningOffer?.title || "Dining offer"}</p>
                 </div>
                 <button
-                  onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
+                  onClick={handleOpenBookingSheet}
                   disabled={!isDiningEnabled}
                   className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm disabled:opacity-60"
                 >
@@ -569,7 +586,7 @@ export default function DiningRestaurantDetails() {
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#ebe5da] bg-white/95 p-4 backdrop-blur-xl">
         <div className="mx-auto max-w-md">
           <Button
-            onClick={() => isDiningEnabled && setIsBookingSheetOpen(true)}
+            onClick={handleOpenBookingSheet}
             disabled={!isDiningEnabled}
             className={`h-12 w-full rounded-2xl border text-[17px] font-medium transition-colors ${
               isDiningEnabled
