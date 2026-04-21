@@ -10,7 +10,14 @@ import { getIO, rooms } from '../../../../config/socket.js';
 import { findAcceptedBooking, linkBookingToSession } from './tableBooking.service.js';
 import { getBestApplicableDiningOffer, getDisplayDiningOfferForRestaurant } from './diningOffer.service.js';
 import { creditWallet, debitWallet } from '../../../../core/payments/wallet.service.js';
+import { Transaction } from '../../../../core/payments/models/transaction.model.js';
 import { calculateWalletSettlement, deriveFundingType } from '../../orders/services/settlement-calculator.service.js';
+import {
+    createRazorpayOrder,
+    getRazorpayKeyId,
+    isRazorpayConfigured,
+    verifyPaymentSignature,
+} from '../../orders/helpers/razorpay.helper.js';
 
 const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
 const roundStandard = (value) => Math.round(Number(value) || 0);
@@ -18,6 +25,19 @@ const createHttpError = (message, statusCode = 400) => {
     const error = new Error(message);
     error.statusCode = statusCode;
     return error;
+};
+
+const getOwnedSessionForUser = async (sessionId, userId) => {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid session id', 400);
+    }
+
+    const session = await FoodTableSession.findById(sessionId);
+    if (!session) throw createHttpError('Session not found', 404);
+    if (String(session.userId) !== String(userId)) {
+        throw createHttpError('Unauthorized to access this session', 403);
+    }
+    return session;
 };
 
 const normalizeDineInOrderItems = (items = []) => {
@@ -74,9 +94,9 @@ const calculateCommissionAmount = (commissionConfig, baseAmount) => {
     const base = roundMoney(baseAmount);
     if (base <= 0) return 0;
     if (commissionConfig.type === 'amount') {
-        return roundMoney(Math.min(base, commissionConfig.value));
+        return roundStandard(Math.min(base, commissionConfig.value));
     }
-    return roundMoney((base * commissionConfig.value) / 100);
+    return roundStandard((base * commissionConfig.value) / 100);
 };
 
 const getFeeSettings = async () => {
@@ -85,17 +105,17 @@ const getFeeSettings = async () => {
         .lean();
 
     return feeDoc || {
-        platformFee: 5,
-        gstRate: 5,
+        platformFee: 0,
+        gstRate: 0,
     };
 };
 
 const buildBillingSnapshot = async (session) => {
     const subtotal = roundMoney(session?.subtotal || 0);
     const feeSettings = await getFeeSettings();
-    const gstRate = Number(feeSettings?.gstRate || 5);
+    const gstRate = Number(feeSettings?.gstRate || 0);
     const taxAmount = roundStandard((subtotal * gstRate) / 100);
-    const platformFee = roundMoney(feeSettings?.platformFee || 0);
+    const platformFee = roundStandard(feeSettings?.platformFee || 0);
     const grossTotalAmount = roundMoney(subtotal + platformFee + taxAmount);
     const applicableOffer = await getBestApplicableDiningOffer({
         restaurantId: session.restaurantId,
@@ -153,9 +173,69 @@ const buildBillingSnapshot = async (session) => {
     };
 };
 
+const ensureDiningOnlinePayoutCredited = async (session, billingSnapshot, existingSettlement = null, paymentMethod = '') => {
+    const payoutAmount = Number(billingSnapshot?.pricing?.restaurantPayout || 0);
+    const normalizedPaymentMethod = String(paymentMethod || '').trim().toLowerCase();
+
+    if (payoutAmount <= 0.009) {
+        return {
+            ...(existingSettlement || {}),
+            restaurantOnlinePayoutCredited: true,
+            restaurantOnlinePayoutAmount: 0,
+            restaurantOnlinePayoutCreditedAt: new Date(),
+        };
+    }
+
+    const sessionId = String(session?._id || '');
+    const existingCreditTxn = await Transaction.findOne({
+        entityType: 'restaurant',
+        entityId: session.restaurantId,
+        type: 'credit',
+        'metadata.settlementType': 'DINING_ONLINE_PAYOUT',
+        'metadata.sessionId': sessionId,
+    })
+        .select('_id amount createdAt')
+        .lean();
+
+    if (!existingCreditTxn) {
+        await creditWallet({
+            entityType: 'restaurant',
+            entityId: String(session.restaurantId),
+            amount: payoutAmount,
+            description: `Dining session ${sessionId} online payout`,
+            category: 'settlement_payout',
+            metadata: {
+                settlementType: 'DINING_ONLINE_PAYOUT',
+                sessionId,
+                paymentMethod: normalizedPaymentMethod || 'online',
+                restaurantPayout: payoutAmount,
+            },
+        });
+    }
+
+    return {
+        ...(existingSettlement || {}),
+        restaurantOnlinePayoutCredited: true,
+        restaurantOnlinePayoutAmount: payoutAmount,
+        restaurantOnlinePayoutCreditedAt: existingCreditTxn?.createdAt || new Date(),
+    };
+};
+
 const applyWalletSettlementForDiningSession = async (session, billingSnapshot, paymentMode, paymentMethod) => {
     const existing = session?.billingSnapshot?.walletSettlement;
     if (existing?.applied === true) {
+        if (!existing?.isCodLike && existing?.paymentMode === 'online' && existing?.restaurantOnlinePayoutCredited !== true) {
+            const updatedSettlement = await ensureDiningOnlinePayoutCredited(
+                session,
+                billingSnapshot,
+                existing,
+                paymentMethod,
+            );
+            return {
+                ...existing,
+                ...updatedSettlement,
+            };
+        }
         return existing;
     }
 
@@ -190,6 +270,7 @@ const applyWalletSettlementForDiningSession = async (session, billingSnapshot, p
             amount: adjustmentAmount,
             description: `Dining session ${String(session._id)} counter settlement adjustment`,
             category: 'adjustment',
+            allowNegative: true,
             metadata: {
                 settlementType: 'DINING_COUNTER_WALLET_ADJUSTMENT',
                 sessionId: String(session._id),
@@ -206,21 +287,39 @@ const applyWalletSettlementForDiningSession = async (session, billingSnapshot, p
         }
     }
 
+    let onlinePayoutState = {};
+    if (!settlement.isCodLike) {
+        onlinePayoutState = await ensureDiningOnlinePayoutCredited(
+            session,
+            billingSnapshot,
+            null,
+            paymentMethod,
+        );
+    }
+
     return {
         applied: true,
         appliedAt: new Date(),
         paymentMode: settlement.paymentMode,
+        isCodLike: settlement.isCodLike,
         fundingType: settlement.fundingType,
         restaurantShouldRetain: settlement.restaurantShouldRetain,
         customerCashCollected: settlement.customerCashCollected,
         adminChargesRecoverable: settlement.adminChargesRecoverable,
         adminChargesRecoverableBreakdown: settlement.adminChargesRecoverableBreakdown,
+        diningBreakdown: {
+            commission: Number(settlement.adminChargesRecoverableBreakdown?.commission || 0),
+            platformFee: Number(settlement.adminChargesRecoverableBreakdown?.platformFee || 0),
+            gst: Number(settlement.adminChargesRecoverableBreakdown?.tax || 0),
+            total: Number(settlement.adminChargesRecoverableBreakdown?.total || 0),
+        },
         platformDiscountCompensation: settlement.platformDiscountCompensation,
         walletNetAdjustment: settlement.walletNetAdjustment,
         settlementApplied: true,
         note: settlement.isCodLike
             ? 'Counter/COD settlement applied'
-            : 'Online flow kept unchanged. Metadata only.',
+            : 'Online payout credited to wallet.',
+        ...onlinePayoutState,
     };
 };
 
@@ -593,12 +692,8 @@ export async function getSessionBill(sessionId) {
  * User requests Pay at Counter — locks bill, notifies restaurant via socket.
  */
 export async function requestCounterPayment(sessionId, userId) {
-    const session = await FoodTableSession.findById(sessionId);
-    if (!session) throw new Error('Session not found');
+    const session = await getOwnedSessionForUser(sessionId, userId);
     if (session.status === 'completed') throw new Error('Session already completed');
-    if (String(session.userId) !== String(userId)) {
-        throw new Error('Unauthorized to request counter payment for this session');
-    }
     if (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING') {
         return session; // Already requested, idempotent
     }
@@ -627,6 +722,112 @@ export async function requestCounterPayment(sessionId, userId) {
     } catch { /* non-blocking */ }
 
     return session;
+}
+
+export async function initiateOnlinePayment(sessionId, userId) {
+    const session = await getOwnedSessionForUser(sessionId, userId);
+
+    if (session.status === 'completed' || session.isPaid === true) {
+        throw createHttpError('Session is already paid', 409);
+    }
+    if (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING') {
+        throw createHttpError('Counter payment already requested. Please complete payment at restaurant counter.', 409);
+    }
+    if (!isRazorpayConfigured()) {
+        throw createHttpError('Payment gateway is not configured', 503);
+    }
+
+    const billingSnapshot =
+        session?.billingSnapshot && session?.isBillFinalized
+            ? session.billingSnapshot
+            : await buildBillingSnapshot(session);
+
+    const totalAmount = Number(billingSnapshot?.summary?.totalAmount || 0);
+    const amountPaise = Math.round(totalAmount * 100);
+    if (!Number.isFinite(amountPaise) || amountPaise < 100) {
+        throw createHttpError('Amount too low for online payment', 400);
+    }
+
+    let razorpayOrder;
+    try {
+        razorpayOrder = await createRazorpayOrder(amountPaise, 'INR', `dinein_${String(session._id).slice(-10)}`);
+    } catch (error) {
+        throw createHttpError(error?.message || 'Payment gateway error', 400);
+    }
+
+    session.paymentMode = 'ONLINE';
+    session.paymentStatus = 'PENDING';
+    session.isBillFinalized = true;
+    session.paymentRequestedAt = new Date();
+    session.billingSnapshot = {
+        ...billingSnapshot,
+        razorpay: {
+            orderId: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency || 'INR',
+        },
+    };
+    await session.save();
+
+    return {
+        session: {
+            _id: session._id,
+            tableNumber: session.tableNumber,
+        },
+        razorpay: {
+            key: getRazorpayKeyId(),
+            orderId: razorpayOrder.id,
+            amount: razorpayOrder.amount,
+            currency: razorpayOrder.currency || 'INR',
+        },
+        summary: billingSnapshot.summary,
+    };
+}
+
+export async function verifyOnlinePayment(sessionId, userId, payload = {}) {
+    const session = await getOwnedSessionForUser(sessionId, userId);
+
+    if (session.status === 'completed' || session.isPaid === true) {
+        return session;
+    }
+
+    const billingSnapshot = session?.billingSnapshot || {};
+    const storedOrderId = String(billingSnapshot?.razorpay?.orderId || '').trim();
+    const razorpayOrderId = String(payload?.razorpayOrderId || '').trim();
+    const razorpayPaymentId = String(payload?.razorpayPaymentId || '').trim();
+    const razorpaySignature = String(payload?.razorpaySignature || '').trim();
+
+    if (!storedOrderId || storedOrderId !== razorpayOrderId) {
+        throw createHttpError('Invalid payment order reference', 400);
+    }
+    if (!razorpayPaymentId || !razorpaySignature) {
+        throw createHttpError('Payment verification details are required', 400);
+    }
+
+    const valid = verifyPaymentSignature(
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature,
+    );
+    if (!valid) {
+        throw createHttpError('Payment verification failed', 400);
+    }
+
+    session.paymentMode = 'ONLINE';
+    session.paymentStatus = 'PAID';
+    session.billingSnapshot = {
+        ...billingSnapshot,
+        razorpay: {
+            ...(billingSnapshot?.razorpay || {}),
+            orderId: razorpayOrderId,
+            paymentId: razorpayPaymentId,
+            signature: razorpaySignature,
+            verifiedAt: new Date(),
+        },
+    };
+    await session.save();
+
+    return closeSession(sessionId, { paymentMethod: 'online' });
 }
 
 /**

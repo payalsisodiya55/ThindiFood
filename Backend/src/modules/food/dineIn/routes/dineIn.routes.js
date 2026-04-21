@@ -11,6 +11,8 @@ import {
     updateOrderStatusController,
     getSessionBillController,
     closeSessionController,
+    initiateOnlinePaymentController,
+    verifyOnlinePaymentController,
     cancelEmptySessionController,
     addTableController,
     listTablesController,
@@ -48,6 +50,8 @@ router.patch('/orders/:orderId/status', authMiddleware, requireRoles('RESTAURANT
 // Billing & Payment
 router.get('/sessions/:id/bill', authMiddleware, getSessionBillController);
 router.post('/sessions/:id/pay', authMiddleware, closeSessionController);
+router.post('/sessions/:id/pay/initiate', authMiddleware, requireRoles('USER'), initiateOnlinePaymentController);
+router.post('/sessions/:id/pay/verify', authMiddleware, requireRoles('USER'), verifyOnlinePaymentController);
 router.post('/sessions/:id/cancel-empty', authMiddleware, requireRoles('USER'), cancelEmptySessionController);
 // Pay at Counter
 router.post('/sessions/:id/request-counter-payment', authMiddleware, requireRoles('USER'), requestCounterPaymentController);

@@ -2819,6 +2819,10 @@ export const dineInAPI = {
     apiClient.get(`/food/dine-in/sessions/${sessionId}/bill`, { contextModule: "user" }),
   payBill: (sessionId, body) =>
     apiClient.post(`/food/dine-in/sessions/${sessionId}/pay`, body, { contextModule: "user" }),
+  initiateOnlinePayment: (sessionId) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/pay/initiate`, {}, { contextModule: "user" }),
+  verifyOnlinePayment: (sessionId, body) =>
+    apiClient.post(`/food/dine-in/sessions/${sessionId}/pay/verify`, body ?? {}, { contextModule: "user" }),
   cancelEmptySession: (sessionId, body) =>
     apiClient.post(`/food/dine-in/sessions/${sessionId}/cancel-empty`, body ?? {}, { contextModule: "user" }),
   addTable: (body) =>

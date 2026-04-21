@@ -7,9 +7,11 @@ import {
     MapPin, ShieldCheck, Bell
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
-import { dineInAPI } from "@food/api";
+import { authAPI, dineInAPI } from "@food/api";
 import AnimatedPage from "@food/components/user/AnimatedPage";
 import { toast } from "sonner";
+import { initRazorpayPayment } from "@food/utils/razorpay";
+import { getCompanyNameAsync } from "@food/utils/businessSettings";
 
 const RUPEE_SYMBOL = "\u20B9";
 
@@ -85,20 +87,76 @@ const DineInBill = () => {
         }
         try {
             setPaying(true);
-            const res = await dineInAPI.payBill(sessionId, {
-                paymentMethod: "online"
-            });
+            const res = await dineInAPI.initiateOnlinePayment(sessionId);
+            const payload = res?.data?.data || {};
+            const razorpay = payload?.razorpay;
 
-            if (res.data?.success) {
-                toast.success("Payment successful! Reflecting on table status.");
-                localStorage.removeItem("activeDineInSessionId");
-                navigate("/food/user/dining");
-            } else {
-                toast.error(res.data?.message || "Payment failed");
+            if (!razorpay?.orderId || !razorpay?.key) {
+                throw new Error("Failed to initialize online payment");
             }
+
+            let userName = "";
+            let userEmail = "";
+            let formattedPhone = "";
+            try {
+                const me = await authAPI.getCurrentUser();
+                const user = me?.data?.data?.user || me?.data?.user || me?.data?.data || {};
+                userName = String(user?.name || "").trim();
+                userEmail = String(user?.email || "").trim();
+                formattedPhone = String(user?.phone || "").replace(/\D/g, "").slice(-10);
+            } catch {
+                // non-blocking
+            }
+
+            const companyName = await getCompanyNameAsync();
+
+            await initRazorpayPayment({
+                key: razorpay.key,
+                amount: razorpay.amount,
+                currency: razorpay.currency || "INR",
+                order_id: razorpay.orderId,
+                name: companyName,
+                description: `Dining session ${sessionId} - ${RUPEE_SYMBOL}${(Number(razorpay.amount || 0) / 100).toFixed(2)}`,
+                prefill: {
+                    name: userName,
+                    email: userEmail,
+                    contact: formattedPhone,
+                },
+                notes: {
+                    sessionId,
+                    module: "dine-in",
+                },
+                handler: async (response) => {
+                    try {
+                        const verifyRes = await dineInAPI.verifyOnlinePayment(sessionId, {
+                            razorpayOrderId: response.razorpay_order_id,
+                            razorpayPaymentId: response.razorpay_payment_id,
+                            razorpaySignature: response.razorpay_signature,
+                        });
+
+                        if (verifyRes?.data?.success) {
+                            toast.success("Payment successful!");
+                            localStorage.removeItem("activeDineInSessionId");
+                            navigate("/food/user/dining");
+                            return;
+                        }
+                        throw new Error(verifyRes?.data?.message || "Payment verification failed");
+                    } catch (error) {
+                        toast.error(error?.response?.data?.message || error?.message || "Payment verification failed");
+                    } finally {
+                        setPaying(false);
+                    }
+                },
+                onError: (error) => {
+                    toast.error(error?.description || error?.message || "Online payment failed");
+                    setPaying(false);
+                },
+                onClose: () => {
+                    setPaying(false);
+                },
+            });
         } catch (err) {
-            toast.error("Payment integration currently being finalized.");
-        } finally {
+            toast.error(err?.response?.data?.message || err?.message || "Payment integration currently being finalized.");
             setPaying(false);
         }
     };
@@ -423,7 +481,7 @@ const DineInBill = () => {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center">
                     <div className="bg-white p-8 rounded-3xl flex flex-col items-center">
                         <Loader2 className="w-12 h-12 text-[#00c87e] animate-spin mb-4" />
-                        <p className="font-bold text-gray-900">Notifying restaurant...</p>
+                        <p className="font-bold text-gray-900">Opening payment gateway...</p>
                     </div>
                 </div>
             )}

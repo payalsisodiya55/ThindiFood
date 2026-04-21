@@ -127,6 +127,28 @@ export async function closeSessionController(req, res, next) {
     }
 }
 
+export async function initiateOnlinePaymentController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId || req.user.id;
+        const data = await dineInService.initiateOnlinePayment(id, userId);
+        return sendResponse(res, 200, 'Dine-in online payment initiated', data);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function verifyOnlinePaymentController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId || req.user.id;
+        const session = await dineInService.verifyOnlinePayment(id, userId, req.body || {});
+        return sendResponse(res, 200, 'Dine-in payment verified successfully', session);
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function cancelEmptySessionController(req, res, next) {
     try {
         const { id } = req.params;

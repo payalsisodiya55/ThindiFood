@@ -232,6 +232,9 @@ export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
     try {
         const paymentMethod = String(tx.payment?.method || tx.paymentMethod || '').trim().toLowerCase();
         const pricing = tx.pricing || {};
+        const onlineRestaurantPayout = Number(
+            tx.amounts?.restaurantShare ?? pricing?.payoutAdjustments?.netPayout ?? 0,
+        );
         const settlement = calculateWalletSettlement({
             paymentMode: paymentMethod,
             pricing,
@@ -279,6 +282,34 @@ export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
             }
         }
 
+        if (!settlement.isCodLike && onlineRestaurantPayout > 0.009) {
+            const existingCreditTxn = await mongoose.model('Transaction').findOne({
+                entityType: 'restaurant',
+                entityId: tx.restaurantId,
+                type: 'credit',
+                orderId: tx.orderId,
+                'metadata.settlementType': 'TAKEAWAY_ONLINE_PAYOUT',
+            })
+                .select('_id createdAt')
+                .lean();
+
+            if (!existingCreditTxn) {
+                await creditWallet({
+                    entityType: 'restaurant',
+                    entityId: String(tx.restaurantId),
+                    amount: onlineRestaurantPayout,
+                    description: `Order ${String(tx.orderId)} online payout`,
+                    category: 'settlement_payout',
+                    orderId: String(tx.orderId),
+                    metadata: {
+                        settlementType: 'TAKEAWAY_ONLINE_PAYOUT',
+                        paymentMethod,
+                        restaurantPayout: onlineRestaurantPayout,
+                    },
+                });
+            }
+        }
+
         tx.settlement = tx.settlement || {};
         tx.settlement.walletSettlement = {
             processing: false,
@@ -293,7 +324,9 @@ export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
             adminChargesRecoverable: settlement.adminChargesRecoverableBreakdown,
             note: settlement.isCodLike
                 ? 'COD-like settlement applied'
-                : 'Online flow kept unchanged. Metadata only.',
+                : 'Online payout credited to wallet.',
+            onlinePayoutCredited: !settlement.isCodLike && onlineRestaurantPayout > 0.009,
+            onlinePayoutAmount: !settlement.isCodLike ? onlineRestaurantPayout : 0,
             recordedBy: {
                 role: opts.recordedByRole || 'SYSTEM',
                 id: opts.recordedById || null,

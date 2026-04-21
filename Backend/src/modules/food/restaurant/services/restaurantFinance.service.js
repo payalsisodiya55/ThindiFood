@@ -1,8 +1,11 @@
 import mongoose from 'mongoose';
-import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
+import { FoodTableSession } from '../../dineIn/models/tableSession.model.js';
+import { getWalletBalance } from '../../../../core/payments/wallet.service.js';
+import { creditWallet } from '../../../../core/payments/wallet.service.js';
+import { Transaction } from '../../../../core/payments/models/transaction.model.js';
 
 const COD_LIKE_METHODS = new Set(['cash', 'razorpay_qr', 'counter']);
 
@@ -18,13 +21,12 @@ function monthShort(monthIndex) {
 
 function getFixedCurrentCycleWindow(now = new Date()) {
     const startDay = 15;
-    
+
     let year = now.getFullYear();
     let month = now.getMonth();
 
-    // If before start day, settlement belongs to previous month cycle.
     if (now.getDate() < startDay) {
-        month = month - 1;
+        month -= 1;
         if (month < 0) {
             month = 11;
             year -= 1;
@@ -32,8 +34,6 @@ function getFixedCurrentCycleWindow(now = new Date()) {
     }
 
     const start = new Date(year, month, startDay, 0, 0, 0, 0);
-    // End should be either fixed 21 or now, let's make it more inclusive for "Current Cycle"
-    // Users want to see their active earnings, so we extend it to 'now'
     const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
     return {
@@ -85,11 +85,9 @@ function isCodLike(tx, order = {}) {
 function resolveWalletImpact(tx, order = {}) {
     const settlement = tx?.settlement?.walletSettlement || {};
     if (isCodLike(tx, order)) {
-        // COD/counter impacts wallet only via settlement adjustment.
         if (settlement.applied === true) return toMoney(settlement.walletNetAdjustment);
         return 0;
     }
-    // ONLINE flow remains unchanged: payout is restaurant share.
     const pricing = tx?.pricing || order?.pricing || {};
     return toMoney(tx?.amounts?.restaurantShare ?? pricing?.payoutAdjustments?.netPayout ?? 0);
 }
@@ -112,14 +110,14 @@ function mapFinanceOrder(tx) {
     const commissionFromPricing = Number(
         tx.amounts?.restaurantCommission || pricing.restaurantCommission || payoutAdjustments.commission || 0
     );
-    // For COD/counter, commission shown in finance should come from settlement recovery,
-    // not from stale pricing snapshots.
     const commission = codLike
         ? commissionFromSettlement
         : (Number.isFinite(commissionFromPricing) ? commissionFromPricing : 0);
 
     return {
         orderId: order?.orderId || tx.orderReadableId,
+        sourceModule: 'takeaway',
+        sourceLabel: 'Takeaway',
         createdAt: tx.createdAt,
         items,
         foodNames,
@@ -149,6 +147,239 @@ function mapFinanceOrder(tx) {
         },
         platformDiscountCompensation: Number(walletSettlement?.platformDiscountCompensation || 0),
         walletNetAdjustment: Number(walletSettlement?.walletNetAdjustment || 0),
+        diningBreakdown: {
+            commission: 0,
+            platformFee: 0,
+            gst: 0,
+            total: 0,
+        },
+    };
+}
+
+function normalizeDiningPaymentMethod(session) {
+    const raw = String(
+        session?.paymentMethod ||
+        (session?.paymentMode === 'COUNTER' ? 'counter' : session?.paymentMode) ||
+        ''
+    ).trim().toLowerCase();
+
+    if (raw === 'online') return 'online';
+    if (raw === 'cash') return 'counter';
+    return raw;
+}
+
+function resolveDiningWalletImpact(session) {
+    const snapshot = session?.billingSnapshot || {};
+    const walletSettlement = snapshot?.walletSettlement || {};
+    const paymentMethod = normalizeDiningPaymentMethod(session);
+
+    if (COD_LIKE_METHODS.has(paymentMethod)) {
+        if (walletSettlement.applied === true) return toMoney(walletSettlement.walletNetAdjustment);
+        return 0;
+    }
+
+    return toMoney(snapshot?.pricing?.restaurantPayout || 0);
+}
+
+function mapDiningFinanceOrder(session) {
+    const snapshot = session?.billingSnapshot || {};
+    const summary = snapshot?.summary || {};
+    const pricing = snapshot?.pricing || {};
+    const walletSettlement = snapshot?.walletSettlement || {};
+    const paymentMethod = normalizeDiningPaymentMethod(session);
+    const codLike = COD_LIKE_METHODS.has(paymentMethod);
+    const breakdown = walletSettlement?.diningBreakdown || {};
+    const adminCharges = walletSettlement?.adminChargesRecoverableBreakdown || {};
+
+    return {
+        orderId: `DIN-${String(session?._id || '').slice(-6).toUpperCase()}`,
+        sourceModule: 'dining',
+        sourceLabel: 'Dining',
+        createdAt: session?.paidAt || session?.closedAt || session?.updatedAt || session?.createdAt,
+        items: [],
+        foodNames: `Dining table ${String(session?.tableNumber || '-').trim()}`,
+        orderTotal: Number(summary?.subtotal || session?.subtotal || 0),
+        totalAmount: Number(summary?.totalAmount || session?.totalAmount || 0),
+        payout: resolveDiningWalletImpact(session),
+        commission: codLike
+            ? Number(adminCharges?.commission || breakdown?.commission || 0)
+            : Number(pricing?.restaurantCommission || 0),
+        platformCouponDiscount: Number(pricing?.platformOverallOfferDiscount || 0),
+        restaurantCouponDiscount: 0,
+        restaurantOfferDiscount: Number(pricing?.restaurantOverallOfferDiscount || 0),
+        couponFundingType: String(snapshot?.appliedOffer?.fundedBy || 'none'),
+        fundingType: String(pricing?.fundingType || '').toUpperCase() || 'NONE',
+        commissionBaseAmount: Number(pricing?.commissionBaseAmount || summary?.subtotal || 0),
+        restaurantGrossBeforeDiscount: Number(summary?.subtotal || 0),
+        paymentMethod,
+        isCodLike: codLike,
+        orderStatus: session?.status || '',
+        status: session?.paymentStatus || session?.status || '',
+        settlementApplied: walletSettlement?.applied === true,
+        adminChargesRecoverable: Number(walletSettlement?.adminChargesRecoverable || adminCharges?.total || 0),
+        adminChargesRecoverableBreakdown: {
+            commission: Number(adminCharges?.commission || breakdown?.commission || 0),
+            platformFee: Number(adminCharges?.platformFee || breakdown?.platformFee || 0),
+            tax: Number(adminCharges?.tax || breakdown?.gst || 0),
+            deliveryFee: Number(adminCharges?.deliveryFee || 0),
+            total: Number(adminCharges?.total || breakdown?.total || 0),
+        },
+        platformDiscountCompensation: Number(walletSettlement?.platformDiscountCompensation || 0),
+        walletNetAdjustment: Number(walletSettlement?.walletNetAdjustment || 0),
+        diningBreakdown: {
+            commission: Number(breakdown?.commission || adminCharges?.commission || 0),
+            platformFee: Number(breakdown?.platformFee || adminCharges?.platformFee || 0),
+            gst: Number(breakdown?.gst || adminCharges?.tax || 0),
+            total: Number(breakdown?.total || adminCharges?.total || 0),
+        },
+        tableNumber: String(session?.tableNumber || ''),
+        appliedOfferTitle: String(snapshot?.appliedOffer?.title || ''),
+    };
+}
+
+function sortByCreatedDesc(list = []) {
+    return [...list].sort((a, b) => new Date(b?.createdAt || 0) - new Date(a?.createdAt || 0));
+}
+
+async function reconcileTakeawayOnlineWalletCredits(transactions = []) {
+    for (const tx of transactions) {
+        const paymentMethod = normalizePaymentMethod(tx, tx?.orderId || {});
+        if (COD_LIKE_METHODS.has(paymentMethod)) continue;
+
+        const pricing = tx?.pricing || tx?.orderId?.pricing || {};
+        const payoutAmount = Number(
+            tx?.amounts?.restaurantShare ?? pricing?.payoutAdjustments?.netPayout ?? 0
+        );
+        if (payoutAmount <= 0.009) continue;
+
+        const existingCreditTxn = await Transaction.findOne({
+            entityType: 'restaurant',
+            entityId: tx.restaurantId,
+            type: 'credit',
+            orderId: tx.orderId?._id || tx.orderId,
+            'metadata.settlementType': 'TAKEAWAY_ONLINE_PAYOUT',
+        })
+            .select('_id createdAt')
+            .lean();
+
+        if (!existingCreditTxn) {
+            await creditWallet({
+                entityType: 'restaurant',
+                entityId: String(tx.restaurantId),
+                amount: payoutAmount,
+                description: `Order ${String(tx.orderId?._id || tx.orderId)} online payout`,
+                category: 'settlement_payout',
+                orderId: String(tx.orderId?._id || tx.orderId),
+                metadata: {
+                    settlementType: 'TAKEAWAY_ONLINE_PAYOUT',
+                    paymentMethod: paymentMethod || 'online',
+                    restaurantPayout: payoutAmount,
+                },
+            });
+        }
+
+        const walletSettlement = tx?.settlement?.walletSettlement || {};
+        await FoodTransaction.updateOne(
+            { _id: tx._id },
+            {
+                $set: {
+                    'settlement.walletSettlement.applied': true,
+                    'settlement.walletSettlement.paymentMode': walletSettlement?.paymentMode || paymentMethod || 'online',
+                    'settlement.walletSettlement.note': payoutAmount > 0.009
+                        ? 'Online payout credited to wallet.'
+                        : (walletSettlement?.note || 'Online payout recorded.'),
+                    'settlement.walletSettlement.onlinePayoutCredited': true,
+                    'settlement.walletSettlement.onlinePayoutAmount': payoutAmount,
+                    'settlement.walletSettlement.onlinePayoutCreditedAt': existingCreditTxn?.createdAt || new Date(),
+                },
+            }
+        );
+    }
+}
+
+async function reconcileDiningOnlineWalletCredits(sessions = []) {
+    for (const session of sessions) {
+        const paymentMethod = normalizeDiningPaymentMethod(session);
+        if (COD_LIKE_METHODS.has(paymentMethod)) continue;
+
+        const snapshot = session?.billingSnapshot || {};
+        const walletSettlement = snapshot?.walletSettlement || {};
+        if (walletSettlement?.restaurantOnlinePayoutCredited === true) continue;
+
+        const payoutAmount = Number(snapshot?.pricing?.restaurantPayout || 0);
+        const sessionId = String(session?._id || '');
+        if (!sessionId) continue;
+
+        const existingCreditTxn = await Transaction.findOne({
+            entityType: 'restaurant',
+            entityId: session.restaurantId,
+            type: 'credit',
+            'metadata.settlementType': 'DINING_ONLINE_PAYOUT',
+            'metadata.sessionId': sessionId,
+        })
+            .select('_id amount createdAt')
+            .lean();
+
+        if (!existingCreditTxn && payoutAmount > 0.009) {
+            await creditWallet({
+                entityType: 'restaurant',
+                entityId: String(session.restaurantId),
+                amount: payoutAmount,
+                description: `Dining session ${sessionId} online payout`,
+                category: 'settlement_payout',
+                metadata: {
+                    settlementType: 'DINING_ONLINE_PAYOUT',
+                    sessionId,
+                    paymentMethod: paymentMethod || 'online',
+                    restaurantPayout: payoutAmount,
+                },
+            });
+        }
+
+        const updatedSettlement = {
+            ...walletSettlement,
+            applied: walletSettlement?.applied === true,
+            paymentMode: walletSettlement?.paymentMode || 'online',
+            isCodLike: false,
+            restaurantOnlinePayoutCredited: true,
+            restaurantOnlinePayoutAmount: payoutAmount,
+            restaurantOnlinePayoutCreditedAt: existingCreditTxn?.createdAt || new Date(),
+            note: payoutAmount > 0.009
+                ? 'Online payout credited to wallet.'
+                : (walletSettlement?.note || 'Online payout recorded.'),
+        };
+
+        session.billingSnapshot = {
+            ...snapshot,
+            walletSettlement: updatedSettlement,
+        };
+        session.markModified('billingSnapshot');
+        await session.save();
+    }
+}
+
+function summarizeDiningBreakdown(orders = [], walletAvailableBalance = 0) {
+    const diningCashOrders = orders.filter((order) => order?.sourceModule === 'dining' && order?.isCodLike);
+    const commission = diningCashOrders.reduce((sum, order) => sum + Number(order?.diningBreakdown?.commission || 0), 0);
+    const platformFee = diningCashOrders.reduce((sum, order) => sum + Number(order?.diningBreakdown?.platformFee || 0), 0);
+    const gst = diningCashOrders.reduce((sum, order) => sum + Number(order?.diningBreakdown?.gst || 0), 0);
+    const totalDeduction = diningCashOrders.reduce((sum, order) => sum + Number(order?.diningBreakdown?.total || 0), 0);
+    const outstandingDue = totalDeduction > 0
+        ? Math.min(totalDeduction, Math.max(0, Math.abs(Math.min(0, Number(walletAvailableBalance || 0)))))
+        : 0;
+    const adjustedAmount = Math.max(0, totalDeduction - outstandingDue);
+
+    return {
+        ordersCount: diningCashOrders.length,
+        commission,
+        platformFee,
+        gst,
+        totalDeduction,
+        outstandingDue,
+        adjustedAmount,
+        hasDeductions: totalDeduction > 0.009,
+        isFullyAdjusted: totalDeduction > 0.009 && outstandingDue <= 0.009,
+        note: 'Commission, platform fee, and GST from dining COD orders will be adjusted automatically in the next payout.',
     };
 }
 
@@ -156,7 +387,6 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
     const rid = new mongoose.Types.ObjectId(restaurantId);
 
-    // Fetch restaurant profile for header display.
     const restaurant = await FoodRestaurant.findById(rid)
         .select('restaurantName addressLine1 addressLine2 area city state pincode location')
         .lean();
@@ -176,41 +406,52 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         ]
     };
 
-    // Current cycle: sum ledger payouts in the fixed window.
-    const currentTransactions = await FoodTransaction.find({
+    const diningCompletedMatch = {
         restaurantId: rid,
-        ...financeEligibilityMatch,
-        createdAt: { $gte: nowWindow.start, $lte: nowWindow.end }
-    })
-        .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
-        .sort({ createdAt: -1 })
-        .lean();
+        status: 'completed',
+        isPaid: true,
+        billingSnapshot: { $ne: null },
+    };
 
-    const currentCycleOrders = currentTransactions.map(mapFinanceOrder);
+    const [currentTransactions, currentDiningSessions] = await Promise.all([
+        FoodTransaction.find({
+            restaurantId: rid,
+            ...financeEligibilityMatch,
+            createdAt: { $gte: nowWindow.start, $lte: nowWindow.end }
+        })
+            .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
+            .sort({ createdAt: -1 })
+            .lean(),
+        FoodTableSession.find({
+            ...diningCompletedMatch,
+            closedAt: { $gte: nowWindow.start, $lte: nowWindow.end }
+        })
+            .select('restaurantId tableNumber subtotal totalAmount paymentMethod paymentMode paymentStatus status isPaid paidAt closedAt updatedAt createdAt billingSnapshot')
+            .sort({ closedAt: -1, updatedAt: -1 }),
+    ]);
+
+    await reconcileTakeawayOnlineWalletCredits(currentTransactions);
+    await reconcileDiningOnlineWalletCredits(currentDiningSessions);
+    const walletSnapshot = await getWalletBalance('restaurant', restaurantId);
+
+    const currentDiningOrders = currentDiningSessions.map((session) =>
+        mapDiningFinanceOrder(session?.toObject?.() || session)
+    );
+
+    const currentCycleOrders = sortByCreatedDesc([
+        ...currentTransactions.map(mapFinanceOrder),
+        ...currentDiningOrders,
+    ]);
+
     const currentCycleOnlineOrders = currentCycleOrders.filter((order) => !order.isCodLike);
     const currentCyclePendingCodOrders = currentCycleOrders.filter(
         (order) => order.isCodLike && !order.settlementApplied
     );
-
     const currentCycleEstimatedPayout = currentCycleOrders.reduce(
-        (sum, o) => sum + (Number(o.payout) || 0),
+        (sum, order) => sum + (Number(order?.payout) || 0),
         0
     );
 
-    // Calculate global estimated payout (all unsettled transactions)
-    const allUnsettledTransactions = await FoodTransaction.find({
-        restaurantId: rid,
-        ...financeEligibilityMatch,
-        'settlement.isRestaurantSettled': { $ne: true }
-    }).select('amounts.restaurantShare pricing payoutAdjustments payment paymentMethod settlement').lean();
-
-    const globalEstimatedPayout = allUnsettledTransactions.reduce(
-        (sum, tx) => sum + resolveWalletImpact(tx, {}),
-        0
-    );
-
-    // Deduct all committed withdrawal requests (pending + approved) from available payout.
-    // This prevents balance from bouncing back after admin approves a request.
     const committedWithdrawalsAgg = await FoodRestaurantWithdrawal.aggregate([
         {
             $match: {
@@ -222,60 +463,77 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         },
         { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
+
     const totalCommittedWithdrawals = Number(committedWithdrawalsAgg?.[0]?.total || 0);
-    const availableBalance = Math.max(0, globalEstimatedPayout - totalCommittedWithdrawals);
+    const walletAvailableBalance = Number(walletSnapshot?.availableBalance || 0);
+    const availableBalance = Math.max(0, walletAvailableBalance - totalCommittedWithdrawals);
+    const diningBreakdown = summarizeDiningBreakdown(currentCycleOrders, walletAvailableBalance);
 
     const currentCycle = {
         start: { ...nowWindow.startMeta },
         end: { ...nowWindow.endMeta },
-        totalEarnings: currentCycleEstimatedPayout, // We still show current cycle earnings label
+        totalEarnings: currentCycleEstimatedPayout,
         totalWithdrawn: totalCommittedWithdrawals,
-        estimatedPayout: availableBalance, // This is what UI shows as "Estimated Payout" (Available Balance)
+        estimatedPayout: availableBalance,
+        walletBalance: Number(walletSnapshot?.balance || 0),
+        walletAvailableBalance,
         discountBreakdown: {
             platformCoupons: currentCycleOrders.reduce((sum, order) => sum + (Number(order.platformCouponDiscount) || 0), 0),
             restaurantCoupons: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantCouponDiscount) || 0), 0),
             restaurantOffers: currentCycleOrders.reduce((sum, order) => sum + (Number(order.restaurantOfferDiscount) || 0), 0),
-            // "Commission Paid" in payout card should reflect ONLINE payouts only.
-            // COD/counter recoveries are shown separately in settlement note.
             commissionPaid: currentCycleOnlineOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
             netPayout: currentCycleEstimatedPayout
         },
         settlementBreakdown: {
-            // Show only pending COD/counter settlement exposure in top note.
-            // Applied settlements remain visible in per-order details/history.
             adminChargesRecoverable: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.adminChargesRecoverable) || 0), 0),
             platformDiscountCompensation: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.platformDiscountCompensation) || 0), 0),
             walletNetAdjustment: currentCyclePendingCodOrders.reduce((sum, order) => sum + (Number(order.walletNetAdjustment) || 0), 0),
         },
+        diningBreakdown,
         totalOrders: currentCycleOrders.length,
         payoutDate: null,
         orders: currentCycleOrders
     };
 
-    // Invoice Summary (derived from current cycle or broader if needed)
     const invoiceSummary = {
         count: currentCycleOrders.length,
-        subtotal: currentCycleOrders.reduce((sum, o) => sum + (Number(o.orderTotal) || 0), 0),
-        taxes: currentCycleOrders.reduce((sum, o) => sum + Math.max(0, (Number(o.totalAmount) || 0) - (Number(o.orderTotal) || 0)), 0),
-        gross: currentCycleOrders.reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0)
+        subtotal: currentCycleOrders.reduce((sum, order) => sum + (Number(order.orderTotal) || 0), 0),
+        taxes: currentCycleOrders.reduce((sum, order) => sum + Math.max(0, (Number(order.totalAmount) || 0) - (Number(order.orderTotal) || 0)), 0),
+        gross: currentCycleOrders.reduce((sum, order) => sum + (Number(order.totalAmount) || 0), 0),
+        earnings: currentCycleOrders.reduce((sum, order) => sum + (Number(order.payout) || 0), 0),
+        commission: currentCycleOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
+        diningDeductions: diningBreakdown.totalDeduction,
     };
 
-    // Past cycles: build from provided startDate/endDate query.
     const startDate = parseISODateParam(query.startDate);
     const endDate = parseISODateParamEnd(query.endDate);
 
     let pastCyclesResult = { orders: [], totalOrders: 0 };
     if (startDate && endDate) {
-        const pastTransactions = await FoodTransaction.find({
-            restaurantId: rid,
-            ...financeEligibilityMatch,
-            createdAt: { $gte: startDate, $lte: endDate }
-        })
-            .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
-            .sort({ createdAt: -1 })
-            .lean();
+        const [pastTransactions, pastDiningSessions] = await Promise.all([
+            FoodTransaction.find({
+                restaurantId: rid,
+                ...financeEligibilityMatch,
+                createdAt: { $gte: startDate, $lte: endDate }
+            })
+                .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
+                .sort({ createdAt: -1 })
+                .lean(),
+            FoodTableSession.find({
+                ...diningCompletedMatch,
+                closedAt: { $gte: startDate, $lte: endDate }
+            })
+                .select('restaurantId tableNumber subtotal totalAmount paymentMethod paymentMode paymentStatus status isPaid paidAt closedAt updatedAt createdAt billingSnapshot')
+                .sort({ closedAt: -1, updatedAt: -1 }),
+        ]);
 
-        const pastCycleOrders = pastTransactions.map(mapFinanceOrder);
+        await reconcileTakeawayOnlineWalletCredits(pastTransactions);
+        await reconcileDiningOnlineWalletCredits(pastDiningSessions);
+
+        const pastCycleOrders = sortByCreatedDesc([
+            ...pastTransactions.map(mapFinanceOrder),
+            ...pastDiningSessions.map((session) => mapDiningFinanceOrder(session?.toObject?.() || session)),
+        ]);
 
         pastCyclesResult = {
             orders: pastCycleOrders,
@@ -294,5 +552,3 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         pastCycles: pastCyclesResult
     };
 }
-
-

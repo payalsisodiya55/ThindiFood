@@ -7,6 +7,12 @@ import { restaurantAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+const formatRoundedCurrency = (amount) =>
+  Number(Math.round(Number(amount) || 0)).toLocaleString('en-IN')
+const formatCurrencyByOrder = (order, amount) =>
+  order?.sourceModule === "dining"
+    ? formatRoundedCurrency(amount)
+    : Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 
 export default function HubFinance() {
@@ -185,10 +191,27 @@ export default function HubFinance() {
     return { earnings, commission, gross, count: invoiceOrders.length }
   }, [invoiceOrders])
 
+  const diningFinanceInsight = useMemo(() => {
+    const breakdown = financeData?.currentCycle?.diningBreakdown || {}
+    return {
+      commission: Number(breakdown?.commission || 0),
+      platformFee: Number(breakdown?.platformFee || 0),
+      gst: Number(breakdown?.gst || 0),
+      totalDeduction: Number(breakdown?.totalDeduction || 0),
+      outstandingDue: Number(breakdown?.outstandingDue || 0),
+      adjustedAmount: Number(breakdown?.adjustedAmount || 0),
+      ordersCount: Number(breakdown?.ordersCount || 0),
+      hasDeductions: Boolean(breakdown?.hasDeductions),
+      isFullyAdjusted: Boolean(breakdown?.isFullyAdjusted),
+      note: breakdown?.note || "Commission, platform fee, and GST from dining COD orders will be adjusted automatically in the next payout.",
+    }
+  }, [financeData])
+
   const codSettlementInsight = useMemo(() => {
     const currentOrders = Array.isArray(financeData?.currentCycle?.orders) ? financeData.currentCycle.orders : []
-    const codOrders = currentOrders.filter((order) => Boolean(order?.isCodLike))
-    const onlineOrdersCount = currentOrders.filter((order) => !order?.isCodLike).length
+    const takeawayOrders = currentOrders.filter((order) => order?.sourceModule !== "dining")
+    const codOrders = takeawayOrders.filter((order) => Boolean(order?.isCodLike))
+    const onlineOrdersCount = takeawayOrders.filter((order) => !order?.isCodLike).length
 
     const adjustedCodOrders = codOrders.filter(
       (order) => Boolean(order?.settlementApplied) && Number(order?.walletNetAdjustment || 0) < -0.009
@@ -911,6 +934,50 @@ export default function HubFinance() {
                         Platform coupons don&apos;t reduce your payout. Your coupons and offers do.
                       </p>
                     </div>
+                    {diningFinanceInsight.hasDeductions && (
+                      <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 mb-2">Dining breakdown</p>
+                        <div className="space-y-1.5 text-sm">
+                          <div className="flex items-center justify-between text-gray-700">
+                            <span>Dining Commission</span>
+                            <span className="font-medium text-red-600">
+                              -₹{formatRoundedCurrency(diningFinanceInsight.commission)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-gray-700">
+                            <span>Dining Platform Fee</span>
+                            <span className="font-medium text-red-600">
+                              -₹{formatRoundedCurrency(diningFinanceInsight.platformFee)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-gray-700">
+                            <span>Dining GST</span>
+                            <span className="font-medium text-red-600">
+                              -₹{formatRoundedCurrency(diningFinanceInsight.gst)}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between border-t border-amber-200 pt-1.5 text-gray-900">
+                            <span className="font-semibold">Total Dining Deductions</span>
+                            <span className="font-semibold text-red-600">
+                              -₹{formatRoundedCurrency(diningFinanceInsight.totalDeduction)}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-xs text-amber-900">
+                          {diningFinanceInsight.note}
+                        </p>
+                        {diningFinanceInsight.outstandingDue > 0.009 && (
+                          <p className="mt-2 text-xs font-medium text-amber-900">
+                            Outstanding Dining Dues: ₹{formatRoundedCurrency(diningFinanceInsight.outstandingDue)}
+                          </p>
+                        )}
+                        {diningFinanceInsight.outstandingDue <= 0.009 && diningFinanceInsight.adjustedAmount > 0.009 && (
+                          <p className="mt-2 text-xs font-medium text-emerald-700">
+                            Dining dues adjusted from takeaway earnings
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {payoutDeductionNote.hasDeduction && (
                       <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-3">
                         <p className="text-xs font-semibold uppercase tracking-wide text-rose-800 mb-1">
@@ -1246,12 +1313,12 @@ export default function HubFinance() {
                                   Order ID: {order.orderId || 'N/A'}
                                 </p>
                                 <p className="text-xs text-gray-600">
-                                  {order.foodNames || (order.items && order.items.map(item => item.name).join(', ')) || 'N/A'}
+                                  {order.sourceLabel || 'Order'} • {order.foodNames || (order.items && order.items.map(item => item.name).join(', ')) || 'N/A'}
                                 </p>
                               </div>
                               <div className="text-right ml-4">
                                 <p className="text-sm font-bold text-gray-900">
-                                  ₹{(order.payout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ₹{formatCurrencyByOrder(order, order.payout || 0)}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) ? "Wallet Adjustment" : "Earning"}
@@ -1262,16 +1329,21 @@ export default function HubFinance() {
                               <p>Platform coupon: ₹{Number(order.platformCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               <p>Your coupon: ₹{Number(order.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               <p>Your offer: ₹{Number(order.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                              <p>Commission: ₹{Number(order.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Commission: ₹{formatCurrencyByOrder(order, order.commission || 0)}</p>
                             </div>
                             {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) && (
                               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
                                 <p>
-                                  Admin recoverable: ₹{Number(order?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Platform comp: ₹{Number(order?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  Admin recoverable: ₹{formatCurrencyByOrder(order, order?.adminChargesRecoverable || 0)} | Platform comp: ₹{formatCurrencyByOrder(order, order?.platformDiscountCompensation || 0)}
                                 </p>
                                 <p className="mt-0.5">
-                                  Wallet adjustment: ₹{Number(order?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
+                                  Wallet adjustment: ₹{formatCurrencyByOrder(order, order?.walletNetAdjustment || 0)} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
                                 </p>
+                                {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
+                                  <p className="mt-0.5">
+                                    Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)} | GST: ₹{formatRoundedCurrency(order?.diningBreakdown?.gst || 0)}
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1294,12 +1366,12 @@ export default function HubFinance() {
                                   Order ID: {order.orderId || 'N/A'}
                                 </p>
                                 <p className="text-xs text-gray-600">
-                                  {order.foodNames || (order.items && order.items.map(item => item.name).join(', ')) || 'N/A'}
+                                  {order.sourceLabel || 'Order'} • {order.foodNames || (order.items && order.items.map(item => item.name).join(', ')) || 'N/A'}
                                 </p>
                               </div>
                               <div className="text-right ml-4">
                                 <p className="text-sm font-bold text-gray-900">
-                                  ₹{(order.payout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  ₹{formatCurrencyByOrder(order, order.payout || 0)}
                                 </p>
                                 <p className="text-xs text-gray-500">
                                   {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) ? "Wallet Adjustment" : "Earning"}
@@ -1310,16 +1382,21 @@ export default function HubFinance() {
                               <p>Platform coupon: ₹{Number(order.platformCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               <p>Your coupon: ₹{Number(order.restaurantCouponDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
                               <p>Your offer: ₹{Number(order.restaurantOfferDiscount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-                              <p>Commission: ₹{Number(order.commission || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                              <p>Commission: ₹{formatCurrencyByOrder(order, order.commission || 0)}</p>
                             </div>
                             {["cash", "razorpay_qr", "counter"].includes(String(order?.paymentMethod || "").toLowerCase()) && (
                               <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-900">
                                 <p>
-                                  Admin recoverable: ₹{Number(order?.adminChargesRecoverable || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Platform comp: ₹{Number(order?.platformDiscountCompensation || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  Admin recoverable: ₹{formatCurrencyByOrder(order, order?.adminChargesRecoverable || 0)} | Platform comp: ₹{formatCurrencyByOrder(order, order?.platformDiscountCompensation || 0)}
                                 </p>
                                 <p className="mt-0.5">
-                                  Wallet adjustment: ₹{Number(order?.walletNetAdjustment || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
+                                  Wallet adjustment: ₹{formatCurrencyByOrder(order, order?.walletNetAdjustment || 0)} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
                                 </p>
+                                {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
+                                  <p className="mt-0.5">
+                                    Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)} | GST: ₹{formatRoundedCurrency(order?.diningBreakdown?.gst || 0)}
+                                  </p>
+                                )}
                               </div>
                             )}
                           </div>
@@ -1380,7 +1457,7 @@ export default function HubFinance() {
                         <div>
                           <p className="text-sm font-medium text-gray-900">Order: {order.orderId || "N/A"}</p>
                           <p className="text-xs text-gray-600 mt-0.5">
-                            {order.paymentMethod || "N/A"} | {order.orderStatus || "N/A"}
+                            {(order.sourceLabel || "Order")} | {order.paymentMethod || "N/A"} | {order.orderStatus || "N/A"}
                           </p>
                         </div>
                         <div className="text-right">
@@ -1390,6 +1467,15 @@ export default function HubFinance() {
                           <p className="text-xs text-gray-500">Total</p>
                         </div>
                       </div>
+                      {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
+                        <div className="mt-2 rounded-md border border-amber-100 bg-amber-50 p-2 text-[11px] text-amber-900">
+                          Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)}
+                          {" "}(
+                          commission ₹{formatRoundedCurrency(order?.diningBreakdown?.commission || 0)},
+                          {" "}fee ₹{formatRoundedCurrency(order?.diningBreakdown?.platformFee || 0)},
+                          {" "}GST ₹{formatRoundedCurrency(order?.diningBreakdown?.gst || 0)})
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
