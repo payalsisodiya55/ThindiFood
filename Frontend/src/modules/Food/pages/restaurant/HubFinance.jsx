@@ -7,8 +7,10 @@ import { restaurantAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-const formatRoundedCurrency = (amount) =>
-  Number(Math.round(Number(amount) || 0)).toLocaleString('en-IN')
+const formatRoundedCurrency = (amount) => {
+  const n = Number(amount) || 0
+  return Number(Math.round(n + Number.EPSILON)).toLocaleString('en-IN')
+}
 const formatCurrencyByOrder = (order, amount) =>
   order?.sourceModule === "dining"
     ? formatRoundedCurrency(amount)
@@ -193,18 +195,34 @@ export default function HubFinance() {
 
   const diningFinanceInsight = useMemo(() => {
     const breakdown = financeData?.currentCycle?.diningBreakdown || {}
+    const currentOrders = Array.isArray(financeData?.currentCycle?.orders)
+      ? financeData.currentCycle.orders
+      : []
+    const diningCodOrders = currentOrders.filter(
+      (order) => order?.sourceModule === "dining" && Boolean(order?.isCodLike)
+    )
+    const adminFundedOfferCompensation = diningCodOrders.reduce(
+      (sum, order) => sum + Number(order?.platformDiscountCompensation || 0),
+      0
+    )
+
     return {
-      commission: Number(breakdown?.pendingCommission || 0),
-      platformFee: Number(breakdown?.pendingPlatformFee || 0),
-      gst: Number(breakdown?.pendingGst || 0),
+      commission: Number(breakdown?.commission ?? breakdown?.pendingCommission ?? 0),
+      platformFee: Number(breakdown?.platformFee ?? breakdown?.pendingPlatformFee ?? 0),
+      gst: Number(breakdown?.gst ?? breakdown?.pendingGst ?? 0),
       totalDeduction: Number(breakdown?.totalDeduction || 0),
       outstandingDue: Number(breakdown?.outstandingDue || 0),
       adjustedAmount: Number(breakdown?.adjustedAmount || 0),
       adjustedCommission: Number(breakdown?.adjustedCommission || 0),
       adjustedPlatformFee: Number(breakdown?.adjustedPlatformFee || 0),
       adjustedGst: Number(breakdown?.adjustedGst || 0),
+      adminFundedOfferCompensation: Number(
+        breakdown?.platformDiscountCompensation ?? adminFundedOfferCompensation
+      ),
       ordersCount: Number(breakdown?.ordersCount || 0),
-      hasDeductions: Boolean(breakdown?.hasDeductions),
+      hasDeductions:
+        Boolean(breakdown?.hasDeductions) ||
+        Number(adminFundedOfferCompensation || 0) > 0.009,
       isFullyAdjusted: Boolean(breakdown?.isFullyAdjusted),
       note: breakdown?.note || "Pending dining COD dues will be adjusted automatically in the next payout.",
     }
@@ -959,23 +977,31 @@ export default function HubFinance() {
                         <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 mb-2">Dining breakdown</p>
                         <div className="space-y-1.5 text-sm">
                           <div className="flex items-center justify-between text-gray-700">
-                            <span>Pending Dining Commission</span>
+                            <span>Dining Commission (Admin recoverable)</span>
                             <span className="font-medium text-red-600">
                               -₹{formatRoundedCurrency(diningFinanceInsight.commission)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-gray-700">
-                            <span>Pending Dining Platform Fee</span>
+                            <span>Dining Platform Fee (Admin recoverable)</span>
                             <span className="font-medium text-red-600">
                               -₹{formatRoundedCurrency(diningFinanceInsight.platformFee)}
                             </span>
                           </div>
                           <div className="flex items-center justify-between text-gray-700">
-                            <span>Pending Dining GST</span>
+                            <span>Dining GST (Admin recoverable)</span>
                             <span className="font-medium text-red-600">
                               -₹{formatRoundedCurrency(diningFinanceInsight.gst)}
                             </span>
                           </div>
+                          {diningFinanceInsight.adminFundedOfferCompensation > 0.009 && (
+                            <div className="flex items-center justify-between text-emerald-700">
+                              <span>Admin Funded Dining Offer</span>
+                              <span className="font-medium">
+                                +₹{formatRoundedCurrency(diningFinanceInsight.adminFundedOfferCompensation)}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex items-center justify-between border-t border-amber-200 pt-1.5 text-gray-900">
                             <span className="font-semibold">Pending Dining Dues</span>
                             <span className="font-semibold text-red-600">

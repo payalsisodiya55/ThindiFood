@@ -18,6 +18,7 @@ import {
     getAllDiningOffersAdminController,
     createAdminDiningOfferController,
     updateAdminDiningOfferController,
+    deleteDiningOfferAdminController,
     approveDiningOfferAdminController,
     rejectDiningOfferAdminController,
 } from '../../dineIn/controllers/diningOffer.controller.js';
@@ -142,6 +143,7 @@ router.patch('/product-offers/:id/reject', rejectRestaurantOfferAdminController)
 router.get('/dining/offers', getAllDiningOffersAdminController);
 router.post('/dining/offers', createAdminDiningOfferController);
 router.patch('/dining/offers/:id', updateAdminDiningOfferController);
+router.delete('/dining/offers/:id', deleteDiningOfferAdminController);
 router.patch('/dining/offers/:id/approve', approveDiningOfferAdminController);
 router.patch('/dining/offers/:id/reject', rejectDiningOfferAdminController);
 

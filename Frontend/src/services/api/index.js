@@ -419,6 +419,10 @@ export const adminAPI = {
     apiClient.patch(`/food/admin/dining/offers/${String(id)}`, body ?? {}, {
       contextModule: "admin",
     }),
+  deleteDiningOffer: (id) =>
+    apiClient.delete(`/food/admin/dining/offers/${String(id)}`, {
+      contextModule: "admin",
+    }),
   approveDiningOffer: (id) =>
     apiClient.patch(`/food/admin/dining/offers/${String(id)}/approve`, {}, {
       contextModule: "admin",

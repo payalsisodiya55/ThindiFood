@@ -20,7 +20,12 @@ import {
 } from '../../orders/helpers/razorpay.helper.js';
 
 const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
-const roundStandard = (value) => Math.round(Number(value) || 0);
+// Half-up rupee rounding:
+// 19.0 -> 19, 19.5 -> 20, 19.9 -> 20
+const roundStandard = (value) => {
+    const n = Number(value) || 0;
+    return Math.round(n + Number.EPSILON);
+};
 const createHttpError = (message, statusCode = 400) => {
     const error = new Error(message);
     error.statusCode = statusCode;

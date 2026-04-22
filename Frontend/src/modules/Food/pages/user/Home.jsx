@@ -2690,7 +2690,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <div className="px-4">
-                    <div className="h-44 sm:h-48 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <div className="h-48 sm:h-56 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
                       {HeroBannerSection}
                     </div>
                   </div>

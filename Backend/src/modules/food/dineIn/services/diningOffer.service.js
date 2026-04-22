@@ -279,6 +279,13 @@ export const rejectDiningOfferAdmin = async (offerId, reason) => {
     return normalizeOffer(updated);
 };
 
+export const deleteDiningOfferAdmin = async (offerId) => {
+    const oid = ensureObjectId(offerId, 'Invalid dining offer id');
+    const deleted = await FoodDiningOffer.findByIdAndDelete(oid).lean();
+    if (!deleted) return null;
+    return { id: String(deleted._id) };
+};
+
 export const calculateDiningOfferDiscount = (offer, subtotal) => {
     const baseAmount = roundMoney(subtotal);
     if (!offer || baseAmount <= 0) return 0;

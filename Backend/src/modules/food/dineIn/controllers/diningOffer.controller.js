@@ -7,6 +7,7 @@ import {
     getAllDiningOffersAdmin,
     createAdminDiningOffer,
     updateAdminDiningOffer,
+    deleteDiningOfferAdmin,
     approveDiningOfferAdmin,
     rejectDiningOfferAdmin,
 } from '../services/diningOffer.service.js';
@@ -97,6 +98,16 @@ export const rejectDiningOfferAdminController = async (req, res, next) => {
         const offer = await rejectDiningOfferAdmin(req.params.id, req.body?.reason || '');
         if (!offer) return sendError(res, 404, 'Dining offer not found');
         return sendResponse(res, 200, 'Dining offer rejected', { offer });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteDiningOfferAdminController = async (req, res, next) => {
+    try {
+        const result = await deleteDiningOfferAdmin(req.params.id);
+        if (!result) return sendError(res, 404, 'Dining offer not found');
+        return sendResponse(res, 200, 'Dining offer deleted successfully', result);
     } catch (error) {
         next(error);
     }

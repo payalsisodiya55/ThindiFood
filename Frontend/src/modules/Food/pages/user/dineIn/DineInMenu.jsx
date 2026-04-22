@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 const RUPEE_SYMBOL = "\u20B9";
 const formatMoney = (value) => Number(value || 0).toFixed(2);
+const roundStandard = (value) => Math.round((Number(value) || 0) + Number.EPSILON);
 
 const resolveRestaurantPayload = (response) =>
     response?.data?.data?.restaurant ||
@@ -293,6 +294,7 @@ const DineInMenu = () => {
                 projectedOfferDiscount = Math.min(projectedOfferDiscount, maxDiscount);
             }
             projectedOfferDiscount = Math.min(projectedOfferDiscount, projectedSubtotal);
+            projectedOfferDiscount = roundStandard(projectedOfferDiscount);
         }
 
         const projectedTaxAmount = Math.round((projectedSubtotal * inferredGstRate) / 100);
