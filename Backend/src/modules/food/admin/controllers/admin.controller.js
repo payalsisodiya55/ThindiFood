@@ -183,6 +183,84 @@ export async function getTransactionReport(req, res, next) {
     }
 }
 
+export async function getDiningOrders(req, res, next) {
+    try {
+        const data = await adminService.getDiningOrdersAdmin(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Dining orders fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningSessions(req, res, next) {
+    try {
+        const data = await adminService.getDiningSessionsAdmin(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Dining sessions fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningBookings(req, res, next) {
+    try {
+        const data = await adminService.getDiningBookingsAdmin(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Dining bookings fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningReports(req, res, next) {
+    try {
+        const data = await adminService.getDiningReportsAdmin(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Dining report fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningTransactions(req, res, next) {
+    try {
+        const data = await adminService.getDiningTransactionsAdmin(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Dining transactions fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function getDiningFinance(req, res, next) {
+    try {
+        const data = await adminService.getDiningFinanceAdmin(req.query || {});
+        res.status(200).json({
+            success: true,
+            message: 'Dining finance fetched successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getTaxReport(req, res, next) {
     try {
         const data = await adminService.getTaxReport(req.query || {});

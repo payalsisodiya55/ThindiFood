@@ -35,6 +35,11 @@ import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.j
 import { FoodRestaurantWallet } from '../../restaurant/models/restaurantWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { RestaurantOffer } from '../../restaurant/models/restaurantOffer.model.js';
+import { FoodTableSession } from '../../dineIn/models/tableSession.model.js';
+import { FoodDineInOrder } from '../../dineIn/models/dineInOrder.model.js';
+import { FoodTableBooking } from '../../dineIn/models/tableBooking.model.js';
+import { FoodDiningTransaction } from '../../dineIn/models/diningTransaction.model.js';
+import { backfillDiningTransactionSnapshots } from '../../dineIn/services/diningTransactionSnapshot.service.js';
 import {
     backfillLegacyCategoryWorkflow,
     categoryAllowsFoodType,
@@ -1178,6 +1183,578 @@ export async function getTaxReportDetail(restaurantId, query = {}) {
             date: o.createdAt
         }))
     };
+}
+
+const parseDiningDateRange = (query = {}) => {
+    const fromRaw = query.fromDate || query.startDate || '';
+    const toRaw = query.toDate || query.endDate || '';
+    const createdAt = {};
+    if (fromRaw) {
+        const from = new Date(fromRaw);
+        if (!Number.isNaN(from.getTime())) createdAt.$gte = from;
+    }
+    if (toRaw) {
+        const to = new Date(toRaw);
+        if (!Number.isNaN(to.getTime())) createdAt.$lte = to;
+    }
+    return Object.keys(createdAt).length > 0 ? createdAt : null;
+};
+
+const isDiningSessionPaid = (candidate = {}) => {
+    if (candidate?.isPaid === true) return true;
+    const paymentStatus = String(candidate?.paymentStatus || '').trim().toUpperCase();
+    return paymentStatus === 'PAID';
+};
+
+const normalizeDiningPaymentType = (candidate = {}) => {
+    if (!isDiningSessionPaid(candidate)) return 'pending';
+    const method = String(candidate?.paymentMethod || '').trim().toLowerCase();
+    const mode = String(candidate?.paymentMode || '').trim().toLowerCase();
+    if (method === 'cash' || method === 'counter' || mode === 'counter') return 'cod';
+    return 'online';
+};
+
+const normalizeDiningOrderType = (candidate = {}) => (candidate?.bookingId ? 'pre-book' : 'walk-in');
+
+const mapDiningOrderStatus = (status = '', session = {}) => {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'ready') return 'Served';
+    if (normalized === 'served') return isDiningSessionPaid(session) ? 'Completed' : 'Served';
+    if (normalized === 'cancelled') return 'Cancelled';
+    if (normalized === 'received' || normalized === 'preparing') return 'Preparing';
+    return 'Preparing';
+};
+
+const normalizeSessionStatus = (status = '') => {
+    const normalized = String(status || '').trim().toLowerCase();
+    if (normalized === 'completed' || normalized === 'expired') return 'closed';
+    return 'active';
+};
+
+const buildDiningPricingBreakdown = (session = {}, fallbackSubtotal = 0) => {
+    const summary = session?.billingSnapshot?.summary || {};
+    const subtotal = Number(summary?.subtotal ?? fallbackSubtotal ?? session?.subtotal ?? 0) || 0;
+    const offerDiscount = Number(summary?.offerDiscount ?? 0) || 0;
+    const platformFee = Number(summary?.platformFee ?? 0) || 0;
+    const taxAmount = Number(summary?.taxAmount ?? session?.taxAmount ?? 0) || 0;
+    const totalAmount = Number(summary?.totalAmount ?? session?.totalAmount ?? subtotal) || 0;
+
+    return {
+        subtotal,
+        offerDiscount,
+        platformFee,
+        taxAmount,
+        totalAmount,
+    };
+};
+
+const buildDiningPagination = (query = {}) => {
+    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 500);
+    const skip = (page - 1) * limit;
+    return { page, limit, skip };
+};
+
+export async function getDiningOrdersAdmin(query = {}) {
+    const { page, limit, skip } = buildDiningPagination(query);
+    const createdAt = parseDiningDateRange(query);
+    const restaurantId = String(query.restaurantId || '').trim();
+    const paymentTypeFilter = String(query.paymentType || '').trim().toLowerCase();
+    const orderTypeFilter = String(query.orderType || '').trim().toLowerCase();
+    const search = String(query.search || '').trim().toLowerCase();
+
+    const orderMatch = {};
+    if (createdAt) orderMatch.createdAt = createdAt;
+    if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
+        orderMatch.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+
+    if (paymentTypeFilter || orderTypeFilter) {
+        const sessionMatch = {};
+        const andConditions = [];
+        if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
+            sessionMatch.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+        }
+        if (paymentTypeFilter === 'online') {
+            andConditions.push({
+                $or: [{ isPaid: true }, { paymentStatus: 'PAID' }],
+            });
+            andConditions.push({
+                $nor: [
+                    { paymentMethod: { $in: ['cash', 'counter'] } },
+                    { paymentMode: 'COUNTER' },
+                ],
+            });
+        } else if (paymentTypeFilter === 'cod') {
+            andConditions.push({
+                $or: [{ isPaid: true }, { paymentStatus: 'PAID' }],
+            });
+            andConditions.push({
+                $or: [
+                    { paymentMethod: { $in: ['cash', 'counter'] } },
+                    { paymentMode: 'COUNTER' },
+                ],
+            });
+        }
+        if (orderTypeFilter === 'pre-book') {
+            sessionMatch.bookingId = { $ne: null };
+        } else if (orderTypeFilter === 'walk-in') {
+            sessionMatch.bookingId = null;
+        }
+        if (andConditions.length > 0) sessionMatch.$and = andConditions;
+
+        const sessionIds = await FoodTableSession.find(sessionMatch).distinct('_id');
+        if (!sessionIds.length) {
+            return { orders: [], total: 0, page, limit };
+        }
+        orderMatch.sessionId = { $in: sessionIds };
+    }
+
+    const allOrders = await FoodDineInOrder.find(orderMatch)
+        .sort({ createdAt: -1 })
+        .populate('restaurantId', 'restaurantName')
+        .lean();
+
+    const sessionIds = allOrders
+        .map((order) => order?.sessionId)
+        .filter((value) => mongoose.Types.ObjectId.isValid(String(value || '')));
+
+    const sessions = await FoodTableSession.find({ _id: { $in: sessionIds } })
+        .populate('userId', 'name phone')
+        .select('tableNumber bookingId paymentMethod paymentMode paymentStatus isPaid status userId subtotal taxAmount totalAmount billingSnapshot')
+        .lean();
+    const sessionsById = new Map(sessions.map((session) => [String(session._id), session]));
+
+    const groupedBySession = new Map();
+    for (const order of allOrders) {
+        const sessionId = String(order?.sessionId || '');
+        if (!sessionId) continue;
+
+        const session = sessionsById.get(sessionId) || {};
+        const rowId = sessionId;
+        const orderItems = Array.isArray(order?.items) ? order.items : [];
+        const orderAmount = Number(order?.subtotal || 0);
+        const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
+
+        if (!groupedBySession.has(sessionId)) {
+            const pricingBreakdown = buildDiningPricingBreakdown(session, orderAmount);
+            groupedBySession.set(sessionId, {
+                id: rowId,
+                orderId: `DIN-${sessionId.slice(-8).toUpperCase()}`,
+                sessionId,
+                restaurantId: order?.restaurantId?._id || order?.restaurantId || null,
+                restaurant: order?.restaurantId?.restaurantName || '',
+                tableNo: String(order?.tableNumber || session?.tableNumber || ''),
+                user: {
+                    id: session?.userId?._id || session?.userId || null,
+                    name: session?.userId?.name || 'Guest',
+                    phone: session?.userId?.phone || '',
+                },
+                items: [],
+                itemCount: 0,
+                amount: Number(pricingBreakdown?.totalAmount || 0),
+                pricingBreakdown,
+                paymentType: normalizeDiningPaymentType(session),
+                orderType: normalizeDiningOrderType(session),
+                status: mapDiningOrderStatus(order?.status, session),
+                date: order?.createdAt || null,
+                __latestOrderAt: createdAt?.getTime() || 0,
+                __ordersSubtotal: 0,
+            });
+        }
+
+        const row = groupedBySession.get(sessionId);
+        row.__ordersSubtotal += orderAmount;
+
+        for (const item of orderItems) {
+            const quantity = Number(item?.quantity || 0);
+            const price = Number(item?.price || 0);
+            const name = String(item?.name || '').trim();
+            row.itemCount += quantity;
+
+            const existing = row.items.find((it) => it.name === name && it.price === price);
+            if (existing) {
+                existing.quantity += quantity;
+            } else {
+                row.items.push({ name, quantity, price });
+            }
+        }
+
+        const orderTime = createdAt?.getTime() || 0;
+        if (orderTime >= row.__latestOrderAt) {
+            row.__latestOrderAt = orderTime;
+            row.status = mapDiningOrderStatus(order?.status, session);
+            row.date = order?.createdAt || row.date;
+        }
+    }
+
+    let rows = Array.from(groupedBySession.values())
+        .map((row) => {
+            if (!(Number(row?.pricingBreakdown?.totalAmount || 0) > 0)) {
+                row.pricingBreakdown = {
+                    subtotal: Number(row.__ordersSubtotal || 0),
+                    offerDiscount: 0,
+                    platformFee: 0,
+                    taxAmount: 0,
+                    totalAmount: Number(row.__ordersSubtotal || 0),
+                };
+                row.amount = Number(row.__ordersSubtotal || 0);
+            }
+            if (Number(row?.amount || 0) <= 0) {
+                row.amount = Number(row?.pricingBreakdown?.totalAmount || row.__ordersSubtotal || 0);
+            }
+            delete row.__latestOrderAt;
+            delete row.__ordersSubtotal;
+            return row;
+        })
+        .sort((a, b) => new Date(b?.date || 0).getTime() - new Date(a?.date || 0).getTime());
+
+    if (search) {
+        rows = rows.filter((row) => {
+            const itemText = (row.items || []).map((item) => item.name).join(' ').toLowerCase();
+            return (
+                String(row.orderId || '').toLowerCase().includes(search) ||
+                String(row.sessionId || '').toLowerCase().includes(search) ||
+                String(row.restaurant || '').toLowerCase().includes(search) ||
+                String(row.tableNo || '').toLowerCase().includes(search) ||
+                String(row.user?.name || '').toLowerCase().includes(search) ||
+                itemText.includes(search)
+            );
+        });
+    }
+
+    const total = rows.length;
+    const orders = rows.slice(skip, skip + limit);
+    return { orders, total, page, limit };
+}
+
+export async function getDiningSessionsAdmin(query = {}) {
+    const { page, limit, skip } = buildDiningPagination(query);
+    const createdAt = parseDiningDateRange(query);
+    const restaurantId = String(query.restaurantId || '').trim();
+    const status = String(query.status || '').trim().toLowerCase();
+    const search = String(query.search || '').trim().toLowerCase();
+
+    const match = {};
+    if (createdAt) match.startedAt = createdAt;
+    if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
+        match.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+    if (status === 'active') {
+        match.status = { $in: ['active', 'bill_requested'] };
+    } else if (status === 'closed') {
+        match.status = { $in: ['completed', 'expired'] };
+    }
+
+    const sessions = await FoodTableSession.find(match)
+        .populate('restaurantId', 'restaurantName')
+        .populate('userId', 'name phone')
+        .populate('bookingId', 'bookingId')
+        .sort({ updatedAt: -1, createdAt: -1 })
+        .lean();
+
+    let rows = sessions.map((session) => {
+        const summary = session?.billingSnapshot?.summary || {};
+        const runningBill = Number(summary?.totalAmount ?? session?.totalAmount ?? 0);
+        return {
+            sessionId: String(session?._id || ''),
+            restaurantId: session?.restaurantId?._id || session?.restaurantId || null,
+            restaurant: session?.restaurantId?.restaurantName || '',
+            tableNo: String(session?.tableNumber || ''),
+            user: {
+                id: session?.userId?._id || session?.userId || null,
+                name: session?.userId?.name || 'Guest',
+                phone: session?.userId?.phone || '',
+            },
+            bookingId: session?.bookingId?.bookingId || (session?.bookingId ? String(session.bookingId) : null),
+            runningBill,
+            status: normalizeSessionStatus(session?.status),
+            startTime: session?.startedAt || session?.createdAt || null,
+        };
+    });
+
+    if (search) {
+        rows = rows.filter((row) => (
+            String(row.sessionId || '').toLowerCase().includes(search) ||
+            String(row.restaurant || '').toLowerCase().includes(search) ||
+            String(row.tableNo || '').toLowerCase().includes(search) ||
+            String(row.user?.name || '').toLowerCase().includes(search) ||
+            String(row.bookingId || '').toLowerCase().includes(search)
+        ));
+    }
+
+    const total = rows.length;
+    const sessionsPage = rows.slice(skip, skip + limit);
+    return { sessions: sessionsPage, total, page, limit };
+}
+
+export async function getDiningBookingsAdmin(query = {}) {
+    const { page, limit, skip } = buildDiningPagination(query);
+    const dateRange = parseDiningDateRange(query);
+    const restaurantId = String(query.restaurantId || '').trim();
+    const status = String(query.status || '').trim().toUpperCase();
+    const search = String(query.search || '').trim().toLowerCase();
+
+    const match = {};
+    if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
+        match.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+    if (dateRange) match.date = dateRange;
+    if (status && status !== 'ALL') {
+        match.status = status;
+    }
+
+    const bookings = await FoodTableBooking.find(match)
+        .populate('userId', 'name phone')
+        .populate('restaurantId', 'restaurantName')
+        .populate('sessionId', 'tableNumber status')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const bookingIds = bookings
+        .map((booking) => booking?._id)
+        .filter((value) => mongoose.Types.ObjectId.isValid(String(value || '')));
+    const linkedSessions = await FoodTableSession.find({ bookingId: { $in: bookingIds } })
+        .select('_id bookingId')
+        .lean();
+    const sessionByBooking = new Map(linkedSessions.map((session) => [String(session.bookingId), String(session._id)]));
+
+    let rows = bookings.map((booking) => {
+        const linkedSessionId = booking?.sessionId?._id
+            || booking?.sessionId
+            || sessionByBooking.get(String(booking?._id || ''))
+            || null;
+        return {
+            id: booking?._id,
+            bookingId: booking?.bookingId || String(booking?._id || ''),
+            user: {
+                id: booking?.userId?._id || booking?.userId || null,
+                name: booking?.userId?.name || booking?.userRef?.name || 'Guest',
+                phone: booking?.userId?.phone || booking?.userRef?.phone || '',
+            },
+            restaurantId: booking?.restaurantId?._id || booking?.restaurantId || null,
+            restaurant: booking?.restaurantId?.restaurantName || '',
+            guests: Number(booking?.guests || 0),
+            date: booking?.date || null,
+            time: booking?.timeSlot || '',
+            status: String(booking?.status || ''),
+            checkInStatus: booking?.checkedInAt || ['CHECKED_IN', 'COMPLETED'].includes(String(booking?.status || ''))
+                ? 'checked-in'
+                : 'not-checked-in',
+            linkedSessionId: linkedSessionId ? String(linkedSessionId) : null,
+        };
+    });
+
+    if (search) {
+        rows = rows.filter((row) => (
+            String(row.bookingId || '').toLowerCase().includes(search) ||
+            String(row.restaurant || '').toLowerCase().includes(search) ||
+            String(row.user?.name || '').toLowerCase().includes(search) ||
+            String(row.user?.phone || '').toLowerCase().includes(search) ||
+            String(row.linkedSessionId || '').toLowerCase().includes(search)
+        ));
+    }
+
+    const total = rows.length;
+    const bookingsPage = rows.slice(skip, skip + limit);
+    return { bookings: bookingsPage, total, page, limit };
+}
+
+const buildDiningTransactionMatch = (query = {}) => {
+    const match = {};
+    const restaurantId = String(query.restaurantId || '').trim();
+    if (restaurantId && mongoose.Types.ObjectId.isValid(restaurantId)) {
+        match.restaurantId = new mongoose.Types.ObjectId(restaurantId);
+    }
+    const createdAt = parseDiningDateRange(query);
+    if (createdAt) match.createdAt = createdAt;
+
+    const paymentType = String(query.paymentType || '').trim().toLowerCase();
+    if (paymentType === 'online' || paymentType === 'cod') {
+        match.paymentType = paymentType;
+    }
+    const orderType = String(query.orderType || '').trim().toLowerCase();
+    if (orderType === 'walk-in' || orderType === 'pre-book') {
+        match.orderType = orderType;
+    }
+    return match;
+};
+
+export async function getDiningTransactionsAdmin(query = {}) {
+    const { page, limit, skip } = buildDiningPagination(query);
+    const search = String(query.search || '').trim().toLowerCase();
+    const match = buildDiningTransactionMatch(query);
+
+    await backfillDiningTransactionSnapshots({
+        restaurantId: match.restaurantId || null,
+        fromDate: match?.createdAt?.$gte || null,
+        toDate: match?.createdAt?.$lte || null,
+    });
+
+    const allRows = await FoodDiningTransaction.find(match)
+        .populate('restaurantId', 'restaurantName')
+        .sort({ createdAt: -1 })
+        .lean();
+
+    let rows = allRows.map((row) => ({
+        id: row?._id,
+        orderId: row?.orderId || `DIN-${String(row?.sessionId || '').slice(-8).toUpperCase()}`,
+        sessionId: String(row?.sessionId || ''),
+        restaurantId: row?.restaurantId?._id || row?.restaurantId || null,
+        restaurant: row?.restaurantName || row?.restaurantId?.restaurantName || '',
+        amount: Number(row?.finalAmount || 0),
+        commission: Number(row?.commission || 0),
+        gst: Number(row?.gst || 0),
+        platformFee: Number(row?.platformFee || 0),
+        paymentType: row?.paymentType || 'online',
+        status: String(row?.status || '').toLowerCase() || 'paid',
+        adminEarning: Number(row?.adminEarning || 0),
+        restaurantEarning: Number(row?.restaurantEarning || 0),
+        codDue: Number(row?.codDue || 0),
+        date: row?.paidAt || row?.createdAt,
+    }));
+
+    if (search) {
+        rows = rows.filter((row) => (
+            String(row.orderId || '').toLowerCase().includes(search) ||
+            String(row.restaurant || '').toLowerCase().includes(search) ||
+            String(row.sessionId || '').toLowerCase().includes(search)
+        ));
+    }
+
+    const summary = rows.reduce((acc, row) => {
+        acc.totalTransactions += 1;
+        acc.adminEarnings += Number(row.adminEarning || 0);
+        acc.restaurantEarnings += Number(row.restaurantEarning || 0);
+        acc.codDues += Number(row.codDue || 0);
+        return acc;
+    }, {
+        totalTransactions: 0,
+        adminEarnings: 0,
+        restaurantEarnings: 0,
+        codDues: 0,
+    });
+
+    const total = rows.length;
+    const transactions = rows.slice(skip, skip + limit);
+    return { transactions, summary, total, page, limit };
+}
+
+export async function getDiningReportsAdmin(query = {}) {
+    const { transactions } = await getDiningTransactionsAdmin({ ...query, page: 1, limit: 5000 });
+
+    const totals = transactions.reduce((acc, row) => {
+        acc.totalOrders += 1;
+        if (row.paymentType === 'online') acc.onlineOrders += 1;
+        if (row.paymentType === 'cod') acc.codOrders += 1;
+        acc.revenue += Number(row.amount || 0);
+        return acc;
+    }, {
+        totalOrders: 0,
+        onlineOrders: 0,
+        codOrders: 0,
+        revenue: 0,
+    });
+
+    const detailed = await FoodDiningTransaction.find(buildDiningTransactionMatch(query))
+        .sort({ createdAt: -1 })
+        .lean();
+
+    const walkInOrders = detailed.filter((tx) => tx.orderType === 'walk-in').length;
+    const preBookOrders = detailed.filter((tx) => tx.orderType === 'pre-book').length;
+
+    const rows = detailed.map((tx) => ({
+        id: tx?._id,
+        orderId: tx?.orderId || `DIN-${String(tx?.sessionId || '').slice(-8).toUpperCase()}`,
+        restaurant: tx?.restaurantName || '',
+        user: tx?.userName || 'Guest',
+        type: tx?.orderType || 'walk-in',
+        subtotal: Number(tx?.subtotal || 0),
+        offer: Number(tx?.discount || 0),
+        commission: Number(tx?.commission || 0),
+        gst: Number(tx?.gst || 0),
+        finalAmount: Number(tx?.finalAmount || 0),
+        payment: tx?.paymentType || 'online',
+        status: tx?.status || 'paid',
+        date: tx?.paidAt || tx?.createdAt,
+    }));
+
+    return {
+        kpis: {
+            totalOrders: totals.totalOrders,
+            walkInOrders,
+            preBookOrders,
+            onlineOrders: totals.onlineOrders,
+            codOrders: totals.codOrders,
+            revenue: totals.revenue,
+        },
+        rows,
+    };
+}
+
+export async function getDiningFinanceAdmin(query = {}) {
+    const match = buildDiningTransactionMatch(query);
+    await backfillDiningTransactionSnapshots({
+        restaurantId: match.restaurantId || null,
+        fromDate: match?.createdAt?.$gte || null,
+        toDate: match?.createdAt?.$lte || null,
+    });
+
+    const rows = await FoodDiningTransaction.find(match)
+        .populate('restaurantId', 'restaurantName')
+        .lean();
+
+    const byRestaurant = new Map();
+    for (const row of rows) {
+        const restaurantId = String(row?.restaurantId?._id || row?.restaurantId || '');
+        if (!restaurantId) continue;
+        if (!byRestaurant.has(restaurantId)) {
+            byRestaurant.set(restaurantId, {
+                restaurantId,
+                restaurant: row?.restaurantName || row?.restaurantId?.restaurantName || '',
+                onlineEarnings: 0,
+                codOrders: 0,
+                pendingCodDues: 0,
+                commission: 0,
+                platformFee: 0,
+                gst: 0,
+                totalRevenue: 0,
+            });
+        }
+        const item = byRestaurant.get(restaurantId);
+        item.totalRevenue += Number(row?.finalAmount || 0);
+        item.commission += Number(row?.commission || 0);
+        item.platformFee += Number(row?.platformFee || 0);
+        item.gst += Number(row?.gst || 0);
+        if (row?.paymentType === 'cod') {
+            item.codOrders += 1;
+            item.pendingCodDues += Number(row?.codDue || 0);
+        } else {
+            item.onlineEarnings += Number(row?.finalAmount || 0);
+        }
+    }
+
+    const restaurants = Array.from(byRestaurant.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+    const summary = restaurants.reduce((acc, row) => {
+        acc.totalRevenue += row.totalRevenue;
+        acc.totalOnline += row.onlineEarnings;
+        acc.totalCodOrders += row.codOrders;
+        acc.totalPendingCodDues += row.pendingCodDues;
+        acc.totalCommission += row.commission;
+        acc.totalPlatformFee += row.platformFee;
+        acc.totalGst += row.gst;
+        return acc;
+    }, {
+        totalRevenue: 0,
+        totalOnline: 0,
+        totalCodOrders: 0,
+        totalPendingCodDues: 0,
+        totalCommission: 0,
+        totalPlatformFee: 0,
+        totalGst: 0,
+    });
+
+    return { restaurants, summary };
 }
 
 // ----- Customers / Users (admin) -----

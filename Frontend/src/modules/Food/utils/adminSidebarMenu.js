@@ -155,6 +155,8 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "Transaction Report", path: "/admin/food/transaction-report", icon: "FileText" },
       { type: "link", label: "Order Report", path: "/admin/food/order-report/regular", icon: "FileText" },
+      { type: "link", label: "Dining Order Report", path: "/admin/food/dining-order-report", icon: "FileText" },
+      { type: "link", label: "Dining Transaction Report", path: "/admin/food/dining-transaction-report", icon: "FileText" },
       { type: "link", label: "Tax Report", path: "/admin/food/tax-report", icon: "Receipt" },
       {
         type: "expandable",
@@ -190,6 +192,10 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "Dining Banners", path: "/admin/food/dining-management", icon: "UtensilsCrossed" },
       { type: "link", label: "Dining List", path: "/admin/food/dining-list", icon: "FileText" },
+      { type: "link", label: "Dining Orders", path: "/admin/food/dining-orders", icon: "ClipboardList" },
+      { type: "link", label: "Dining Bookings", path: "/admin/food/dining-bookings", icon: "Calendar" },
+      { type: "link", label: "Dining Sessions", path: "/admin/food/dining-sessions", icon: "Users" },
+      { type: "link", label: "Dining Finance", path: "/admin/food/dining-finance", icon: "Wallet" },
       { type: "link", label: "Dining Commission", path: "/admin/food/dining/restaurants/commission", icon: "Percent" },
       { type: "link", label: "Dining Fee Settings", path: "/admin/food/dining/fee-settings", icon: "IndianRupee" },
     ],

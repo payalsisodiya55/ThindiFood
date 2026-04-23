@@ -18,6 +18,7 @@ import {
     isRazorpayConfigured,
     verifyPaymentSignature,
 } from '../../orders/helpers/razorpay.helper.js';
+import { upsertDiningTransactionSnapshot } from './diningTransactionSnapshot.service.js';
 
 const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
 // Half-up rupee rounding:
@@ -1085,6 +1086,13 @@ export async function closeSession(sessionId, paymentData) {
                 paidAt: now.toISOString(),
             });
         }
+    } catch {
+        // ignore
+    }
+
+    // 5. Persist immutable admin/report transaction snapshot (non-blocking).
+    try {
+        await upsertDiningTransactionSnapshot(session._id);
     } catch {
         // ignore
     }

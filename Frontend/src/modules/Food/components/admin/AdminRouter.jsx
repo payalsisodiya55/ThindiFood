@@ -106,6 +106,12 @@ const AddonActivation = lazy(() => import("@food/pages/admin/system/AddonActivat
 const LandingPageManagement = lazy(() => import("@food/pages/admin/system/LandingPageManagement"));
 const DiningManagement = lazy(() => import("@food/pages/admin/system/DiningManagement"));
 const DiningList = lazy(() => import("@food/pages/admin/system/DiningList"));
+const DiningOrders = lazy(() => import("@food/pages/admin/dining/DiningOrders"));
+const DiningBookings = lazy(() => import("@food/pages/admin/dining/DiningBookings"));
+const DiningSessions = lazy(() => import("@food/pages/admin/dining/DiningSessions"));
+const DiningFinance = lazy(() => import("@food/pages/admin/dining/DiningFinance"));
+const DiningOrderReport = lazy(() => import("@food/pages/admin/dining/DiningOrderReport"));
+const DiningTransactionReport = lazy(() => import("@food/pages/admin/dining/DiningTransactionReport"));
 const EditRestaurant = lazy(() => import("@food/pages/admin/restaurant/EditRestaurant"));
 const QuickCommerceDashboard = lazy(() => import("@food/pages/admin/quick-commerce/QuickCommerceDashboard"));
 const QuickCommerceOrders = lazy(() => import("@food/pages/admin/quick-commerce/QuickCommerceOrders"));
@@ -267,6 +273,12 @@ export default function AdminRouter() {
             <Route path="hero-banner-management" element={<LandingPageManagement />} />
             <Route path="dining-management" element={<DiningManagement />} />
             <Route path="dining-list" element={<DiningList />} />
+            <Route path="dining-orders" element={<DiningOrders />} />
+            <Route path="dining-bookings" element={<DiningBookings />} />
+            <Route path="dining-sessions" element={<DiningSessions />} />
+            <Route path="dining-finance" element={<DiningFinance />} />
+            <Route path="dining-order-report" element={<DiningOrderReport />} />
+            <Route path="dining-transaction-report" element={<DiningTransactionReport />} />
           </Route>
 
           {/* TAXI ADMIN - Placeholder for future implementation */}

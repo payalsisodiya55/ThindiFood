@@ -595,6 +595,36 @@ export const adminAPI = {
       params,
       contextModule: "admin",
     }),
+  getDiningOrders: (params = {}) =>
+    apiClient.get("/food/admin/dining/orders", {
+      params: { page: 1, limit: 50, ...params },
+      contextModule: "admin",
+    }),
+  getDiningSessions: (params = {}) =>
+    apiClient.get("/food/admin/dining/sessions", {
+      params: { page: 1, limit: 50, ...params },
+      contextModule: "admin",
+    }),
+  getDiningBookings: (params = {}) =>
+    apiClient.get("/food/admin/dining/bookings", {
+      params: { page: 1, limit: 50, ...params },
+      contextModule: "admin",
+    }),
+  getDiningReports: (params = {}) =>
+    apiClient.get("/food/admin/dining/reports", {
+      params,
+      contextModule: "admin",
+    }),
+  getDiningTransactions: (params = {}) =>
+    apiClient.get("/food/admin/dining/transactions", {
+      params: { page: 1, limit: 50, ...params },
+      contextModule: "admin",
+    }),
+  getDiningFinance: (params = {}) =>
+    apiClient.get("/food/admin/dining/finance", {
+      params,
+      contextModule: "admin",
+    }),
   /** Get single zone by id */
   getZoneById: (id) =>
     apiClient.get(`/food/admin/zones/${id}`, { contextModule: "admin" }),

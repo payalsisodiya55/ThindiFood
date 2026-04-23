@@ -228,6 +228,12 @@ router.patch('/dining/categories/:id', diningAdminController.updateDiningCategor
 router.delete('/dining/categories/:id', diningAdminController.deleteDiningCategory);
 router.get('/dining/restaurants', diningAdminController.getDiningRestaurants);
 router.patch('/dining/restaurants/:restaurantId', diningAdminController.updateDiningRestaurant);
+router.get('/dining/orders', adminController.getDiningOrders);
+router.get('/dining/sessions', adminController.getDiningSessions);
+router.get('/dining/bookings', adminController.getDiningBookings);
+router.get('/dining/reports', adminController.getDiningReports);
+router.get('/dining/transactions', adminController.getDiningTransactions);
+router.get('/dining/finance', adminController.getDiningFinance);
 
 // ----- Orders -----
 router.get('/orders', orderController.listOrdersAdminController);

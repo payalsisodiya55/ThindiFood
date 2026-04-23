@@ -70,6 +70,11 @@ export default function DiningList() {
                         categoryIds: Array.isArray(restaurant.categoryIds) ? restaurant.categoryIds : [],
                         primaryCategoryId: restaurant.primaryCategoryId || null,
                         diningSettings: restaurant.diningSettings || { isEnabled: false, maxGuests: 6, diningType: "" },
+                        diningStats: {
+                            totalOrders: Number(restaurant?.diningStats?.totalOrders || 0),
+                            totalRevenue: Number(restaurant?.diningStats?.totalRevenue || 0),
+                            activeSessions: Number(restaurant?.diningStats?.activeSessions || 0),
+                        },
                         originalData: restaurant,
                     }))
 
@@ -240,6 +245,27 @@ export default function DiningList() {
                         </div>
                     ) : (
                         <>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-xs text-slate-500">Total Orders</p>
+                                    <p className="text-lg font-bold text-slate-900">
+                                        {filteredRestaurants.reduce((sum, restaurant) => sum + Number(restaurant?.diningStats?.totalOrders || 0), 0)}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-xs text-slate-500">Total Revenue</p>
+                                    <p className="text-lg font-bold text-slate-900">
+                                        {`\u20B9${filteredRestaurants.reduce((sum, restaurant) => sum + Number(restaurant?.diningStats?.totalRevenue || 0), 0).toFixed(2)}`}
+                                    </p>
+                                </div>
+                                <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-xs text-slate-500">Active Sessions</p>
+                                    <p className="text-lg font-bold text-slate-900">
+                                        {filteredRestaurants.reduce((sum, restaurant) => sum + Number(restaurant?.diningStats?.activeSessions || 0), 0)}
+                                    </p>
+                                </div>
+                            </div>
+
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                                 <h2 className="text-xl font-bold text-slate-900">Registered Dining Restaurants</h2>
 
@@ -295,6 +321,9 @@ export default function DiningList() {
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Dining</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Guests</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Rating</th>
+                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Orders</th>
+                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Revenue</th>
+                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Active Sessions</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Status</th>
                                             <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-700 uppercase tracking-wider">Actions</th>
                                         </tr>
@@ -302,7 +331,7 @@ export default function DiningList() {
                                     <tbody className="bg-white divide-y divide-slate-100">
                                         {filteredRestaurants.length === 0 ? (
                                             <tr>
-                                                <td colSpan={8} className="px-6 py-20 text-center">
+                                                <td colSpan={11} className="px-6 py-20 text-center">
                                                     <div className="flex flex-col items-center justify-center">
                                                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                                                             <Search className="w-8 h-8 text-slate-300" />
@@ -369,6 +398,15 @@ export default function DiningList() {
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="text-sm text-yellow-500 font-medium">{renderStars(restaurant.rating)}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className="text-sm text-slate-700">{restaurant?.diningStats?.totalOrders || 0}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className="text-sm text-slate-700">{`\u20B9${Number(restaurant?.diningStats?.totalRevenue || 0).toFixed(2)}`}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className="text-sm text-slate-700">{restaurant?.diningStats?.activeSessions || 0}</span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${restaurant.status ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>

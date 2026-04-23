@@ -4,6 +4,7 @@ import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDiningCategory } from '../models/diningCategory.model.js';
 import { FoodDiningRestaurant } from '../models/diningRestaurant.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
+import { FoodTableSession } from '../../dineIn/models/tableSession.model.js';
 
 const slugify = (value) =>
     String(value || '')
@@ -273,7 +274,7 @@ export async function deleteDiningCategory(id) {
 }
 
 export async function listDiningRestaurantsAdmin() {
-    const [restaurants, diningDocs, categories] = await Promise.all([
+    const [restaurants, diningDocs, categories, paidSessionAgg, activeSessionAgg] = await Promise.all([
         FoodRestaurant.find({})
             .sort({ createdAt: -1 })
             .select('restaurantName ownerName ownerPhone profileImage coverImages menuImages location area city status rating pureVegRestaurant diningSettings')
@@ -281,15 +282,57 @@ export async function listDiningRestaurantsAdmin() {
         FoodDiningRestaurant.find({})
             .select('restaurantId categoryIds primaryCategoryId isEnabled maxGuests pureVegRestaurant')
             .lean(),
-        FoodDiningCategory.find({}).select('name slug imageUrl').lean()
+        FoodDiningCategory.find({}).select('name slug imageUrl').lean(),
+        FoodTableSession.aggregate([
+            { $match: { status: 'completed', isPaid: true } },
+            {
+                $project: {
+                    restaurantId: 1,
+                    amount: {
+                        $ifNull: ['$billingSnapshot.summary.totalAmount', '$totalAmount']
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '$restaurantId',
+                    totalOrders: { $sum: 1 },
+                    totalRevenue: { $sum: { $ifNull: ['$amount', 0] } }
+                }
+            }
+        ]),
+        FoodTableSession.aggregate([
+            { $match: { status: { $in: ['active', 'bill_requested'] } } },
+            { $group: { _id: '$restaurantId', activeSessions: { $sum: 1 } } }
+        ])
     ]);
 
     const categoriesById = new Map(categories.map((category) => [String(category._id), category]));
     const diningByRestaurantId = new Map(diningDocs.map((doc) => [String(doc.restaurantId), doc]));
-
-    const items = restaurants.map((restaurant) =>
-        mapDiningRestaurant(restaurant, diningByRestaurantId.get(String(restaurant._id)), categoriesById)
+    const paidByRestaurantId = new Map(
+        paidSessionAgg.map((row) => [String(row._id), {
+            totalOrders: Number(row?.totalOrders || 0),
+            totalRevenue: Number(row?.totalRevenue || 0)
+        }])
     );
+    const activeByRestaurantId = new Map(
+        activeSessionAgg.map((row) => [String(row._id), Number(row?.activeSessions || 0)])
+    );
+
+    const items = restaurants.map((restaurant) => {
+        const restaurantId = String(restaurant._id);
+        const mapped = mapDiningRestaurant(restaurant, diningByRestaurantId.get(restaurantId), categoriesById);
+        const paid = paidByRestaurantId.get(restaurantId) || { totalOrders: 0, totalRevenue: 0 };
+        const activeSessions = activeByRestaurantId.get(restaurantId) || 0;
+        return {
+            ...mapped,
+            diningStats: {
+                totalOrders: paid.totalOrders,
+                totalRevenue: Number(paid.totalRevenue || 0),
+                activeSessions,
+            },
+        };
+    });
 
     return { restaurants: items };
 }
