@@ -97,6 +97,146 @@ const persistSelectedLocation = (locationData) => {
   }
 }
 
+const normalizeAddressPart = (value) => String(value || "").trim()
+
+const dedupeAddressParts = (parts = []) =>
+  Array.from(
+    new Set(
+      parts
+        .map((part) => normalizeAddressPart(part))
+        .filter(Boolean),
+    ),
+  )
+
+const buildPrimaryAddressFromParts = (addr = {}, formattedAddress = "") => {
+  const city = normalizeAddressPart(
+    addr.city || addr.town || addr.village || addr.municipality || addr.county,
+  )
+  const state = normalizeAddressPart(addr.state)
+  const postcode = normalizeAddressPart(addr.postcode || addr.postalCode || addr.zipCode)
+  const country = normalizeAddressPart(addr.country)
+
+  const genericParts = new Set(
+    [city, state, postcode, country, "india"]
+      .map((part) => part.toLowerCase())
+      .filter(Boolean),
+  )
+
+  const houseRoad = [addr.house_number, addr.road].filter(Boolean).join(" ").trim()
+  const priorityParts = dedupeAddressParts([
+    addr.amenity,
+    addr.shop,
+    addr.building,
+    addr.office,
+    addr.house_name,
+    addr.premise,
+    houseRoad,
+    addr.road,
+    addr.suburb,
+    addr.neighbourhood,
+    addr.residential,
+    addr.city_district,
+    addr.quarter,
+    addr.hamlet,
+  ]).filter((part) => !genericParts.has(part.toLowerCase()))
+
+  const formattedParts = dedupeAddressParts(
+    String(formattedAddress || "")
+      .split(",")
+      .map((part) => part.trim()),
+  ).filter((part) => {
+    const normalized = part.toLowerCase()
+    return (
+      !genericParts.has(normalized) &&
+      !/^\d{5,6}$/.test(part) &&
+      normalized !== "india"
+    )
+  })
+
+  const combined = dedupeAddressParts([...priorityParts, ...formattedParts])
+  return combined.slice(0, 3).join(", ") || formattedParts[0] || priorityParts[0] || ""
+}
+
+const extractGoogleAddressComponent = (components = [], types = []) => {
+  const match = components.find((component) =>
+    types.every((type) => component.types?.includes(type)),
+  )
+  return normalizeAddressPart(match?.long_name || match?.short_name)
+}
+
+const buildLocationFromGoogleResult = (result, latitude, longitude) => {
+  const components = Array.isArray(result?.address_components) ? result.address_components : []
+  const streetNumber = extractGoogleAddressComponent(components, ["street_number"])
+  const road =
+    extractGoogleAddressComponent(components, ["route"]) ||
+    extractGoogleAddressComponent(components, ["premise"])
+  const suburb =
+    extractGoogleAddressComponent(components, ["sublocality_level_1"]) ||
+    extractGoogleAddressComponent(components, ["sublocality"]) ||
+    extractGoogleAddressComponent(components, ["neighborhood"]) ||
+    extractGoogleAddressComponent(components, ["locality"])
+  const city =
+    extractGoogleAddressComponent(components, ["locality"]) ||
+    extractGoogleAddressComponent(components, ["administrative_area_level_3"]) ||
+    extractGoogleAddressComponent(components, ["administrative_area_level_2"])
+  const state = extractGoogleAddressComponent(components, ["administrative_area_level_1"])
+  const postalCode = extractGoogleAddressComponent(components, ["postal_code"])
+  const country = extractGoogleAddressComponent(components, ["country"])
+  const formattedAddress = normalizeAddressPart(result?.formatted_address)
+  const street = buildPrimaryAddressFromParts(
+    {
+      house_number: streetNumber,
+      road,
+      suburb,
+      neighbourhood: suburb,
+      city,
+      state,
+      postcode: postalCode,
+      country,
+      premise: extractGoogleAddressComponent(components, ["premise"]),
+      building: extractGoogleAddressComponent(components, ["establishment"]),
+    },
+    formattedAddress,
+  )
+
+  return {
+    latitude,
+    longitude,
+    street,
+    streetNumber,
+    area: suburb,
+    city,
+    state,
+    postalCode,
+    zipCode: postalCode,
+    country,
+    address: street || formattedAddress,
+    formattedAddress: formattedAddress || street,
+  }
+}
+
+const countAddressSegments = (value) =>
+  String(value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean).length
+
+const chooseBetterResolvedLocation = (currentValue, nextValue) => {
+  if (!nextValue) return currentValue
+  if (!currentValue) return nextValue
+
+  const currentScore =
+    countAddressSegments(currentValue.formattedAddress) +
+    (normalizeAddressPart(currentValue.street) ? 2 : 0) +
+    (normalizeAddressPart(currentValue.streetNumber) ? 1 : 0)
+  const nextScore =
+    countAddressSegments(nextValue.formattedAddress) +
+    (normalizeAddressPart(nextValue.street) ? 2 : 0) +
+    (normalizeAddressPart(nextValue.streetNumber) ? 1 : 0)
+
+  return nextScore >= currentScore ? nextValue : currentValue
+}
+
 export default function AddressSelectorPage() {
   const navigate = useNavigate()
   const goBack = useAppBackNavigation()
@@ -131,6 +271,9 @@ export default function AddressSelectorPage() {
   const [baseMapHeight, setBaseMapHeight] = useState(320)
   const formBodyRef = useRef(null)
   const manualFieldRefs = useRef({})
+  const reverseGeocodeRequestIdRef = useRef(0)
+  const googleMapsApiRef = useRef(null)
+  const skipIdleReverseGeocodeRef = useRef(false)
   
   const ENABLE_LOCATION_REVERSE_GEOCODE = import.meta.env.VITE_ENABLE_LOCATION_REVERSE_GEOCODE !== "false"
   const ENABLE_NOMINATIM_SEARCH = import.meta.env.VITE_ENABLE_NOMINATIM_SEARCH !== "false"
@@ -225,10 +368,17 @@ export default function AddressSelectorPage() {
       try {
         const loader = new Loader({ apiKey: GOOGLE_MAPS_API_KEY, version: "weekly" })
         const google = await loader.load()
+        googleMapsApiRef.current = google
         if (!isMounted || !mapContainerRef.current) return
 
-        const initialPos = { lat: mapPosition[0], lng: mapPosition[1] }
-        
+        const initialLat = Number(location?.latitude)
+        const initialLng = Number(location?.longitude)
+        const initialPos = {
+          lat: Number.isFinite(initialLat) ? initialLat : mapPosition[0],
+          lng: Number.isFinite(initialLng) ? initialLng : mapPosition[1],
+        }
+        skipIdleReverseGeocodeRef.current = true
+         
         const map = new google.maps.Map(mapContainerRef.current, {
           center: initialPos,
           zoom: 16,
@@ -244,6 +394,10 @@ export default function AddressSelectorPage() {
 
         // Update coordinates on map idle (center of the map is the chosen location)
         map.addListener("idle", () => {
+          if (skipIdleReverseGeocodeRef.current) {
+            skipIdleReverseGeocodeRef.current = false
+            return
+          }
           const center = map.getCenter()
           const lat = center.lat()
           const lng = center.lng()
@@ -259,22 +413,146 @@ export default function AddressSelectorPage() {
     }
     initializeGoogleMap()
     return () => { isMounted = false }
-  }, [showAddressForm, GOOGLE_MAPS_API_KEY])
+  }, [showAddressForm, GOOGLE_MAPS_API_KEY, location?.latitude, location?.longitude])
+
+  useEffect(() => {
+    if (!showAddressForm || !location?.latitude || !location?.longitude) return
+    reverseGeocodeRequestIdRef.current += 1
+    setMapPosition([location.latitude, location.longitude])
+    skipIdleReverseGeocodeRef.current = true
+    setCurrentAddress(location.formattedAddress || location.address || "")
+    setAddressFormData((prev) => ({
+      ...prev,
+      street:
+        buildPrimaryAddressFromParts(
+          {
+            house_number: location.streetNumber,
+            road: location.street,
+            suburb: location.area,
+            neighbourhood: location.area,
+            city: location.city,
+            state: location.state,
+            postcode: location.postalCode || location.zipCode,
+          },
+          location.formattedAddress || location.address || "",
+        ) || prev.street,
+      city: normalizeAddressPart(location.city) || prev.city,
+      state: normalizeAddressPart(location.state) || prev.state,
+      zipCode: normalizeAddressPart(location.postalCode || location.zipCode) || prev.zipCode,
+    }))
+    if (googleMapRef.current) {
+      googleMapRef.current.setCenter({ lat: location.latitude, lng: location.longitude })
+      googleMapRef.current.setZoom(17)
+    }
+  }, [showAddressForm, location])
+
+  const applyResolvedLocationToForm = useCallback((resolvedLocation) => {
+    if (!resolvedLocation) return
+    setCurrentAddress(resolvedLocation.formattedAddress || resolvedLocation.address || "")
+    setAddressFormData((prev) => ({
+      ...prev,
+      street:
+        buildPrimaryAddressFromParts(
+          {
+            house_number: resolvedLocation.streetNumber,
+            road: resolvedLocation.street,
+            suburb: resolvedLocation.area,
+            neighbourhood: resolvedLocation.area,
+            city: resolvedLocation.city,
+            state: resolvedLocation.state,
+            postcode: resolvedLocation.postalCode || resolvedLocation.zipCode,
+            country: resolvedLocation.country,
+          },
+          resolvedLocation.formattedAddress || resolvedLocation.address || "",
+        ) || prev.street,
+      city: normalizeAddressPart(resolvedLocation.city) || prev.city,
+      state: normalizeAddressPart(resolvedLocation.state) || prev.state,
+      zipCode:
+        normalizeAddressPart(resolvedLocation.postalCode || resolvedLocation.zipCode) || prev.zipCode,
+    }))
+  }, [])
+
+  const reverseGeocodeCoordinate = useCallback(async (lat, lng, baseLocation = null) => {
+    let bestLocation = baseLocation
+
+    const google = googleMapsApiRef.current
+    if (google?.maps?.Geocoder) {
+      try {
+        const geocoder = new google.maps.Geocoder()
+        const response = await geocoder.geocode({ location: { lat, lng } })
+        const googleResult = Array.isArray(response?.results) ? response.results[0] : null
+        if (googleResult) {
+          bestLocation = chooseBetterResolvedLocation(
+            bestLocation,
+            buildLocationFromGoogleResult(googleResult, lat, lng),
+          )
+        }
+      } catch (error) {
+        debugWarn("Google reverse geocode failed, falling back:", error)
+      }
+    }
+
+    if (bestLocation?.formattedAddress && countAddressSegments(bestLocation.formattedAddress) >= 4) {
+      return bestLocation
+    }
+
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`
+      const response = await fetch(url, {
+        headers: {
+          "Accept-Language": "en",
+          "User-Agent": "AppZeto-Food-App",
+        },
+      })
+      const json = await response.json()
+      if (json?.address) {
+        const addr = json.address
+        const fallbackLocation = {
+          latitude: lat,
+          longitude: lng,
+          street: buildPrimaryAddressFromParts(addr, json.display_name),
+          streetNumber: normalizeAddressPart(addr.house_number),
+          area: normalizeAddressPart(addr.suburb || addr.neighbourhood || addr.residential),
+          city: normalizeAddressPart(
+            addr.city || addr.town || addr.village || addr.municipality || addr.county,
+          ),
+          state: normalizeAddressPart(addr.state),
+          postalCode: normalizeAddressPart(addr.postcode),
+          zipCode: normalizeAddressPart(addr.postcode),
+          country: normalizeAddressPart(addr.country),
+          address: buildPrimaryAddressFromParts(addr, json.display_name) || normalizeAddressPart(json.display_name),
+          formattedAddress: normalizeAddressPart(json.display_name),
+        }
+        bestLocation = chooseBetterResolvedLocation(bestLocation, fallbackLocation)
+      }
+    } catch (error) {
+      debugError("Reverse geocode error:", error)
+    }
+
+    return bestLocation
+  }, [])
 
   const handleUseCurrentLocation = async () => {
     try {
       toast.loading("Getting location...", { id: "geo" })
       const loc = await requestLocation(true, true)
       if (loc?.latitude) {
+        reverseGeocodeRequestIdRef.current += 1
         const newPos = [loc.latitude, loc.longitude]
         setMapPosition(newPos)
-        persistSelectedLocation(loc)
-        
+        applyResolvedLocationToForm(loc)
+         
         // Explicitly pan the map to center the user location
         if (googleMapRef.current) {
+          skipIdleReverseGeocodeRef.current = true
           googleMapRef.current.panTo({ lat: loc.latitude, lng: loc.longitude })
           googleMapRef.current.setZoom(17)
         }
+
+        const resolvedLocation = await reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
+        const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
+        applyResolvedLocationToForm(finalLocation)
+        persistSelectedLocation(finalLocation)
         
         try { localStorage.setItem("deliveryAddressMode", "current") } catch {}
         toast.success("Location updated", { id: "geo" })
@@ -348,43 +626,16 @@ export default function AddressSelectorPage() {
 
   const handleMapMoveEnd = async (lat, lng) => {
     if (!ENABLE_LOCATION_REVERSE_GEOCODE) return
+    const requestId = ++reverseGeocodeRequestIdRef.current
     try {
-      // Use Nominatim for free reverse geocoding on the client side
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
-      const response = await fetch(url, { 
-        headers: { 
-          "Accept-Language": "en",
-          "User-Agent": "AppZeto-Food-App" 
-        } 
-      })
-      const json = await response.json()
+      const json = await reverseGeocodeCoordinate(lat, lng)
+      if (requestId !== reverseGeocodeRequestIdRef.current) return
       
-      if (json && json.address) {
-        const addr = json.address
-        const formatted = json.display_name
-        
-        // Extract meaningful street/area info
-        const street = [
-          addr.road,
-          addr.suburb,
-          addr.neighbourhood,
-          addr.house_number
-        ].filter(Boolean).slice(0, 2).join(", ") || addr.amenity || addr.industrial || ""
-
-        const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || ""
-        const state = addr.state || ""
-        const postcode = addr.postcode || ""
-
-        setCurrentAddress(formatted)
-        setAddressFormData(prev => ({
-          ...prev,
-          street: street || formatted.split(",")[0] || prev.street,
-          city: city || prev.city,
-          state: state || prev.state,
-          zipCode: postcode || prev.zipCode,
-        }))
+      if (json) {
+        applyResolvedLocationToForm(json)
       }
     } catch (e) {
+      if (requestId !== reverseGeocodeRequestIdRef.current) return
       debugError("Reverse geocode error:", e)
     }
   }

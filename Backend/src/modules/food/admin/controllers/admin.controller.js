@@ -196,6 +196,23 @@ export async function getDiningOrders(req, res, next) {
     }
 }
 
+export async function deleteDiningOrder(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid dining order id' });
+        }
+        const data = await adminService.deleteDiningOrderAdmin(id);
+        res.status(200).json({
+            success: true,
+            message: 'Dining order deleted successfully',
+            data
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getDiningSessions(req, res, next) {
     try {
         const data = await adminService.getDiningSessionsAdmin(req.query || {});

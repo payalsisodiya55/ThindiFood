@@ -17,7 +17,10 @@ export default function ProtectedRoute({ children, requiredRole, loginPath = "/u
 
   // If not authenticated for this module, redirect to login
   if (!isAuthenticated) {
-    return <Navigate to={loginPath} state={{ from: location.pathname }} replace />;
+    const redirectTarget = `${location.pathname}${location.search || ""}${location.hash || ""}`;
+    const separator = loginPath.includes("?") ? "&" : "?";
+    const nextLoginPath = `${loginPath}${separator}redirect=${encodeURIComponent(redirectTarget)}`;
+    return <Navigate to={nextLoginPath} state={{ from: location.pathname }} replace />;
   }
 
   return children;

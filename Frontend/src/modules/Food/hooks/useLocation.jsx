@@ -5,7 +5,7 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
-// BigDataCloud reverse-geocode is expensive/noisy if many components mount `useLocation()`.
+// Reverse-geocode can get noisy if many components mount `useLocation()`.
 // This module-level guard dedupes concurrent calls + rate-limits starts across the whole app.
 const GLOBAL_GEOCODE_MIN_INTERVAL_MS = 60_000
 const GLOBAL_GEOCODE_REUSE_DISTANCE_METERS = 75
@@ -31,6 +31,67 @@ let globalReverseGeocodeLastSuccess = null
 // Default behavior: only resolve an address once on initial app load,
 // then rely on localStorage/DB. Live watching is enabled only via explicit user action.
 const AUTO_START_LIVE_WATCH = false
+
+const normalizeAddressPart = (value) => String(value || "").trim()
+
+const dedupeAddressParts = (parts = []) =>
+  Array.from(
+    new Set(
+      parts
+        .map((part) => normalizeAddressPart(part))
+        .filter(Boolean),
+    ),
+  )
+
+const buildStreetFromAddressParts = (address = {}, formattedAddress = "") => {
+  const city = normalizeAddressPart(
+    address.city || address.town || address.village || address.municipality || address.county,
+  )
+  const state = normalizeAddressPart(address.state || address.principalSubdivision)
+  const postcode = normalizeAddressPart(address.postcode || address.postalCode)
+  const country = normalizeAddressPart(address.country || address.countryName)
+
+  const genericParts = new Set(
+    [city, state, postcode, country, "india"]
+      .map((part) => part.toLowerCase())
+      .filter(Boolean),
+  )
+
+  const houseRoad = [address.house_number, address.road].filter(Boolean).join(" ").trim()
+  const priorityParts = dedupeAddressParts([
+    address.amenity,
+    address.shop,
+    address.building,
+    address.office,
+    address.house_name,
+    address.premise,
+    houseRoad,
+    address.road,
+    address.suburb,
+    address.neighbourhood,
+    address.residential,
+    address.city_district,
+    address.quarter,
+    address.hamlet,
+    address.subLocality,
+  ]).filter((part) => !genericParts.has(part.toLowerCase()))
+
+  const formattedParts = dedupeAddressParts(
+    String(formattedAddress || "")
+      .split(",")
+      .map((part) => part.trim()),
+  ).filter((part) => {
+    const normalized = part.toLowerCase()
+    return (
+      !genericParts.has(normalized) &&
+      !/^\d{5,6}$/.test(part) &&
+      normalized !== "india"
+    )
+  })
+
+  const combined = dedupeAddressParts([...priorityParts, ...formattedParts])
+  return combined.slice(0, 3).join(", ") || formattedParts[0] || priorityParts[0] || ""
+}
 
 const reverseGeocodeDirect = async (latitude, longitude) => {
   const now = Date.now()
@@ -73,8 +134,47 @@ const reverseGeocodeDirect = async (latitude, longitude) => {
 
   const run = (async () => {
     try {
+      try {
+        const nominatimController = new AbortController()
+        setTimeout(() => nominatimController.abort(), 4500)
+
+        const nominatimRes = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&addressdetails=1`,
+          {
+            signal: nominatimController.signal,
+            headers: {
+              "Accept-Language": "en",
+            },
+          },
+        )
+
+        const nominatimData = await nominatimRes.json()
+        if (nominatimData?.address) {
+          const addr = nominatimData.address
+          const formattedAddress = normalizeAddressPart(nominatimData.display_name)
+          const street = buildStreetFromAddressParts(addr, formattedAddress)
+          const value = {
+            city: addr.city || addr.town || addr.village || addr.municipality || addr.county || "Unknown City",
+            state: addr.state || "",
+            country: addr.country || "",
+            area: addr.suburb || addr.neighbourhood || addr.residential || "",
+            street,
+            streetNumber: normalizeAddressPart(addr.house_number),
+            postalCode: normalizeAddressPart(addr.postcode),
+            address: street || formattedAddress || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+            formattedAddress:
+              formattedAddress || street || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+          }
+
+          globalReverseGeocodeLastSuccess = value
+          return value
+        }
+      } catch {
+        // Fall back to BigDataCloud below.
+      }
+
       const controller = new AbortController()
-      setTimeout(() => controller.abort(), 3000) // Faster timeout
+      setTimeout(() => controller.abort(), 3000)
 
       const res = await fetch(
         `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`,
@@ -82,18 +182,18 @@ const reverseGeocodeDirect = async (latitude, longitude) => {
       )
 
       const data = await res.json()
-
+      const formattedAddress =
+        data.formattedAddress || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
       const value = {
         city: data.city || data.locality || "Unknown City",
         state: data.principalSubdivision || "",
         country: data.countryName || "",
         area: data.subLocality || "",
-        address:
-          data.formattedAddress ||
-          `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-        formattedAddress:
-          data.formattedAddress ||
-          `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        street: buildStreetFromAddressParts(data, formattedAddress),
+        streetNumber: "",
+        postalCode: normalizeAddressPart(data.postcode),
+        address: formattedAddress,
+        formattedAddress,
       }
 
       globalReverseGeocodeLastSuccess = value
@@ -979,7 +1079,7 @@ export function useLocation() {
               getPositionWithRetry({
                 enableHighAccuracy: false,
                 timeout: 5000,  // 5 seconds for lower accuracy (network-based is faster)
-                maximumAge: 300000 // Allow 5 minute old cached location for instant response
+                maximumAge: forceFresh ? 0 : 300000 // Never allow stale cached coords during a force-fresh request
               }, 1).then(resolve).catch(reject)
               return
             }
@@ -1012,6 +1112,14 @@ export function useLocation() {
               }
 
               if (fallback) {
+                if (forceFresh) {
+                  const freshError = new Error("Unable to get a fresh current location. Cached location was ignored.")
+                  if (showLoading) setLoading(false)
+                  setError(freshError.message)
+                  setPermissionGranted(false)
+                  reject(freshError)
+                  return
+                }
                 debugLog("? Using fallback location:", fallback)
                 setLocation(fallback)
                 // Don't set error for timeout when we have fallback

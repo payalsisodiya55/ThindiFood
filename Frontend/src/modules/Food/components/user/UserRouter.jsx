@@ -147,8 +147,22 @@ export default function UserRouter() {
           {/* Cart - Now Public */}
           <Route path="cart" element={<Cart />} />
           <Route path="cart/select-address" element={<SelectAddress />} />
-          <Route path="address-selector" element={<AddressSelectorPage />} />
-          <Route path="cart/address-selector" element={<AddressSelectorPage />} />
+          <Route
+            path="address-selector"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <AddressSelectorPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="cart/address-selector"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <AddressSelectorPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Orders - Protected (require user auth) */}
           <Route

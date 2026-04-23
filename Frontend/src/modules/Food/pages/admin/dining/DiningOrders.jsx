@@ -15,7 +15,8 @@ import {
   User,
   Hash,
   Store,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from "lucide-react"
 import { Card } from "@food/components/ui/card"
 import { Badge } from "@food/components/ui/badge"
@@ -37,6 +38,7 @@ export default function DiningOrders() {
   const [loading, setLoading] = useState(true)
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState("")
   const [filters, setFilters] = useState({
     fromDate: "",
     toDate: "",
@@ -114,6 +116,32 @@ export default function DiningOrders() {
   const openOrderDetails = (row) => {
     setSelectedOrder(row)
     setIsDetailsOpen(true)
+  }
+
+  const handleDeleteOrder = async (row) => {
+    const targetId = String(row?.id || "")
+    if (!targetId) return
+
+    const confirmed = window.confirm(
+      `Delete ${row?.orderId || "this dining order"}?\n\nThis will permanently remove related session/order records from database.`
+    )
+    if (!confirmed) return
+
+    setDeletingId(targetId)
+    try {
+      await adminAPI.deleteDiningOrder(targetId)
+      setRows((prev) => prev.filter((entry) => String(entry?.id || "") !== targetId))
+      if (String(selectedOrder?.id || "") === targetId) {
+        setSelectedOrder(null)
+        setIsDetailsOpen(false)
+      }
+    } catch (err) {
+      console.error("Error deleting dining order:", err)
+      const message = err?.response?.data?.message || "Failed to delete dining order"
+      window.alert(message)
+    } finally {
+      setDeletingId("")
+    }
   }
 
   return (
@@ -379,7 +407,7 @@ export default function DiningOrders() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex justify-center">
+                        <div className="flex justify-center gap-2">
                           <button
                             type="button"
                             onClick={() => openOrderDetails(row)}
@@ -387,6 +415,19 @@ export default function DiningOrders() {
                             title="View Order Details"
                           >
                             <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOrder(row)}
+                            disabled={deletingId === String(row?.id || "")}
+                            className="w-8 h-8 rounded-md border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                            title="Delete Dining Order"
+                          >
+                            {deletingId === String(row?.id || "") ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </td>

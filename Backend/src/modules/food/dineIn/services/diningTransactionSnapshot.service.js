@@ -22,6 +22,11 @@ const mapSessionStatus = (session) => {
     return status || 'paid';
 };
 
+const isSessionPaidForSnapshot = (session = {}) => {
+    if (session?.isPaid === true) return true;
+    return String(session?.paymentStatus || '').trim().toUpperCase() === 'PAID';
+};
+
 const buildReadableOrderId = (sessionId) => `DIN-${String(sessionId || '').slice(-8).toUpperCase()}`;
 
 const computeFinancials = (session) => {
@@ -34,6 +39,9 @@ const computeFinancials = (session) => {
 
     const subtotal = toMoney(summary?.subtotal ?? session?.subtotal ?? 0);
     const discount = toMoney(summary?.offerDiscount ?? 0);
+    const platformCouponDiscount = toMoney(pricing?.platformOverallOfferDiscount ?? 0);
+    const restaurantOfferDiscount = toMoney(pricing?.restaurantOverallOfferDiscount ?? 0);
+    const restaurantCouponDiscount = 0;
     const finalAmount = toMoney(summary?.totalAmount ?? session?.totalAmount ?? 0);
     const commission = toMoney(
         pricing?.restaurantCommission ??
@@ -45,14 +53,24 @@ const computeFinancials = (session) => {
     const platformFee = toMoney(summary?.platformFee ?? adminBreakdown?.platformFee ?? diningBreakdown?.platformFee ?? 0);
     const restaurantEarning = toMoney(pricing?.restaurantPayout ?? Math.max(0, subtotal - commission));
     const paymentType = normalizePaymentType(session);
+    const isSettlementApplied = walletSettlement?.settlementApplied === true || walletSettlement?.applied === true;
+    const codRecoverable = toMoney(
+        walletSettlement?.adminChargesRecoverable ??
+        adminBreakdown?.total ??
+        diningBreakdown?.total ??
+        (commission + gst + platformFee)
+    );
     const codDue = paymentType === 'cod'
-        ? toMoney(walletSettlement?.adminChargesRecoverable ?? adminBreakdown?.total ?? diningBreakdown?.total ?? (commission + gst + platformFee))
+        ? (isSettlementApplied ? 0 : codRecoverable)
         : 0;
     const adminEarning = toMoney(commission + gst + platformFee);
 
     return {
         subtotal,
         discount,
+        platformCouponDiscount,
+        restaurantCouponDiscount,
+        restaurantOfferDiscount,
         finalAmount,
         commission,
         gst,
@@ -98,7 +116,7 @@ const fetchSessionWithRefs = async (sessionOrId) => {
 export async function upsertDiningTransactionSnapshot(sessionOrId) {
     const session = await fetchSessionWithRefs(sessionOrId);
     if (!session?._id) return null;
-    if (String(session?.status || '').toLowerCase() !== 'completed' || session?.isPaid !== true) {
+    if (String(session?.status || '').toLowerCase() !== 'completed' || !isSessionPaidForSnapshot(session)) {
         return null;
     }
 
@@ -141,7 +159,7 @@ export async function upsertDiningTransactionSnapshot(sessionOrId) {
 export async function backfillDiningTransactionSnapshots(filter = {}) {
     const query = {
         status: 'completed',
-        isPaid: true,
+        $or: [{ isPaid: true }, { paymentStatus: 'PAID' }],
     };
     if (filter?.restaurantId && mongoose.Types.ObjectId.isValid(String(filter.restaurantId))) {
         query.restaurantId = new mongoose.Types.ObjectId(String(filter.restaurantId));

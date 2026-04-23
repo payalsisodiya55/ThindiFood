@@ -229,6 +229,7 @@ router.delete('/dining/categories/:id', diningAdminController.deleteDiningCatego
 router.get('/dining/restaurants', diningAdminController.getDiningRestaurants);
 router.patch('/dining/restaurants/:restaurantId', diningAdminController.updateDiningRestaurant);
 router.get('/dining/orders', adminController.getDiningOrders);
+router.delete('/dining/orders/:id', adminController.deleteDiningOrder);
 router.get('/dining/sessions', adminController.getDiningSessions);
 router.get('/dining/bookings', adminController.getDiningBookings);
 router.get('/dining/reports', adminController.getDiningReports);

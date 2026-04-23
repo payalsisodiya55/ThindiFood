@@ -600,6 +600,10 @@ export const adminAPI = {
       params: { page: 1, limit: 50, ...params },
       contextModule: "admin",
     }),
+  deleteDiningOrder: (id) =>
+    apiClient.delete(`/food/admin/dining/orders/${String(id)}`, {
+      contextModule: "admin",
+    }),
   getDiningSessions: (params = {}) =>
     apiClient.get("/food/admin/dining/sessions", {
       params: { page: 1, limit: 50, ...params },
