@@ -94,6 +94,21 @@ const formatOrderAddress = (address) => {
   return orderedParts.join(", ") || "Not available"
 }
 
+const normalizeDeliveryTypeFilterValue = (value) => {
+  const normalized = String(value || "").trim().toLowerCase()
+  if (!normalized) return ""
+  if (normalized === "takeaway" || normalized === "take away" || normalized.includes("pickup")) {
+    return "take away"
+  }
+  if (normalized === "home delivery" || normalized === "delivery") {
+    return "home delivery"
+  }
+  if (normalized === "dine in" || normalized === "dine-in") {
+    return "dine in"
+  }
+  return normalized
+}
+
 const blobToDataUrl = (blob) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -198,7 +213,9 @@ export function useOrdersManagement(orders, statusKey, title) {
 
     if (filters.deliveryType) {
       result = result.filter(
-        (order) => String(order.deliveryType || "").toLowerCase() === filters.deliveryType.toLowerCase(),
+        (order) =>
+          normalizeDeliveryTypeFilterValue(order.deliveryType) ===
+          normalizeDeliveryTypeFilterValue(filters.deliveryType),
       )
     }
 

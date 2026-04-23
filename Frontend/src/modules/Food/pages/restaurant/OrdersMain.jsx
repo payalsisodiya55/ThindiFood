@@ -1115,6 +1115,21 @@ export default function OrdersMain() {
   const isMutedRef = useRef(isMuted);
   const newOrderRef = useRef(null);
 
+  const isCancelledStatus = (value) =>
+    String(value || "")
+      .trim()
+      .toLowerCase()
+      .includes("cancelled");
+
+  const getOrderIdentityKey = (orderLike) =>
+    String(
+      orderLike?.orderMongoId ||
+        orderLike?.orderId ||
+        orderLike?._id ||
+        orderLike?.id ||
+        "",
+    ).trim();
+
   const markOrderAsShown = (orderLike) => {
         if (orderLike?.isDineIn && orderLike?.orderMongoId) { return shownOrdersRef.current.has(orderLike.orderMongoId); }
 
@@ -1170,6 +1185,7 @@ export default function OrdersMain() {
   // Restaurant notifications hook for real-time orders + table bookings
   const { 
     newOrder, 
+    latestOrderStatusUpdate,
     clearNewOrder, 
     newBooking, 
     clearNewBooking, 
@@ -1333,6 +1349,10 @@ export default function OrdersMain() {
     if (newOrder) {
       debugLog("?? New order received via Socket.IO:", newOrder);
 
+      if (isCancelledStatus(newOrder?.orderStatus || newOrder?.status)) {
+        return;
+      }
+
       const scheduledAt = newOrder.scheduledAt
         ? new Date(newOrder.scheduledAt).getTime()
         : null;
@@ -1356,6 +1376,50 @@ export default function OrdersMain() {
       }
     }
   }, [newOrder]);
+
+  useEffect(() => {
+    if (!latestOrderStatusUpdate) return;
+
+    const isUserCancelled =
+      latestOrderStatusUpdate.cancelledBy === "user" &&
+      isCancelledStatus(latestOrderStatusUpdate.orderStatus);
+
+    if (!isUserCancelled) return;
+
+    const activePopupOrder = popupOrder || newOrder;
+    const activePopupKey = getOrderIdentityKey(activePopupOrder);
+    const updatedOrderKey = getOrderIdentityKey(latestOrderStatusUpdate);
+
+    if (!activePopupKey || !updatedOrderKey || activePopupKey !== updatedOrderKey) {
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    setShowRejectPopup(false);
+    setShowNewOrderPopup(false);
+    setPopupOrder(null);
+    clearNewOrder();
+    setCountdown(240);
+    setPrepTime(11);
+    setAcceptSwipeProgress(0);
+    setIsAcceptingOrder(false);
+
+    const trimmedReason = String(
+      latestOrderStatusUpdate.cancellationReason || "",
+    ).trim();
+
+    toast.info(
+      trimmedReason
+        ? `Order cancelled by user. Reason: ${trimmedReason}`
+        : "Order cancelled by user.",
+    );
+
+    requestOrdersRefresh();
+  }, [latestOrderStatusUpdate, popupOrder, newOrder, clearNewOrder]);
 
   const getBookingKey = (bookingLike) =>
     String(bookingLike?._id || bookingLike?.id || bookingLike?.bookingId || "")

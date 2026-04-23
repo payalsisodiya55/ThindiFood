@@ -74,6 +74,12 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
   return false;
 }
 
+const isCancelledOrderStatus = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .includes("cancelled");
+
 
 /**
  * Hook for restaurant to receive real-time order notifications with sound
@@ -82,6 +88,7 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
 export const useRestaurantNotifications = () => {
   const socketRef = useRef(null);
   const [newOrder, setNewOrder] = useState(null);
+  const [latestOrderStatusUpdate, setLatestOrderStatusUpdate] = useState(null);
   const [newPaymentRequest, setNewPaymentRequest] = useState(null);
   const [newBooking, setNewBooking] = useState(null);
   const [newClosedSession, setNewClosedSession] = useState(null);
@@ -849,8 +856,31 @@ export const useRestaurantNotifications = () => {
 
     // Listen for order status updates
     socketRef.current.on('order_status_update', (data) => {
-      debugLog('?? Order status update:', data);
-      // You can handle status updates here if needed
+      const normalizedData = {
+        orderId: data?.orderId || data?.order_id,
+        orderMongoId: data?.orderMongoId || data?.order_mongo_id,
+        orderStatus: data?.orderStatus || data?.status,
+        cancelledBy: data?.cancelledBy || null,
+        cancellationReason: data?.cancellationReason || "",
+        cancelledAt: data?.cancelledAt || null,
+        ...data,
+      };
+
+      debugLog('?? Order status update:', normalizedData);
+      setLatestOrderStatusUpdate(normalizedData);
+
+      const activeOrderKey = getOrderAlertKey(activeOrderRef.current);
+      const updateOrderKey = getOrderAlertKey(normalizedData);
+      const isSameActiveOrder =
+        activeOrderKey &&
+        updateOrderKey &&
+        activeOrderKey === updateOrderKey;
+
+      if (isSameActiveOrder && isCancelledOrderStatus(normalizedData?.orderStatus)) {
+        stopAlertLoop();
+        activeOrderRef.current = null;
+        setNewOrder(null);
+      }
     });
 
     socketRef.current.on('dine_in_session_closed', (payload) => {
@@ -1024,6 +1054,7 @@ export const useRestaurantNotifications = () => {
 
   return {
     newOrder,
+    latestOrderStatusUpdate,
     clearNewOrder,
     newPaymentRequest,
     clearNewPaymentRequest,

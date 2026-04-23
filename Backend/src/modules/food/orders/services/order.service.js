@@ -163,6 +163,48 @@ function pushStatusHistory(order, { byRole, byId, from, to, note = "" }) {
   });
 }
 
+const USER_CANCEL_WINDOW_MS = 60 * 1000;
+const USER_CANCEL_WINDOW_STATUSES = new Set([
+  "confirmed",
+  "preparing",
+  "ready_for_pickup",
+  "picked_up",
+]);
+
+function getUserCancelWindowAnchor(order) {
+  if (!order) return null;
+
+  const firstAcceptedStatus = Array.isArray(order.statusHistory)
+    ? order.statusHistory.find((entry) =>
+        USER_CANCEL_WINDOW_STATUSES.has(String(entry?.to || "").toLowerCase())
+      )
+    : null;
+
+  const candidate =
+    firstAcceptedStatus?.at ||
+    order?.tracking?.confirmed?.timestamp ||
+    order?.tracking?.preparing?.timestamp ||
+    order?.updatedAt ||
+    order?.createdAt ||
+    null;
+
+  if (!candidate) return null;
+
+  const parsed = new Date(candidate).getTime();
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function canUserCancelOrder(order) {
+  const currentStatus = String(order?.orderStatus || "").toLowerCase();
+  if (currentStatus === "created") return true;
+  if (!USER_CANCEL_WINDOW_STATUSES.has(currentStatus)) return false;
+
+  const acceptedAtMs = getUserCancelWindowAnchor(order);
+  if (!acceptedAtMs) return false;
+
+  return Date.now() - acceptedAtMs <= USER_CANCEL_WINDOW_MS;
+}
+
 function normalizeOrderForClient(orderDoc) {
   const order = orderDoc?.toObject ? orderDoc.toObject() : orderDoc || {};
   return {
@@ -1572,9 +1614,11 @@ export async function cancelOrder(orderId, userId, reason) {
   });
   if (!order) throw new NotFoundError("Order not found");
 
-  const allowed = ["created"];
-  if (!allowed.includes(order.orderStatus))
-    throw new ValidationError("Order cannot be cancelled");
+  if (!canUserCancelOrder(order)) {
+    throw new ValidationError(
+      "Order cannot be cancelled after the 1-minute confirmation window"
+    );
+  }
 
   const from = order.orderStatus;
   order.orderStatus = "cancelled_by_user";
@@ -1671,6 +1715,9 @@ export async function cancelOrder(orderId, userId, reason) {
         orderMongoId: order._id?.toString?.(),
         orderId: order.orderId,
         orderStatus: order.orderStatus,
+        cancelledBy: "user",
+        cancellationReason: reason || "",
+        cancelledAt: new Date().toISOString(),
         message: `Order #${order.orderId} has been cancelled successfully.${refundDetail}`
       };
       io.to(rooms.user(userId)).emit("order_status_update", payload);

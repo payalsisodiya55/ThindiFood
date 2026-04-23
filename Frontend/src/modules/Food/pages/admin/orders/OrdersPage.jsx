@@ -21,6 +21,36 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const normalizeAdminDeliveryType = (order = {}) => {
+  const rawDeliveryType = String(order.deliveryType || "").trim().toLowerCase()
+  const fulfillmentType = String(order.fulfillmentType || "").trim().toLowerCase()
+  const hasPickupWindow = Boolean(order.pickupAt)
+
+  if (
+    rawDeliveryType.includes("take") ||
+    rawDeliveryType.includes("pickup") ||
+    fulfillmentType === "takeaway" ||
+    hasPickupWindow
+  ) {
+    return "Take Away"
+  }
+
+  if (rawDeliveryType.includes("dine")) {
+    return "Dine In"
+  }
+
+  if (
+    rawDeliveryType.includes("home") ||
+    rawDeliveryType.includes("delivery") ||
+    fulfillmentType === "delivery"
+  ) {
+    return "Home Delivery"
+  }
+
+  const hasDeliveryAddress = Boolean(order.address || order.customerAddress || order.deliveryAddress)
+  return hasDeliveryAddress ? "Home Delivery" : "Take Away"
+}
+
 
 // Status configuration with titles, colors, and icons
 const statusConfig = {
@@ -521,7 +551,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         orderStatus: displayStatus,
         deliveryPartnerName,
         deliveryPartnerPhone,
-        deliveryType: order.deliveryType || "Home Delivery",
+        deliveryType: normalizeAdminDeliveryType(order),
         orderOtp: order.deliveryOtp,
         address: order.address || order.customerAddress || order.deliveryAddress,
         refundStatus: order.payment?.refund?.status || (order.payment?.status === 'refunded' ? 'processed' : null)
