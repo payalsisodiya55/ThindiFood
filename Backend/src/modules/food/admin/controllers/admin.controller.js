@@ -13,6 +13,7 @@ import { validateDeliveryCommissionRuleDto, validateOptionalStatusDto, validateR
 import { validateFeeSettingsUpsertDto } from '../validators/feeSettings.validator.js';
 import { validateDeliveryEmergencyHelpUpsertDto } from '../validators/deliveryEmergencyHelp.validator.js';
 import { validateReferralSettingsUpsertDto } from '../validators/referralSettings.validator.js';
+import { validateRefundPolicySettingsUpsertDto } from '../validators/refundPolicySettings.validator.js';
 
 // ----- Customers / Users -----
 export async function getCustomers(req, res, next) {
@@ -1227,6 +1228,29 @@ export async function createOrUpdateReferralSettings(req, res, next) {
     }
 }
 
+export async function getRefundPolicySettings(req, res, next) {
+    try {
+        const data = await adminService.getRefundPolicySettings();
+        res.status(200).json({ success: true, message: 'Refund policy settings fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function createOrUpdateRefundPolicySettings(req, res, next) {
+    try {
+        const dto = validateRefundPolicySettingsUpsertDto(req.body);
+        const refundPolicySettings = await adminService.upsertRefundPolicySettings(dto);
+        res.status(200).json({
+            success: true,
+            message: 'Refund policy settings saved successfully',
+            data: { refundPolicySettings }
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 // ----- Delivery Cash Limit (admin) -----
 export async function getDeliveryCashLimit(req, res, next) {
     try {
@@ -1588,18 +1612,16 @@ export async function processRefund(req, res, next) {
         if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
             return res.status(400).json({ success: false, message: 'Invalid order id' });
         }
-        
-        // This is a stub for the actual refund logic.
-        // We will assume adminService.processRefund exists and handles the refund.
-        const updated = await adminService.processRefund(orderId, refundAmount);
+
+        const updated = await adminService.processRefund(orderId, refundAmount, req.user?.userId || null);
         
         // Let's add the push notification here if we have access to the user ID
         // First we need to get the order to find the user ID
         const order = await mongoose.model('FoodOrder').findById(orderId).lean();
         
         if (order && order.userId) {
-            const { notifyOwnersSafely } = await import('../../notifications/firebase.service.js');
-            await notifyOwnersSafely(
+            const { sendNotificationToOwners } = await import('../../../../core/notifications/firebase.service.js');
+            await sendNotificationToOwners(
                 [{ ownerType: 'USER', ownerId: order.userId }],
                 {
                     title: 'Refund Processed! 💸',
@@ -1613,8 +1635,14 @@ export async function processRefund(req, res, next) {
                 }
             );
         }
-        
-        res.status(200).json({ success: true, message: 'Refund processed successfully', data: updated });
+
+        res.status(200).json({
+            success: true,
+            message: 'Refund processed successfully',
+            refundId: updated?.refundId || '',
+            status: updated?.status || 'processed',
+            data: updated
+        });
     } catch (error) {
         next(error);
     }

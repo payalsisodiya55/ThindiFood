@@ -22,6 +22,7 @@ import { FoodRefreshToken } from '../../../../core/refreshTokens/refreshToken.mo
 import { FoodDeliveryCashLimit } from '../models/deliveryCashLimit.model.js';
 import { FoodDeliveryEmergencyHelp } from '../models/deliveryEmergencyHelp.model.js';
 import { FoodReferralSettings } from '../models/referralSettings.model.js';
+import { FoodRefundPolicySettings } from '../models/refundPolicySettings.model.js';
 import { FoodReferralLog } from '../models/referralLog.model.js';
 import { FoodSafetyEmergencyReport } from '../models/safetyEmergencyReport.model.js';
 import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
@@ -41,6 +42,9 @@ import { FoodTableBooking } from '../../dineIn/models/tableBooking.model.js';
 import { FoodDiningTransaction } from '../../dineIn/models/diningTransaction.model.js';
 import { FoodRestaurantTable } from '../../dineIn/models/restaurantTable.model.js';
 import { backfillDiningTransactionSnapshots } from '../../dineIn/services/diningTransactionSnapshot.service.js';
+import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
+import { refundWalletBalance } from '../../user/services/userWallet.service.js';
+import * as foodTransactionService from '../../orders/services/foodTransaction.service.js';
 import {
     backfillLegacyCategoryWorkflow,
     categoryAllowsFoodType,
@@ -2843,6 +2847,47 @@ export async function upsertReferralSettings(body = {}) {
     return created.toObject();
 }
 
+// ----- Refund Policy Settings (admin) -----
+export async function getRefundPolicySettings() {
+    const doc = await FoodRefundPolicySettings.findOne({ isActive: true })
+        .sort({ createdAt: -1 })
+        .lean();
+
+    return {
+        refundPolicySettings: doc || {
+            cancelledByRestaurant: 'automatic',
+            cancelledByUser: 'manual',
+            isActive: true
+        }
+    };
+}
+
+export async function upsertRefundPolicySettings(body = {}) {
+    const existing = await FoodRefundPolicySettings.findOne({ isActive: true }).sort({ createdAt: -1 });
+
+    if (existing) {
+        if (body.cancelledByRestaurant !== undefined) {
+            existing.cancelledByRestaurant = body.cancelledByRestaurant;
+        }
+        if (body.cancelledByUser !== undefined) {
+            existing.cancelledByUser = body.cancelledByUser;
+        }
+        if (body.isActive !== undefined) {
+            existing.isActive = Boolean(body.isActive);
+        }
+        await existing.save();
+        return existing.toObject();
+    }
+
+    const created = await FoodRefundPolicySettings.create({
+        cancelledByRestaurant: body.cancelledByRestaurant || 'automatic',
+        cancelledByUser: body.cancelledByUser || 'manual',
+        isActive: body.isActive !== false
+    });
+
+    return created.toObject();
+}
+
 // ----- Safety / Emergency Reports (admin) -----
 export async function getSafetyEmergencyReports(query = {}) {
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 10, 1), 100);
@@ -5315,6 +5360,119 @@ export async function cancelEarningAddonHistory(historyId, reason) {
     }
 
     return doc.toObject();
+}
+
+export async function processRefund(orderId, refundAmount, adminId = null) {
+    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+        throw new ValidationError('Invalid order id');
+    }
+
+    const order = await FoodOrder.findById(orderId);
+    if (!order) {
+        throw new ValidationError('Order not found');
+    }
+
+    const cancellationStatuses = ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
+    if (!cancellationStatuses.includes(String(order.orderStatus || '').toLowerCase())) {
+        throw new ValidationError('Refund can only be processed for cancelled orders');
+    }
+
+    const paymentMethod = String(order.payment?.method || '').toLowerCase();
+    const paymentStatus = String(order.payment?.status || '').toLowerCase();
+    const alreadyProcessed = String(order.payment?.refund?.status || '').toLowerCase() === 'processed';
+
+    if (alreadyProcessed || paymentStatus === 'refunded') {
+        return {
+            order: order.toObject(),
+            refundId: order.payment?.refund?.refundId || '',
+            status: 'processed'
+        };
+    }
+
+    if (!['razorpay', 'wallet'].includes(paymentMethod)) {
+        throw new ValidationError('Refund is supported only for online or wallet payments');
+    }
+
+    const maxRefundableAmount = Math.max(0, Number(order.pricing?.total || 0));
+    const normalizedAmount =
+        refundAmount === undefined || refundAmount === null || refundAmount === ''
+            ? maxRefundableAmount
+            : Number(refundAmount);
+
+    if (!Number.isFinite(normalizedAmount) || normalizedAmount <= 0) {
+        throw new ValidationError('Refund amount must be greater than zero');
+    }
+
+    if (normalizedAmount > maxRefundableAmount) {
+        throw new ValidationError('Refund amount cannot exceed order total');
+    }
+
+    if (!['paid', 'authorized', 'captured', 'settled'].includes(paymentStatus)) {
+        throw new ValidationError('This order payment is not eligible for refund');
+    }
+
+    let refundId = '';
+    let finalStatus = 'processed';
+
+    if (paymentMethod === 'wallet') {
+        await refundWalletBalance(
+            order.userId,
+            normalizedAmount,
+            `Refund for order #${order.orderId}`,
+            { orderId: String(order._id), orderCode: String(order.orderId || '') }
+        );
+
+        refundId = `wallet-refund-${order._id.toString()}`;
+    } else {
+        if (!order.payment?.razorpay?.paymentId) {
+            throw new ValidationError('Razorpay payment id missing for this order');
+        }
+
+        const refundResult = await initiateRazorpayRefund(
+            order.payment.razorpay.paymentId,
+            normalizedAmount
+        );
+
+        if (!refundResult.success) {
+            order.payment.refund = {
+                ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+                status: 'failed',
+                amount: normalizedAmount
+            };
+            await order.save();
+            throw new ValidationError(refundResult.error || 'Refund failed');
+        }
+
+        refundId = refundResult.refundId || '';
+        finalStatus = refundResult.status || 'processed';
+    }
+
+    order.payment.status = 'refunded';
+    order.payment.refund = {
+        ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+        status: 'processed',
+        amount: normalizedAmount,
+        refundId,
+        processedAt: new Date()
+    };
+    await order.save();
+
+    try {
+        await foodTransactionService.updateTransactionStatus(order._id, 'refunded', {
+            status: 'refunded',
+            note: `Refund processed by admin${refundId ? ` (${refundId})` : ''}`,
+            recordedByRole: 'ADMIN',
+            recordedById: adminId || null
+        });
+    } catch (err) {
+        console.error('processRefund transaction sync failed:', err);
+    }
+
+    return {
+        order: order.toObject(),
+        refundId,
+        status: finalStatus
+    };
 }
 
 export async function checkEarningAddonCompletions(deliveryPartnerId, _force = false) {

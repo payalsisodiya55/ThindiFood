@@ -160,6 +160,8 @@ router.put('/dining-fee-settings', adminController.createOrUpdateDiningFeeSettin
 // ----- Referral Settings -----
 router.get('/referral-settings', adminController.getReferralSettings);
 router.put('/referral-settings', adminController.createOrUpdateReferralSettings);
+router.get('/refund-policy-settings', adminController.getRefundPolicySettings);
+router.put('/refund-policy-settings', adminController.createOrUpdateRefundPolicySettings);
 
 // ----- Business Settings -----
 router.get('/business-settings/public', businessSettingsController.getBusinessSettings); // Public endpoint
@@ -240,6 +242,7 @@ router.get('/dining/finance', adminController.getDiningFinance);
 router.get('/orders', orderController.listOrdersAdminController);
 router.get('/orders/:orderId', orderController.getOrderByIdAdminController);
 router.delete('/orders/:orderId', orderController.deleteOrderAdminController);
+router.post('/orders/:orderId/refund', adminController.processRefund);
 
 // ----- CMS Pages (About + legal) -----
 router.get('/pages-social-media/:key', getAdminPageController);

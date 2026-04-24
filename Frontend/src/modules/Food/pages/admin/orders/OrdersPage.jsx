@@ -472,10 +472,14 @@ export default function OrdersPage({ statusKey = "all" }) {
       }
 
       const paymentStatusRaw = order.payment?.status || ""
+      const refundStatusRaw = order.refundStatus || order.payment?.refund?.status || ""
       let paymentStatus = order.paymentStatus
       if (!paymentStatus) {
+        const refundStatus = String(refundStatusRaw || "").toLowerCase()
         const s = String(paymentStatusRaw || "").toLowerCase()
-        if (s === "refunded") paymentStatus = "Refunded"
+        if (refundStatus === "pending") paymentStatus = "Refund Pending"
+        else if (refundStatus === "failed") paymentStatus = "Failed"
+        else if (s === "refunded" || refundStatus === "processed") paymentStatus = "Refunded"
         else if (s === "paid" || s === "authorized" || s === "captured" || s === "settled") paymentStatus = "Paid"
         else if (s === "failed") paymentStatus = "Failed"
         else paymentStatus = "Pending"
@@ -554,7 +558,11 @@ export default function OrdersPage({ statusKey = "all" }) {
         deliveryType: normalizeAdminDeliveryType(order),
         orderOtp: order.deliveryOtp,
         address: order.address || order.customerAddress || order.deliveryAddress,
-        refundStatus: order.payment?.refund?.status || (order.payment?.status === 'refunded' ? 'processed' : null)
+        refundStatus: refundStatusRaw || (order.payment?.status === 'refunded' ? 'processed' : null),
+        refundPolicyMode: order.refundPolicyMode || null,
+        canRefundManually: Boolean(order.canRefundManually),
+        cancelledBy: order.cancelledBy || null,
+        cancellationReason: order.cancellationReason || "",
       }
     })
   }, [orders])
@@ -852,7 +860,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         setOrders(prevOrders => 
           prevOrders.map(o => 
             (o.id === order.id || o.orderId === order.orderId)
-              ? { ...o, refundStatus: 'processed' } // Wallet refunds are instant, so mark as processed
+              ? { ...o, refundStatus: 'processed', paymentStatus: 'Refunded', canRefundManually: false }
               : o
           )
         )
@@ -982,6 +990,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         onAcceptOrder={statusKey === "all" || statusKey === "pending" ? handleAcceptOrder : undefined}
         onRejectOrder={statusKey === "all" || statusKey === "pending" ? handleRejectOrder : undefined}
         actionLoadingOrderId={processingActionOrderId}
+        processingRefund={processingRefund}
         deletingOrderId={deletingOrderId}
       />
     </div>

@@ -554,8 +554,17 @@ export const adminAPI = {
       params: { limit: 50, page: 1, ...params },
       contextModule: "admin",
     }),
+  getRefundRequests: (params = {}) =>
+    apiClient.get("/food/admin/orders", {
+      params: { status: "refunded", limit: 50, page: 1, ...params },
+      contextModule: "admin",
+    }),
   getOrderById: (orderId) =>
     apiClient.get(`/food/admin/orders/${String(orderId)}`, {
+      contextModule: "admin",
+    }),
+  processRefund: (orderId, body = {}) =>
+    apiClient.post(`/food/admin/orders/${String(orderId)}/refund`, body ?? {}, {
       contextModule: "admin",
     }),
   deleteOrder: (orderId) =>
@@ -917,6 +926,12 @@ export const adminAPI = {
     apiClient.get("/food/admin/referral-settings", { contextModule: "admin" }),
   createOrUpdateReferralSettings: (body) =>
     apiClient.put("/food/admin/referral-settings", body ?? {}, {
+      contextModule: "admin",
+    }),
+  getRefundPolicy: () =>
+    apiClient.get("/food/admin/refund-policy-settings", { contextModule: "admin" }),
+  saveRefundPolicy: (body) =>
+    apiClient.put("/food/admin/refund-policy-settings", body ?? {}, {
       contextModule: "admin",
     }),
 

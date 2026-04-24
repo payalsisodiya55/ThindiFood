@@ -12,6 +12,41 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const toNumber = (value, fallback = 0) => {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+const normalizeRefundOrder = (order = {}) => {
+  const pricing = order.pricing || {}
+  const createdAt = order.createdAt ? new Date(order.createdAt) : null
+  const hasValidDate = createdAt && !Number.isNaN(createdAt.getTime())
+
+  return {
+    ...order,
+    id: order.id || order._id || order.orderId || "",
+    orderId: order.orderId || order.id || order._id || "N/A",
+    date: order.date || (hasValidDate ? createdAt.toLocaleDateString() : "-"),
+    time: order.time || (hasValidDate ? createdAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"),
+    customerName: order.customerName || order.userId?.name || "N/A",
+    customerPhone: order.customerPhone || order.userId?.phone || "N/A",
+    restaurant: order.restaurant || order.restaurantName || order.restaurantId?.restaurantName || "N/A",
+    totalAmount: toNumber(order.totalAmount ?? pricing.total, 0),
+    paymentStatus: order.paymentStatus || order.payment?.status || "Pending",
+    refundStatus: order.refundStatus || order.payment?.refund?.status || "pending",
+    cancellationReason: order.cancellationReason || "",
+  }
+}
+
+const normalizeRefundOrders = (orders = []) => {
+  if (!Array.isArray(orders)) return []
+  return orders.map(normalizeRefundOrder)
+}
+
+const formatCurrency = (amount) => {
+  const safeAmount = toNumber(amount, 0)
+  return safeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 export default function NewRefundRequests() {
   const [orders, setOrders] = useState([])
@@ -42,8 +77,9 @@ export default function NewRefundRequests() {
         const response = await adminAPI.getRefundRequests(params)
         
         if (response.data?.success && response.data?.data?.orders) {
-          setOrders(response.data.data.orders)
-          setTotalCount(response.data.data.pagination?.total || response.data.data.orders.length)
+          const normalizedOrders = normalizeRefundOrders(response.data.data.orders)
+          setOrders(normalizedOrders)
+          setTotalCount(response.data.data.pagination?.total || normalizedOrders.length)
         } else {
           debugError("Failed to fetch refund requests:", response.data)
           toast.error("Failed to fetch refund requests")
@@ -57,7 +93,12 @@ export default function NewRefundRequests() {
           status: error.response?.status,
           statusText: error.response?.statusText
         })
-        toast.error(error.response?.data?.message || error.message || "Failed to fetch refund requests")
+        const status = error?.response?.status
+        if (status === 401) {
+          toast.error("Unauthorized: admin session expired or missing. Please login again.")
+        } else {
+          toast.error(error.response?.data?.message || error.message || "Failed to fetch refund requests")
+        }
         setOrders([])
       } finally {
         setIsLoading(false)
@@ -105,8 +146,14 @@ export default function NewRefundRequests() {
     }
 
     try {
-      setProcessingRefund(order.id)
-      const response = await adminAPI.processRefund(order.id, {})
+      const orderIdToUse = order.id || order._id || order.orderId
+      if (!orderIdToUse) {
+        toast.error("Order ID not found")
+        return
+      }
+
+      setProcessingRefund(orderIdToUse)
+      const response = await adminAPI.processRefund(orderIdToUse, {})
       
       if (response.data?.success) {
         toast.success(`Refund processed successfully for order ${order.orderId}`)
@@ -114,15 +161,21 @@ export default function NewRefundRequests() {
         const params = { page: 1, limit: 1000 }
         const refreshResponse = await adminAPI.getRefundRequests(params)
         if (refreshResponse.data?.success && refreshResponse.data?.data?.orders) {
-          setOrders(refreshResponse.data.data.orders)
-          setTotalCount(refreshResponse.data.data.pagination?.total || refreshResponse.data.data.orders.length)
+          const normalizedOrders = normalizeRefundOrders(refreshResponse.data.data.orders)
+          setOrders(normalizedOrders)
+          setTotalCount(refreshResponse.data.data.pagination?.total || normalizedOrders.length)
         }
       } else {
         toast.error(response.data?.message || "Failed to process refund")
       }
     } catch (error) {
       debugError("Error processing refund:", error)
-      toast.error(error.response?.data?.message || "Failed to process refund")
+      const status = error?.response?.status
+      if (status === 401) {
+        toast.error("Unauthorized: admin session expired or missing. Please login again.")
+      } else {
+        toast.error(error.response?.data?.message || "Failed to process refund")
+      }
     } finally {
       setProcessingRefund(null)
     }
@@ -207,7 +260,7 @@ export default function NewRefundRequests() {
                   </tr>
                 ) : (
                   filteredData.map((order, index) => (
-                    <tr key={order.orderId} className="hover:bg-slate-50">
+                    <tr key={order.id || order.orderId || index} className="hover:bg-slate-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{index + 1}</span>
                       </td>
@@ -228,7 +281,7 @@ export default function NewRefundRequests() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="text-sm font-medium text-slate-900">
-                          {"\u20B9"}{order.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {"\u20B9"}{formatCurrency(order.totalAmount)}
                         </div>
                         <div className="text-xs text-emerald-600 mt-0.5">{order.paymentStatus}</div>
                       </td>
@@ -261,11 +314,11 @@ export default function NewRefundRequests() {
                           {order.refundStatus !== 'processed' && (
                             <button 
                               onClick={() => handleProcessRefund(order)}
-                              disabled={processingRefund === order.id}
+                              disabled={processingRefund === (order.id || order._id || order.orderId)}
                               className="p-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                               title="Process Refund"
                             >
-                              {processingRefund === order.id ? (
+                              {processingRefund === (order.id || order._id || order.orderId) ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
                               ) : (
                                 <span className="text-sm">?</span>

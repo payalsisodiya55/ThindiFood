@@ -84,6 +84,7 @@ const TermsAndCondition = lazy(() => import("@food/pages/admin/settings/TermsAnd
 const PrivacyPolicy = lazy(() => import("@food/pages/admin/settings/PrivacyPolicy"));
 const AboutUs = lazy(() => import("@food/pages/admin/settings/AboutUs"));
 const RefundPolicy = lazy(() => import("@food/pages/admin/settings/RefundPolicy"));
+const RefundPolicySettings = lazy(() => import("@food/pages/admin/settings/RefundPolicySettings"));
 const ShippingPolicy = lazy(() => import("@food/pages/admin/settings/ShippingPolicy"));
 const CancellationPolicy = lazy(() => import("@food/pages/admin/settings/CancellationPolicy"));
 const ReactRegistration = lazy(() => import("@food/pages/admin/settings/ReactRegistration"));
@@ -193,6 +194,7 @@ export default function AdminRouter() {
             <Route path="fee-settings" element={<FeeSettings />} />
             <Route path="dining/fee-settings" element={<DiningFeeSettings />} />
             <Route path="referral-settings" element={<ReferralSettings />} />
+            <Route path="settings/refund-policy" element={<RefundPolicySettings />} />
             <Route path="foods" element={<FoodsList />} />
             <Route path="food/list" element={<FoodsList />} />
             <Route path="addons" element={<AddonsList />} />

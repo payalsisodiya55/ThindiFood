@@ -23,6 +23,7 @@ const getStatusColor = (orderStatus) => {
 const getPaymentStatusColor = (paymentStatus) => {
   if (paymentStatus === "Paid") return "text-emerald-600"
   if (paymentStatus === "Refunded") return "text-sky-600"
+  if (paymentStatus === "Refund Pending") return "text-blue-600"
   if (paymentStatus === "Unpaid" || paymentStatus === "Failed") return "text-red-600"
   return "text-slate-600"
 }
@@ -37,6 +38,7 @@ export default function OrdersTable({
   onAcceptOrder,
   onRejectOrder,
   actionLoadingOrderId,
+  processingRefund,
   deletingOrderId,
 }) {
   const [currentPage, setCurrentPage] = useState(1)
@@ -435,21 +437,29 @@ export default function OrdersTable({
                                 ? "Wallet Refunded" 
                                 : "Refunded"}
                             </span>
-                          ) : onRefund ? (
+                          ) : order.canRefundManually && onRefund ? (
                             <button 
                               onClick={() => onRefund(order)}
+                              disabled={processingRefund === (order.id || order.orderId)}
                               className={`px-3 py-1.5 rounded-md text-white text-xs font-medium hover:opacity-90 transition-colors shadow-sm flex items-center gap-1.5 ${
                                 order.paymentType === "Wallet" || order.payment?.method === "wallet"
                                   ? "bg-purple-600 hover:bg-purple-700"
                                   : "bg-blue-600 hover:bg-blue-700"
-                              }`}
+                              } disabled:opacity-60 disabled:cursor-not-allowed`}
                               title={order.paymentType === "Wallet" || order.payment?.method === "wallet"
                                 ? "Process Wallet Refund (Add to user wallet)"
                                 : "Process Refund via Razorpay"}
                             >
+                              {processingRefund === (order.id || order.orderId) && (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              )}
                               <span className="text-sm">₹</span>
                               <span>Refund</span>
                             </button>
+                          ) : order.refundStatus === 'pending' ? (
+                            <span className="px-3 py-1.5 rounded-md text-xs font-medium bg-blue-100 text-blue-700">
+                              Refund Pending
+                            </span>
                           ) : null}
                         </>
                       )}

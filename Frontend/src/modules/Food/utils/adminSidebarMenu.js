@@ -206,6 +206,7 @@ export const adminSidebarMenu = [
     items: [
       { type: "link", label: "Broadcast Notification", path: "/admin/food/broadcast-notification", icon: "Bell" },
       { type: "link", label: "Business Setup", path: "/admin/food/business-setup", icon: "Settings" },
+      { type: "link", label: "Refund Settings", path: "/admin/food/settings/refund-policy", icon: "Receipt" },
     ],
   },
   {
