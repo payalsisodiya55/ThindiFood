@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import QRCode from "qrcode";
 import { 
     Plus, QrCode, Users, Trash2, Download, 
     Loader2, AlertCircle, CheckCircle2, MoreVertical, 
@@ -93,8 +94,19 @@ const DineInTableManagement = () => {
         }
     };
 
-    const getQrImageUrl = (table, size = 500) =>
-        `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(table?.qrCodeUrl || "")}`;
+    // Generate a QR data-URL from the qrCodeUrl string using local `qrcode` library
+    const generateQrDataUrl = useCallback(async (url, size = 500) => {
+        try {
+            return await QRCode.toDataURL(url, {
+                width: size,
+                margin: 2,
+                color: { dark: "#0f172a", light: "#ffffff" },
+                errorCorrectionLevel: "H",
+            });
+        } catch {
+            return "";
+        }
+    }, []);
 
     const toSafeText = (value) =>
         String(value ?? "")
@@ -114,29 +126,25 @@ const DineInTableManagement = () => {
     };
 
     const downloadQR = async (table) => {
-        const qrUrl = getQrImageUrl(table, 700);
         const fileName = `Table_${table.tableNumber}_QR.png`;
         try {
-            const response = await fetch(qrUrl);
-            if (!response.ok) throw new Error("Failed to fetch QR");
-            const blob = await response.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            triggerDownload(objectUrl, fileName);
-            URL.revokeObjectURL(objectUrl);
+            const dataUrl = await generateQrDataUrl(table?.qrCodeUrl || "", 700);
+            if (!dataUrl) throw new Error("QR generation failed");
+            triggerDownload(dataUrl, fileName);
             toast.success(`Table ${table.tableNumber} QR downloaded`);
         } catch {
-            // Fallback download path if blob fetch is blocked
-            triggerDownload(qrUrl, fileName);
-            toast.success(`Table ${table.tableNumber} QR download started`);
+            toast.error("Failed to generate QR for download");
         }
     };
 
-    const openQrPreview = (table, autoPrint = false) => {
-        const qrImageUrl = getQrImageUrl(table, 700);
+    const openQrPreview = async (table, autoPrint = false) => {
         const tableNumber = toSafeText(table?.tableNumber || "");
         const tableLabel = toSafeText(table?.tableLabel || "Table");
         const capacity = toSafeText(table?.capacity || "");
         const qrTarget = toSafeText(table?.qrCodeUrl || "");
+
+        // Generate QR as inline data URL (no external API needed)
+        const qrDataUrl = await generateQrDataUrl(table?.qrCodeUrl || "", 700);
 
         const previewWindow = window.open("", "_blank", "width=760,height=900");
         if (!previewWindow) {
@@ -178,12 +186,12 @@ const DineInTableManagement = () => {
                         <h1 class="title">Table #${tableNumber}</h1>
                         <p class="sub">${tableLabel} ${capacity ? `| Capacity: ${capacity}` : ""}</p>
                         <div class="qr-box">
-                            <img id="qrImage" class="qr" src="${qrImageUrl}" alt="Table QR" />
+                            <img id="qrImage" class="qr" src="${qrDataUrl}" alt="Table QR" />
                         </div>
                         <div class="meta">Scan URL: ${qrTarget}</div>
                         <div class="actions">
                             <button class="btn btn-print" onclick="window.print()">Print</button>
-                            <button class="btn btn-download" onclick="window.location.href='${qrImageUrl}'">Open Image</button>
+                            <button class="btn btn-download" onclick="const a=document.createElement('a');a.href='${qrDataUrl}';a.download='Table_${tableNumber}_QR.png';a.click();">Download</button>
                         </div>
                     </div>
                 </div>
@@ -292,11 +300,7 @@ const DineInTableManagement = () => {
 
                             {/* QR Section */}
                             <div className="bg-gray-50 rounded-3xl p-6 mb-6">
-                                <img 
-                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(table.qrCodeUrl)}`}
-                                    alt="QR Code"
-                                    className="w-full h-auto opacity-90 transition-opacity"
-                                />
+                                <QrCanvas url={table.qrCodeUrl} />
                                 <div className="mt-4 pt-4 border-t border-gray-200/60">
                                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Manual QR Data</p>
                                     <div 
@@ -437,6 +441,21 @@ const DineInTableManagement = () => {
     );
 };
 
+
+// --- Inline QR Canvas (uses local `qrcode` library - no external API) ---
+function QrCanvas({ url }) {
+    const canvasRef = useRef(null);
+    useEffect(() => {
+        if (!canvasRef.current || !url) return;
+        QRCode.toCanvas(canvasRef.current, url, {
+            width: 250,
+            margin: 2,
+            color: { dark: "#0f172a", light: "#ffffff" },
+            errorCorrectionLevel: "H",
+        }).catch(() => {});
+    }, [url]);
+    return React.createElement("canvas", { ref: canvasRef, className: "w-full h-auto rounded-xl" });
+}
 // Internal Close component
 const X = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
