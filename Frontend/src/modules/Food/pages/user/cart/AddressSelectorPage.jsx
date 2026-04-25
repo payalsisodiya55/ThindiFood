@@ -777,7 +777,7 @@ export default function AddressSelectorPage() {
                           }))
                           setKeywordAddressSuggestions([])
                         }}
-                        className="w-full px-4 py-3 flex items-start gap-3 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left border-b border-gray-50 dark:border-gray-800 last:border-none"
+                        className="w-full px-4 py-3 flex items-start gap-3 hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors text-left border-b border-gray-50 dark:border-gray-800 last:border-none"
                       >
                         <MapPin className="h-4 w-4 text-gray-400 mt-1 flex-shrink-0" />
                         <div className="min-w-0">
@@ -795,12 +795,12 @@ export default function AddressSelectorPage() {
             
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                <div className="relative mb-8 flex flex-col items-center">
-                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center p-2 mb-[-6px] shadow-sm animate-bounce-short">
-                     <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center border-2 border-white">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center p-2 mb-[-6px] shadow-sm animate-bounce-short">
+                     <div className="w-6 h-6 rounded-full bg-[#00c87e] flex items-center justify-center border-2 border-white">
                         <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
                      </div>
                   </div>
-                  <div className="w-1.5 h-6 bg-red-600 border-x border-white shadow-xl rounded-b-full shadow-red-900/40" />
+                  <div className="w-1.5 h-6 bg-[#00c87e] border-x border-white shadow-xl rounded-b-full shadow-emerald-900/40" />
                   <div className="w-3 h-1.5 bg-black/20 rounded-full blur-[1px] transform scale-x-150 absolute bottom-[-4px]" />
                </div>
             </div>
@@ -822,10 +822,10 @@ export default function AddressSelectorPage() {
           </div>
 
           <div className="relative bg-white dark:bg-[#0a0a0a] rounded-t-[32px] -mt-8 z-10 p-4 space-y-6 shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.1)]">
-            <div className="bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/20 rounded-xl p-4 flex gap-3">
+            <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 rounded-xl p-4 flex gap-3">
                <MapPin className="h-5 w-5 text-[#00c87e] mt-0.5" />
                <div className="min-w-0">
-                  <p className="text-xs font-bold text-red-800 dark:text-red-200 uppercase mb-1">Pinnned Location</p>
+                  <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200 uppercase mb-1">Pinnned Location</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{currentAddress || "Select a location on map"}</p>
                </div>
             </div>
@@ -842,14 +842,14 @@ export default function AddressSelectorPage() {
                 required
               />
 
-              <Label className="text-sm font-bold mb-2 block text-red-600 dark:text-red-400">Secondary Address (House No. / Flat / Floor)</Label>
+              <Label className="text-sm font-bold mb-2 block text-[#00c87e]">Secondary Address (House No. / Flat / Floor)</Label>
               <Input 
                 placeholder="E.g. Flat 402, 4th Floor, AppZeto Building" 
                 value={addressFormData.additionalDetails} 
                 onChange={e => setAddressFormData({...addressFormData, additionalDetails: e.target.value})}
                 onFocus={() => scrollFieldIntoView("additionalDetails")}
                 ref={(el) => { manualFieldRefs.current.additionalDetails = el }}
-                className="h-12 rounded-xl border-red-200 dark:border-red-900/40 focus:ring-red-500"
+                className="h-12 rounded-xl border-emerald-200 dark:border-emerald-900/40 focus:ring-[#00c87e]"
               />
             </div>
 
@@ -941,7 +941,7 @@ export default function AddressSelectorPage() {
             onClick={handleUseCurrentLocation}
             className="w-full flex items-center gap-4 p-4 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm hover:shadow-md transition-all group"
           >
-            <div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
               <Navigation className="h-5 w-5 text-[#00c87e]" />
             </div>
             <div className="text-left flex-1">
@@ -955,7 +955,7 @@ export default function AddressSelectorPage() {
         <div className="p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-gray-500">Saved Addresses</h2>
-            <Button variant="ghost" className="text-[#00c87e] hover:text-[#d41b14] p-0 h-auto font-bold" onClick={handleAddAddressClick}>
+            <Button variant="ghost" className="text-[#00c87e] hover:text-[#00c87e]/80 p-0 h-auto font-bold" onClick={handleAddAddressClick}>
               <Plus className="h-4 w-4 mr-1" /> Add New
             </Button>
           </div>
@@ -973,7 +973,7 @@ export default function AddressSelectorPage() {
                   <button
                     key={getAddressId(addr) || idx}
                     onClick={() => handleSelectSavedAddress(addr)}
-                    className="w-full flex items-start gap-4 p-4 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-left group"
+                    className="w-full flex items-start gap-4 p-4 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors text-left group"
                   >
                     <div className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm">
                       <Icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
