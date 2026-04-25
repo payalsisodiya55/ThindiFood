@@ -2204,14 +2204,18 @@ export const userAPI = {
       contextModule: "user",
     });
   },
-  /** GET /food/user/wallet (Bearer USER). Deduped + short-cached. */
+  /** GET /food/user/wallet (Bearer USER). Deduped + short-cached; pass { force: true } to bypass cache. */
   getWallet: (() => {
     let inFlight = null;
     let cached = null;
     let cacheTime = 0;
     const CACHE_MS = 3000;
-    return () => {
+    return ({ force = false } = {}) => {
       const now = Date.now();
+      if (force) {
+        cached = null;
+        cacheTime = 0;
+      }
       if (cached && now - cacheTime < CACHE_MS) return Promise.resolve(cached);
       if (!inFlight) {
         inFlight = apiClient
@@ -2467,6 +2471,10 @@ export const orderAPI = {
   })(),
   cancelOrder: (orderId, body = {}) =>
     apiClient.patch(`/food/orders/${String(orderId)}/cancel`, body ?? {}, {
+      contextModule: "user",
+    }),
+  setRefundPreference: (orderId, body = {}) =>
+    apiClient.patch(`/food/orders/${String(orderId)}/refund-preference`, body ?? {}, {
       contextModule: "user",
     }),
   updateOrderInstructions: (orderId, instructions) =>

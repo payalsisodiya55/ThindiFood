@@ -5362,7 +5362,7 @@ export async function cancelEarningAddonHistory(historyId, reason) {
     return doc.toObject();
 }
 
-export async function processRefund(orderId, refundAmount, adminId = null) {
+export async function processRefund(orderId, refundAmount, adminId = null, refundMode = '', overrideReason = '') {
     if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
         throw new ValidationError('Invalid order id');
     }
@@ -5380,6 +5380,18 @@ export async function processRefund(orderId, refundAmount, adminId = null) {
     const paymentMethod = String(order.payment?.method || '').toLowerCase();
     const paymentStatus = String(order.payment?.status || '').toLowerCase();
     const alreadyProcessed = String(order.payment?.refund?.status || '').toLowerCase() === 'processed';
+    const userPreference = String(order.payment?.refund?.userPreference || '').toLowerCase();
+
+    const requestedMode = String(refundMode || '').toLowerCase();
+    const allowedModes = ['wallet', 'razorpay'];
+    const modeFromPreference = userPreference === 'original' ? 'razorpay' : (userPreference === 'wallet' ? 'wallet' : '');
+    let selectedMode = allowedModes.includes(requestedMode)
+        ? requestedMode
+        : (modeFromPreference || (paymentMethod === 'wallet' ? 'wallet' : 'razorpay'));
+
+    if (selectedMode === 'razorpay' && paymentMethod === 'wallet') {
+        selectedMode = 'wallet';
+    }
 
     if (alreadyProcessed || paymentStatus === 'refunded') {
         return {
@@ -5414,7 +5426,12 @@ export async function processRefund(orderId, refundAmount, adminId = null) {
     let refundId = '';
     let finalStatus = 'processed';
 
-    if (paymentMethod === 'wallet') {
+    const isOverridden = userPreference && (
+        (userPreference === 'wallet' && selectedMode === 'razorpay') ||
+        (userPreference === 'original' && selectedMode === 'wallet')
+    );
+
+    if (selectedMode === 'wallet') {
         await refundWalletBalance(
             order.userId,
             normalizedAmount,
@@ -5437,7 +5454,8 @@ export async function processRefund(orderId, refundAmount, adminId = null) {
             order.payment.refund = {
                 ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
                 status: 'failed',
-                amount: normalizedAmount
+                amount: normalizedAmount,
+                refundMode: selectedMode
             };
             await order.save();
             throw new ValidationError(refundResult.error || 'Refund failed');
@@ -5453,7 +5471,10 @@ export async function processRefund(orderId, refundAmount, adminId = null) {
         status: 'processed',
         amount: normalizedAmount,
         refundId,
-        processedAt: new Date()
+        processedAt: new Date(),
+        refundMode: selectedMode,
+        isOverridden,
+        overrideReason: isOverridden ? String(overrideReason || 'Admin override').trim() : ''
     };
     await order.save();
 

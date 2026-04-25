@@ -37,7 +37,7 @@ import { getFirebaseDB } from '../../../../config/firebase.js';
 import { invalidateCache } from '../../../../middleware/cache.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import { deriveFundingType } from './settlement-calculator.service.js';
-import { refundWalletBalance } from '../../user/services/userWallet.service.js';
+import { deductWalletBalance, refundWalletBalance } from '../../user/services/userWallet.service.js';
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
@@ -272,9 +272,20 @@ function isRefundEligibleOrderPayment(order) {
   return REFUNDABLE_PAYMENT_STATUSES.has(status);
 }
 
-async function processAutomaticCancellationRefund(order, cancelledBy, reason = "") {
+async function processAutomaticCancellationRefund(order, cancelledBy, reason = "", refundPreference = "") {
   const amount = Math.max(0, Number(order?.pricing?.total || 0));
   const paymentMethod = String(order?.payment?.method || "").toLowerCase();
+  const userPref = String(
+    refundPreference || order?.payment?.refund?.userPreference || ""
+  ).toLowerCase();
+  const normalizedPreference = ["wallet", "original"].includes(userPref) ? userPref : "";
+
+  let refundToWallet = true;
+  if (normalizedPreference === "wallet") {
+    refundToWallet = true;
+  } else if (normalizedPreference === "original") {
+    refundToWallet = paymentMethod === "wallet";
+  }
 
   if (amount <= 0) {
     return {
@@ -285,7 +296,7 @@ async function processAutomaticCancellationRefund(order, cancelledBy, reason = "
     };
   }
 
-  if (paymentMethod === "wallet") {
+  if (refundToWallet) {
     await refundWalletBalance(
       order.userId,
       amount,
@@ -303,7 +314,9 @@ async function processAutomaticCancellationRefund(order, cancelledBy, reason = "
       status: "processed",
       amount,
       refundId: `wallet-refund-${order._id?.toString?.() || Date.now()}`,
-      processedAt: new Date()
+      processedAt: new Date(),
+      userPreference: normalizedPreference || order.payment?.refund?.userPreference || "",
+      refundMode: "wallet",
     };
 
     return {
@@ -319,6 +332,8 @@ async function processAutomaticCancellationRefund(order, cancelledBy, reason = "
       ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
       status: "failed",
       amount,
+      userPreference: normalizedPreference || order.payment?.refund?.userPreference || "",
+      refundMode: "razorpay",
     };
 
     return {
@@ -338,7 +353,9 @@ async function processAutomaticCancellationRefund(order, cancelledBy, reason = "
       status: "processed",
       amount,
       refundId: refundResult.refundId || "",
-      processedAt: new Date()
+      processedAt: new Date(),
+      userPreference: normalizedPreference || order.payment?.refund?.userPreference || "",
+      refundMode: "razorpay",
     };
 
     return {
@@ -353,6 +370,8 @@ async function processAutomaticCancellationRefund(order, cancelledBy, reason = "
     ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
     status: "failed",
     amount,
+    userPreference: normalizedPreference || order.payment?.refund?.userPreference || "",
+    refundMode: "razorpay",
   };
 
   logger.warn(
@@ -367,7 +386,10 @@ async function processAutomaticCancellationRefund(order, cancelledBy, reason = "
   };
 }
 
-async function applyRefundPolicyForCancellation(order, { cancelledBy, reason = "" } = {}) {
+async function applyRefundPolicyForCancellation(
+  order,
+  { cancelledBy, reason = "", refundPreference = "" } = {}
+) {
   if (!isRefundEligibleOrderPayment(order)) {
     return {
       mode: null,
@@ -382,10 +404,16 @@ async function applyRefundPolicyForCancellation(order, { cancelledBy, reason = "
   const amount = Math.max(0, Number(order?.pricing?.total || 0));
 
   if (mode === "manual") {
+    const normalizedPreference = ["wallet", "original"].includes(String(refundPreference || "").toLowerCase())
+      ? String(refundPreference).toLowerCase()
+      : (["wallet", "original"].includes(String(order?.payment?.refund?.userPreference || "").toLowerCase())
+        ? String(order.payment.refund.userPreference).toLowerCase()
+        : "");
     order.payment.refund = {
       ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
       status: "pending",
       amount,
+      userPreference: normalizedPreference,
     };
 
     return {
@@ -397,7 +425,12 @@ async function applyRefundPolicyForCancellation(order, { cancelledBy, reason = "
   }
 
   try {
-    return await processAutomaticCancellationRefund(order, cancelledBy, reason);
+    return await processAutomaticCancellationRefund(
+      order,
+      cancelledBy,
+      reason,
+      refundPreference
+    );
   } catch (err) {
     logger.warn(`Cancellation refund processing failed: ${err?.message || err}`);
     order.payment.refund = {
@@ -1387,7 +1420,43 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  await order.save();
+  let walletDebitedForOrder = false;
+  if (isWallet) {
+    await deductWalletBalance(
+      userId,
+      normalizedPricing.total ?? 0,
+      `Order payment #${orderId}`,
+      {
+        orderCode: orderId,
+        orderType,
+      },
+    );
+    walletDebitedForOrder = true;
+  }
+
+  try {
+    await order.save();
+  } catch (error) {
+    if (walletDebitedForOrder) {
+      try {
+        await refundWalletBalance(
+          userId,
+          normalizedPricing.total ?? 0,
+          `Wallet reversal for failed order #${orderId}`,
+          {
+            source: "order_payment_reversal",
+            orderCode: orderId,
+            reason: "order_create_failed",
+          },
+        );
+      } catch (rollbackError) {
+        logger.error(
+          `Wallet rollback failed for order ${orderId}: ${rollbackError?.message || "unknown error"}`,
+        );
+      }
+    }
+    throw error;
+  }
 
   try {
     await foodTransactionService.createInitialTransaction(order);
@@ -1818,7 +1887,7 @@ export async function getOrderById(
   return sanitizeOrderForExternal(order);
 }
 
-export async function cancelOrder(orderId, userId, reason) {
+export async function cancelOrder(orderId, userId, reason, refundPreference = "") {
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
 
@@ -1845,9 +1914,23 @@ export async function cancelOrder(orderId, userId, reason) {
   });
 
   // ✅ NEW: Automated Razorpay Refund on User Cancel
+  const normalizedRefundPreference = ["wallet", "original"].includes(
+    String(refundPreference || "").toLowerCase()
+  )
+    ? String(refundPreference).toLowerCase()
+    : "";
+
+  if (normalizedRefundPreference) {
+    order.payment.refund = {
+      ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+      userPreference: normalizedRefundPreference,
+    };
+  }
+
   const refundOutcome = await applyRefundPolicyForCancellation(order, {
     cancelledBy: "user",
     reason,
+    refundPreference: normalizedRefundPreference,
   });
 
   await order.save();
@@ -2064,6 +2147,7 @@ export async function updateOrderStatusRestaurant(
     refundOutcome = await applyRefundPolicyForCancellation(order, {
       cancelledBy: "restaurant",
       reason: "",
+      refundPreference: "",
     });
   }
 
@@ -3299,6 +3383,53 @@ export async function listOrdersAdmin(query) {
   });
   const paginated = buildPaginatedResult({ docs: enrichedDocs, total, page, limit });
   return { ...paginated, orders: paginated.data };
+}
+
+export async function setRefundPreference(orderId, userId, preference) {
+  const normalizedPreference = String(preference || "").toLowerCase();
+  if (!["wallet", "original"].includes(normalizedPreference)) {
+    throw new ValidationError("Invalid refund preference");
+  }
+
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+
+  const order = await FoodOrder.findOne({
+    ...identity,
+    userId: new mongoose.Types.ObjectId(userId),
+  });
+  if (!order) throw new NotFoundError("Order not found");
+
+  if (!CANCELLATION_ORDER_STATUSES.has(String(order.orderStatus || "").toLowerCase())) {
+    throw new ValidationError("Order is not cancelled");
+  }
+
+  if (String(order?.payment?.refund?.status || "").toLowerCase() === "processed") {
+    throw new ValidationError("Refund already processed");
+  }
+
+  order.payment.refund = {
+    ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+    userPreference: normalizedPreference,
+  };
+
+  const policySettings = await getActiveRefundPolicySettings();
+  const { cancelledBy } = getCancellationMeta(order);
+  const mode = getRefundPolicyModeForCancellation(policySettings, cancelledBy);
+
+  if (mode === "automatic") {
+    await processAutomaticCancellationRefund(order, cancelledBy, "", normalizedPreference);
+  } else {
+    order.payment.refund = {
+      ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+      status: "pending",
+      amount: Math.max(0, Number(order?.pricing?.total || 0)),
+      userPreference: normalizedPreference,
+    };
+  }
+
+  await order.save();
+  return order.toObject();
 }
 
 export async function assignDeliveryPartnerAdmin(

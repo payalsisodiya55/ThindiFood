@@ -427,6 +427,15 @@ export default function OrdersTable({
                         return isCancelled && (isOnlinePayment || isWalletPayment);
                       })() && (
                         <>
+                          {order.userRefundPreference ? (
+                            <span className={`px-2.5 py-1 rounded-md text-[11px] font-medium ${
+                              order.userRefundPreference === "wallet"
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-blue-100 text-blue-700"
+                            }`}>
+                              Pref: {order.userRefundPreference === "wallet" ? "Wallet" : "Bank"}
+                            </span>
+                          ) : null}
                           {order.refundStatus === 'processed' || order.refundStatus === 'initiated' ? (
                             <span className={`px-3 py-1.5 rounded-md text-xs font-medium ${
                               order.paymentType === "Wallet" || order.payment?.method === "wallet"

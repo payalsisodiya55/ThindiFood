@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from "react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
+import { Button } from "@food/components/ui/button"
 import OrdersTopbar from "@food/components/admin/orders/OrdersTopbar"
 import OrdersTable from "@food/components/admin/orders/OrdersTable"
 import FilterPanel from "@food/components/admin/orders/FilterPanel"
@@ -33,6 +35,9 @@ const normalizeRefundOrder = (order = {}) => {
     restaurant: order.restaurant || order.restaurantName || order.restaurantId?.restaurantName || "N/A",
     totalAmount: toNumber(order.totalAmount ?? pricing.total, 0),
     paymentStatus: order.paymentStatus || order.payment?.status || "Pending",
+    userRefundPreference: order.payment?.refund?.userPreference || "",
+    refundMode: order.payment?.refund?.refundMode || "",
+    isOverridden: order.payment?.refund?.isOverridden || false,
     refundStatus: order.refundStatus || order.payment?.refund?.status || "pending",
     cancellationReason: order.cancellationReason || "",
   }
@@ -48,11 +53,26 @@ const formatCurrency = (amount) => {
   return safeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+const getPreferenceLabel = (value) => {
+  if (value === "wallet") return "Wallet"
+  if (value === "original") return "Bank Account"
+  return "Not Selected"
+}
+
+const getRefundModeLabel = (value) => {
+  if (value === "wallet") return "Wallet"
+  if (value === "razorpay") return "Bank Account"
+  return "-"
+}
+
 export default function NewRefundRequests() {
   const [orders, setOrders] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [totalCount, setTotalCount] = useState(0)
   const [processingRefund, setProcessingRefund] = useState(null)
+  const [refundDialogOrder, setRefundDialogOrder] = useState(null)
+  const [selectedRefundMode, setSelectedRefundMode] = useState("wallet")
+  const [overrideReason, setOverrideReason] = useState("")
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     orderId: true,
@@ -139,11 +159,25 @@ export default function NewRefundRequests() {
     return [...new Set(orders.map(o => o.restaurant))]
   }, [orders])
 
-  // Handle refund processing
-  const handleProcessRefund = async (order) => {
-    if (!confirm(`Are you sure you want to process refund for order ${order.orderId}?`)) {
-      return
-    }
+  const isOverrideSelection = useMemo(() => {
+    const userPref = String(refundDialogOrder?.userRefundPreference || "").toLowerCase()
+    if (!userPref) return false
+    if (userPref === "wallet" && selectedRefundMode === "razorpay") return true
+    if (userPref === "original" && selectedRefundMode === "wallet") return true
+    return false
+  }, [refundDialogOrder, selectedRefundMode])
+
+  const openProcessRefundDialog = (order) => {
+    const userPref = String(order?.userRefundPreference || "").toLowerCase()
+    const defaultMode = userPref === "original" ? "razorpay" : "wallet"
+    setRefundDialogOrder(order)
+    setSelectedRefundMode(defaultMode)
+    setOverrideReason("")
+  }
+
+  const handleProcessRefund = async () => {
+    const order = refundDialogOrder
+    if (!order) return
 
     try {
       const orderIdToUse = order.id || order._id || order.orderId
@@ -153,11 +187,14 @@ export default function NewRefundRequests() {
       }
 
       setProcessingRefund(orderIdToUse)
-      const response = await adminAPI.processRefund(orderIdToUse, {})
-      
+      const response = await adminAPI.processRefund(orderIdToUse, {
+        refundMode: selectedRefundMode,
+        overrideReason: overrideReason.trim(),
+      })
+
       if (response.data?.success) {
         toast.success(`Refund processed successfully for order ${order.orderId}`)
-        // Refresh the list
+        setRefundDialogOrder(null)
         const params = { page: 1, limit: 1000 }
         const refreshResponse = await adminAPI.getRefundRequests(params)
         if (refreshResponse.data?.success && refreshResponse.data?.data?.orders) {
@@ -246,6 +283,7 @@ export default function NewRefundRequests() {
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Customer</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Restaurant</th>
                   <th className="px-6 py-4 text-right text-[10px] font-bold text-slate-700 uppercase">Total Amount</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">User Preference</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Cancellation Reason</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase">Refund Status</th>
                   <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase">Actions</th>
@@ -254,7 +292,7 @@ export default function NewRefundRequests() {
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredData.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-6 py-20 text-center">
+                    <td colSpan={10} className="px-6 py-20 text-center">
                       <p className="text-sm text-slate-500">No refund requests found</p>
                     </td>
                   </tr>
@@ -285,19 +323,42 @@ export default function NewRefundRequests() {
                         </div>
                         <div className="text-xs text-emerald-600 mt-0.5">{order.paymentStatus}</div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                          order.userRefundPreference === "wallet"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : order.userRefundPreference === "original"
+                              ? "bg-blue-100 text-blue-700"
+                              : "bg-slate-100 text-slate-700"
+                        }`}>
+                          {getPreferenceLabel(order.userRefundPreference)}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-red-600 max-w-xs">
                           {order.cancellationReason || "Rejected by restaurant"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          order.refundStatus === 'processed' 
-                            ? 'bg-emerald-100 text-emerald-700' 
-                            : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {order.refundStatus === 'processed' ? 'Processed' : 'Pending'}
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            order.refundStatus === 'processed'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {order.refundStatus === 'processed' ? 'Processed' : 'Pending'}
+                          </span>
+                          {order.refundStatus === "processed" && order.refundMode ? (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                              {getRefundModeLabel(order.refundMode)}
+                            </span>
+                          ) : null}
+                          {order.refundStatus === "processed" && order.isOverridden ? (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                              Overridden
+                            </span>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -313,7 +374,7 @@ export default function NewRefundRequests() {
                           </button>
                           {order.refundStatus !== 'processed' && (
                             <button 
-                              onClick={() => handleProcessRefund(order)}
+                              onClick={() => openProcessRefundDialog(order)}
                               disabled={processingRefund === (order.id || order._id || order.orderId)}
                               className="p-1.5 rounded bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                               title="Process Refund"
@@ -335,6 +396,71 @@ export default function NewRefundRequests() {
           </div>
         </div>
       )}
+
+      <Dialog open={Boolean(refundDialogOrder)} onOpenChange={(open) => { if (!open) setRefundDialogOrder(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              Process Refund {refundDialogOrder?.orderId ? `- ${refundDialogOrder.orderId}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="text-sm text-slate-600">
+              Amount: <span className="font-semibold text-slate-900">₹{formatCurrency(refundDialogOrder?.totalAmount || 0)}</span>
+            </div>
+            <div className="text-sm text-slate-600">
+              User Preference: <span className="font-semibold text-slate-900">{getPreferenceLabel(refundDialogOrder?.userRefundPreference)}</span>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium text-slate-900">Refund To</div>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="radio"
+                  name="refundMode"
+                  value="wallet"
+                  checked={selectedRefundMode === "wallet"}
+                  onChange={() => setSelectedRefundMode("wallet")}
+                />
+                Wallet
+              </label>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="radio"
+                  name="refundMode"
+                  value="razorpay"
+                  checked={selectedRefundMode === "razorpay"}
+                  onChange={() => setSelectedRefundMode("razorpay")}
+                />
+                Bank Account
+              </label>
+            </div>
+
+            {isOverrideSelection ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs text-amber-800">
+                  User selected {getPreferenceLabel(refundDialogOrder?.userRefundPreference)}. You are overriding to {getRefundModeLabel(selectedRefundMode)}.
+                </p>
+                <input
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="Override reason (optional)"
+                  className="mt-2 w-full rounded border border-amber-200 bg-white px-3 py-2 text-sm outline-none"
+                />
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setRefundDialogOrder(null)} disabled={Boolean(processingRefund)}>
+                Cancel
+              </Button>
+              <Button onClick={handleProcessRefund} disabled={Boolean(processingRefund)}>
+                {processingRefund ? <Loader2 className="w-4 h-4 animate-spin" /> : "Process Refund"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

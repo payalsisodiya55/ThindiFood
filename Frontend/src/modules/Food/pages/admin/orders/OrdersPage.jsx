@@ -76,6 +76,8 @@ export default function OrdersPage({ statusKey = "all" }) {
   const [deletingOrderId, setDeletingOrderId] = useState(null)
   const [refundModalOpen, setRefundModalOpen] = useState(false)
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null)
+  const [selectedRefundMode, setSelectedRefundMode] = useState("")
+  const [overrideReason, setOverrideReason] = useState("")
   const showLoadingSkeleton = useDelayedLoading(isLoading, { delay: 120, minDuration: 360 })
   const seenOrderIdsRef = useRef(new Set())
   const isFirstLoadRef = useRef(true)
@@ -561,6 +563,9 @@ export default function OrdersPage({ statusKey = "all" }) {
         refundStatus: refundStatusRaw || (order.payment?.status === 'refunded' ? 'processed' : null),
         refundPolicyMode: order.refundPolicyMode || null,
         canRefundManually: Boolean(order.canRefundManually),
+        userRefundPreference: order.payment?.refund?.userPreference || "",
+        processedRefundMode: order.payment?.refund?.refundMode || "",
+        isRefundOverridden: Boolean(order.payment?.refund?.isOverridden),
         cancelledBy: order.cancelledBy || null,
         cancellationReason: order.cancellationReason || "",
       }
@@ -793,28 +798,18 @@ export default function OrdersPage({ statusKey = "all" }) {
     }
   }
 
-  // Handle refund button click - show modal for wallet payments, confirm dialog for others
+  // Handle refund button click - always open admin refund mode modal
   const handleRefund = (order) => {
-    const isWalletPayment = order.paymentType === "Wallet" || order.payment?.method === "wallet";
-    
-    if (isWalletPayment) {
-      // Show modal for wallet refunds
-      setSelectedOrderForRefund(order)
-      setRefundModalOpen(true)
-    } else {
-      // For non-wallet payments, use the old confirm dialog flow
-      const confirmMessage = `Are you sure you want to process refund for order ${order.orderId}?\n\nThis will initiate a Razorpay refund to the customer's original payment method.`;
-      
-      if (!confirm(confirmMessage)) {
-        return
-      }
-      
-      processRefund(order, null) // null amount means use default
-    }
+    const userPreference = String(order?.userRefundPreference || "").toLowerCase()
+    const defaultMode = userPreference === "original" ? "razorpay" : "wallet"
+    setSelectedRefundMode(defaultMode)
+    setOverrideReason("")
+    setSelectedOrderForRefund(order)
+    setRefundModalOpen(true)
   }
 
   // Process refund with amount
-  const processRefund = async (order, refundAmount = null) => {
+  const processRefund = async (order, refundAmount = null, refundMode = "", reason = "") => {
     // Try using MongoDB _id first (more reliable for route matching), then fallback to orderId string
     // Backend accepts either MongoDB ObjectId (24 chars) or orderId string
     // Using MongoDB _id is more reliable for route matching (no dashes/special chars)
@@ -843,11 +838,16 @@ export default function OrdersPage({ statusKey = "all" }) {
         _id: order._id,
         orderIdToUse,
         refundAmount,
+        refundMode,
+        overrideReason: reason,
         url: `/api/admin/orders/${orderIdToUse}/refund`
       })
       
       // Include refundAmount in request body if provided (ensure it's a number)
-      const requestData = refundAmount !== null ? { refundAmount: parseFloat(refundAmount) } : {}
+      const requestData = {}
+      if (refundAmount !== null) requestData.refundAmount = parseFloat(refundAmount)
+      if (refundMode) requestData.refundMode = refundMode
+      if (reason && String(reason).trim()) requestData.overrideReason = String(reason).trim()
       debugLog('?? Request data being sent:', requestData)
       const response = await adminAPI.processRefund(orderIdToUse, requestData)
       
@@ -926,9 +926,9 @@ export default function OrdersPage({ statusKey = "all" }) {
   }
 
   // Handle refund confirmation from modal
-  const handleRefundConfirm = (amount) => {
+  const handleRefundConfirm = (amount, refundMode, reason = "") => {
     if (selectedOrderForRefund) {
-      processRefund(selectedOrderForRefund, amount)
+      processRefund(selectedOrderForRefund, amount, refundMode, reason)
     }
   }
 
@@ -979,6 +979,10 @@ export default function OrdersPage({ statusKey = "all" }) {
         order={selectedOrderForRefund}
         onConfirm={handleRefundConfirm}
         isProcessing={processingRefund !== null}
+        selectedRefundMode={selectedRefundMode}
+        onRefundModeChange={setSelectedRefundMode}
+        overrideReason={overrideReason}
+        onOverrideReasonChange={setOverrideReason}
       />
       <OrdersTable 
         orders={filteredOrders} 

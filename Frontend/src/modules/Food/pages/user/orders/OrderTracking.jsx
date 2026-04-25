@@ -32,6 +32,7 @@ import { useOrders } from "@food/context/OrdersContext"
 import { useProfile } from "@food/context/ProfileContext"
 import { useLocation as useUserLocation } from "@food/hooks/useLocation"
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap"
+import RefundPreferenceModal from "@food/components/user/RefundPreferenceModal"
 import { orderAPI, restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { useUserNotifications } from "@food/hooks/useUserNotifications"
@@ -448,6 +449,9 @@ export default function OrderTracking() {
   const [showOrderDetails, setShowOrderDetails] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
   const [isCancelling, setIsCancelling] = useState(false)
+  const [showRefundPreference, setShowRefundPreference] = useState(false)
+  const [refundPreferenceFlow, setRefundPreferenceFlow] = useState("")
+  const [isSavingRefundPreference, setIsSavingRefundPreference] = useState(false)
   const [resolvedLookupId, setResolvedLookupId] = useState("")
   const [timerNow, setTimerNow] = useState(Date.now())
   const handleEtaUpdate = useCallback((newEta) => setEstimatedTime(newEta), [])
@@ -457,6 +461,7 @@ export default function OrderTracking() {
   const lookupIdsRef = useRef([])
   const isInitialPollRequestedRef = useRef(null)
   const lastPollExecutionRef = useRef(0) // New: Hard throttle for extreme cases
+  const restaurantRefundPromptedRef = useRef(new Set())
 
   // Delivery handover OTP received via socket event.
   // Kept separately so UI still renders even if the event arrives
@@ -796,6 +801,13 @@ export default function OrderTracking() {
     return Math.max(0, subtotal + packagingFee + platformFee + gst - discount)
   }, [order?.subtotal, order?.packagingFee, order?.platformFee, order?.gst, order?.discount])
 
+  const refundOverrideReason = useMemo(() => {
+    const isOverridden = Boolean(order?.payment?.refund?.isOverridden)
+    const reason = String(order?.payment?.refund?.overrideReason || "").trim()
+    if (!isOverridden || !reason) return ""
+    return reason
+  }, [order?.payment?.refund?.isOverridden, order?.payment?.refund?.overrideReason])
+
   useEffect(() => {
     if (!isEditWindowOpen) return
     const interval = setInterval(() => {
@@ -920,6 +932,45 @@ export default function OrderTracking() {
     terminalPollStopRef.current = ui === 'delivered' || ui === 'cancelled'
   }, [order])
 
+  useEffect(() => {
+    const saveWalletPreferenceForRestaurantCancel = async () => {
+      if (!order) return
+      const status = String(order?.status || "").toLowerCase()
+      const refundStatus = String(order?.payment?.refund?.status || "").toLowerCase()
+      const userPreference = String(order?.payment?.refund?.userPreference || "").toLowerCase()
+      if (status !== "cancelled_by_restaurant") return
+      if (refundStatus !== "pending") return
+      if (userPreference) return
+      if (!isWalletPayment(order)) return
+
+      const lookupId = lookupIdsRef.current[0] || normalizeLookupId(orderId)
+      if (!lookupId) return
+      try {
+        await orderAPI.setRefundPreference(lookupId, { refundPreference: "wallet" })
+        const orderResponse = await fetchOrderDetailsWithFallback({ force: true })
+        if (orderResponse.data?.success && orderResponse.data.data?.order) {
+          const apiOrder = orderResponse.data.data.order
+          setOrder(transformOrderForTracking(apiOrder, order))
+        }
+      } catch (error) {
+        debugWarn("Failed to auto-save wallet refund preference:", error)
+      }
+    }
+
+    saveWalletPreferenceForRestaurantCancel()
+  }, [order, orderId, fetchOrderDetailsWithFallback])
+
+  useEffect(() => {
+    if (!shouldAskRefundPreferenceForRestaurantCancel(order)) return
+    const key = String(order?.mongoId || order?._id || order?.orderId || orderId || "")
+    if (!key) return
+    if (restaurantRefundPromptedRef.current.has(key)) return
+
+    restaurantRefundPromptedRef.current.add(key)
+    setRefundPreferenceFlow("restaurant_cancel")
+    setShowRefundPreference(true)
+  }, [order, orderId])
+
   // Post-checkout splash only — real status comes from API / poll / socket.
   useEffect(() => {
     if (!confirmed) return
@@ -1016,42 +1067,141 @@ export default function OrderTracking() {
     setShowCancelDialog(true);
   };
 
+  const normalizePaymentMethodValue = (value) =>
+    String(value || "")
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_")
+      .trim()
+
+  const getPaymentMethod = (orderLike) => {
+    const candidates = [
+      orderLike?.payment?.method,
+      orderLike?.paymentMethod,
+      orderLike?.paymentType,
+      orderLike?.payment?.paymentMethod,
+      orderLike?.payment?.type,
+    ]
+      .map(normalizePaymentMethodValue)
+      .filter(Boolean)
+
+    if (candidates.some((value) => value.includes("wallet"))) return "wallet"
+    if (candidates.some((value) => value === "cash" || value === "cod" || value.includes("cash_on_delivery"))) return "cod"
+    if (candidates.some((value) => value.includes("razorpay") || value.includes("online") || value.includes("upi") || value.includes("card") || value.includes("netbanking"))) return "razorpay"
+
+    return candidates[0] || ""
+  }
+
+  const isWalletPayment = (orderLike) =>
+    getPaymentMethod(orderLike) === "wallet"
+
+  const isRazorpayPayment = (orderLike) =>
+    getPaymentMethod(orderLike) === "razorpay"
+
+  const isOnlineOrWalletPayment = (orderLike) =>
+    ["razorpay", "wallet"].includes(getPaymentMethod(orderLike))
+
+  const shouldAskRefundPreferenceForRestaurantCancel = (orderLike) => {
+    if (!orderLike) return false
+    const status = String(orderLike?.status || "").toLowerCase()
+    const refundStatus = String(orderLike?.payment?.refund?.status || "").toLowerCase()
+    const userPreference = String(orderLike?.payment?.refund?.userPreference || "").toLowerCase()
+    return (
+      status === "cancelled_by_restaurant" &&
+      refundStatus === "pending" &&
+      !userPreference &&
+      isRazorpayPayment(orderLike)
+    )
+  }
+
+  const submitCancellation = async (refundPreference = "") => {
+    setIsCancelling(true)
+    try {
+      const cancelLookupId =
+        lookupIdsRef.current[0] || normalizeLookupId(orderId)
+      const response = await orderAPI.cancelOrder(cancelLookupId, {
+        reason: cancellationReason.trim(),
+        refundPreference,
+      })
+      if (response.data?.success) {
+        const paymentMethod = getPaymentMethod(order)
+        const successMessage = response.data?.message ||
+          (paymentMethod === 'cash' || paymentMethod === 'cod'
+            ? 'Order cancelled successfully. No refund required as payment was not made.'
+            : 'Order cancelled successfully. Refund will be processed after admin approval.')
+        toast.success(successMessage)
+        setShowCancelDialog(false)
+        setShowRefundPreference(false)
+        setRefundPreferenceFlow("")
+        setCancellationReason("")
+        const orderResponse = await fetchOrderDetailsWithFallback({ force: true })
+        if (orderResponse.data?.success && orderResponse.data.data?.order) {
+          const apiOrder = orderResponse.data.data.order
+          setOrder(transformOrderForTracking(apiOrder, order))
+        }
+      } else {
+        toast.error(response.data?.message || 'Failed to cancel order')
+      }
+    } catch (error) {
+      debugError('Error cancelling order:', error)
+      toast.error(error.response?.data?.message || 'Failed to cancel order')
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
   const handleConfirmCancel = async () => {
     if (!cancellationReason.trim()) {
       toast.error('Please provide a reason for cancellation');
       return;
     }
 
-    setIsCancelling(true);
+    if (isRazorpayPayment(order)) {
+      setShowCancelDialog(false)
+      setRefundPreferenceFlow("cancel")
+      setShowRefundPreference(true)
+      return
+    }
+
+    if (isWalletPayment(order)) {
+      await submitCancellation("wallet")
+      return
+    }
+
+    await submitCancellation("")
+  };
+
+  const handleRefundPreferenceSelect = async (preference) => {
+    if (!["wallet", "original"].includes(String(preference || "").toLowerCase())) return
+
+    if (refundPreferenceFlow === "cancel") {
+      await submitCancellation(String(preference).toLowerCase())
+      return
+    }
+
+    setIsSavingRefundPreference(true)
     try {
-      const cancelLookupId =
-        lookupIdsRef.current[0] || normalizeLookupId(orderId)
-      const response = await orderAPI.cancelOrder(cancelLookupId, { reason: cancellationReason.trim() });
-      if (response.data?.success) {
-        const paymentMethod = order?.payment?.method || order?.paymentMethod;
-        const successMessage = response.data?.message ||
-          (paymentMethod === 'cash' || paymentMethod === 'cod'
-            ? 'Order cancelled successfully. No refund required as payment was not made.'
-            : 'Order cancelled successfully. Refund will be processed after admin approval.');
-        toast.success(successMessage);
-        setShowCancelDialog(false);
-        setCancellationReason("");
-        // Refresh order data
-        const orderResponse = await fetchOrderDetailsWithFallback({ force: true });
+      const lookupId = lookupIdsRef.current[0] || normalizeLookupId(orderId)
+      const response = await orderAPI.setRefundPreference(lookupId, {
+        refundPreference: String(preference).toLowerCase(),
+      })
+      if (response?.data?.success) {
+        toast.success("Refund preference saved")
+        setShowRefundPreference(false)
+        setRefundPreferenceFlow("")
+        const orderResponse = await fetchOrderDetailsWithFallback({ force: true })
         if (orderResponse.data?.success && orderResponse.data.data?.order) {
-          const apiOrder = orderResponse.data.data.order;
-          setOrder(transformOrderForTracking(apiOrder, order));
+          const apiOrder = orderResponse.data.data.order
+          setOrder(transformOrderForTracking(apiOrder, order))
         }
       } else {
-        toast.error(response.data?.message || 'Failed to cancel order');
+        toast.error(response?.data?.message || "Failed to save refund preference")
       }
     } catch (error) {
-      debugError('Error cancelling order:', error);
-      toast.error(error.response?.data?.message || 'Failed to cancel order');
+      toast.error(error.response?.data?.message || "Failed to save refund preference")
     } finally {
-      setIsCancelling(false);
+      setIsSavingRefundPreference(false)
     }
-  };
+  }
 
   const handleShare = async () => {
     try {
@@ -1444,6 +1594,20 @@ export default function OrderTracking() {
           </div>
         </motion.div>
 
+        {refundOverrideReason && (
+          <motion.div
+            className="bg-amber-50 rounded-xl p-4 shadow-sm border border-amber-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.34 }}
+          >
+            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Refund Update</p>
+            <p className="text-sm text-amber-900 mt-1 leading-snug">
+              Admin processed refund with override reason: {refundOverrideReason}
+            </p>
+          </motion.div>
+        )}
+
         {/* Delivery Partner Info */}
         {order?.deliveryPartnerId && (
           <motion.div
@@ -1673,6 +1837,19 @@ export default function OrderTracking() {
         </DialogContent>
       </Dialog>
 
+      <RefundPreferenceModal
+        open={showRefundPreference}
+        amount={order?.payment?.refund?.amount || order?.totalAmount || order?.total || 0}
+        defaultPreference={order?.payment?.refund?.userPreference || "wallet"}
+        isSubmitting={isCancelling || isSavingRefundPreference}
+        onClose={() => {
+          if (isCancelling || isSavingRefundPreference) return
+          setShowRefundPreference(false)
+          setRefundPreferenceFlow("")
+        }}
+        onSelect={handleRefundPreferenceSelect}
+      />
+
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
         <DialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white rounded-2xl p-0 overflow-hidden border-none outline-none">
@@ -1784,6 +1961,13 @@ export default function OrderTracking() {
                 <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">
                   {order.paymentMethod}
                 </span>
+              </div>
+            )}
+
+            {refundOverrideReason && (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Refund Override Reason</p>
+                <p className="text-sm text-amber-900 mt-1 leading-snug">{refundOverrideReason}</p>
               </div>
             )}
           </div>

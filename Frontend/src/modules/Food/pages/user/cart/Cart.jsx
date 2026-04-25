@@ -1784,7 +1784,7 @@ export default function Cart() {
         setIsPlacingOrder(false)
         // Refresh wallet balance
         try {
-          const walletResponse = await userAPI.getWallet()
+          const walletResponse = await userAPI.getWallet({ force: true })
           if (walletResponse?.data?.success && walletResponse?.data?.data?.wallet) {
             setWalletBalance(walletResponse.data.data.wallet.balance || 0)
           }

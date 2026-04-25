@@ -7,6 +7,7 @@ import {
     getOrderPaymentsUserController,
     getOrderByIdUserController,
     cancelOrderController,
+    setRefundPreferenceController,
     submitOrderRatingsController,
     getOrderDropOtpUserController,
     updateOrderInstructionsController
@@ -22,6 +23,7 @@ router.get('/:orderId/payments', getOrderPaymentsUserController);
 router.get('/:orderId/drop-otp', getOrderDropOtpUserController);
 router.get('/:orderId', getOrderByIdUserController);
 router.patch('/:orderId/cancel', cancelOrderController);
+router.patch('/:orderId/refund-preference', setRefundPreferenceController);
 router.patch('/:orderId/ratings', submitOrderRatingsController);
 router.patch('/:orderId/instructions', updateOrderInstructionsController);
 

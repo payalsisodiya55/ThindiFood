@@ -94,8 +94,20 @@ export async function cancelOrderController(req, res, next) {
         const userId = req.user?.userId;
         const orderId = req.params.orderId;
         const dto = validateCancelOrderDto(req.body);
-        const order = await orderService.cancelOrder(orderId, userId, dto.reason);
+        const order = await orderService.cancelOrder(orderId, userId, dto.reason, dto.refundPreference);
         return sendResponse(res, 200, 'Order cancelled', { order });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function setRefundPreferenceController(req, res, next) {
+    try {
+        const userId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const preference = req.body?.refundPreference;
+        const order = await orderService.setRefundPreference(orderId, userId, preference);
+        return sendResponse(res, 200, 'Refund preference saved', { order });
     } catch (err) {
         next(err);
     }

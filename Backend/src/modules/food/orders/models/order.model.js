@@ -106,7 +106,11 @@ const paymentSchema = new mongoose.Schema(
             },
             amount: { type: Number, default: 0 },
             refundId: { type: String, default: '' },
-            processedAt: { type: Date }
+            processedAt: { type: Date },
+            userPreference: { type: String, enum: ['wallet', 'original', ''], default: '' },
+            refundMode: { type: String, enum: ['wallet', 'razorpay', ''], default: '' },
+            isOverridden: { type: Boolean, default: false },
+            overrideReason: { type: String, default: '' }
         }
     },
     { _id: false }
