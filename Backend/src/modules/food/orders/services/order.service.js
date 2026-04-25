@@ -252,11 +252,14 @@ async function getActiveRefundPolicySettings() {
 
 function getRefundPolicyModeForCancellation(policySettings, cancelledBy) {
   if (cancelledBy === "restaurant") {
-    return policySettings?.cancelledByRestaurant || CANCELLATION_REFUND_POLICY_DEFAULTS.cancelledByRestaurant;
+    const mode = String(policySettings?.cancelledByRestaurant || "").toLowerCase();
+    // Safety-first: restaurant cancellation should be manual unless explicitly set to automatic.
+    return mode === "automatic" ? "automatic" : "manual";
   }
 
   if (cancelledBy === "user") {
-    return policySettings?.cancelledByUser || CANCELLATION_REFUND_POLICY_DEFAULTS.cancelledByUser;
+    const mode = String(policySettings?.cancelledByUser || "").toLowerCase();
+    return mode === "automatic" ? "automatic" : "manual";
   }
 
   return "manual";
@@ -275,12 +278,16 @@ function isRefundEligibleOrderPayment(order) {
 async function processAutomaticCancellationRefund(order, cancelledBy, reason = "", refundPreference = "") {
   const amount = Math.max(0, Number(order?.pricing?.total || 0));
   const paymentMethod = String(order?.payment?.method || "").toLowerCase();
+  const cancelledByRole = String(cancelledBy || "").toLowerCase();
   const userPref = String(
     refundPreference || order?.payment?.refund?.userPreference || ""
   ).toLowerCase();
   const normalizedPreference = ["wallet", "original"].includes(userPref) ? userPref : "";
 
-  let refundToWallet = true;
+  // Scope source-based routing only to restaurant-cancel automatic flow.
+  // Other flows keep prior default behavior to avoid regression.
+  let refundToWallet =
+    cancelledByRole === "restaurant" ? paymentMethod === "wallet" : true;
   if (normalizedPreference === "wallet") {
     refundToWallet = true;
   } else if (normalizedPreference === "original") {
@@ -2144,11 +2151,31 @@ export async function updateOrderStatusRestaurant(
   };
 
   if (String(orderStatus || "").toLowerCase().includes("cancel")) {
-    refundOutcome = await applyRefundPolicyForCancellation(order, {
-      cancelledBy: "restaurant",
-      reason: "",
-      refundPreference: "",
-    });
+    // Restaurant-side cancellations should always queue refund review for admin.
+    // Do not auto-refund from the restaurant app.
+    if (isRefundEligibleOrderPayment(order)) {
+      const amount = Math.max(0, Number(order?.pricing?.total || 0));
+      const existingPreference = String(
+        order?.payment?.refund?.userPreference || ""
+      ).toLowerCase();
+      const normalizedPreference = ["wallet", "original"].includes(existingPreference)
+        ? existingPreference
+        : "";
+
+      order.payment.refund = {
+        ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+        status: "pending",
+        amount,
+        userPreference: normalizedPreference,
+      };
+
+      refundOutcome = {
+        mode: "manual",
+        refundStatus: "pending",
+        transactionStatus: null,
+        customerMessage: " Refund is pending manual admin approval.",
+      };
+    }
   }
 
   await order.save();
@@ -3404,7 +3431,9 @@ export async function setRefundPreference(orderId, userId, preference) {
     throw new ValidationError("Order is not cancelled");
   }
 
-  if (String(order?.payment?.refund?.status || "").toLowerCase() === "processed") {
+  const existingRefundStatus = String(order?.payment?.refund?.status || "").toLowerCase();
+
+  if (existingRefundStatus === "processed") {
     throw new ValidationError("Refund already processed");
   }
 
@@ -3412,6 +3441,13 @@ export async function setRefundPreference(orderId, userId, preference) {
     ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
     userPreference: normalizedPreference,
   };
+
+  // If refund is already in manual-approval queue, updating preference should
+  // not auto-process the refund even if policy changes later.
+  if (existingRefundStatus === "pending") {
+    await order.save();
+    return order.toObject();
+  }
 
   const policySettings = await getActiveRefundPolicySettings();
   const { cancelledBy } = getCancellationMeta(order);

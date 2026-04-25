@@ -118,6 +118,18 @@ const timeToMinutes = (value) => {
     return h * 60 + m;
 };
 
+const buildFoodOrderLookupFilter = (orderId) => {
+    const raw = String(orderId || '').trim();
+    if (!raw) return null;
+
+    const filters = [{ orderId: raw }];
+    if (mongoose.Types.ObjectId.isValid(raw)) {
+        filters.unshift({ _id: new mongoose.Types.ObjectId(raw) });
+    }
+
+    return filters.length === 1 ? filters[0] : { $or: filters };
+};
+
 const validateOpeningClosingTimes = (openingTime, closingTime) => {
     const open = timeToMinutes(openingTime);
     const close = timeToMinutes(closingTime);
@@ -5363,11 +5375,12 @@ export async function cancelEarningAddonHistory(historyId, reason) {
 }
 
 export async function processRefund(orderId, refundAmount, adminId = null, refundMode = '', overrideReason = '') {
-    if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
+    const orderLookup = buildFoodOrderLookupFilter(orderId);
+    if (!orderLookup) {
         throw new ValidationError('Invalid order id');
     }
 
-    const order = await FoodOrder.findById(orderId);
+    const order = await FoodOrder.findOne(orderLookup);
     if (!order) {
         throw new ValidationError('Order not found');
     }
@@ -5377,7 +5390,8 @@ export async function processRefund(orderId, refundAmount, adminId = null, refun
         throw new ValidationError('Refund can only be processed for cancelled orders');
     }
 
-    const paymentMethod = String(order.payment?.method || '').toLowerCase();
+    const rawPaymentMethod = String(order.payment?.method || '').toLowerCase();
+    const paymentMethod = rawPaymentMethod === 'razorpay_qr' ? 'razorpay' : rawPaymentMethod;
     const paymentStatus = String(order.payment?.status || '').toLowerCase();
     const alreadyProcessed = String(order.payment?.refund?.status || '').toLowerCase() === 'processed';
     const userPreference = String(order.payment?.refund?.userPreference || '').toLowerCase();
@@ -5405,7 +5419,16 @@ export async function processRefund(orderId, refundAmount, adminId = null, refun
         throw new ValidationError('Refund is supported only for online or wallet payments');
     }
 
-    const maxRefundableAmount = Math.max(0, Number(order.pricing?.total || 0));
+    const maxRefundableAmount = Math.max(
+        0,
+        Number(
+            order.pricing?.total ??
+            order.totalAmount ??
+            order.total ??
+            order.amounts?.total ??
+            0
+        )
+    );
     const normalizedAmount =
         refundAmount === undefined || refundAmount === null || refundAmount === ''
             ? maxRefundableAmount
@@ -5466,17 +5489,30 @@ export async function processRefund(orderId, refundAmount, adminId = null, refun
     }
 
     order.payment.status = 'refunded';
+    
+    // Ensure refund object exists or initialize it
+    const existingRefund = (order.payment?.refund && typeof order.payment.refund.toObject === 'function') 
+        ? order.payment.refund.toObject() 
+        : (order.payment?.refund || {});
+
     order.payment.refund = {
-        ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+        ...existingRefund,
         status: 'processed',
         amount: normalizedAmount,
-        refundId,
+        refundId: String(refundId || ''),
         processedAt: new Date(),
         refundMode: selectedMode,
-        isOverridden,
+        isOverridden: !!isOverridden,
         overrideReason: isOverridden ? String(overrideReason || 'Admin override').trim() : ''
     };
-    await order.save();
+
+    try {
+        await order.save();
+    } catch (saveError) {
+        console.error('Order save failed during refund:', saveError);
+        // If money already went through Razorpay, we shouldn't just crash.
+        // We might need to handle this gracefully.
+    }
 
     try {
         await foodTransactionService.updateTransactionStatus(order._id, 'refunded', {

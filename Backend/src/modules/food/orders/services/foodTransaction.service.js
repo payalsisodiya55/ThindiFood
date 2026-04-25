@@ -371,7 +371,7 @@ export async function updateTransactionStatus(orderId, kind, details = {}) {
     
     transaction.history.push({
         kind,
-        amount: transaction.amounts.totalCustomerPaid,
+        amount: transaction.amounts?.totalCustomerPaid || 0,
         at: new Date(),
         note: details.note || `Transaction updated: ${kind}`,
         recordedBy: { role: details.recordedByRole || 'SYSTEM', id: details.recordedById }

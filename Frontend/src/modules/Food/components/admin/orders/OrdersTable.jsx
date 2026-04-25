@@ -417,13 +417,15 @@ export default function OrdersTable({
                                                order.payment?.method !== "cash" && 
                                                order.payment?.method !== "cod" &&
                                                (order.paymentMethod === "razorpay" || 
-                                                order.paymentMethod === "online" || 
-                                                order.payment?.paymentMethod === "razorpay" || 
-                                                order.payment?.method === "razorpay" ||
-                                                order.payment?.method === "online"));
+                                                order.paymentMethod === "razorpay_qr" || 
+                                                 order.paymentMethod === "online" || 
+                                                 order.payment?.paymentMethod === "razorpay" || 
+                                                 order.payment?.paymentMethod === "razorpay_qr" ||
+                                                 order.payment?.method === "razorpay" ||
+                                                 order.payment?.method === "razorpay_qr" ||
+                                                 order.payment?.method === "online"));
                         
                         const isWalletPayment = order.paymentType === "Wallet" || paymentMethod === "wallet";
-                        
                         return isCancelled && (isOnlinePayment || isWalletPayment);
                       })() && (
                         <>
@@ -446,7 +448,11 @@ export default function OrdersTable({
                                 ? "Wallet Refunded" 
                                 : "Refunded"}
                             </span>
-                          ) : order.canRefundManually && onRefund ? (
+                          ) : order.canRefundManually &&
+                            ["paid", "authorized", "captured", "settled"].includes(
+                              String(order.payment?.status || "").toLowerCase()
+                            ) &&
+                            onRefund ? (
                             <button 
                               onClick={() => onRefund(order)}
                               disabled={processingRefund === (order.id || order.orderId)}

@@ -83,7 +83,16 @@ export const AuthProvider = ({ children }) => {
                     setUser(extractProfilePayload(response));
                 } catch (error) {
                     if (error?.response?.status === 401) {
-                        // Expired/invalid token or guest context; keep UI stable without noisy errors.
+                        // Expired/invalid token or guest context:
+                        // clear stale role token to avoid repeated /auth/me 401 calls.
+                        const roleStorageKey = ROLE_STORAGE_KEYS[currentRole];
+                        if (roleStorageKey) {
+                            localStorage.removeItem(roleStorageKey);
+                        }
+                        (LEGACY_ROLE_STORAGE_KEYS[currentRole] || []).forEach((storageKey) => {
+                            localStorage.removeItem(storageKey);
+                        });
+                        setAuthData((prev) => ({ ...prev, [currentRole]: null }));
                         setUser(null);
                     } else {
                         console.error('Failed to fetch profile:', error);

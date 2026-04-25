@@ -1609,8 +1609,8 @@ export async function processRefund(req, res, next) {
     try {
         const { orderId } = req.params;
         const { refundAmount, refundMode, overrideReason } = req.body;
-        if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
-            return res.status(400).json({ success: false, message: 'Invalid order id' });
+        if (!String(orderId || '').trim()) {
+            return res.status(400).json({ success: false, message: 'Order id is required' });
         }
 
         const updated = await adminService.processRefund(
@@ -1621,27 +1621,36 @@ export async function processRefund(req, res, next) {
             overrideReason
         );
         
-        // Let's add the push notification here if we have access to the user ID
-        // First we need to get the order to find the user ID
-        const order = await mongoose.model('FoodOrder').findById(orderId).lean();
-        
-        if (order && order.userId) {
-            const { sendNotificationToOwners } = await import('../../../../core/notifications/firebase.service.js');
-            await sendNotificationToOwners(
-                [{ ownerType: 'USER', ownerId: order.userId }],
-                {
-                    title: 'Refund Processed! 💸',
-                    body: `Your refund of ₹${refundAmount || order.totalAmount || order.total || 0} for Order #${order.orderId} has been processed successfully.`,
-                    image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
-                    data: {
-                        type: 'refund_processed',
-                        orderId: String(order.orderId),
-                        orderMongoId: String(order._id)
-                    }
-                }
-            );
-        }
+        // Send notification in a fail-safe way; refund should not fail if notification fails.
+        const refundedOrder = updated?.order || null;
+        if (refundedOrder?.userId) {
+            try {
+                const { sendNotificationToOwners } = await import('../../../../core/notifications/firebase.service.js');
+                const refundedAmount =
+                    Number(updated?.order?.payment?.refund?.amount) ||
+                    Number(refundAmount) ||
+                    Number(refundedOrder?.pricing?.total) ||
+                    Number(refundedOrder?.totalAmount) ||
+                    Number(refundedOrder?.total) ||
+                    0;
 
+                await sendNotificationToOwners(
+                    [{ ownerType: 'USER', ownerId: refundedOrder.userId }],
+                    {
+                        title: 'Refund Processed',
+                        body: `Your refund of INR ${refundedAmount} for Order #${String(refundedOrder.orderId || orderId)} has been processed successfully.`,
+                        image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
+                        data: {
+                            type: 'refund_processed',
+                            orderId: String(refundedOrder.orderId || orderId),
+                            orderMongoId: String(refundedOrder._id || '')
+                        }
+                    }
+                );
+            } catch (notifyError) {
+                console.error('Refund notification failed:', notifyError);
+            }
+        }
         res.status(200).json({
             success: true,
             message: 'Refund processed successfully',
