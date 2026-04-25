@@ -1,39 +1,20 @@
 import { Suspense, lazy } from "react"
-import { Routes, Route } from "react-router-dom"
+import { Routes, Route, Navigate } from "react-router-dom"
 import ProtectedRoute from "@food/components/ProtectedRoute"
 import Loader from "@food/components/Loader"
 
 // Lazy Loading Components
-const RestaurantOrdersPage = lazy(() => import("@food/pages/restaurant/OrdersPage"))
 const AllOrdersPage = lazy(() => import("@food/pages/restaurant/AllOrdersPage"))
-const RestaurantDetailsPage = lazy(() => import("@food/pages/restaurant/RestaurantDetailsPage"))
-const EditRestaurantPage = lazy(() => import("@food/pages/restaurant/EditRestaurantPage"))
-const FoodDetailsPage = lazy(() => import("@food/pages/restaurant/FoodDetailsPage"))
-const EditFoodPage = lazy(() => import("@food/pages/restaurant/EditFoodPage"))
-const AllFoodPage = lazy(() => import("@food/pages/restaurant/AllFoodPage"))
-const WalletPage = lazy(() => import("@food/pages/restaurant/WalletPage"))
 const RestaurantNotifications = lazy(() => import("@food/pages/restaurant/Notifications"))
 const OrderDetails = lazy(() => import("@food/pages/restaurant/OrderDetails"))
 const OrdersMain = lazy(() => import("@food/pages/restaurant/OrdersMain"))
 const RestaurantOnboarding = lazy(() => import("@food/pages/restaurant/Onboarding"))
-const AdvertisementsPage = lazy(() => import("@food/pages/restaurant/AdvertisementsPage"))
-const AdDetailsPage = lazy(() => import("@food/pages/restaurant/AdDetailsPage"))
-const NewAdvertisementPage = lazy(() => import("@food/pages/restaurant/NewAdvertisementPage"))
-const EditAdvertisementPage = lazy(() => import("@food/pages/restaurant/EditAdvertisementPage"))
 const CouponListPage = lazy(() => import("@food/pages/restaurant/CouponListPage"))
 const AddCouponPage = lazy(() => import("@food/pages/restaurant/AddCouponPage"))
 const EditCouponPage = lazy(() => import("@food/pages/restaurant/EditCouponPage"))
-const ReviewsPage = lazy(() => import("@food/pages/restaurant/ReviewsPage"))
-const UpdateReplyPage = lazy(() => import("@food/pages/restaurant/UpdateReplyPage"))
-const SettingsPage = lazy(() => import("@food/pages/restaurant/SettingsPage"))
 const PrivacyPolicyPage = lazy(() => import("@food/pages/restaurant/PrivacyPolicyPage"))
 const TermsAndConditionsPage = lazy(() => import("@food/pages/restaurant/TermsAndConditionsPage"))
-const RestaurantConfigPage = lazy(() => import("@food/pages/restaurant/RestaurantConfigPage"))
-const RestaurantCategoriesPage = lazy(() => import("@food/pages/restaurant/RestaurantCategoriesPage"))
 const MenuCategoriesPage = lazy(() => import("@food/pages/restaurant/MenuCategoriesPage"))
-const BusinessPlanPage = lazy(() => import("@food/pages/restaurant/BusinessPlanPage"))
-const ConversationListPage = lazy(() => import("@food/pages/restaurant/ConversationListPage"))
-const ChatDetailPage = lazy(() => import("@food/pages/restaurant/ChatDetailPage"))
 const RestaurantStatus = lazy(() => import("@food/pages/restaurant/RestaurantStatus"))
 const ExploreMore = lazy(() => import("@food/pages/restaurant/ExploreMore"))
 const DeliverySettings = lazy(() => import("@food/pages/restaurant/DeliverySettings"))
@@ -93,39 +74,19 @@ export default function RestaurantRouter() {
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OrdersMain /></ProtectedRoute>} path="" />
         <Route path="onboarding" element={<RestaurantOnboarding />} />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantNotifications /></ProtectedRoute>} path="notifications" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantOrdersPage /></ProtectedRoute>} path="orders" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AllOrdersPage /></ProtectedRoute>} path="orders/all" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OrderDetails /></ProtectedRoute>} path="orders/:orderId" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantDetailsPage /></ProtectedRoute>} path="details" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditRestaurantPage /></ProtectedRoute>} path="edit" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AllFoodPage /></ProtectedRoute>} path="food/all" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><FoodDetailsPage /></ProtectedRoute>} path="food/:id" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditFoodPage /></ProtectedRoute>} path="food/:id/edit" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditFoodPage /></ProtectedRoute>} path="food/new" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><WalletPage /></ProtectedRoute>} path="wallet" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AdvertisementsPage /></ProtectedRoute>} path="advertisements" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><NewAdvertisementPage /></ProtectedRoute>} path="advertisements/new" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AdDetailsPage /></ProtectedRoute>} path="advertisements/:id" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditAdvertisementPage /></ProtectedRoute>} path="advertisements/:id/edit" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><CouponListPage /></ProtectedRoute>} path="coupons" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AddCouponPage /></ProtectedRoute>} path="coupons/new" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditCouponPage /></ProtectedRoute>} path="coupons/:id/edit" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><CouponListPage /></ProtectedRoute>} path="coupon" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AddCouponPage /></ProtectedRoute>} path="coupon/new" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditCouponPage /></ProtectedRoute>} path="coupon/:id/edit" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><ReviewsPage /></ProtectedRoute>} path="reviews" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><UpdateReplyPage /></ProtectedRoute>} path="reviews/:id/reply" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><SettingsPage /></ProtectedRoute>} path="settings" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DeliverySettings /></ProtectedRoute>} path="delivery-settings" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RushHour /></ProtectedRoute>} path="rush-hour" />
         <Route path="privacy" element={<PrivacyPolicyPage />} />
         <Route path="terms" element={<TermsAndConditionsPage />} />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantConfigPage /></ProtectedRoute>} path="config" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantCategoriesPage /></ProtectedRoute>} path="categories" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><MenuCategoriesPage /></ProtectedRoute>} path="menu-categories" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><BusinessPlanPage /></ProtectedRoute>} path="business-plan" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><ConversationListPage /></ProtectedRoute>} path="conversation" />
-        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><ChatDetailPage /></ProtectedRoute>} path="conversation/:conversationId" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantStatus /></ProtectedRoute>} path="status" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><ExploreMore /></ProtectedRoute>} path="explore" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><OutletTimings /></ProtectedRoute>} path="outlet-timings" />
@@ -161,6 +122,7 @@ export default function RestaurantRouter() {
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningOfferListPage /></ProtectedRoute>} path="dining-offers" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningOfferFormPage mode="create" /></ProtectedRoute>} path="dining-offers/new" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningOfferFormPage mode="edit" /></ProtectedRoute>} path="dining-offers/:id/edit" />
+        <Route path="*" element={<Navigate to="/food/restaurant" replace />} />
       </Routes>
     </Suspense>
   )

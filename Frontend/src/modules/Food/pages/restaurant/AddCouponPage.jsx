@@ -5,7 +5,6 @@ import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
-import BottomNavbar from "@food/components/restaurant/BottomNavbar"
 
 const createInitialForm = () => ({
   couponCode: "",
@@ -362,7 +361,6 @@ export default function AddCouponPage(props = {}) {
         </div>
       </div>
 
-      <BottomNavbar />
     </div>
   )
 }

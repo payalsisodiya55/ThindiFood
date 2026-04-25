@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom"
-import { Home, ShoppingBag, Store, Wallet, Menu } from "lucide-react"
+import { Home, Compass, Store, Wallet, Menu } from "lucide-react"
 
 export default function BottomNavbar({ onMenuClick }) {
   const navigate = useNavigate()
@@ -24,37 +24,37 @@ export default function BottomNavbar({ onMenuClick }) {
           <Home className="w-6 h-6" />
         </button>
         <button
-          onClick={() => navigate("/restaurant/orders")}
+          onClick={() => navigate("/restaurant/explore")}
           className={`flex flex-col items-center gap-1 p-2 transition-colors ${
-            isActive("/restaurant/orders") ? "text-[#ff8100]" : "text-gray-600"
+            isActive("/restaurant/explore") ? "text-[#ff8100]" : "text-gray-600"
           }`}
         >
-          <ShoppingBag className="w-6 h-6" />
+          <Compass className="w-6 h-6" />
         </button>
         <button
-          onClick={() => navigate("/restaurant/details")}
+          onClick={() => navigate("/restaurant")}
           className={`flex flex-col items-center gap-1 p-2 -mt-8 transition-colors ${
-            isActive("/restaurant/details") ? "text-[#ff8100]" : "text-gray-600"
+            isActive("/restaurant") ? "text-[#ff8100]" : "text-gray-600"
           }`}
         >
           <div
             className={`rounded-full p-3 shadow-lg border-2 transition-colors ${
-              isActive("/restaurant/details")
+              isActive("/restaurant")
                 ? "bg-[#ff8100] border-white"
                 : "bg-white border-gray-200"
             }`}
           >
             <Store
               className={`w-6 h-6 ${
-                isActive("/restaurant/details") ? "text-white" : "text-gray-600"
+                isActive("/restaurant") ? "text-white" : "text-gray-600"
               }`}
             />
           </div>
         </button>
         <button
-          onClick={() => navigate("/restaurant/wallet")}
+          onClick={() => navigate("/restaurant/hub-finance")}
           className={`flex flex-col items-center gap-1 p-2 transition-colors ${
-            isActive("/restaurant/wallet") ? "text-[#ff8100]" : "text-gray-600"
+            isActive("/restaurant/hub-finance") ? "text-[#ff8100]" : "text-gray-600"
           }`}
         >
           <Wallet className="w-6 h-6" />
@@ -70,10 +70,10 @@ export default function BottomNavbar({ onMenuClick }) {
               return
             }
             // Fallback: only navigate if onMenuClick is not provided
-            navigate("/restaurant/food/all")
+            navigate("/restaurant/explore")
           }}
           className={`flex flex-col items-center gap-1 p-2 transition-colors ${
-            isActive("/restaurant/food/all") ? "text-[#ff8100]" : "text-gray-600"
+            isActive("/restaurant/explore") ? "text-[#ff8100]" : "text-gray-600"
           }`}
         >
           <Menu className="w-6 h-6" />

@@ -5,7 +5,6 @@ import { ArrowLeft, Clock3, MoreVertical, Pencil, Plus, Trash2 } from "lucide-re
 import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
-import BottomNavbar from "@food/components/restaurant/BottomNavbar"
 import MenuOverlay from "@food/components/restaurant/MenuOverlay"
 
 const STATUS_META = {
@@ -274,7 +273,6 @@ export default function CouponListPage() {
         <Plus className="h-6 w-6" />
       </motion.button>
 
-      <BottomNavbar onMenuClick={() => setShowMenu(true)} />
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
     </div>
   )

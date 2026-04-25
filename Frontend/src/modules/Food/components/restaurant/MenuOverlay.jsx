@@ -2,23 +2,12 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import { 
-  User,
-  Utensils,
-  Megaphone,
   Settings,
-  Monitor,
-  Plus,
-  Grid3x3,
   Tag,
-  FileText,
-  MessageSquare,
   Shield,
-  Globe,
-  MessageCircle,
   CheckSquare,
   LogOut,
   LogIn,
-  UserPlus
 } from "lucide-react"
 
 export default function MenuOverlay({ showMenu, setShowMenu }) {
@@ -51,16 +40,8 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
   // Get menu options based on authentication state
   const getMenuOptions = () => {
     const baseOptions = [
-      { id: 4, name: "All Food", icon: Utensils, route: "/restaurant/food/all" },
-      { id: 6, name: "Restaurant Config", icon: Settings, route: "/restaurant/config" },
-      { id: 7, name: "Advertisements", icon: Monitor, route: "/restaurant/advertisements" },
-      { id: 9, name: "Categories", icon: Grid3x3, route: "/restaurant/categories" },
       { id: 10, name: "Coupons", icon: Tag, route: "/restaurant/coupons" },
-      { id: 11, name: "My Business Plan", icon: FileText, route: "/restaurant/business-plan" },
-      { id: 12, name: "Reviews", icon: MessageSquare, route: "/restaurant/reviews" },
-      { id: 14, name: "Wallet Method", icon: Settings, route: "/restaurant/wallet" },
-      { id: 16, name: "Settings", icon: Settings, route: "/restaurant/settings" },
-      { id: 17, name: "Conversation", icon: MessageCircle, route: "/restaurant/conversation" },
+      { id: 14, name: "Finance", icon: Settings, route: "/restaurant/hub-finance" },
       { id: 18, name: "Privacy Policy", icon: Shield, route: "/restaurant/privacy" },
       { id: 19, name: "Terms & Condition", icon: CheckSquare, route: "/restaurant/terms" },
     ]
