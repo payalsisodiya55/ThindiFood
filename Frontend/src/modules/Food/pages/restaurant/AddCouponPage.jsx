@@ -113,12 +113,6 @@ export default function AddCouponPage(props = {}) {
           return
         }
 
-        const approvalStatus = String(found?.approvalStatus || "pending").toLowerCase()
-        if (approvalStatus === "approved") {
-          navigate("/restaurant/coupons", { replace: true })
-          return
-        }
-
         if (!isActive) return
         setForm(mapCouponToForm(found))
       } catch (err) {

@@ -1023,6 +1023,8 @@ export const adminAPI = {
   /** Restaurant Product Offers Approval (admin) */
   getProductOffers: (params = {}) =>
     apiClient.get("/food/admin/product-offers", { params, contextModule: "admin" }),
+  updateProductOffer: (id, body = {}) =>
+    apiClient.patch(`/food/admin/product-offers/${String(id)}`, body ?? {}, { contextModule: "admin" }),
   approveProductOffer: (id) =>
     apiClient.patch(`/food/admin/product-offers/${String(id)}/approve`, {}, { contextModule: "admin" }),
   rejectProductOffer: (id, reason) =>

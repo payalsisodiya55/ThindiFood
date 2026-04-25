@@ -7,6 +7,7 @@ import {
     getAllRestaurantOffersAdmin,
     approveRestaurantOfferAdmin,
     rejectRestaurantOfferAdmin,
+    updateRestaurantOfferAdmin,
 } from '../services/restaurantOffer.service.js';
 
 // Restaurant-side controllers
@@ -78,6 +79,16 @@ export const rejectRestaurantOfferAdminController = async (req, res, next) => {
         const offer = await rejectRestaurantOfferAdmin(req.params.id, reason || '');
         if (!offer) return sendError(res, 404, 'Offer not found');
         return sendResponse(res, 200, 'Offer rejected', { offer });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateRestaurantOfferAdminController = async (req, res, next) => {
+    try {
+        const offer = await updateRestaurantOfferAdmin(req.params.id, req.body || {});
+        if (!offer) return sendError(res, 404, 'Offer not found');
+        return sendResponse(res, 200, 'Offer updated successfully', { offer });
     } catch (error) {
         next(error);
     }

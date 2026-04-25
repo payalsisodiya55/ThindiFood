@@ -68,14 +68,6 @@ export const updateMyRestaurantCoupon = async (restaurantId, couponId, payload) 
     const existing = await FoodOffer.findOne({ _id: oid, restaurantId: rid });
     if (!existing) return null;
 
-    if (existing.approvalStatus === 'approved') {
-        throw new ValidationError('Approved coupons cannot be edited');
-    }
-
-    if (!['pending', 'rejected'].includes(existing.approvalStatus || 'pending')) {
-        throw new ValidationError('Only pending or rejected coupons can be edited');
-    }
-
     if (payload.couponCode && payload.couponCode !== existing.couponCode) {
         const duplicate = await FoodOffer.findOne({
             couponCode: payload.couponCode,
@@ -117,12 +109,8 @@ export const updateMyRestaurantCoupon = async (restaurantId, couponId, payload) 
         set.maxDiscount = parsed;
     }
 
-    if (existing.approvalStatus === 'rejected') {
-        set.approvalStatus = 'pending';
-        set.rejectionReason = '';
-    } else {
-        set.approvalStatus = 'pending';
-    }
+    set.approvalStatus = 'pending';
+    set.rejectionReason = '';
 
     const updated = await FoodOffer.findOneAndUpdate(
         { _id: oid, restaurantId: rid },

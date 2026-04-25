@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { Search, CheckCircle2, XCircle, Eye, Tag, Loader2, Calendar } from "lucide-react"
+import { Search, CheckCircle2, XCircle, Eye, Tag, Loader2, Calendar, Pencil } from "lucide-react"
 import { Card } from "@food/components/ui/card"
 import {
   Dialog,
@@ -19,16 +19,43 @@ export default function OfferApproval() {
   const [selectedOffer, setSelectedOffer] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
+  const [editError, setEditError] = useState("")
+  const [editForm, setEditForm] = useState({
+    id: "",
+    title: "",
+    discountType: "percentage",
+    discountValue: "",
+    maxDiscount: "",
+    maxItemsPerOrder: "",
+    perUserRedeemLimit: "",
+    startDate: "",
+    endDate: "",
+  })
   const [processing, setProcessing] = useState(false)
   const isMountedRef = useRef(true)
 
-  // Fetch pending offer approval requests
+  const getApprovalStatus = (offer) => String(offer?.approvalStatus || "pending").toLowerCase()
+  const toInputDate = (value) => {
+    if (!value) return ""
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return ""
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${date.getFullYear()}-${month}-${day}`
+  }
+  const statusBadgeClass = (status) => {
+    if (status === "approved") return "bg-green-100 text-green-700"
+    if (status === "rejected") return "bg-red-100 text-red-700"
+    return "bg-amber-100 text-amber-700"
+  }
+
+  // Fetch product offers for review + management
   const fetchOffers = useCallback(async ({ silent = false } = {}) => {
     try {
       if (!silent) setLoading(true)
-      // We fetch all product offers, backend can filter for pending if needed or we show status
-      const response = await adminAPI.getProductOffers({ status: 'pending' })
+      const response = await adminAPI.getProductOffers({})
       const data = response?.data?.data?.offers || response?.data?.offers || []
       if (!isMountedRef.current) return
       setOffers(data)
@@ -60,7 +87,8 @@ export default function OfferApproval() {
     return offers.filter((offer) =>
       offer.title?.toLowerCase().includes(query) ||
       offer.restaurantName?.toLowerCase().includes(query) ||
-      offer.restaurantId?.toLowerCase().includes(query)
+      offer.restaurantId?.toLowerCase().includes(query) ||
+      getApprovalStatus(offer).includes(query)
     )
   }, [offers, searchQuery])
 
@@ -102,6 +130,78 @@ export default function OfferApproval() {
     }
   }
 
+  const openEditModal = (offer) => {
+    if (!offer) return
+    setEditError("")
+    setEditForm({
+      id: String(offer?._id || offer?.id || ""),
+      title: String(offer?.title || ""),
+      discountType: offer?.discountType === "flat" ? "flat" : "percentage",
+      discountValue: offer?.discountValue != null ? String(Number(offer.discountValue)) : "",
+      maxDiscount: offer?.maxDiscount != null ? String(Number(offer.maxDiscount)) : "",
+      maxItemsPerOrder: offer?.maxItemsPerOrder != null ? String(Number(offer.maxItemsPerOrder)) : "",
+      perUserRedeemLimit: offer?.perUserRedeemLimit != null ? String(Number(offer.perUserRedeemLimit)) : "",
+      startDate: toInputDate(offer?.startDate),
+      endDate: toInputDate(offer?.endDate),
+    })
+    setShowEditModal(true)
+  }
+
+  const handleSaveEdit = async () => {
+    const title = String(editForm.title || "").trim()
+    const discountValue = Number(editForm.discountValue)
+    const maxDiscountValue = Number(editForm.maxDiscount)
+    const maxItemsValue = Number(editForm.maxItemsPerOrder)
+    const perUserValue = Number(editForm.perUserRedeemLimit)
+
+    if (!title) {
+      setEditError("Title is required")
+      return
+    }
+    if (!Number.isFinite(discountValue) || discountValue <= 0) {
+      setEditError("Discount value must be greater than 0")
+      return
+    }
+    if (editForm.discountType === "percentage" && (!Number.isFinite(maxDiscountValue) || maxDiscountValue < 0)) {
+      setEditError("Max discount is required for percentage offers")
+      return
+    }
+    if (editForm.maxItemsPerOrder !== "" && (!Number.isFinite(maxItemsValue) || maxItemsValue < 1)) {
+      setEditError("Max items per order must be at least 1")
+      return
+    }
+    if (editForm.perUserRedeemLimit !== "" && (!Number.isFinite(perUserValue) || perUserValue < 1)) {
+      setEditError("Per user redeem limit must be at least 1")
+      return
+    }
+    if (editForm.startDate && editForm.endDate && new Date(editForm.endDate).getTime() <= new Date(editForm.startDate).getTime()) {
+      setEditError("End date must be after start date")
+      return
+    }
+
+    try {
+      setProcessing(true)
+      setEditError("")
+      await adminAPI.updateProductOffer(editForm.id, {
+        title,
+        discountType: editForm.discountType,
+        discountValue,
+        maxDiscount: editForm.discountType === "percentage" ? maxDiscountValue : null,
+        maxItemsPerOrder: editForm.maxItemsPerOrder !== "" ? maxItemsValue : null,
+        perUserRedeemLimit: editForm.perUserRedeemLimit !== "" ? perUserValue : null,
+        startDate: editForm.startDate || null,
+        endDate: editForm.endDate || null,
+      })
+      toast.success("Offer updated successfully")
+      setShowEditModal(false)
+      await fetchOffers()
+    } catch (error) {
+      setEditError(error?.response?.data?.message || "Failed to update offer")
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-2">
@@ -112,7 +212,7 @@ export default function OfferApproval() {
       <Card className="border border-gray-200 shadow-sm">
         <div className="p-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Pending Product Offers</h2>
+            <h2 className="text-base font-semibold text-gray-900">Product Offers</h2>
             <div className="relative w-full md:w-80">
               <span className="absolute inset-y-0 left-2.5 flex items-center text-gray-400">
                 <Search className="w-4 h-4" />
@@ -148,10 +248,12 @@ export default function OfferApproval() {
                 <tbody className="divide-y divide-gray-200">
                   {filteredOffers.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="px-3 py-8 text-center text-gray-500">No pending offers found.</td>
+                      <td colSpan="7" className="px-3 py-8 text-center text-gray-500">No offers found.</td>
                     </tr>
                   ) : (
-                    filteredOffers.map((offer, index) => (
+                    filteredOffers.map((offer, index) => {
+                      const approvalStatus = getApprovalStatus(offer)
+                      return (
                       <tr key={offer._id || offer.id} className="hover:bg-gray-50">
                         <td className="px-3 py-3 font-semibold">{index + 1}</td>
                         <td className="px-3 py-3">
@@ -168,8 +270,8 @@ export default function OfferApproval() {
                           </span>
                         </td>
                         <td className="px-3 py-3">
-                          <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-full text-xs font-bold capitalize">
-                            {offer.approvalStatus || 'pending'}
+                          <span className={`px-2 py-1 rounded-full text-xs font-bold capitalize ${statusBadgeClass(approvalStatus)}`}>
+                            {approvalStatus}
                           </span>
                         </td>
                         <td className="px-3 py-3 text-right">
@@ -181,21 +283,32 @@ export default function OfferApproval() {
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
-                              onClick={() => handleApprove(offer._id || offer.id)}
-                              className="p-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all"
+                              onClick={() => openEditModal(offer)}
+                              className="p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all"
+                              title="Edit offer"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <Pencil className="w-4 h-4" />
                             </button>
-                            <button
-                              onClick={() => { setSelectedOffer(offer); setShowRejectModal(true); }}
-                              className="p-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all"
-                            >
-                              <XCircle className="w-4 h-4" />
-                            </button>
+                            {approvalStatus === "pending" && (
+                              <>
+                                <button
+                                  onClick={() => handleApprove(offer._id || offer.id)}
+                                  className="p-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all"
+                                >
+                                  <CheckCircle2 className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => { setSelectedOffer(offer); setShowRejectModal(true); }}
+                                  className="p-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all"
+                                >
+                                  <XCircle className="w-4 h-4" />
+                                </button>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    ))
+                    )})
                   )}
                 </tbody>
               </table>
@@ -251,8 +364,14 @@ export default function OfferApproval() {
             </div>
           )}
           <DialogFooter className="p-6 border-t bg-slate-50 flex gap-2">
-            <button onClick={() => setShowRejectModal(true)} className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all">Reject</button>
-            <button onClick={() => handleApprove(selectedOffer._id || selectedOffer.id)} className="flex-1 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all">Approve</button>
+            {getApprovalStatus(selectedOffer) === "pending" ? (
+              <>
+                <button onClick={() => setShowRejectModal(true)} className="flex-1 py-2 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all">Reject</button>
+                <button onClick={() => handleApprove(selectedOffer._id || selectedOffer.id)} className="flex-1 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all">Approve</button>
+              </>
+            ) : (
+              <button onClick={() => setShowDetailModal(false)} className="flex-1 py-2 bg-slate-600 text-white rounded-xl font-bold hover:bg-slate-700 transition-all">Close</button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -273,6 +392,126 @@ export default function OfferApproval() {
           <DialogFooter className="mt-4">
             <button onClick={() => setShowRejectModal(false)} className="px-4 py-2 text-gray-500 font-bold">Cancel</button>
             <button onClick={handleReject} disabled={processing || !rejectReason.trim()} className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold disabled:opacity-50">Confirm Reject</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="max-w-xl bg-white rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle>Edit Offer</DialogTitle>
+            <DialogDescription>Update offer details and save changes.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Title</label>
+              <input
+                value={editForm.title}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, title: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+                placeholder="Offer title"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Discount Type</label>
+              <select
+                value={editForm.discountType}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, discountType: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+              >
+                <option value="percentage">Percentage</option>
+                <option value="flat">Flat Amount</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Discount Value</label>
+              <input
+                type="number"
+                min="0"
+                value={editForm.discountValue}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, discountValue: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+              />
+            </div>
+
+            {editForm.discountType === "percentage" && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Max Discount</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editForm.maxDiscount}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, maxDiscount: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Max Items Per Order</label>
+              <input
+                type="number"
+                min="1"
+                value={editForm.maxItemsPerOrder}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, maxItemsPerOrder: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+                placeholder="Leave empty for unlimited"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Per User Redeem Limit</label>
+              <input
+                type="number"
+                min="1"
+                value={editForm.perUserRedeemLimit}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, perUserRedeemLimit: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+                placeholder="Leave empty for unlimited"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Start Date</label>
+              <input
+                type="date"
+                value={editForm.startDate}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, startDate: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">End Date</label>
+              <input
+                type="date"
+                value={editForm.endDate}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, endDate: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
+              />
+            </div>
+          </div>
+
+          {editError && <p className="text-sm text-red-600">{editError}</p>}
+
+          <DialogFooter>
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 text-gray-600 font-semibold"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={processing}
+              className="px-5 py-2 bg-[#006fbd] text-white rounded-xl font-semibold hover:opacity-90 disabled:opacity-60"
+            >
+              {processing ? "Saving..." : "Save Changes"}
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

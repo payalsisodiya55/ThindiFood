@@ -92,7 +92,7 @@ export default function CouponListPage() {
           ...coupon,
           id: String(coupon?._id || coupon?.id || ""),
           approvalStatus,
-          canEdit: approvalStatus === "pending" || approvalStatus === "rejected",
+          canEdit: approvalStatus === "pending" || approvalStatus === "rejected" || approvalStatus === "approved",
         }
       }),
     [coupons],

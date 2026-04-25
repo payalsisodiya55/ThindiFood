@@ -143,3 +143,57 @@ export const rejectRestaurantOfferAdmin = async (offerId, reason) => {
     );
     return normalizeOffer(updated);
 };
+
+export const updateRestaurantOfferAdmin = async (offerId, payload) => {
+    const oid = ensureObjectId(offerId, 'Invalid offer id');
+    const existing = await RestaurantOffer.findById(oid);
+    if (!existing) return null;
+
+    const products = Array.isArray(payload?.products)
+        ? payload.products.map((p) => ({
+              productId: new mongoose.Types.ObjectId(String(p.productId)),
+              name: String(p.name || ''),
+          }))
+        : existing.products;
+
+    const nextDiscountType = payload?.discountType || existing.discountType;
+
+    const set = {
+        title:
+            payload?.title !== undefined
+                ? String(payload.title || '').trim()
+                : existing.title,
+        products,
+        discountType: nextDiscountType,
+        discountValue:
+            payload?.discountValue !== undefined
+                ? Number(payload.discountValue)
+                : existing.discountValue,
+        maxItemsPerOrder:
+            payload?.maxItemsPerOrder !== undefined
+                ? payload.maxItemsPerOrder
+                : existing.maxItemsPerOrder,
+        perUserRedeemLimit:
+            payload?.perUserRedeemLimit !== undefined
+                ? payload.perUserRedeemLimit
+                : existing.perUserRedeemLimit,
+        startDate:
+            payload?.startDate !== undefined ? payload.startDate : existing.startDate,
+        endDate:
+            payload?.endDate !== undefined ? payload.endDate : existing.endDate,
+    };
+
+    if (nextDiscountType === 'percentage') {
+        set.maxDiscount =
+            payload?.maxDiscount !== undefined ? payload.maxDiscount : existing.maxDiscount;
+    } else {
+        set.maxDiscount = null;
+    }
+
+    const updated = await RestaurantOffer.findByIdAndUpdate(
+        oid,
+        { $set: set },
+        { new: true }
+    );
+    return normalizeOffer(updated);
+};
