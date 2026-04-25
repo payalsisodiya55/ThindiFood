@@ -990,8 +990,7 @@ export default function Cart() {
   useEffect(() => {
     const fetchFeeSettings = async () => {
       try {
-        const feeSettingsFn =
-          adminAPI?.getPublicFeeSettings || adminAPI?.getFeeSettings
+        const feeSettingsFn = adminAPI?.getPublicFeeSettings
         if (typeof feeSettingsFn !== "function") return
 
         const response = await feeSettingsFn()
@@ -2430,7 +2429,7 @@ export default function Cart() {
                     <div className="flex-1">
                         <div className="flex flex-col">
                           <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
-                            Delivery at{" "}
+                            Pickup at{" "}
                             <span className="font-semibold">
                               {deliveryAddressMode === "current" ? "Current location" : "Location"}
                             </span>

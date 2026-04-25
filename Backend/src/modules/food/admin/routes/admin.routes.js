@@ -13,6 +13,7 @@ import {
     getAllRestaurantOffersAdminController,
     approveRestaurantOfferAdminController,
     rejectRestaurantOfferAdminController,
+    updateRestaurantOfferAdminController,
 } from '../../restaurant/controllers/restaurantOffer.controller.js';
 import {
     getAllDiningOffersAdminController,
@@ -138,6 +139,7 @@ router.delete('/offers/:id', adminController.deleteAdminOffer);
 
 // ----- Restaurant Product Offers Approval -----
 router.get('/product-offers', getAllRestaurantOffersAdminController);
+router.patch('/product-offers/:id', updateRestaurantOfferAdminController);
 router.patch('/product-offers/:id/approve', approveRestaurantOfferAdminController);
 router.patch('/product-offers/:id/reject', rejectRestaurantOfferAdminController);
 router.get('/dining/offers', getAllDiningOffersAdminController);

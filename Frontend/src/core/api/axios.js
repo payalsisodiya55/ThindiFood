@@ -13,31 +13,71 @@ const getCustomerToken = () =>
     localStorage.getItem('accessToken') ||
     null;
 
+const getModuleToken = (module) => {
+    if (module === 'admin') {
+        return localStorage.getItem('admin_accessToken') || localStorage.getItem('auth_admin') || null;
+    }
+    if (module === 'seller') {
+        return localStorage.getItem('seller_accessToken') || localStorage.getItem('auth_seller') || null;
+    }
+    if (module === 'delivery') {
+        return localStorage.getItem('delivery_accessToken') || localStorage.getItem('auth_delivery') || null;
+    }
+    return getCustomerToken();
+};
+
+const detectRequestModule = (requestUrl = '') => {
+    const url = String(requestUrl || '').toLowerCase();
+    if (
+        url.startsWith('/admin') ||
+        url.includes('/food/admin/') ||
+        url.includes('/auth/admin')
+    ) return 'admin';
+    if (
+        url.startsWith('/seller') ||
+        url.includes('/food/seller/') ||
+        url.includes('/auth/seller')
+    ) return 'seller';
+    if (
+        url.startsWith('/delivery') ||
+        url.includes('/food/delivery/') ||
+        url.includes('/auth/delivery')
+    ) return 'delivery';
+    if (
+        url.startsWith('/user') ||
+        url.startsWith('/customer') ||
+        url.startsWith('/auth') ||
+        url.includes('/food/user/')
+    ) return 'customer';
+    return null;
+};
+
 // Request interceptor for API calls
 axiosInstance.interceptors.request.use(
     (config) => {
         let token = null;
-        const url = config.url;
+        const url = String(config.url || '');
         const pagePath = window.location.pathname;
 
         // Determination strategy: 
         // 1. If we are on a module-specific page (e.g. /seller/dashboard), prioritize that module's token
         // This is crucial for shared APIs like /products or /admin/categories
         if (pagePath.startsWith('/seller')) {
-            token = localStorage.getItem('auth_seller');
+            token = getModuleToken('seller');
         } else if (pagePath.startsWith('/admin')) {
-            token = localStorage.getItem('auth_admin');
+            token = getModuleToken('admin');
         } else if (pagePath.startsWith('/delivery')) {
-            token = localStorage.getItem('auth_delivery');
+            token = getModuleToken('delivery');
         } else if (pagePath.startsWith('/customer')) {
             token = getCustomerToken();
         }
 
         // 2. Fallback to URL-based detection
         if (!token) {
-            if (url.startsWith('/seller')) token = localStorage.getItem('auth_seller');
-            else if (url.startsWith('/admin')) token = localStorage.getItem('auth_admin');
-            else if (url.startsWith('/delivery')) token = localStorage.getItem('auth_delivery');
+            const requestModule = detectRequestModule(url);
+            if (requestModule === 'seller') token = getModuleToken('seller');
+            else if (requestModule === 'admin') token = getModuleToken('admin');
+            else if (requestModule === 'delivery') token = getModuleToken('delivery');
             else if (url.startsWith('/customer') || url.startsWith('/cart') || url.startsWith('/wishlist') || url.startsWith('/categories') || url.startsWith('/products')) {
                 token = getCustomerToken();
             }
@@ -73,7 +113,7 @@ axiosInstance.interceptors.response.use(
 
             // Only reload when we had a token that's now invalid (expired/logged out elsewhere).
             // If no token exists, skip reload to avoid infinite loop on public pages.
-            const hasToken = ['auth_seller', 'auth_admin', 'auth_delivery', 'auth_customer', 'user_accessToken', 'accessToken', 'token'].some(
+            const hasToken = ['auth_seller', 'seller_accessToken', 'auth_admin', 'admin_accessToken', 'auth_delivery', 'delivery_accessToken', 'auth_customer', 'user_accessToken', 'accessToken', 'token'].some(
                 (key) => localStorage.getItem(key)
             );
             if (!hasToken) {
@@ -88,15 +128,7 @@ axiosInstance.interceptors.response.use(
                     : path.startsWith('/delivery')
                         ? 'delivery'
                         : 'customer';
-            const requestModule = requestUrl.startsWith('/seller')
-                ? 'seller'
-                : requestUrl.startsWith('/admin')
-                    ? 'admin'
-                    : requestUrl.startsWith('/delivery')
-                        ? 'delivery'
-                        : requestUrl.startsWith('/user') || requestUrl.startsWith('/customer') || requestUrl.startsWith('/auth')
-                            ? 'customer'
-                            : null;
+            const requestModule = detectRequestModule(requestUrl);
 
             // Prevent cross-module 401s from logging out the active session
             // (e.g. seller page accidentally calling an admin endpoint).
