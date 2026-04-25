@@ -63,8 +63,17 @@ export const config = {
     // SMS India Hub
     smsIndiaHubUsername: process.env.SMS_INDIA_HUB_USERNAME,
     smsApiKey: process.env.SMS_INDIA_HUB_API_KEY,
-    smsSenderId: process.env.SMS_INDIA_HUB_SENDER_ID,
-    smsDltTemplateId: process.env.SMS_INDIA_HUB_DLT_TEMPLATE_ID,
+    smsSenderId:
+        process.env.SMS_INDIA_HUB_SENDER_ID ||
+        process.env.SMS_INDIA_HUB_SID ||
+        process.env.SMS_SENDER_ID,
+    smsDltTemplateId:
+        process.env.SMS_INDIA_HUB_DLT_TEMPLATE_ID ||
+        process.env.SMS_DLT_TEMPLATE_ID,
+    smsOtpMessageTemplate:
+        process.env.SMS_OTP_MESSAGE_TEMPLATE ||
+        'Welcome to the {{APP_NAME}} powered by SMSINDIAHUB. Your OTP for registration is {{OTP}}',
+    smsAppName: process.env.SMS_APP_NAME || 'ThindiFood',
 
     // Rate limiting
     rateLimitWindowMinutes: Number(process.env.RATE_LIMIT_WINDOW || 15),
