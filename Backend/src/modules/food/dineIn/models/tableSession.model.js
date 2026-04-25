@@ -43,7 +43,7 @@ const tableSessionSchema = new mongoose.Schema(
         // Session lifecycle status
         status: {
             type: String,
-            enum: ['active', 'bill_requested', 'completed', 'expired'],
+            enum: ['active', 'bill_requested', 'completed', 'cancelled', 'expired'],
             default: 'active',
             index: true,
         },

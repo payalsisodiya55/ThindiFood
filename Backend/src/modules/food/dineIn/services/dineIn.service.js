@@ -32,6 +32,8 @@ const createHttpError = (message, statusCode = 400) => {
     error.statusCode = statusCode;
     return error;
 };
+const FINALIZED_SESSION_STATUSES = new Set(['completed', 'cancelled', 'expired']);
+const isSessionFinalized = (statusLike) => FINALIZED_SESSION_STATUSES.has(String(statusLike || '').toLowerCase());
 
 const getOwnedSessionForUser = async (sessionId, userId) => {
     if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
@@ -701,7 +703,7 @@ export async function getSessionBill(sessionId) {
  */
 export async function requestCounterPayment(sessionId, userId) {
     const session = await getOwnedSessionForUser(sessionId, userId);
-    if (session.status === 'completed') throw new Error('Session already completed');
+    if (isSessionFinalized(session.status)) throw createHttpError('Session is already closed', 409);
     if (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING') {
         return session; // Already requested, idempotent
     }
@@ -735,8 +737,11 @@ export async function requestCounterPayment(sessionId, userId) {
 export async function initiateOnlinePayment(sessionId, userId) {
     const session = await getOwnedSessionForUser(sessionId, userId);
 
-    if (session.status === 'completed' || session.isPaid === true) {
+    if (session.isPaid === true) {
         throw createHttpError('Session is already paid', 409);
+    }
+    if (isSessionFinalized(session.status)) {
+        throw createHttpError('Session is already closed', 409);
     }
     if (session.paymentMode === 'COUNTER' && session.paymentStatus === 'PENDING') {
         throw createHttpError('Counter payment already requested. Please complete payment at restaurant counter.', 409);
@@ -795,8 +800,11 @@ export async function initiateOnlinePayment(sessionId, userId) {
 export async function verifyOnlinePayment(sessionId, userId, payload = {}) {
     const session = await getOwnedSessionForUser(sessionId, userId);
 
-    if (session.status === 'completed' || session.isPaid === true) {
+    if (session.isPaid === true) {
         return session;
+    }
+    if (isSessionFinalized(session.status)) {
+        throw createHttpError('Session is already closed', 409);
     }
 
     const billingSnapshot = session?.billingSnapshot || {};
@@ -848,7 +856,7 @@ export async function markCounterPaid(sessionId) {
 
     const session = await FoodTableSession.findById(sessionId);
     if (!session) throw createHttpError('Session not found', 404);
-    if (session.status === 'completed') return session;
+    if (isSessionFinalized(session.status)) return session;
     if (session.paymentMode !== 'COUNTER' || session.paymentStatus !== 'PENDING') {
         throw createHttpError('No pending counter payment found for this session', 409);
     }
@@ -892,7 +900,7 @@ export async function cancelEmptySession(sessionId, userId, reason) {
     }
 
     const now = new Date();
-    session.status = 'completed';
+    session.status = 'cancelled';
     session.closedAt = now;
     session.closedByRole = 'USER';
     session.closureType = 'EMPTY_CANCELLED';
@@ -920,7 +928,7 @@ export async function cancelEmptySession(sessionId, userId, reason) {
                 sessionId: session._id?.toString?.() || String(session._id),
                 restaurantId: session.restaurantId?.toString?.() || String(session.restaurantId),
                 tableNumber: String(session.tableNumber || ''),
-                status: 'completed',
+                status: 'cancelled',
                 closeReason: normalizedReason,
                 closureType: 'EMPTY_CANCELLED',
                 closedByRole: 'USER',
@@ -945,8 +953,8 @@ export async function closeSession(sessionId, paymentData) {
     const session = await FoodTableSession.findById(sessionId);
     if (!session) throw createHttpError('Session not found', 404);
 
-    if (session.status === 'completed') {
-        throw createHttpError('Session is already completed', 409);
+    if (isSessionFinalized(session.status)) {
+        throw createHttpError('Session is already closed', 409);
     }
 
     // Prevent switching to online after selecting "Pay at Counter".

@@ -186,17 +186,26 @@ const transformDineInSessionForList = (session, tableLike = null) => {
 
   const latestRound = getDineInSessionLatestRound(session);
   const sessionStatus = String(session?.status || "").toLowerCase();
+  const closureType = String(session?.closureType || "").toUpperCase();
+  const isEmptyCancelled = closureType === "EMPTY_CANCELLED";
+  const isClosedSession =
+    sessionStatus === "completed" ||
+    sessionStatus === "cancelled" ||
+    sessionStatus === "expired" ||
+    isEmptyCancelled;
   const latestStatus = String(latestRound?.status || "").toLowerCase();
   const displayStatus =
-    sessionStatus === "completed"
-      ? "completed"
+    isEmptyCancelled || sessionStatus === "cancelled"
+      ? "cancelled"
+      : sessionStatus === "completed"
+        ? "completed"
       : latestStatus === "received"
         ? "active"
         : latestStatus || sessionStatus || "active";
   const tableNumber = tableLike?.tableNumber || session?.tableNumber || "Table";
   const tableLabel = tableLike?.tableLabel || `Table ${tableNumber}`;
   const displayTimeSource =
-    sessionStatus === "completed"
+    isClosedSession
       ? session?.closedAt || session?.paidAt || session?.updatedAt || session?.createdAt
       : latestRound?.createdAt || session?.updatedAt || session?.createdAt;
 
@@ -217,7 +226,7 @@ const transformDineInSessionForList = (session, tableLike = null) => {
       minute: "2-digit",
     }),
     itemsSummary:
-      sessionStatus === "completed"
+      isClosedSession
         ? getDineInItemsSummary(session)
         : (latestRound?.items || []).map((item) => `${item.quantity}x ${item.name}`).join(", ") || "Active Session",
     photoUrl: null,
@@ -250,7 +259,11 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
 
         const dineInCompletedOrders = Array.isArray(dineInSessionsRes?.data?.data)
           ? dineInSessionsRes.data.data
-              .filter((session) => session?.isPaid || String(session?.closureType || "").toUpperCase() === "PAID")
+              .filter((session) => {
+                const closureType = String(session?.closureType || "").toUpperCase();
+                if (closureType === "EMPTY_CANCELLED") return false;
+                return session?.isPaid || closureType === "PAID";
+              })
               .map((session) => transformDineInSessionForList(session))
               .filter(Boolean)
           : [];
@@ -459,9 +472,58 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
 
     const fetchOrders = async () => {
       try {
-        const response = await restaurantAPI.getOrders();
+        const [response, dineInCancelledRes, dineInCompletedRes] = await Promise.all([
+          restaurantAPI.getOrders(),
+          dineInAPI.getRestaurantSessions({ status: "cancelled", limit: 100 }),
+          dineInAPI.getRestaurantSessions({ status: "completed", limit: 100 }),
+        ]);
 
         if (!isMounted) return;
+
+        const dineInCancelledByStatus = Array.isArray(dineInCancelledRes?.data?.data)
+          ? dineInCancelledRes.data.data
+          : [];
+        const dineInCancelledLegacy = Array.isArray(dineInCompletedRes?.data?.data)
+          ? dineInCompletedRes.data.data.filter(
+              (session) =>
+                String(session?.closureType || "").toUpperCase() === "EMPTY_CANCELLED",
+            )
+          : [];
+
+        const mergedDineInCancelled = [
+          ...dineInCancelledByStatus,
+          ...dineInCancelledLegacy,
+        ];
+
+        const seenSessionIds = new Set();
+        const transformedDineInCancelledOrders = mergedDineInCancelled
+          .filter((session) => {
+            const key = String(session?._id || "").trim();
+            if (!key || seenSessionIds.has(key)) return false;
+            seenSessionIds.add(key);
+            return true;
+          })
+          .map((session) => {
+            const transformed = transformDineInSessionForList(session);
+            if (!transformed) return null;
+            const closedBy = String(session?.closedByRole || "").toLowerCase();
+            return {
+              ...transformed,
+              status: "cancelled",
+              cancelledAt:
+                session?.closedAt ||
+                session?.updatedAt ||
+                session?.createdAt ||
+                new Date().toISOString(),
+              cancelledBy: ["user", "restaurant", "system"].includes(closedBy)
+                ? closedBy
+                : "user",
+              cancellationReason:
+                String(session?.closeReason || "").trim() ||
+                "Session closed without ordering",
+            };
+          })
+          .filter(Boolean);
 
         if (response.data?.success && response.data.data?.orders) {
           // Filter cancelled orders (both restaurant and user cancelled)
@@ -495,19 +557,21 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
           }));
 
-          transformedOrders.sort((a, b) => {
+          const combinedCancelledOrders = [...transformedOrders, ...transformedDineInCancelledOrders];
+
+          combinedCancelledOrders.sort((a, b) => {
             const dateA = new Date(a.cancelledAt);
             const dateB = new Date(b.cancelledAt);
             return dateB - dateA;
           });
 
           if (isMounted) {
-            setOrders(transformedOrders);
+            setOrders(combinedCancelledOrders);
             setLoading(false);
           }
         } else {
           if (isMounted) {
-            setOrders([]);
+            setOrders(transformedDineInCancelledOrders);
             setLoading(false);
           }
         }
