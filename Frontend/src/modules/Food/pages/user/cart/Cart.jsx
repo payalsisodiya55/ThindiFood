@@ -156,6 +156,14 @@ export default function Cart() {
   const [isPickupScheduled, setIsPickupScheduled] = useState(false)
   const [pickupDate, setPickupDate] = useState("")
   const [pickupTime, setPickupTime] = useState("")
+  const [pickupHour12, setPickupHour12] = useState("")
+  const [pickupMinute, setPickupMinute] = useState("00")
+  const [pickupPeriod, setPickupPeriod] = useState("PM")
+  const pickupHourOptions = useMemo(
+    () => Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")),
+    []
+  )
+  const pickupPeriodOptions = useMemo(() => ["AM", "PM"], [])
   const [orderProgress, setOrderProgress] = useState(0)
   const [showOrderSuccess, setShowOrderSuccess] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState(null)
@@ -328,16 +336,48 @@ export default function Cart() {
   }, [isScheduled, availableTimeSlots, scheduledTime])
 
   useEffect(() => {
-    if (isPickupScheduled && availablePickupTimeSlots.length > 0) {
-      const isValid = availablePickupTimeSlots.some(slot => slot.value === pickupTime)
-      if (!isValid) {
-        setPickupTime("")
-      }
-    } else if (!isPickupScheduled) {
+    if (!isPickupScheduled) {
       setPickupDate("")
       setPickupTime("")
+      setPickupHour12("")
+      setPickupMinute("00")
+      setPickupPeriod("PM")
     }
-  }, [isPickupScheduled, availablePickupTimeSlots, pickupTime])
+  }, [isPickupScheduled])
+
+  useEffect(() => {
+    if (!isPickupScheduled || availablePickupTimeSlots.length === 0) return
+    if (!pickupHour12) {
+      setPickupHour12("12")
+    }
+  }, [isPickupScheduled, availablePickupTimeSlots, pickupHour12])
+
+  useEffect(() => {
+    if (!pickupTime) return
+    const [hourPart, minutePart] = String(pickupTime).split(":")
+    const hour24 = Number.parseInt(hourPart, 10)
+    const minute = Number.parseInt(minutePart, 10)
+    if (Number.isNaN(hour24) || Number.isNaN(minute)) return
+    const nextPeriod = hour24 >= 12 ? "PM" : "AM"
+    const nextHour12 = String(hour24 % 12 || 12).padStart(2, "0")
+    const nextMinute = String(minute).padStart(2, "0")
+    if (pickupPeriod !== nextPeriod) setPickupPeriod(nextPeriod)
+    if (pickupHour12 !== nextHour12) setPickupHour12(nextHour12)
+    if (pickupMinute !== nextMinute) setPickupMinute(nextMinute)
+  }, [pickupTime])
+
+  useEffect(() => {
+    if (!isPickupScheduled || !pickupHour12 || !pickupPeriod) return
+    const hour = Number.parseInt(pickupHour12, 10)
+    const minute = Number.parseInt(pickupMinute, 10)
+    if (Number.isNaN(hour) || Number.isNaN(minute)) return
+    let hour24 = hour % 12
+    if (pickupPeriod === "PM") hour24 += 12
+    const nextPickupTime = `${String(hour24).padStart(2, "0")}:${String(Math.max(0, Math.min(59, minute))).padStart(2, "0")}`
+    if (pickupTime !== nextPickupTime) {
+      setPickupTime(nextPickupTime)
+    }
+  }, [isPickupScheduled, pickupHour12, pickupMinute, pickupPeriod, pickupTime])
 
   const cartCount = getCartCount()
   const getAddressId = (address) => address?.id || address?._id || null
@@ -2394,20 +2434,49 @@ export default function Cart() {
                     <div className="flex-1">
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pickup Time</label>
                       {availablePickupTimeSlots.length > 0 ? (
-                        <div className="relative">
-                          <select
-                            value={pickupTime}
-                            onChange={(e) => setPickupTime(e.target.value)}
-                            className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
-                          >
-                            <option value="" disabled>
-                              Select pickup time
-                            </option>
-                            {availablePickupTimeSlots.map(slot => (
-                              <option key={slot.value} value={slot.value}>{slot.label}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="relative">
+                            <select
+                              value={pickupHour12}
+                              onChange={(e) => setPickupHour12(e.target.value)}
+                              className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
+                            >
+                              {pickupHourOptions.map((hour) => (
+                                <option key={hour} value={hour}>
+                                  {hour}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                          </div>
+                          <div className="relative">
+                            <select
+                              value={pickupMinute}
+                              onChange={(e) => setPickupMinute(e.target.value)}
+                              className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
+                            >
+                              {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0")).map((minute) => (
+                                <option key={minute} value={minute}>
+                                  {minute}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                          </div>
+                          <div className="relative">
+                            <select
+                              value={pickupPeriod}
+                              onChange={(e) => setPickupPeriod(e.target.value)}
+                              className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
+                            >
+                              {pickupPeriodOptions.map((period) => (
+                                <option key={period} value={period}>
+                                  {period}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                          </div>
                         </div>
                       ) : (
                         <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
