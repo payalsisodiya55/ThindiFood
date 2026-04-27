@@ -155,7 +155,7 @@ const DeliveryMap = memo(({ orderId, order, isVisible, fallbackCustomerCoords = 
     order?.id
   ].filter(Boolean), [order?.orderId, order?.mongoId, order?._id, orderId, order?.id]);
 
-  if (!isVisible || !orderId || !order || !restaurantCoords || !customerCoords) {
+  if (!isVisible || !orderId || !order) {
     return (
       <div
         className="relative min-h-[450px] bg-gradient-to-b from-gray-100 to-gray-200"

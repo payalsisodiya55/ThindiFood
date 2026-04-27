@@ -308,8 +308,9 @@ const DeliveryTrackingMap = ({
 
   const center = useMemo(() => {
     // Highly stable center: use restaurant or customer as anchor, not the moving rider
-    if (isOrderPickedUp) return customerCoords || { lat: 0, lng: 0 };
-    return restaurantCoords || { lat: 0, lng: 0 };
+    const indoreCenter = { lat: 22.7196, lng: 75.8577 };
+    if (isOrderPickedUp) return customerCoords || restaurantCoords || indoreCenter;
+    return restaurantCoords || customerCoords || indoreCenter;
   }, [isOrderPickedUp, restaurantCoords, customerCoords]);
 
   const zoom = useMemo(() => 15, []);
@@ -541,62 +542,66 @@ const DeliveryTrackingMap = ({
         )}
 
         {/* RESTAURANT PIN (OVERLAY VIEW FOR CUSTOM STLYE) */}
-        <OverlayView
-          position={restaurantCoords}
-          mapPaneName={OverlayView.MARKER_LAYER}
-        >
-          <div className="relative -translate-x-1/2 -translate-y-full mb-1 group">
-             {/* Pulsing ring if this is the active destination */}
-             {!isOrderPickedUp && (
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                 <motion.div 
-                   animate={{ scale: [1, 2], opacity: [0.5, 0] }}
-                   transition={{ duration: 2, repeat: Infinity }}
-                   className="w-16 h-16 rounded-full border-4 border-orange-500/50"
-                 />
+        {restaurantCoords && (
+          <OverlayView
+            position={restaurantCoords}
+            mapPaneName={OverlayView.MARKER_LAYER}
+          >
+            <div className="relative -translate-x-1/2 -translate-y-full mb-1 group">
+               {/* Pulsing ring if this is the active destination */}
+               {!isOrderPickedUp && (
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                   <motion.div 
+                     animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+                     transition={{ duration: 2, repeat: Infinity }}
+                     className="w-16 h-16 rounded-full border-4 border-orange-500/50"
+                   />
+                 </div>
+               )}
+               <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-orange-500 overflow-hidden group-hover:scale-110 transition-transform">
+                  <img 
+                    src={order?.restaurantLogo || order?.restaurantId?.logo || order?.restaurantId?.profileImage || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`}
+                    alt="Restaurant"
+                    className="w-full h-full object-contain rounded-full bg-gray-50"
+                    onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`; }}
+                  />
                </div>
-             )}
-             <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-orange-500 overflow-hidden group-hover:scale-110 transition-transform">
-                <img 
-                  src={order?.restaurantLogo || order?.restaurantId?.logo || order?.restaurantId?.profileImage || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`}
-                  alt="Restaurant"
-                  className="w-full h-full object-contain rounded-full bg-gray-50"
-                  onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(RESTAURANT_PIN_SVG)}`; }}
-                />
-             </div>
-             {/* Pin Tip */}
-             <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 clip-triangle rotate-180 -mt-1 shadow-sm" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }} />
-          </div>
-        </OverlayView>
+               {/* Pin Tip */}
+               <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-3 h-3 bg-orange-500 clip-triangle rotate-180 -mt-1 shadow-sm" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }} />
+            </div>
+          </OverlayView>
+        )}
 
         {/* CUSTOMER PIN (OVERLAY VIEW FOR CUSTOM STYLE) */}
-        <OverlayView
-          position={customerCoords}
-          mapPaneName={OverlayView.MARKER_LAYER}
-        >
-          <div className="relative -translate-x-1/2 -translate-y-full mb-1 group">
-             {/* Pulsing ring if this is the active destination */}
-             {isOrderPickedUp && (
-               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                 <motion.div 
-                   animate={{ scale: [1, 2], opacity: [0.5, 0] }}
-                   transition={{ duration: 2, repeat: Infinity }}
-                   className="w-16 h-16 rounded-full border-4 border-green-500/50"
-                 />
+        {customerCoords && (
+          <OverlayView
+            position={customerCoords}
+            mapPaneName={OverlayView.MARKER_LAYER}
+          >
+            <div className="relative -translate-x-1/2 -translate-y-full mb-1 group">
+               {/* Pulsing ring if this is the active destination */}
+               {isOrderPickedUp && (
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                   <motion.div 
+                     animate={{ scale: [1, 2], opacity: [0.5, 0] }}
+                     transition={{ duration: 2, repeat: Infinity }}
+                     className="w-16 h-16 rounded-full border-4 border-green-500/50"
+                   />
+                 </div>
+               )}
+               <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-green-500 overflow-hidden group-hover:scale-110 transition-transform">
+                  <img 
+                    src={order?.customerImage || order?.userId?.profileImage || order?.userId?.avatar || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`}
+                    alt="Me"
+                    className="w-full h-full object-contain rounded-full bg-gray-50"
+                    onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`; }}
+                  />
                </div>
-             )}
-             <div className="relative w-11 h-11 rounded-full p-1 bg-white shadow-xl border-2 border-green-500 overflow-hidden group-hover:scale-110 transition-transform">
-                <img 
-                  src={order?.customerImage || order?.userId?.profileImage || order?.userId?.avatar || `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`}
-                  alt="Me"
-                  className="w-full h-full object-contain rounded-full bg-gray-50"
-                  onError={(e) => { e.target.src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(CUSTOMER_PIN_SVG)}`; }}
-                />
-             </div>
-             {/* Pin Tip */}
-             <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-3 h-3 bg-green-500 clip-triangle rotate-180 -mt-1 shadow-sm" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }} />
-          </div>
-        </OverlayView>
+               {/* Pin Tip */}
+               <div className="absolute top-[100%] left-1/2 -translate-x-1/2 w-3 h-3 bg-green-500 clip-triangle rotate-180 -mt-1 shadow-sm" style={{ clipPath: 'polygon(50% 100%, 0 0, 100% 0)' }} />
+            </div>
+          </OverlayView>
+        )}
 
         {/* PRO RIDER (OVERLAY VIEW FOR SMOOTH ROTATION / GLIDE) */}
         {displayRiderLocation && (
@@ -646,6 +651,22 @@ const DeliveryTrackingMap = ({
                   </div>
                 </div>
               </div>
+            </div>
+          </motion.div>
+        )}
+
+        {(tripStatus.toLowerCase() === 'pending' || tripStatus.toLowerCase() === 'placed' || tripStatus.toLowerCase() === 'created') && (
+          <motion.div 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[150] pointer-events-none w-full max-w-[280px]"
+          >
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl px-5 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-white/50 flex flex-col items-center text-center">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-orange-500 animate-pulse" />
+                <span className="text-sm font-black text-gray-900 uppercase tracking-widest">Order Pending</span>
+              </div>
+              <p className="text-xs text-gray-500 font-medium leading-tight">We're waiting for the restaurant to confirm your delicious meal</p>
             </div>
           </motion.div>
         )}
