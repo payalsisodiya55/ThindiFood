@@ -182,7 +182,14 @@ export function validateVerifyPaymentDto(body) {
 export function validateCancelOrderDto(body) {
     const schema = z.object({
         reason: z.string().optional(),
-        refundPreference: z.enum(['wallet', 'original']).optional()
+        refundPreference: z.preprocess(
+            (value) => {
+                if (value == null) return undefined;
+                const normalized = String(value).trim().toLowerCase();
+                return normalized || undefined;
+            },
+            z.enum(['wallet', 'original']).optional()
+        )
     });
     const result = schema.safeParse(body || {});
     if (!result.success) {

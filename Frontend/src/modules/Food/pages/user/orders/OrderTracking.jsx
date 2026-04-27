@@ -1269,10 +1269,14 @@ export default function OrderTracking() {
     try {
       const cancelLookupId =
         lookupIdsRef.current[0] || normalizeLookupId(orderId)
-      const response = await orderAPI.cancelOrder(cancelLookupId, {
+      const payload = {
         reason: cancellationReason.trim(),
-        refundPreference,
-      })
+      }
+      const normalizedRefundPreference = String(refundPreference || "").toLowerCase()
+      if (["wallet", "original"].includes(normalizedRefundPreference)) {
+        payload.refundPreference = normalizedRefundPreference
+      }
+      const response = await orderAPI.cancelOrder(cancelLookupId, payload)
       if (response.data?.success) {
         const paymentMethod = getPaymentMethod(order)
         const successMessage = response.data?.message ||

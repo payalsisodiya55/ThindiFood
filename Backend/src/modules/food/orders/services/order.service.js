@@ -198,7 +198,7 @@ function getUserCancelWindowAnchor(order) {
 
 function canUserCancelOrder(order) {
   const currentStatus = String(order?.orderStatus || "").toLowerCase();
-  if (currentStatus === "created") return true;
+  if (["created", "placed", "pending"].includes(currentStatus)) return true;
   if (!USER_CANCEL_WINDOW_STATUSES.has(currentStatus)) return false;
 
   const acceptedAtMs = getUserCancelWindowAnchor(order);
