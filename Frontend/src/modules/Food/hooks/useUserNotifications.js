@@ -11,6 +11,16 @@ const debugLog = (...args) => {
   }
 };
 
+const emitSocketConnectionChange = (nextConnected) => {
+  if (typeof window === 'undefined') return;
+  window.orderSocketConnected = nextConnected;
+  window.dispatchEvent(
+    new CustomEvent('orderSocketConnectionChange', {
+      detail: { isConnected: nextConnected }
+    })
+  );
+};
+
 /**
  * Hook for user to receive real-time order notifications.
  * Dispatches 'orderStatusNotification' custom event for OrderTrackingCard.
@@ -67,7 +77,7 @@ export const useUserNotifications = () => {
 
     socketRef.current = io(socketUrl, {
       path: '/socket.io/',
-      transports: ['polling', 'websocket'],
+      transports: ['websocket'],
       reconnection: true,
       auth: { token }
     });
@@ -75,7 +85,7 @@ export const useUserNotifications = () => {
     socketRef.current.on('connect', () => {
       debugLog('✅ User Socket connected, userId:', userId);
       setIsConnected(true);
-      if (typeof window !== 'undefined') window.orderSocketConnected = true;
+      emitSocketConnectionChange(true);
       // Backend auto-joins 'user:userId' room based on role/token in config/socket.js
     });
 
@@ -127,7 +137,7 @@ export const useUserNotifications = () => {
           }
         })
       );
-      const title = orderId ? `Order ${orderId}` : 'Delivery OTP';
+      const title = orderId ? `Order ${orderId}` : 'Takeaway OTP';
       const parts = [message, otp ? `OTP: ${otp}` : ''].filter(Boolean);
       const toastId = orderId ? `delivery-drop-otp-${orderId}` : `delivery-drop-otp-${Date.now()}`;
       toast.message(title, {
@@ -187,13 +197,13 @@ export const useUserNotifications = () => {
         // debugLog('❌ Socket connection error:', error.message);
       }
       setIsConnected(false);
-      if (typeof window !== 'undefined') window.orderSocketConnected = false;
+      emitSocketConnectionChange(false);
     });
 
     socketRef.current.on('disconnect', (reason) => {
       debugLog('🔌 Socket disconnected:', reason);
       setIsConnected(false);
-      if (typeof window !== 'undefined') window.orderSocketConnected = false;
+      emitSocketConnectionChange(false);
     });
 
     return () => {

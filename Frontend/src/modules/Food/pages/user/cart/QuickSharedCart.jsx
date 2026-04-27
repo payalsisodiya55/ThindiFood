@@ -167,11 +167,19 @@ export default function QuickSharedCart() {
 
       const orderResponse = await orderAPI.createOrder(orderPayload);
       const { order, razorpay } = orderResponse?.data?.data || {};
+      orderAPI.getOrderDetails.prime?.(orderResponse);
 
       if (selectedPaymentMethod === "cash") {
         toast.success("Quick order placed successfully");
         clearCart();
-        navigate(`/user/orders/${order?.orderId || order?._id}?confirmed=true`);
+        window.dispatchEvent(new CustomEvent("order-placed", { detail: { order, placedAt: Date.now() } }));
+        navigate(`/user/orders/${order?.orderId || order?._id}?confirmed=true`, {
+          state: {
+            prefetchedOrder: order || null,
+            prefetchedAt: Date.now(),
+            fromOrderPlacement: true,
+          },
+        });
         return;
       }
 
@@ -205,8 +213,16 @@ export default function QuickSharedCart() {
 
           if (verifyResponse?.data?.success) {
             toast.success("Quick order placed successfully");
+            orderAPI.getOrderDetails.prime?.(verifyResponse?.data?.data?.order || order);
             clearCart();
-            navigate(`/user/orders/${order?.orderId || order?._id}?confirmed=true`);
+            window.dispatchEvent(new CustomEvent("order-placed", { detail: { order, placedAt: Date.now() } }));
+            navigate(`/user/orders/${order?.orderId || order?._id}?confirmed=true`, {
+              state: {
+                prefetchedOrder: order || null,
+                prefetchedAt: Date.now(),
+                fromOrderPlacement: true,
+              },
+            });
           } else {
             throw new Error("Payment verification failed");
           }

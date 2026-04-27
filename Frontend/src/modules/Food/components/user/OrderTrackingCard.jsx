@@ -202,6 +202,8 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
 
   useEffect(() => {
     if (!hasCustomerAuth) return;
+    let refreshTimeoutId = null;
+
     const handleOrderStatusNotification = async (event) => {
       const detail = event?.detail || {};
       const incomingKey = String(detail?.orderMongoId || detail?.orderId || "").trim();
@@ -239,14 +241,36 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
       }
     };
 
-    const handleOrderPlaced = () => {
-      fetchOrders();
+    const handleOrderPlaced = (event) => {
+      const freshOrder = event?.detail?.order || null;
+      if (freshOrder) {
+        orderAPI.getOrderDetails.prime?.(freshOrder);
+        setActiveOrderOverride(freshOrder);
+        setApiOrders((prev) => {
+          const nextList = Array.isArray(prev) ? [...prev] : [];
+          const freshKey = String(getOrderKey(freshOrder) || "").trim();
+          if (!freshKey) return nextList;
+          const withoutDupes = nextList.filter(
+            (item) => String(getOrderKey(item) || "").trim() !== freshKey,
+          );
+          const merged = [freshOrder, ...withoutDupes];
+          lastApiFingerprintRef.current = ordersFingerprint(merged);
+          return merged;
+        });
+      }
+
+      refreshTimeoutId = window.setTimeout(() => {
+        fetchOrders();
+      }, 2000);
     };
 
     window.addEventListener("orderStatusNotification", handleOrderStatusNotification);
     window.addEventListener("order-placed", handleOrderPlaced);
 
     return () => {
+      if (refreshTimeoutId) {
+        window.clearTimeout(refreshTimeoutId);
+      }
       window.removeEventListener("orderStatusNotification", handleOrderStatusNotification);
       window.removeEventListener("order-placed", handleOrderPlaced);
     };

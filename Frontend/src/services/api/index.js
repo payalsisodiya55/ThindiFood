@@ -2438,8 +2438,67 @@ export const orderAPI = {
     const cache = new Map();
     /** Dedupes overlapping calls (StrictMode, poll + socket) without hiding fresh data for long. */
     const CACHE_MS = 800;
+    const PRIME_CACHE_MS = 30000;
 
-    return (orderId, options = {}) => {
+    const normalizeOrderCacheKey = (value) => String(value ?? "").trim();
+    const isObject = (value) => value && typeof value === "object" && !Array.isArray(value);
+    const extractOrderFromAnyResponse = (payload) => {
+      if (!isObject(payload)) return null;
+      if (isObject(payload?.data?.data?.order)) return payload.data.data.order;
+      if (isObject(payload?.data?.order)) return payload.data.order;
+      if (isObject(payload?.data?.data)) return payload.data.data;
+      if (isObject(payload?.data)) return payload.data;
+      if (isObject(payload?.order)) return payload.order;
+      return isObject(payload) ? payload : null;
+    };
+    const createSyntheticOrderResponse = (order) => ({
+      data: {
+        success: true,
+        message: "Order retrieved",
+        data: { order },
+      },
+    });
+    const collectOrderCacheKeys = (order) =>
+      [
+        order?._id,
+        order?.id,
+        order?.orderId,
+        order?.mongoId,
+      ]
+        .map(normalizeOrderCacheKey)
+        .filter(Boolean);
+
+    const primeOrderCache = (payload, options = {}) => {
+      const order = extractOrderFromAnyResponse(payload);
+      if (!order) return null;
+      const response = isObject(payload?.data) ? payload : createSyntheticOrderResponse(order);
+      const ttlMs =
+        Number.isFinite(Number(options.ttlMs)) && Number(options.ttlMs) > 0
+          ? Number(options.ttlMs)
+          : PRIME_CACHE_MS;
+      const at = Date.now();
+
+      collectOrderCacheKeys(order).forEach((key) => {
+        cache.set(key, { at, ttlMs, res: response });
+      });
+
+      return response;
+    };
+
+    const peekOrderCache = (orderId) => {
+      const key = normalizeOrderCacheKey(orderId);
+      if (!key) return null;
+      const hit = cache.get(key);
+      if (!hit) return null;
+      const ttlMs = Number(hit.ttlMs) > 0 ? Number(hit.ttlMs) : CACHE_MS;
+      if (Date.now() - hit.at >= ttlMs) {
+        cache.delete(key);
+        return null;
+      }
+      return hit.res;
+    };
+
+    const getOrderDetails = (orderId, options = {}) => {
       const key = String(orderId ?? "").trim();
       if (!key) {
         return Promise.reject(new Error("orderId required"));
@@ -2449,7 +2508,8 @@ export const orderAPI = {
       const now = Date.now();
       if (!force) {
         const hit = cache.get(key);
-        if (hit && now - hit.at < CACHE_MS) {
+        const ttlMs = Number(hit?.ttlMs) > 0 ? Number(hit.ttlMs) : CACHE_MS;
+        if (hit && now - hit.at < ttlMs) {
           return Promise.resolve(hit.res);
         }
       }
@@ -2460,7 +2520,14 @@ export const orderAPI = {
       const p = apiClient
         .get(`/food/orders/${key}`, { contextModule: "user" })
         .then((res) => {
-          cache.set(key, { at: Date.now(), res });
+          const freshAt = Date.now();
+          cache.set(key, { at: freshAt, ttlMs: CACHE_MS, res });
+          const order = extractOrderFromAnyResponse(res);
+          if (order) {
+            collectOrderCacheKeys(order).forEach((cacheKey) => {
+              cache.set(cacheKey, { at: freshAt, ttlMs: CACHE_MS, res });
+            });
+          }
           return res;
         })
         .finally(() => {
@@ -2470,6 +2537,10 @@ export const orderAPI = {
       inFlight.set(key, p);
       return p;
     };
+
+    getOrderDetails.prime = primeOrderCache;
+    getOrderDetails.peek = peekOrderCache;
+    return getOrderDetails;
   })(),
   cancelOrder: (orderId, body = {}) =>
     apiClient.patch(`/food/orders/${String(orderId)}/cancel`, body ?? {}, {

@@ -1,4 +1,4 @@
-import { useParams, Link, useSearchParams } from "react-router-dom"
+import { useParams, Link, useSearchParams, useLocation as useRouteLocation } from "react-router-dom"
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -33,9 +33,8 @@ import { useProfile } from "@food/context/ProfileContext"
 import { useLocation as useUserLocation } from "@food/hooks/useLocation"
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap"
 import RefundPreferenceModal from "@food/components/user/RefundPreferenceModal"
-import { orderAPI, restaurantAPI } from "@food/api"
+import { orderAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
-import { useUserNotifications } from "@food/hooks/useUserNotifications"
 import circleIcon from "@food/assets/circleicon.png"
 import { RESTAURANT_PIN_SVG, CUSTOMER_PIN_SVG, RIDER_BIKE_SVG } from "@food/constants/mapIcons"
 import { RED } from "@food/constants/color"
@@ -265,8 +264,24 @@ const getCustomerCoordsFromApiOrder = (apiOrder, previousOrder = null) => {
   if (Array.isArray(fromLoc) && fromLoc.length >= 2) return fromLoc
   const flat = addr?.coordinates
   if (Array.isArray(flat) && flat.length >= 2) return flat
+  const lat = Number(addr?.location?.latitude ?? addr?.latitude)
+  const lng = Number(addr?.location?.longitude ?? addr?.longitude)
+  if (Number.isFinite(lat) && Number.isFinite(lng)) return [lng, lat]
   const prev = previousOrder?.address?.coordinates || previousOrder?.address?.location?.coordinates
   if (Array.isArray(prev) && prev.length >= 2) return prev
+  const prevLat = Number(previousOrder?.address?.location?.latitude ?? previousOrder?.address?.latitude)
+  const prevLng = Number(previousOrder?.address?.location?.longitude ?? previousOrder?.address?.longitude)
+  if (Number.isFinite(prevLat) && Number.isFinite(prevLng)) return [prevLng, prevLat]
+  return null
+}
+
+function extractOrderFromApiResponse(response) {
+  const data = response?.data
+  if (!data || typeof data !== "object") return null
+  if (data?.success && data?.data?.order) return data.data.order
+  if (data?.order && typeof data.order === "object") return data.order
+  if (data?.data?.order && typeof data.data.order === "object") return data.data.order
+  if (data?.data && typeof data.data === "object" && !Array.isArray(data.data)) return data.data
   return null
 }
 
@@ -418,6 +433,46 @@ function isFoodOrderCancelledStatus(statusRaw) {
   return s === "cancelled" || s.includes("cancelled")
 }
 
+function getOrderPollingStrategy(orderLike, hasSocketConnection) {
+  if (!orderLike) {
+    return { enabled: true, intervalMs: 12000 }
+  }
+
+  const statusRaw = String(orderLike?.status || orderLike?.orderStatus || "").toLowerCase()
+  const phaseRaw = String(orderLike?.deliveryState?.currentPhase || "").toLowerCase()
+  const dispatchStatus = String(orderLike?.dispatch?.status || orderLike?.assignmentInfo?.status || "").toLowerCase()
+  const isTerminal =
+    statusRaw === "delivered" ||
+    statusRaw === "completed" ||
+    isFoodOrderCancelledStatus(statusRaw)
+
+  if (isTerminal) {
+    return { enabled: false, intervalMs: 0 }
+  }
+
+  const isPassiveCreationState =
+    (statusRaw === "" || statusRaw === "created" || statusRaw === "pending") &&
+    (dispatchStatus === "" || dispatchStatus === "unassigned" || dispatchStatus === "pending") &&
+    (phaseRaw === "" || phaseRaw === "en_route_to_pickup")
+
+  if (isPassiveCreationState) {
+    return hasSocketConnection
+      ? { enabled: false, intervalMs: 0 }
+      : { enabled: true, intervalMs: 30000 }
+  }
+
+  if (
+    phaseRaw === "en_route_to_delivery" ||
+    phaseRaw === "at_drop" ||
+    statusRaw === "picked_up" ||
+    statusRaw === "out_for_delivery"
+  ) {
+    return { enabled: true, intervalMs: hasSocketConnection ? 10000 : 5000 }
+  }
+
+  return { enabled: true, intervalMs: hasSocketConnection ? 20000 : 8000 }
+}
+
 function normalizeLookupId(value) {
   if (value == null) return ""
   const raw = String(value).trim()
@@ -428,17 +483,39 @@ function normalizeLookupId(value) {
 export default function OrderTracking() {
   const companyName = useCompanyName()
   const { orderId } = useParams()
+  const routeLocation = useRouteLocation()
   const [searchParams] = useSearchParams()
   const confirmed = searchParams.get("confirmed") === "true"
   const { getOrderById } = useOrders()
   const { profile, getDefaultAddress } = useProfile()
   const { location: userLiveLocation } = useUserLocation()
+  const prefetchedOrder = useMemo(() => {
+    const routeOrder =
+      extractOrderFromApiResponse(routeLocation.state?.orderResponse) ||
+      routeLocation.state?.prefetchedOrder ||
+      null
+    if (routeOrder) return routeOrder
+    return extractOrderFromApiResponse(orderAPI.getOrderDetails.peek?.(orderId))
+  }, [routeLocation.state, orderId])
+  const initialContextOrder = useMemo(() => {
+    if (!orderId) return null
+    const rawContext = getOrderById(orderId)
+    return rawContext ? transformOrderForTracking(rawContext) : null
+  }, [getOrderById, orderId])
+  const hydratedInitialOrder = useMemo(() => {
+    if (prefetchedOrder) {
+      return transformOrderForTracking(prefetchedOrder, initialContextOrder)
+    }
+    return initialContextOrder
+  }, [prefetchedOrder, initialContextOrder])
 
-  const { isConnected: isSocketConnected } = useUserNotifications()
+  const [isSocketConnected, setIsSocketConnected] = useState(() => (
+    typeof window !== "undefined" && Boolean(window.orderSocketConnected)
+  ))
   
   // State for order data
-  const [order, setOrder] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [order, setOrder] = useState(() => hydratedInitialOrder || null)
+  const [loading, setLoading] = useState(() => !hydratedInitialOrder)
   const [error, setError] = useState(null)
 
   const [showConfirmation, setShowConfirmation] = useState(confirmed)
@@ -454,6 +531,7 @@ export default function OrderTracking() {
   const [isSavingRefundPreference, setIsSavingRefundPreference] = useState(false)
   const [resolvedLookupId, setResolvedLookupId] = useState("")
   const [timerNow, setTimerNow] = useState(Date.now())
+  const [shouldRenderMap, setShouldRenderMap] = useState(false)
   const handleEtaUpdate = useCallback((newEta) => setEstimatedTime(newEta), [])
   const lastRealtimeRefreshRef = useRef(0)
   const trackingOrderIdsRef = useRef(new Set())
@@ -462,11 +540,39 @@ export default function OrderTracking() {
   const isInitialPollRequestedRef = useRef(null)
   const lastPollExecutionRef = useRef(0) // New: Hard throttle for extreme cases
   const restaurantRefundPromptedRef = useRef(new Set())
+  const confirmationShownAtRef = useRef(confirmed ? Date.now() : 0)
 
   // Delivery handover OTP received via socket event.
   // Kept separately so UI still renders even if the event arrives
   // before the order API poll populates `order` state.
   const [socketDropOtpCode, setSocketDropOtpCode] = useState(null)
+
+  useEffect(() => {
+    if (!prefetchedOrder) return
+    setOrder((prev) => transformOrderForTracking(prefetchedOrder, prev || hydratedInitialOrder || null))
+    setError(null)
+    setLoading(false)
+  }, [hydratedInitialOrder, prefetchedOrder, orderId])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined
+
+    const syncSocketState = (event) => {
+      const nextConnected = event?.detail?.isConnected
+      if (typeof nextConnected === "boolean") {
+        setIsSocketConnected(nextConnected)
+        return
+      }
+      setIsSocketConnected(Boolean(window.orderSocketConnected))
+    }
+
+    window.addEventListener("orderSocketConnectionChange", syncSocketState)
+    syncSocketState()
+
+    return () => {
+      window.removeEventListener("orderSocketConnectionChange", syncSocketState)
+    }
+  }, [])
 
 
   // OTP received via socket event (deliveryDropOtp)
@@ -837,6 +943,12 @@ export default function OrderTracking() {
 
       // Check context immediately to avoid loaders if data exists locally
       if (isInitial) {
+        if (prefetchedOrder) {
+          setOrder(prev => transformOrderForTracking(prefetchedOrder, prev));
+          setError(null);
+          setLoading(false);
+          return;
+        }
         const rawContext = getOrderById(orderId);
         if (rawContext) {
           setOrder(transformOrderForTracking(rawContext));
@@ -846,14 +958,15 @@ export default function OrderTracking() {
 
       requestInProgress = true;
       try {
-        const response = await fetchOrderDetailsWithFallback({ force: isInitial });
+        // Let the API layer dedupe/short-cache only the initial load so
+        // StrictMode remounts do not issue a second order-details GET.
+        // Subsequent polls stay uncached so tracking remains fresh.
+        const response = await fetchOrderDetailsWithFallback({ force: !isInitial });
         if (!isSubscribed) return;
 
-        let finalOrderData = null;
+        let finalOrderData = extractOrderFromApiResponse(response);
 
-        if (response.data?.success && response.data.data?.order) {
-          finalOrderData = response.data.data.order;
-        } else if (isInitial) {
+        if (!finalOrderData && isInitial) {
           const matchedOrder = await resolveOrderFromList(orderId);
           if (matchedOrder) finalOrderData = matchedOrder;
         }
@@ -907,11 +1020,17 @@ export default function OrderTracking() {
     return () => {
       isSubscribed = false;
     };
-  }, [orderId, fetchOrderDetailsWithFallback, resolveOrderFromList]);
+  }, [orderId, fetchOrderDetailsWithFallback, resolveOrderFromList, getOrderById, prefetchedOrder]);
+
+  const pollingStrategy = useMemo(() => {
+    const hasSocketConnection = Boolean(isSocketConnected || window.orderSocketConnected)
+    return getOrderPollingStrategy(order, hasSocketConnection)
+  }, [order, isSocketConnected])
 
   // Interval Manager (dynamically adapts based on socket connection state independently)
   useEffect(() => {
     if (!orderId) return;
+    if (!pollingStrategy.enabled || !pollingStrategy.intervalMs) return;
 
     const tick = () => {
       if (terminalPollStopRef.current) return;
@@ -919,18 +1038,43 @@ export default function OrderTracking() {
       // Delegate to the latest instance of our polling function capturing current state
       if (pollRef.current) pollRef.current(false);
     };
-    
-    const pollInterval = (isSocketConnected || window.orderSocketConnected) ? 12000 : 5000;
-    const interval = setInterval(tick, pollInterval);
+
+    const interval = setInterval(tick, pollingStrategy.intervalMs);
 
     return () => clearInterval(interval);
-  }, [orderId, isSocketConnected]);
+  }, [orderId, pollingStrategy]);
 
   useEffect(() => {
     if (!order) return
     const ui = mapOrderToTrackingUiStatus(order)
     terminalPollStopRef.current = ui === 'delivered' || ui === 'cancelled'
   }, [order])
+
+  useEffect(() => {
+    if (!order || error) {
+      setShouldRenderMap(false)
+      return
+    }
+
+    let cancelled = false
+    const start = () => {
+      if (!cancelled) setShouldRenderMap(true)
+    }
+
+    if (typeof window !== "undefined" && typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(start, { timeout: 800 })
+      return () => {
+        cancelled = true
+        window.cancelIdleCallback?.(idleId)
+      }
+    }
+
+    const timeoutId = window.setTimeout(start, 150)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [order, error, orderId])
 
   useEffect(() => {
     const saveWalletPreferenceForRestaurantCancel = async () => {
@@ -948,8 +1092,8 @@ export default function OrderTracking() {
       try {
         await orderAPI.setRefundPreference(lookupId, { refundPreference: "wallet" })
         const orderResponse = await fetchOrderDetailsWithFallback({ force: true })
-        if (orderResponse.data?.success && orderResponse.data.data?.order) {
-          const apiOrder = orderResponse.data.data.order
+        const apiOrder = extractOrderFromApiResponse(orderResponse)
+        if (apiOrder) {
           setOrder(transformOrderForTracking(apiOrder, order))
         }
       } catch (error) {
@@ -971,12 +1115,19 @@ export default function OrderTracking() {
     setShowRefundPreference(true)
   }, [order, orderId])
 
-  // Post-checkout splash only — real status comes from API / poll / socket.
+  // Post-checkout splash only — dismiss as soon as we have order data instead of hard-blocking for 3 seconds.
   useEffect(() => {
-    if (!confirmed) return
-    const timer1 = setTimeout(() => setShowConfirmation(false), 3000)
+    if (!confirmed || !showConfirmation) return
+
+    const shownAt = confirmationShownAtRef.current || Date.now()
+    const elapsed = Date.now() - shownAt
+    const minimumVisibleMs = 700
+    const canDismiss = Boolean(order) || error != null || loading === false
+    const delay = canDismiss ? Math.max(0, minimumVisibleMs - elapsed) : 2500
+
+    const timer1 = setTimeout(() => setShowConfirmation(false), delay)
     return () => clearTimeout(timer1)
-  }, [confirmed])
+  }, [confirmed, showConfirmation, order, error, loading])
 
   // Countdown timer
   useEffect(() => {
@@ -1134,8 +1285,8 @@ export default function OrderTracking() {
         setRefundPreferenceFlow("")
         setCancellationReason("")
         const orderResponse = await fetchOrderDetailsWithFallback({ force: true })
-        if (orderResponse.data?.success && orderResponse.data.data?.order) {
-          const apiOrder = orderResponse.data.data.order
+        const apiOrder = extractOrderFromApiResponse(orderResponse)
+        if (apiOrder) {
           setOrder(transformOrderForTracking(apiOrder, order))
         }
       } else {
@@ -1189,8 +1340,8 @@ export default function OrderTracking() {
         setShowRefundPreference(false)
         setRefundPreferenceFlow("")
         const orderResponse = await fetchOrderDetailsWithFallback({ force: true })
-        if (orderResponse.data?.success && orderResponse.data.data?.order) {
-          const apiOrder = orderResponse.data.data.order
+        const apiOrder = extractOrderFromApiResponse(orderResponse)
+        if (apiOrder) {
           setOrder(transformOrderForTracking(apiOrder, order))
         }
       } else {
@@ -1227,50 +1378,9 @@ export default function OrderTracking() {
     setIsRefreshing(true)
     try {
       const response = await fetchOrderDetailsWithFallback({ force: true })
-      if (response.data?.success && response.data.data?.order) {
-        const apiOrder = response.data.data.order
-
-        // Extract restaurant location coordinates with multiple fallbacks
-        let restaurantCoords = null;
-        let restaurantAddress = null;
-
-        // Priority 1: restaurantId.location.coordinates (GeoJSON format: [lng, lat])
-        if (apiOrder.restaurantId?.location?.coordinates &&
-          Array.isArray(apiOrder.restaurantId.location.coordinates) &&
-          apiOrder.restaurantId.location.coordinates.length >= 2) {
-          restaurantCoords = apiOrder.restaurantId.location.coordinates;
-        }
-        // Priority 2: restaurantId.location with latitude/longitude properties
-        else if (apiOrder.restaurantId?.location?.latitude && apiOrder.restaurantId?.location?.longitude) {
-          restaurantCoords = [apiOrder.restaurantId.location.longitude, apiOrder.restaurantId.location.latitude];
-        }
-        // Priority 3: Check nested restaurant data
-        else if (apiOrder.restaurant?.location?.coordinates) {
-          restaurantCoords = apiOrder.restaurant.location.coordinates;
-        }
-        // Priority 4: Check if restaurantId is a string ID and fetch restaurant details
-        else if (typeof apiOrder.restaurantId === 'string') {
-          debugLog('?? restaurantId is a string ID, fetching restaurant details...', apiOrder.restaurantId);
-          try {
-            const restaurantResponse = await restaurantAPI.getRestaurantById(apiOrder.restaurantId);
-            if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
-              const restaurant = restaurantResponse.data.data.restaurant;
-              if (restaurant.location?.coordinates && Array.isArray(restaurant.location.coordinates) && restaurant.location.coordinates.length >= 2) {
-                restaurantCoords = restaurant.location.coordinates;
-                debugLog('? Fetched restaurant coordinates from API:', restaurantCoords);
-              }
-              restaurantAddress =
-                restaurant?.location?.formattedAddress ||
-                restaurant?.location?.address ||
-                restaurant?.address ||
-                null;
-            }
-          } catch (err) {
-            debugError('? Error fetching restaurant details:', err);
-          }
-        }
-
-        setOrder(transformOrderForTracking(apiOrder, order, restaurantCoords, restaurantAddress))
+      const apiOrder = extractOrderFromApiResponse(response)
+      if (apiOrder) {
+        setOrder(transformOrderForTracking(apiOrder, order))
       }
     } catch (err) {
       debugError('Error refreshing order:', err)
@@ -1493,7 +1603,7 @@ export default function OrderTracking() {
       </motion.div>
 
       {/* Map Section */}
-      {!isDeliveredOrder && orderStatus !== 'cancelled' && (
+      {!isDeliveredOrder && orderStatus !== 'cancelled' && shouldRenderMap && (
         <DeliveryMap
           orderId={orderId}
           order={order}
@@ -1503,6 +1613,10 @@ export default function OrderTracking() {
           userLocationAccuracy={userLiveLocation?.accuracy ?? null}
           onEtaUpdate={handleEtaUpdate}
         />
+      )}
+
+      {!isDeliveredOrder && orderStatus !== 'cancelled' && !shouldRenderMap && (
+        <div className="relative h-[450px] bg-gradient-to-b from-gray-100 to-gray-200 animate-pulse" />
       )}
 
       {/* Scrollable Content */}
@@ -1546,9 +1660,9 @@ export default function OrderTracking() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28 }}
           >
-            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Delivery OTP</p>
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Takeaway OTP</p>
             <p className="text-2xl font-extrabold text-blue-900 mt-1 tracking-widest">{customerDeliveryOtp}</p>
-            <p className="text-xs text-blue-700 mt-1">Share this 4-digit OTP with your delivery partner at drop-off.</p>
+            <p className="text-xs text-blue-700 mt-1">Share this 4-digit OTP with the restaurant at pickup.</p>
           </motion.div>
         )}
 

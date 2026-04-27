@@ -167,6 +167,7 @@ export default function Cart() {
   const [orderProgress, setOrderProgress] = useState(0)
   const [showOrderSuccess, setShowOrderSuccess] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState(null)
+  const [placedOrderSnapshot, setPlacedOrderSnapshot] = useState(null)
   const [selectedAddressId, setSelectedAddressId] = useState(null)
   const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
     try {
@@ -454,6 +455,13 @@ export default function Cart() {
       ? currentLocationAddress || selectedAddress || savedAddress || null
       : selectedAddress || savedAddress || currentLocationAddress || null
   }, [deliveryAddressMode, currentLocationAddress, selectedAddress, savedAddress])
+
+  const pickupRestaurantAddress = useMemo(() => {
+    if (!restaurantData) return "Restaurant Location"
+    const { address, area, city } = restaurantData
+    const parts = [address, area, city].filter(Boolean)
+    return parts.length > 0 ? parts.join(", ") : "Restaurant Location"
+  }, [restaurantData])
 
   const hasSavedAddress = Boolean(defaultAddress && formatFullAddress(defaultAddress))
   const recipientName = String(recipientDetails.name || "").trim() || userProfile?.name || "Your Name"
@@ -1806,8 +1814,10 @@ export default function Cart() {
       if (selectedPaymentMethod === "cash") {
         toast.success("Order placed with Cash on Delivery")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
+        setPlacedOrderSnapshot(order || null)
+        orderAPI.getOrderDetails.prime?.(orderResponse)
         setShowOrderSuccess(true)
-        window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
+        window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
         clearCart()
         setIsPlacingOrder(false)
         return
@@ -1817,8 +1827,10 @@ export default function Cart() {
       if (selectedPaymentMethod === "wallet") {
         toast.success("Order placed with Wallet payment")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
+        setPlacedOrderSnapshot(order || null)
+        orderAPI.getOrderDetails.prime?.(orderResponse)
         setShowOrderSuccess(true)
-        window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
+        window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
         clearCart()
         setIsPlacingOrder(false)
         // Refresh wallet balance
@@ -1909,8 +1921,10 @@ export default function Cart() {
                 paymentId: verifyResponse.data.data?.payment?.paymentId
               })
               setPlacedOrderId(order._id || order.orderId)
+              setPlacedOrderSnapshot(order || null)
+              orderAPI.getOrderDetails.prime?.(verifyResponse?.data?.data?.order || order)
               setShowOrderSuccess(true)
-              window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
+              window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
               clearCart()
               setIsPlacingOrder(false)
             } else {
@@ -1995,7 +2009,15 @@ export default function Cart() {
 
   const handleGoToOrders = () => {
     setShowOrderSuccess(false)
-    navigate(`/user/orders/${placedOrderId}?confirmed=true`)
+    navigate(`/user/orders/${placedOrderId}?confirmed=true`, {
+      state: placedOrderSnapshot
+        ? {
+            prefetchedOrder: placedOrderSnapshot,
+            prefetchedAt: Date.now(),
+            fromOrderPlacement: true,
+          }
+        : undefined,
+    })
   }
 
   // Empty cart state - but don't show if order success or placing order modal is active
@@ -2047,8 +2069,8 @@ export default function Cart() {
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
-                  {restaurantData?.estimatedDeliveryTime || "10-15 mins"} to <span className="font-semibold">Location</span>
-                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || defaultAddress?.city || "Select address") : "Select address"}</span>
+                  Pickup at <span className="font-semibold">Restaurant</span>
+                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{pickupRestaurantAddress}</span>
                 </p>
               </div>
             </div>
@@ -2500,42 +2522,27 @@ export default function Cart() {
                           <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
                             Pickup at{" "}
                             <span className="font-semibold">
-                              {deliveryAddressMode === "current" ? "Current location" : "Location"}
+                              Restaurant
                             </span>
                           </p>
-                          {deliveryAddressMode === "current" ? (
-                            <div className="mt-1">
-                              {currentLocationLoading || !currentLocationAddress ? (
-                                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 animate-pulse">
-                                  Finding your current address...
-                                </p>
-                              ) : (
-                                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                                  {formatFullAddress(currentLocationAddress) ||
-                                    currentLocationAddress?.formattedAddress ||
-                                    currentLocationAddress?.address ||
-                                    "Add delivery address"}
-                                </p>
-                              )}
-                              <div className="mt-1 flex items-center gap-2">
-                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-[#FEF2F2] text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
-                                  GPS enabled
-                                </span>
-                              </div>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2 pr-4">
-                              {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Add delivery address") : "Add delivery address"}
+                          <div className="mt-1">
+                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                              {pickupRestaurantAddress}
                             </p>
-                          )}
+                            <div className="mt-1 flex items-center gap-2">
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-green-50 text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
+                                {restaurantData?.distance ? `${restaurantData.distance} km away` : 'Restaurant Location'}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         {!hasSavedAddress && (
                           <p className="text-sm text-[#00c87e] mt-2 font-medium">
                             Select a delivery location to continue
                           </p>
                         )}
-                        {/* Address Selection Buttons */}
-                        <div className="flex flex-wrap gap-2 mt-3">
+                        {/* Hide user address selection UI for takeaway flow */}
+                        {false && !isPickupScheduled && <div className="flex flex-wrap gap-2 mt-3">
                           {["Home", "Work", "Other"].map((label) => {
                             const normalizedLabel = normalizeAddressLabel(label)
                             const addressExists = addresses.some(addr => normalizeAddressLabel(addr.label) === normalizedLabel)
@@ -2555,10 +2562,10 @@ export default function Cart() {
                               >
                                 {label}
                               </button>
-                            )
-                          })}
-                        </div>
-                        {addresses.length > 0 && (
+                              )
+                            })}
+                        </div>}
+                        {false && !isPickupScheduled && addresses.length > 0 && (
                           <div className="mt-4 space-y-3">
                             {addresses.map((address) => {
                               const addressId = getAddressId(address)
@@ -2670,7 +2677,7 @@ export default function Cart() {
                       />
                     </div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      Agar aap kisi aur ke liye order kar rahe ho, to yahan uska naam aur phone save kar do.
+                      If you are ordering for someone else, save their name and phone number here.
                     </p>
                   </div>
                 )}
@@ -2860,12 +2867,9 @@ export default function Cart() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-lg font-semibold text-gray-900">Delivering to Location</p>
+                      <p className="text-lg font-semibold text-gray-900">Picking up from Restaurant</p>
                       <p className="text-sm text-gray-600 mt-1">
-                        {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Address") : "Add address"}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {defaultAddress ? (formatFullAddress(defaultAddress) || "Address") : "Address"}
+                        {pickupRestaurantAddress}
                       </p>
                     </div>
                   </div>
@@ -2990,11 +2994,11 @@ export default function Cart() {
                       </svg>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {defaultAddress?.city || "Your Location"}
+                      Pickup at Restaurant
                     </h2>
                   </div>
                   <p className="text-gray-500 dark:text-gray-400 text-base">
-                    {defaultAddress ? (formatFullAddress(defaultAddress) || defaultAddress?.formattedAddress || defaultAddress?.address || "Delivery Address") : "Delivery Address"}
+                    {pickupRestaurantAddress}
                   </p>
                 </div>
 
@@ -3004,7 +3008,7 @@ export default function Cart() {
                   style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
                 >
                   <h3 className="text-3xl font-bold text-[#00c87e] dark:text-red-400 mb-2">Order Placed!</h3>
-                  <p className="text-gray-600 dark:text-gray-300">Your delicious food is on its way</p>
+                  <p className="text-gray-600 dark:text-gray-300">Your food will be ready for pickup soon</p>
                 </div>
 
                 {/* Action Button */}

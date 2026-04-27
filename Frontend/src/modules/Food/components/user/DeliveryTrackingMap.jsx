@@ -2,10 +2,8 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { 
   GoogleMap, 
   useJsApiLoader, 
-  Marker, 
   OverlayView, 
   DirectionsService, 
-  DirectionsRenderer,
   Polyline
 } from '@react-google-maps/api';
 import io from 'socket.io-client';
@@ -13,7 +11,7 @@ import { API_BASE_URL } from '@food/api/config';
 import bikeLogo from '@food/assets/bikelogo.png';
 import { subscribeOrderTracking } from '@food/realtimeTracking';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Navigation, Info, Circle } from 'lucide-react';
+import { Navigation } from 'lucide-react';
 
 const LIBRARIES = ['geometry', 'places'];
 
@@ -41,6 +39,7 @@ const DeliveryTrackingMap = ({
   orderTrackingIds = [],
   restaurantCoords,
   customerCoords,
+  userLiveCoords = null,
   order = null,
   onEtaUpdate = null
 }) => {
@@ -52,8 +51,14 @@ const DeliveryTrackingMap = ({
   const [currentEta, setCurrentEta] = useState(null);
   const [cloudPolyline, setCloudPolyline] = useState(null);
   const [smoothLocation, setSmoothLocation] = useState(null);
+  const [routeFlowOffset, setRouteFlowOffset] = useState(0);
+  const [browserUserCoords, setBrowserUserCoords] = useState(null);
   const socketRef = useRef(null);
   const interpStateRef = useRef({ lastPos: null, nextPos: null, startTime: 0 });
+  const riderLocationRef = useRef(null);
+  const smoothLocationRef = useRef(null);
+  const lastSmoothFrameRef = useRef(0);
+  const lastSmoothValueRef = useRef(null);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -71,6 +76,34 @@ const DeliveryTrackingMap = ({
     return (API_BASE_URL || '').replace(/\/api\/v1\/?$/i, '').replace(/\/api\/?$/i, '');
   }, []);
 
+  const trackingIdsKey = useMemo(() => trackingIds.join('|'), [trackingIds]);
+  const hasAssignedRider = useMemo(() => {
+    const dispatchPartnerId =
+      order?.dispatch?.deliveryPartnerId?._id ||
+      order?.dispatch?.deliveryPartnerId ||
+      order?.deliveryPartnerId?._id ||
+      order?.deliveryPartnerId ||
+      order?.deliveryPartner?._id;
+    const dispatchStatus = String(
+      order?.dispatch?.status || order?.assignmentInfo?.status || ''
+    ).toLowerCase();
+    const currentLocation = order?.deliveryState?.currentLocation;
+    const hasCurrentLocation =
+      Number.isFinite(Number(currentLocation?.lat)) ||
+      Number.isFinite(Number(currentLocation?.lng)) ||
+      (Array.isArray(currentLocation?.coordinates) && currentLocation.coordinates.length >= 2);
+
+    return Boolean(dispatchPartnerId) || dispatchStatus === 'accepted' || hasCurrentLocation;
+  }, [order]);
+
+  useEffect(() => {
+    riderLocationRef.current = riderLocation;
+  }, [riderLocation]);
+
+  useEffect(() => {
+    smoothLocationRef.current = smoothLocation;
+  }, [smoothLocation]);
+
   // 1. Initial State from Order Payload
   useEffect(() => {
     const loc = order?.deliveryState?.currentLocation;
@@ -85,7 +118,7 @@ const DeliveryTrackingMap = ({
 
   // 2. Core Data Sync (Socket + Firebase)
   useEffect(() => {
-    if (!trackingIds.length) return;
+    if (!trackingIds.length || !hasAssignedRider) return;
 
     // A. FIREBASE FALLBACK
     const unsubs = trackingIds.map(id => subscribeOrderTracking(id, (data) => {
@@ -134,7 +167,7 @@ const DeliveryTrackingMap = ({
         
         // Trigger Smooth Interpolation
         interpStateRef.current = {
-           lastPos: smoothLocation || riderLocation || nextPos,
+           lastPos: smoothLocationRef.current || riderLocationRef.current || nextPos,
            nextPos: nextPos,
            startTime: Date.now()
         };
@@ -146,8 +179,9 @@ const DeliveryTrackingMap = ({
     return () => {
       unsubs.forEach(u => u?.());
       socketRef.current?.disconnect();
+      socketRef.current = null;
     };
-  }, [trackingIds, backendUrl, smoothLocation, riderLocation]);
+  }, [trackingIdsKey, backendUrl, onEtaUpdate, hasAssignedRider]);
 
   // 3. Smooth Animation Loop (60 FPS Glide)
   useEffect(() => {
@@ -171,8 +205,20 @@ const DeliveryTrackingMap = ({
           else nextHead += 360;
         }
         const heading = lastHead + (nextHead - lastHead) * progress;
+        const nextSmooth = { lat, lng, heading: heading % 360 };
+        const now = performance.now();
+        const previous = lastSmoothValueRef.current;
+        const movedEnough =
+          !previous ||
+          Math.abs(previous.lat - nextSmooth.lat) > 0.00001 ||
+          Math.abs(previous.lng - nextSmooth.lng) > 0.00001 ||
+          Math.abs((previous.heading || 0) - (nextSmooth.heading || 0)) > 1;
 
-        setSmoothLocation({ lat, lng, heading: heading % 360 });
+        if (movedEnough && now - lastSmoothFrameRef.current >= 1000 / 24) {
+          lastSmoothFrameRef.current = now;
+          lastSmoothValueRef.current = nextSmooth;
+          setSmoothLocation(nextSmooth);
+        }
       }
       frame = requestAnimationFrame(update);
     };
@@ -203,12 +249,18 @@ const DeliveryTrackingMap = ({
 
     const bounds = new window.google.maps.LatLngBounds();
     
-    if (isOrderPickedUp) {
-      if (riderLocation) bounds.extend(riderLocation);
-      bounds.extend(customerCoords);
+    if (riderLocation) {
+      if (isOrderPickedUp) {
+        bounds.extend(riderLocation);
+        bounds.extend(customerCoords);
+      } else {
+        bounds.extend(riderLocation);
+        bounds.extend(restaurantCoords);
+      }
     } else {
-      if (riderLocation) bounds.extend(riderLocation);
+      // Takeaway/no-rider flow: always keep both points visible so user<->restaurant route is clear.
       bounds.extend(restaurantCoords);
+      bounds.extend(customerCoords);
     }
 
     map.fitBounds(bounds, { 
@@ -271,6 +323,105 @@ const DeliveryTrackingMap = ({
     };
   }, [restaurantCoords?.lat, restaurantCoords?.lng, customerCoords?.lat, customerCoords?.lng]);
 
+  const baselinePath = useMemo(() => {
+    if (!baselineDirections || !window.google?.maps?.geometry?.encoding) return [];
+    const route = baselineDirections?.routes?.[0];
+    if (!route) return [];
+    if (Array.isArray(route.overview_path) && route.overview_path.length > 2) {
+      return route.overview_path;
+    }
+    const encoded = route?.overview_polyline?.points;
+    if (!encoded) return [];
+    try {
+      const decoded = window.google.maps.geometry.encoding.decodePath(encoded);
+      return Array.isArray(decoded) ? decoded : [];
+    } catch (error) {
+      console.error('[DeliveryTrackingMap] Failed to decode baseline route polyline', error);
+      return [];
+    }
+  }, [baselineDirections]);
+
+  useEffect(() => {
+    if (
+      userLiveCoords &&
+      Number.isFinite(userLiveCoords.lat) &&
+      Number.isFinite(userLiveCoords.lng)
+    ) {
+      setBrowserUserCoords({ lat: userLiveCoords.lat, lng: userLiveCoords.lng });
+      return;
+    }
+
+    if (!navigator?.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const lat = Number(position?.coords?.latitude);
+        const lng = Number(position?.coords?.longitude);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          setBrowserUserCoords({ lat, lng });
+        }
+      },
+      () => {
+        // Silent fail: user denied permission or device unavailable.
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 }
+    );
+  }, [userLiveCoords]);
+
+  const decodedCloudPath = useMemo(() => {
+    if (!cloudPolyline || !window.google?.maps?.geometry?.encoding) return [];
+    const encoded = typeof cloudPolyline === 'string' ? cloudPolyline : (cloudPolyline?.points || '');
+    if (!encoded) return [];
+    try {
+      const decoded = window.google.maps.geometry.encoding.decodePath(encoded);
+      debugLog(`?? Decoded Cloud Polyline with ${decoded?.length || 0} points`);
+      return Array.isArray(decoded) ? decoded : [];
+    } catch (error) {
+      console.error('[DeliveryTrackingMap] Failed to decode cloud polyline', error);
+      return [];
+    }
+  }, [cloudPolyline]);
+
+  const useCloudPolyline = decodedCloudPath.length > 2;
+  const directionsPath = useMemo(() => {
+    if (!directions || !window.google?.maps?.geometry?.encoding) return [];
+    const route = directions?.routes?.[0];
+    if (!route) return [];
+    if (Array.isArray(route.overview_path) && route.overview_path.length > 2) {
+      return route.overview_path;
+    }
+    const encoded = route?.overview_polyline?.points;
+    if (!encoded) return [];
+    try {
+      const decoded = window.google.maps.geometry.encoding.decodePath(encoded);
+      return Array.isArray(decoded) ? decoded : [];
+    } catch (error) {
+      console.error('[DeliveryTrackingMap] Failed to decode directions route polyline', error);
+      return [];
+    }
+  }, [directions]);
+  const activeRoutePath = useMemo(() => {
+    if (useCloudPolyline) return decodedCloudPath;
+    if (directionsPath.length > 2) return directionsPath;
+    return baselinePath;
+  }, [useCloudPolyline, decodedCloudPath, directionsPath, baselinePath]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setRouteFlowOffset((prev) => (prev + 2) % 100);
+    }, 240);
+    return () => clearInterval(timer);
+  }, []);
+
+  const openGoogleMapsRoute = useCallback(() => {
+    if (!restaurantCoords || !customerCoords) return;
+    const originPoint = browserUserCoords || customerCoords;
+    const destinationPoint = restaurantCoords;
+    const origin = `${originPoint.lat},${originPoint.lng}`;
+    const destination = `${destinationPoint.lat},${destinationPoint.lng}`;
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`;
+    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+  }, [browserUserCoords, restaurantCoords, customerCoords]);
+
   if (!isLoaded) return <div className="w-full h-full bg-gray-100 animate-pulse" />;
 
   return (
@@ -314,9 +465,9 @@ const DeliveryTrackingMap = ({
         )}
 
         {/* 1. PERSISTENT BASELINE (Full journey: Restaurant -> Customer) */}
-        {baselineDirections && (
+        {baselinePath.length > 2 && (
           <Polyline
-            path={baselineDirections.routes[0].overview_path}
+            path={baselinePath}
             options={{
               strokeColor: '#94a3b8', 
               strokeOpacity: 0, // Dotted
@@ -338,46 +489,55 @@ const DeliveryTrackingMap = ({
         )}
 
         {/* 2. LIVE RIDER LEG (From Rider's App: Current Rider Pos -> Target) */}
-        {cloudPolyline && window.google?.maps?.geometry?.encoding && (
-          <Polyline
-            path={(() => {
-              const decoded = window.google.maps.geometry.encoding.decodePath(
-                typeof cloudPolyline === 'string' ? cloudPolyline : (cloudPolyline.points || '')
-              );
-              debugLog(`?? Decoded Cloud Polyline with ${decoded?.length || 0} points`);
-              return decoded;
-            })()}
-            options={{
-              strokeColor: isOrderPickedUp ? '#3b82f6' : '#22c55e',
-              strokeWeight: 6,
-              strokeOpacity: 1,
-              zIndex: 10
-            }}
-          />
-        )}
-
-        {/* 2. LIVE RIDER LEG (Rider -> Target) */}
-        {!cloudPolyline && directionsServiceOptions && (
+        {!useCloudPolyline && directionsServiceOptions && (
           <DirectionsService
             options={directionsServiceOptions}
             callback={shouldUpdateRoute ? directionsCallback : undefined}
           />
         )}
 
-        {directions && !cloudPolyline && (
-          <DirectionsRenderer
-            directions={directions}
-            options={{
-              suppressMarkers: true,
-              preserveViewport: true,
-              polylineOptions: {
-                strokeColor: isOrderPickedUp ? '#3b82f6' : '#22c55e',
+        {activeRoutePath.length > 2 && (
+          <>
+            {/* Blue glow layer */}
+            <Polyline
+              path={activeRoutePath}
+              options={{
+                strokeColor: '#60a5fa',
+                strokeWeight: 12,
+                strokeOpacity: 0.35,
+                zIndex: 9
+              }}
+            />
+            {/* Main blue route */}
+            <Polyline
+              path={activeRoutePath}
+              options={{
+                strokeColor: '#2563eb',
                 strokeWeight: 6,
-                strokeOpacity: 0.8,
+                strokeOpacity: 0.95,
                 zIndex: 10
-              }
-            }}
-          />
+              }}
+            />
+            {/* Flowing accent for live feel */}
+            <Polyline
+              path={activeRoutePath}
+              options={{
+                strokeOpacity: 0,
+                zIndex: 11,
+                icons: [{
+                  icon: {
+                    path: 'M 0,-1 0,1',
+                    strokeOpacity: 1,
+                    scale: 3,
+                    strokeWeight: 2,
+                    strokeColor: '#bfdbfe'
+                  },
+                  offset: `${routeFlowOffset}%`,
+                  repeat: '26px'
+                }]
+              }}
+            />
+          </>
         )}
 
         {/* RESTAURANT PIN (OVERLAY VIEW FOR CUSTOM STLYE) */}
@@ -490,6 +650,19 @@ const DeliveryTrackingMap = ({
           </motion.div>
         )}
       </AnimatePresence>
+
+      {!!restaurantCoords && !!customerCoords && (
+        <div className="absolute top-4 right-4 z-[150]">
+          <button
+            type="button"
+            onClick={openGoogleMapsRoute}
+            className="inline-flex items-center gap-2 rounded-xl bg-white/95 backdrop-blur px-3 py-2 text-sm font-semibold text-gray-800 shadow-lg border border-gray-200 hover:bg-white transition-colors"
+          >
+            <Navigation className="w-4 h-4 text-blue-600" />
+            <span>Google Maps</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

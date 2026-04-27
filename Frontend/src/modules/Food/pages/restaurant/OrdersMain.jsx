@@ -4441,7 +4441,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                 <label
                   htmlFor="delivery-otp-input"
                   className="block text-sm font-medium text-gray-700 mb-2">
-                  Delivery OTP
+                  Takeaway OTP
                 </label>
                 <input
                   id="delivery-otp-input"

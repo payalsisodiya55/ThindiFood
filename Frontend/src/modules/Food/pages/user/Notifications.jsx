@@ -87,7 +87,7 @@ export default function Notifications() {
       const newNotification = {
         id: `otp-${Date.now()}`,
         type: "alert",
-        title: "Delivery OTP Received",
+        title: "Takeaway OTP Received",
         message: message || `Your OTP for order #${orderId} is ${otp}`,
         time: "Just now",
         timestamp: Date.now(),
