@@ -530,7 +530,6 @@ export default function OrderTracking() {
   const [refundPreferenceFlow, setRefundPreferenceFlow] = useState("")
   const [isSavingRefundPreference, setIsSavingRefundPreference] = useState(false)
   const [resolvedLookupId, setResolvedLookupId] = useState("")
-  const [timerNow, setTimerNow] = useState(Date.now())
   const [shouldRenderMap, setShouldRenderMap] = useState(false)
   const handleEtaUpdate = useCallback((newEta) => setEstimatedTime(newEta), [])
   const lastRealtimeRefreshRef = useRef(0)
@@ -795,32 +794,6 @@ export default function OrderTracking() {
     order?.deliveryState?.status,
   ])
 
-  const acceptedAtMs = useMemo(() => {
-    const timestamp =
-      order?.tracking?.confirmed?.timestamp ||
-      order?.tracking?.preparing?.timestamp ||
-      order?.updatedAt ||
-      order?.createdAt
-
-    const parsed = timestamp ? new Date(timestamp).getTime() : NaN
-    return Number.isFinite(parsed) ? parsed : null
-  }, [order?.tracking?.confirmed?.timestamp, order?.tracking?.preparing?.timestamp, order?.updatedAt, order?.createdAt])
-
-  const editWindowRemainingMs = useMemo(() => {
-    if (!isAdminAccepted || !acceptedAtMs) return 0
-    const remaining = 60000 - (timerNow - acceptedAtMs)
-    return Math.max(0, remaining)
-  }, [isAdminAccepted, acceptedAtMs, timerNow])
-
-  const isEditWindowOpen = editWindowRemainingMs > 0
-
-  const editWindowText = useMemo(() => {
-    const totalSeconds = Math.ceil(editWindowRemainingMs / 1000)
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    return `${minutes}:${String(seconds).padStart(2, '0')}`
-  }, [editWindowRemainingMs])
-
   const handleCallRestaurant = (e) => {
     // Prevent event bubbling if necessary
     if (e && e.stopPropagation) e.stopPropagation();
@@ -913,14 +886,6 @@ export default function OrderTracking() {
     if (!isOverridden || !reason) return ""
     return reason
   }, [order?.payment?.refund?.isOverridden, order?.payment?.refund?.overrideReason])
-
-  useEffect(() => {
-    if (!isEditWindowOpen) return
-    const interval = setInterval(() => {
-      setTimerNow(Date.now())
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [isEditWindowOpen])
 
   // Poll for order updates (especially when delivery partner accepts)
 
@@ -1197,8 +1162,8 @@ export default function OrderTracking() {
     // Check if order can be cancelled (only Razorpay orders that aren't delivered/cancelled)
     if (!order) return;
 
-    if (isAdminAccepted && !isEditWindowOpen) {
-      toast.error('Cancellation window ended. You can no longer cancel this order.');
+    if (isAdminAccepted) {
+      toast.error('Order has already been accepted and cannot be cancelled.');
       return;
     }
 
@@ -1269,14 +1234,10 @@ export default function OrderTracking() {
     try {
       const cancelLookupId =
         lookupIdsRef.current[0] || normalizeLookupId(orderId)
-      const payload = {
+      const response = await orderAPI.cancelOrder(cancelLookupId, {
         reason: cancellationReason.trim(),
-      }
-      const normalizedRefundPreference = String(refundPreference || "").toLowerCase()
-      if (["wallet", "original"].includes(normalizedRefundPreference)) {
-        payload.refundPreference = normalizedRefundPreference
-      }
-      const response = await orderAPI.cancelOrder(cancelLookupId, payload)
+        refundPreference,
+      })
       if (response.data?.success) {
         const paymentMethod = getPaymentMethod(order)
         const successMessage = response.data?.message ||
@@ -1626,37 +1587,6 @@ export default function OrderTracking() {
       {/* Scrollable Content */}
       <div className="max-w-4xl mx-auto px-4 md:px-6 lg:px-8 py-4 md:py-6 space-y-4 md:space-y-6 pb-24 md:pb-32">
         {/* 1-minute cancellation window after admin acceptance */}
-        {isAdminAccepted && isEditWindowOpen && (
-          <motion.div
-            className="bg-white rounded-xl p-4 shadow-sm border border-red-100"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-gray-900">
-                Cancel order
-              </p>
-              <span className={`text-sm font-bold px-2 py-1 rounded-md ${isEditWindowOpen ? 'bg-red-50 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
-                {isEditWindowOpen ? editWindowText : 'Expired'}
-              </span>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Available for 1 minute after admin acceptance.
-            </p>
-            <div className="mt-3">
-              <Button
-                type="button"
-                onClick={handleCancelOrder}
-                disabled={!isEditWindowOpen}
-                className="w-full bg-red-600 hover:bg-red-700 text-white"
-              >
-                Cancel Order
-              </Button>
-            </div>
-          </motion.div>
-        )}
-
         {customerDeliveryOtp && orderStatus !== 'delivered' && orderStatus !== 'cancelled' && (
           <motion.div
             className="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100"
