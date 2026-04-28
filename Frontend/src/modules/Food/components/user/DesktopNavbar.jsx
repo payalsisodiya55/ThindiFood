@@ -302,59 +302,19 @@ export default function DesktopNavbar({ showLogo = true }) {
                     <div className="flex items-center justify-center h-12">
                         {/* Navigation Tabs - Centered with spacing */}
                         <div className="flex items-center space-x-24">
-                            {/* Delivery Tab */}
+                            {/* Takeaway Tab */}
                             <Link
                                 to="/food/user"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isDelivery
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-[#00c87e] dark:text-[#00c87e]"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-[#00c87e] dark:hover:text-[#00c87e]"
                                     }`}
                             >
-                                <span className="text-sm font-bold tracking-wide uppercase">Delivery</span>
+                                <span className="text-sm font-bold tracking-wide uppercase">Takeaway</span>
                                 {isDelivery && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ duration: 0.3 }}
-                                    />
-                                )}
-                            </Link>
-
-                            {/* Quick Tab */}
-                            <Link
-                                to="/food/user/quick"
-                                className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isQuick
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
-                                    }`}
-                            >
-                                <span className="text-sm font-bold tracking-wide uppercase">Quick</span>
-                                {isQuick && (
-                                    <motion.div
-                                        layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ duration: 0.3 }}
-                                    />
-                                )}
-                            </Link>
-
-                            {/* Under 250 Tab */}
-                            <Link
-                                to="/food/user/under-250"
-                                className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isUnder250
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
-                                    }`}
-                            >
-                                <span className="text-sm font-bold tracking-wide uppercase">Under 250</span>
-                                {isUnder250 && (
-                                    <motion.div
-                                        layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[#00c87e] dark:bg-[#00c87e]"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
@@ -366,15 +326,15 @@ export default function DesktopNavbar({ showLogo = true }) {
                             <Link
                                 to="/food/user/dining"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isDining
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-[#00c87e] dark:text-[#00c87e]"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-[#00c87e] dark:hover:text-[#00c87e]"
                                     }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Dining</span>
                                 {isDining && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[#00c87e] dark:bg-[#00c87e]"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
@@ -386,15 +346,15 @@ export default function DesktopNavbar({ showLogo = true }) {
                             <Link
                                 to="/food/user/profile"
                                 className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isProfile
-                                    ? "text-orange-600 dark:text-orange-500"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-500"
+                                    ? "text-[#00c87e] dark:text-[#00c87e]"
+                                    : "text-gray-600 dark:text-gray-400 hover:text-[#00c87e] dark:hover:text-[#00c87e]"
                                     }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Profile</span>
                                 {isProfile && (
                                     <motion.div
                                         layoutId="navIndicator"
-                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-orange-600 dark:bg-orange-500"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[#00c87e] dark:bg-[#00c87e]"
                                         initial={{ opacity: 0 }}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 0.3 }}
