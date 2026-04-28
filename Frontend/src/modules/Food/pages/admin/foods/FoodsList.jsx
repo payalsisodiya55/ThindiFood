@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { useSearchParams } from "react-router-dom"
-import { Search, Trash2, Loader2, Eye, Pencil, Plus, Save, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Trash2, Loader2, Eye, Pencil, Plus, Save, ChevronDown, ChevronLeft, ChevronRight, Upload, Download, FileSpreadsheet, AlertCircle } from "lucide-react"
 import { adminAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
@@ -31,6 +31,181 @@ const createVariantDraft = (variant = {}) => ({
   price: variant?.price != null ? String(variant.price) : "",
 })
 
+const BULK_IMPORT_COLUMNS = [
+  "restaurant_name",
+  "restaurant_id",
+  "category_name",
+  "category_id",
+  "food_name",
+  "base_price",
+  "variants",
+  "food_type",
+  "preparation_time",
+  "is_available",
+  "description",
+  "image_url",
+]
+
+const BULK_IMPORT_DEMO_ROWS = [
+  {
+    restaurant_name: "Hotel Green Leaf",
+    restaurant_id: "",
+    category_name: "Biryani",
+    category_id: "",
+    food_name: "Chicken Dum Biryani",
+    base_price: "249",
+    variants: "",
+    food_type: "Non-Veg",
+    preparation_time: "25-35 mins",
+    is_available: "TRUE",
+    description: "Classic dum biryani with tender chicken and basmati rice",
+    image_url: "https://example.com/foods/chicken-dum-biryani.jpg",
+  },
+  {
+    restaurant_name: "Hotel Green Leaf",
+    restaurant_id: "",
+    category_name: "Starters",
+    category_id: "",
+    food_name: "Paneer 65",
+    base_price: "",
+    variants: "Half:159|Full:289",
+    food_type: "Veg",
+    preparation_time: "20-25 mins",
+    is_available: "TRUE",
+    description: "Crispy paneer starter with house masala",
+    image_url: "https://example.com/foods/paneer-65.jpg",
+  },
+]
+
+const normalizeLookupValue = (value) => String(value || "").trim().toLowerCase()
+
+const escapeCsvValue = (value) => {
+  const text = String(value ?? "")
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+  return text
+}
+
+const buildCsvContent = (rows = []) => {
+  const header = BULK_IMPORT_COLUMNS.join(",")
+  const body = rows.map((row) => BULK_IMPORT_COLUMNS.map((column) => escapeCsvValue(row?.[column] ?? "")).join(","))
+  return [header, ...body].join("\n")
+}
+
+const triggerFileDownload = (filename, content, mimeType = "text/csv;charset=utf-8;") => {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = url
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
+const parseCsvLine = (line = "") => {
+  const values = []
+  let current = ""
+  let inQuotes = false
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index]
+    const nextCharacter = line[index + 1]
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        current += '"'
+        index += 1
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
+    }
+
+    if (character === "," && !inQuotes) {
+      values.push(current)
+      current = ""
+      continue
+    }
+
+    current += character
+  }
+
+  values.push(current)
+  return values
+}
+
+const parseCsvContent = (content = "") => {
+  const normalized = String(content || "").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+  const lines = []
+  let current = ""
+  let inQuotes = false
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    const character = normalized[index]
+    const nextCharacter = normalized[index + 1]
+
+    if (character === '"') {
+      if (inQuotes && nextCharacter === '"') {
+        current += '"'
+        index += 1
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
+    }
+
+    if (character === "\n" && !inQuotes) {
+      lines.push(current)
+      current = ""
+      continue
+    }
+
+    current += character
+  }
+
+  if (current || lines.length === 0) {
+    lines.push(current)
+  }
+
+  return lines.map((line) => parseCsvLine(line))
+}
+
+const parseBulkVariants = (value = "") =>
+  String(value || "")
+    .split("|")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const separatorIndex = entry.lastIndexOf(":")
+      if (separatorIndex === -1) {
+        return { error: `Invalid variant "${entry}". Use Name:Price format.` }
+      }
+
+      const name = entry.slice(0, separatorIndex).trim()
+      const price = Number(entry.slice(separatorIndex + 1).trim())
+
+      if (!name) {
+        return { error: `Variant "${entry}" is missing a name.` }
+      }
+
+      if (!Number.isFinite(price) || price <= 0) {
+        return { error: `Variant "${entry}" must have a price greater than 0.` }
+      }
+
+      return { name, price }
+    })
+
+const parseAvailabilityValue = (value) => {
+  const normalized = normalizeLookupValue(value)
+  if (!normalized) return true
+  if (["true", "1", "yes", "y"].includes(normalized)) return true
+  if (["false", "0", "no", "n"].includes(normalized)) return false
+  return null
+}
+
 export default function FoodsList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedRestaurant, setSelectedRestaurant] = useState("all")
@@ -53,6 +228,11 @@ export default function FoodsList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [imageVersion, setImageVersion] = useState(Date.now())
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false)
+  const [bulkImportFile, setBulkImportFile] = useState(null)
+  const [bulkImporting, setBulkImporting] = useState(false)
+  const [bulkImportSummary, setBulkImportSummary] = useState(null)
+  const [bulkImportInputKey, setBulkImportInputKey] = useState(0)
 
   const getItemCreatedMs = (item = {}) => {
     const direct = [item.createdAt, item.addedAt, item.requestedAt, item.updatedAt]
@@ -155,9 +335,28 @@ export default function FoodsList() {
     }
   }, [])
 
+  const loadCategoryOptions = useCallback(async () => {
+    try {
+      const res = await adminAPI.getCategories({ limit: 1000 })
+      const list = res?.data?.data?.categories || []
+      const options = Array.isArray(list)
+        ? list
+            .map((c) => ({ id: String(c.id || c._id || c.name), name: String(c.name || "").trim() }))
+            .filter((c) => c.name)
+        : []
+      setCategoryOptions(options)
+    } catch (error) {
+      setCategoryOptions([])
+    }
+  }, [])
+
   useEffect(() => {
     fetchAllFoods()
   }, [fetchAllFoods])
+
+  useEffect(() => {
+    loadCategoryOptions()
+  }, [loadCategoryOptions])
 
   const [searchParams] = useSearchParams()
   const productIdFromUrl = searchParams.get("productId")
@@ -288,7 +487,6 @@ export default function FoodsList() {
 
   useEffect(() => {
     if (!showFoodFormModal) {
-      setCategoryOptions([])
       return
     }
 
@@ -305,9 +503,7 @@ export default function FoodsList() {
           : []
         if (!cancelled) setCategoryOptions(options)
       } catch (error) {
-        if (!cancelled) {
-          setCategoryOptions([])
-        }
+        if (!cancelled) setCategoryOptions([])
       }
     }
 
@@ -317,6 +513,42 @@ export default function FoodsList() {
       cancelled = true
     }
   }, [showFoodFormModal])
+
+  const restaurantsById = useMemo(() => {
+    const next = new Map()
+    restaurantOptions.forEach((restaurant) => {
+      const id = String(restaurant?.id || "").trim()
+      if (id) next.set(id, restaurant)
+    })
+    return next
+  }, [restaurantOptions])
+
+  const restaurantsByName = useMemo(() => {
+    const next = new Map()
+    restaurantOptions.forEach((restaurant) => {
+      const name = normalizeLookupValue(restaurant?.name)
+      if (name && !next.has(name)) next.set(name, restaurant)
+    })
+    return next
+  }, [restaurantOptions])
+
+  const categoriesById = useMemo(() => {
+    const next = new Map()
+    categoryOptions.forEach((category) => {
+      const id = String(category?.id || "").trim()
+      if (id) next.set(id, category)
+    })
+    return next
+  }, [categoryOptions])
+
+  const categoriesByName = useMemo(() => {
+    const next = new Map()
+    categoryOptions.forEach((category) => {
+      const name = normalizeLookupValue(category?.name)
+      if (name && !next.has(name)) next.set(name, category)
+    })
+    return next
+  }, [categoryOptions])
 
   const handleVariantChange = (variantId, field, value) => {
     setFoodForm((prev) => ({
@@ -459,6 +691,181 @@ export default function FoodsList() {
     setShowDetailModal(true)
   }
 
+  const resetBulkImportState = () => {
+    setBulkImportFile(null)
+    setBulkImportSummary(null)
+    setBulkImportInputKey((prev) => prev + 1)
+  }
+
+  const handleDownloadBulkFormat = () => {
+    triggerFileDownload("foods-bulk-import-format.csv", buildCsvContent([]))
+  }
+
+  const handleDownloadBulkDemo = () => {
+    triggerFileDownload("foods-bulk-import-demo.csv", buildCsvContent(BULK_IMPORT_DEMO_ROWS))
+  }
+
+  const handleBulkImport = async () => {
+    if (!bulkImportFile) {
+      toast.error("Please choose a CSV file to import")
+      return
+    }
+
+    try {
+      setBulkImporting(true)
+      setBulkImportSummary(null)
+
+      const text = await bulkImportFile.text()
+      const rows = parseCsvContent(text).filter((row) => row.some((cell) => String(cell || "").trim()))
+
+      if (rows.length < 2) {
+        toast.error("The file is empty. Download the format and fill at least one row.")
+        return
+      }
+
+      const headers = rows[0].map((header) => String(header || "").trim())
+      const missingColumns = BULK_IMPORT_COLUMNS.filter((column) => !headers.includes(column))
+      if (missingColumns.length > 0) {
+        toast.error(`Missing required columns: ${missingColumns.join(", ")}`)
+        return
+      }
+
+      const dataRows = rows.slice(1)
+      const importQueue = []
+      const validationErrors = []
+
+      dataRows.forEach((cells, rowIndex) => {
+        const rowNumber = rowIndex + 2
+        const rowErrors = []
+        const row = headers.reduce((accumulator, header, headerIndex) => {
+          accumulator[header] = String(cells[headerIndex] || "").trim()
+          return accumulator
+        }, {})
+
+        const restaurantId = row.restaurant_id
+        const restaurantName = row.restaurant_name
+        const categoryId = row.category_id
+        const categoryName = row.category_name
+        const foodName = row.food_name
+        const basePrice = Number(row.base_price)
+        const rawVariants = parseBulkVariants(row.variants)
+        const variantErrors = rawVariants.filter((entry) => entry?.error)
+        const variants = rawVariants.filter((entry) => !entry?.error)
+        const hasVariants = variants.length > 0
+        const availability = parseAvailabilityValue(row.is_available)
+        const restaurant = restaurantId
+          ? restaurantsById.get(restaurantId)
+          : restaurantsByName.get(normalizeLookupValue(restaurantName))
+        const category = categoryId
+          ? categoriesById.get(categoryId)
+          : categoriesByName.get(normalizeLookupValue(categoryName))
+
+        if (!restaurant) {
+          rowErrors.push(`Row ${rowNumber}: restaurant not found. Use a valid restaurant_id or exact restaurant_name.`)
+        }
+
+        if (categoryId && !category) {
+          rowErrors.push(`Row ${rowNumber}: category_id "${categoryId}" was not found.`)
+        }
+
+        if (!categoryName) {
+          rowErrors.push(`Row ${rowNumber}: category_name is required.`)
+        }
+
+        if (!foodName) {
+          rowErrors.push(`Row ${rowNumber}: food_name is required.`)
+        }
+
+        if (variantErrors.length > 0) {
+          variantErrors.forEach((entry) => {
+            rowErrors.push(`Row ${rowNumber}: ${entry.error}`)
+          })
+        }
+
+        if (!hasVariants && (!Number.isFinite(basePrice) || basePrice <= 0)) {
+          rowErrors.push(`Row ${rowNumber}: base_price must be greater than 0 when variants are empty.`)
+        }
+
+        if (availability === null) {
+          rowErrors.push(`Row ${rowNumber}: is_available must be TRUE/FALSE, YES/NO, or 1/0.`)
+        }
+
+        if (row.food_type && !["veg", "non-veg", "non veg"].includes(normalizeLookupValue(row.food_type))) {
+          rowErrors.push(`Row ${rowNumber}: food_type must be Veg or Non-Veg.`)
+        }
+
+        if (rowErrors.length > 0) {
+          validationErrors.push(...rowErrors)
+          return
+        }
+
+        importQueue.push({
+          rowNumber,
+          payload: {
+            restaurantId: restaurant.id,
+            categoryId: category?.id || undefined,
+            categoryName: category?.name || categoryName,
+            name: foodName,
+            price: hasVariants ? undefined : basePrice,
+            variants,
+            description: row.description,
+            image: row.image_url,
+            foodType: normalizeLookupValue(row.food_type) === "veg" ? "Veg" : "Non-Veg",
+            isAvailable: availability !== false,
+            preparationTime: row.preparation_time,
+          },
+        })
+      })
+
+      if (validationErrors.length > 0) {
+        setBulkImportSummary({
+          totalRows: dataRows.length,
+          successCount: 0,
+          failureCount: validationErrors.length,
+          errors: validationErrors,
+        })
+        toast.error("Please fix the import file errors and try again")
+        return
+      }
+
+      let successCount = 0
+      const importErrors = []
+
+      for (const entry of importQueue) {
+        try {
+          await adminAPI.createFood(entry.payload)
+          successCount += 1
+        } catch (error) {
+          importErrors.push(`Row ${entry.rowNumber}: ${error?.response?.data?.message || "Failed to create food"}`)
+        }
+      }
+
+      setBulkImportSummary({
+        totalRows: dataRows.length,
+        successCount,
+        failureCount: importErrors.length,
+        errors: importErrors,
+      })
+
+      if (successCount > 0) {
+        toast.success(`${successCount} food item${successCount > 1 ? "s" : ""} imported successfully`)
+        await fetchAllFoods()
+      }
+
+      if (importErrors.length === 0) {
+        setBulkImportFile(null)
+        setBulkImportInputKey((prev) => prev + 1)
+      } else {
+        toast.error("Some rows could not be imported")
+      }
+    } catch (error) {
+      debugError("Error importing foods:", error)
+      toast.error("Failed to read the import file")
+    } finally {
+      setBulkImporting(false)
+    }
+  }
+
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       {/* Header Section */}
@@ -484,6 +891,14 @@ export default function FoodsList() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowBulkImportModal(true)}
+              className="px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 inline-flex items-center gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              <span>Bulk Import</span>
+            </button>
             <button
               type="button"
               onClick={openAddFoodModal}
@@ -748,7 +1163,6 @@ export default function FoodsList() {
           if (!open) {
             setEditingFood(null)
             setFoodForm(createFoodForm())
-            setCategoryOptions([])
             setCategorySearch("")
             setCategoryPopoverOpen(false)
             setSelectedImageFile(null)
@@ -1001,6 +1415,151 @@ export default function FoodsList() {
                 <span>{submittingFood ? "Saving..." : foodFormMode === "edit" ? "Update Food" : "Add Food"}</span>
               </button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showBulkImportModal}
+        onOpenChange={(open) => {
+          setShowBulkImportModal(open)
+          if (!open) {
+            resetBulkImportState()
+          }
+        }}
+      >
+        <DialogContent className="max-w-4xl p-0 overflow-hidden">
+          <DialogHeader className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+            <DialogTitle className="text-lg font-semibold text-slate-900">Bulk Import Foods</DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[80vh] overflow-y-auto p-6 space-y-6">
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="rounded-2xl border border-slate-200 bg-white p-5">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl bg-emerald-50 p-3 text-emerald-600">
+                    <FileSpreadsheet className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">Excel-friendly template</h3>
+                    <p className="mt-1 text-sm text-slate-600">
+                      Download the CSV template, open it in Excel, fill your rows, then upload it here.
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={handleDownloadBulkFormat}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download format
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadBulkDemo}
+                    className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download demo
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 h-5 w-5 text-amber-600" />
+                  <div className="space-y-2 text-sm text-amber-900">
+                    <p className="font-semibold">Sheet rules</p>
+                    <p>`variants` format: `Half:149|Full:259`</p>
+                    <p>Use either `restaurant_id` or exact `restaurant_name`.</p>
+                    <p>`base_price` is required only when `variants` is empty.</p>
+                    <p>`image_url` should be a ready-to-use image link. File upload is not supported in bulk import.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h3 className="text-base font-semibold text-slate-900">Supported columns</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {BULK_IMPORT_COLUMNS.map((column) => (
+                  <span
+                    key={column}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700"
+                  >
+                    {column}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Upload filled sheet</label>
+                <input
+                  key={bulkImportInputKey}
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(event) => {
+                    setBulkImportFile(event.target.files?.[0] || null)
+                    setBulkImportSummary(null)
+                  }}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm file:mr-3 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm"
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Use the downloaded CSV in Excel, then save and upload it back here.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={resetBulkImportState}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Reset
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkImport}
+                  disabled={bulkImporting}
+                  className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {bulkImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  <span>{bulkImporting ? "Importing..." : "Start Import"}</span>
+                </button>
+              </div>
+            </div>
+
+            {bulkImportSummary ? (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700">
+                    Total rows: {bulkImportSummary.totalRows}
+                  </span>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-semibold text-emerald-700">
+                    Success: {bulkImportSummary.successCount}
+                  </span>
+                  <span className="rounded-full bg-rose-100 px-3 py-1 text-sm font-semibold text-rose-700">
+                    Failed: {bulkImportSummary.failureCount}
+                  </span>
+                </div>
+
+                {bulkImportSummary.errors?.length ? (
+                  <div className="rounded-xl border border-rose-200 bg-white p-4">
+                    <p className="text-sm font-semibold text-rose-700">Import errors</p>
+                    <div className="mt-3 max-h-60 space-y-2 overflow-y-auto text-sm text-slate-700">
+                      {bulkImportSummary.errors.map((error, index) => (
+                        <p key={`${error}-${index}`}>{error}</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-emerald-700">All rows were imported successfully.</p>
+                )}
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>
