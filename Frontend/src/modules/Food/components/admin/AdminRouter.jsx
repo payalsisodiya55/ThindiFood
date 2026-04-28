@@ -122,6 +122,7 @@ const QuickCommerceProducts = lazy(() => import("@food/pages/admin/quick-commerc
 const AdminLogin = lazy(() => import("@food/pages/admin/auth/AdminLogin"));
 const AdminSignup = lazy(() => import("@food/pages/admin/auth/AdminSignup"));
 const AdminForgotPassword = lazy(() => import("@food/pages/admin/auth/AdminForgotPassword"));
+const ManageAdmins = lazy(() => import("@food/pages/admin/employees/ManageAdmins"));
 export default function AdminRouter() {
   const location = useLocation()
   const normalizedPathname = location.pathname.replace(/\/{2,}/g, "/")
@@ -243,6 +244,7 @@ export default function AdminRouter() {
 
             {/* SYSTEM & BUSINESS SETTINGS */}
             <Route path="business-setup" element={<BusinessSetup />} />
+            <Route path="manage-admins" element={<ManageAdmins />} />
             <Route path="email-template" element={<EmailTemplate />} />
             <Route path="theme-settings" element={<ThemeSettings />} />
             <Route path="gallery" element={<Gallery />} />

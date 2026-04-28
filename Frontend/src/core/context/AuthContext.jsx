@@ -26,6 +26,16 @@ const extractProfilePayload = (response) => {
     return raw;
 };
 
+const syncAdminLocalProfile = (role, profile) => {
+    if (role !== 'admin' || !profile || typeof window === 'undefined') return;
+    try {
+        localStorage.setItem('admin_user', JSON.stringify(profile));
+        window.dispatchEvent(new Event('adminAuthChanged'));
+    } catch (error) {
+        console.error('Failed to sync admin profile to localStorage:', error);
+    }
+};
+
 const getProfileEndpoint = (role) => {
     if (role === 'seller') return '/seller/profile';
     return '/auth/me';
@@ -80,7 +90,9 @@ export const AuthProvider = ({ children }) => {
                         {},
                         { ttl: 5000 }
                     );
-                    setUser(extractProfilePayload(response));
+                    const payload = extractProfilePayload(response);
+                    setUser(payload);
+                    syncAdminLocalProfile(currentRole, payload);
                 } catch (error) {
                     if (error?.response?.status === 401) {
                         // Expired/invalid token or guest context:
@@ -88,6 +100,10 @@ export const AuthProvider = ({ children }) => {
                         const roleStorageKey = ROLE_STORAGE_KEYS[currentRole];
                         if (roleStorageKey) {
                             localStorage.removeItem(roleStorageKey);
+                        }
+                        if (currentRole === 'admin') {
+                            localStorage.removeItem('admin_user');
+                            window.dispatchEvent(new Event('adminAuthChanged'));
                         }
                         (LEGACY_ROLE_STORAGE_KEYS[currentRole] || []).forEach((storageKey) => {
                             localStorage.removeItem(storageKey);
@@ -119,6 +135,7 @@ export const AuthProvider = ({ children }) => {
 
             setAuthData(prev => ({ ...prev, [role]: userData.token }));
             setUser(userData); // Set full data initially
+            syncAdminLocalProfile(role, userData);
         } else {
             console.error('Invalid role or missing token for login:', role);
         }
@@ -134,6 +151,7 @@ export const AuthProvider = ({ children }) => {
 
         // Also clear common 'token' key if implemented
         localStorage.removeItem('token');
+        localStorage.removeItem('admin_user');
 
         // Reset auth state for all roles to null
         setAuthData({
@@ -145,6 +163,10 @@ export const AuthProvider = ({ children }) => {
 
         // Clear the current user profile from memory
         setUser(null);
+
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event('adminAuthChanged'));
+        }
 
         // Final fallback: redirect based on current path if needed
         // (ProtectedRoute usually handles this, but explicit navigation is safer for some UI edge cases)
@@ -160,6 +182,7 @@ export const AuthProvider = ({ children }) => {
                 const response = await axiosInstance.get(getProfileEndpoint(currentRole));
                 const payload = extractProfilePayload(response);
                 setUser(payload);
+                syncAdminLocalProfile(currentRole, payload);
                 return payload;
             } catch (error) {
                 console.error('Failed to refresh profile:', error);

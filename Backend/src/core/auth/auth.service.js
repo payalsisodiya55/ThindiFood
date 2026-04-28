@@ -2,6 +2,7 @@ import crypto from "crypto";
 import ms from "ms";
 import { FoodUser } from "../users/user.model.js";
 import { FoodAdmin } from "../admin/admin.model.js";
+import { sanitizeAdminForClient } from "../admin/adminAccess.constants.js";
 import { AdminResetOtp } from "../admin/adminResetOtp.model.js";
 import { FoodRestaurant } from "../../modules/food/restaurant/models/restaurant.model.js";
 import { FoodDeliveryPartner } from "../../modules/food/delivery/models/deliveryPartner.model.js";
@@ -214,6 +215,9 @@ export const adminLogin = async (email, password) => {
   if (!admin) {
     throw new AuthError("Invalid credentials");
   }
+  if (admin.isActive === false) {
+    throw new AuthError("Admin account is deactivated");
+  }
 
   const isMatch = await admin.comparePassword(password);
   if (!isMatch) {
@@ -234,8 +238,7 @@ export const adminLogin = async (email, password) => {
     expiresAt,
   });
 
-  const userObj = admin.toObject();
-  delete userObj.password;
+  const userObj = sanitizeAdminForClient(admin);
   return { accessToken, refreshToken, user: userObj };
 };
 
@@ -474,7 +477,13 @@ export const getProfile = async (userId, role) => {
       profile = await FoodUser.findById(id).lean();
       break;
     case ROLES.ADMIN:
-      profile = await FoodAdmin.findById(id).select("-password").lean();
+      {
+        const admin = await FoodAdmin.findById(id)
+          .select("-password")
+          .populate("zoneIds", "name zoneName serviceLocation isActive")
+          .lean();
+        profile = admin ? sanitizeAdminForClient(admin) : null;
+      }
       break;
     case ROLES.RESTAURANT:
       {

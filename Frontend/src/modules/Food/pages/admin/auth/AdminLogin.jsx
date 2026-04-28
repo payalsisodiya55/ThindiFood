@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom"
 import { adminAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
 import { loadBusinessSettings } from "@food/utils/businessSettings"
+import { useAuth } from "@/core/context/AuthContext"
 import { Button } from "@food/components/ui/button"
 import {
   Card,
@@ -24,6 +25,7 @@ const debugError = (...args) => {}
 export default function AdminLogin() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { login } = useAuth()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -111,6 +113,11 @@ export default function AdminLogin() {
         throw new Error("Invalid response from server: missing refresh token")
       }
       setAuthData("admin", accessToken, adminUser, refreshToken)
+      login({
+        ...adminUser,
+        role: "ADMIN",
+        token: accessToken,
+      })
       navigate("/admin/food", { replace: true })
     } catch (err) {
       const message =

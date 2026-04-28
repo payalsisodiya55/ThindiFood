@@ -161,6 +161,16 @@ export const notificationAPI = {
 export const adminAPI = {
   getSidebarBadges: () =>
     apiClient.get("/food/admin/sidebar-badges", { contextModule: "admin" }),
+  getAdmins: (params = {}) =>
+    apiClient.get("/food/admin/admins", { params, contextModule: "admin" }),
+  createAdmin: (body = {}) =>
+    apiClient.post("/food/admin/admins", body ?? {}, { contextModule: "admin" }),
+  updateManagedAdmin: (id, body = {}) =>
+    apiClient.patch(`/food/admin/admins/${String(id)}`, body ?? {}, {
+      contextModule: "admin",
+    }),
+  deleteManagedAdmin: (id) =>
+    apiClient.delete(`/food/admin/admins/${String(id)}`, { contextModule: "admin" }),
   login: (email, password) => authService.adminLogin(email, password),
   /** POST /auth/admin/forgot-password/request-otp – only accepts registered admin email */
   requestForgotPasswordOtp: (email) =>

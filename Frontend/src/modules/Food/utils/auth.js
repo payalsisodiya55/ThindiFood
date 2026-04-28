@@ -258,6 +258,9 @@ export function setAuthData(module, token, user, refreshToken = null) {
       localStorage.setItem("auth_customer", token);
       localStorage.setItem("accessToken", token);
     }
+    if (module === "admin") {
+      localStorage.setItem("auth_admin", token);
+    }
     if (refreshToken && typeof refreshToken === "string") {
       localStorage.setItem(refreshTokenKey, refreshToken);
     }
@@ -293,6 +296,10 @@ export function setAuthData(module, token, user, refreshToken = null) {
     }
 
     console.log(`[setAuthData] Successfully stored auth data for ${module}`);
+
+    if (typeof window !== "undefined" && module === "admin") {
+      window.dispatchEvent(new Event("adminAuthChanged"));
+    }
   } catch (error) {
     // If quota exceeded, try to clear some space
     if (error.name === 'QuotaExceededError' || error.code === 22) {
@@ -307,6 +314,9 @@ export function setAuthData(module, token, user, refreshToken = null) {
           localStorage.setItem("auth_customer", token);
           localStorage.setItem("accessToken", token);
         }
+        if (module === "admin") {
+          localStorage.setItem("auth_admin", token);
+        }
         if (refreshToken && typeof refreshToken === "string") {
           localStorage.setItem(`${module}_refreshToken`, refreshToken);
         }
@@ -319,6 +329,10 @@ export function setAuthData(module, token, user, refreshToken = null) {
         const storedToken = localStorage.getItem(`${module}_accessToken`);
         if (storedToken !== token) {
           throw new Error('Token storage failed even after clearing space');
+        }
+
+        if (typeof window !== "undefined" && module === "admin") {
+          window.dispatchEvent(new Event("adminAuthChanged"));
         }
       } catch (retryError) {
         console.error('Failed to store auth data after clearing space:', retryError);

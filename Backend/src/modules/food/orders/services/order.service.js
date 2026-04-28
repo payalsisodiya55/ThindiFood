@@ -1807,7 +1807,7 @@ export async function listOrdersUser(userId, query) {
 
 export async function getOrderById(
   orderId,
-  { userId, restaurantId, deliveryPartnerId, admin } = {},
+  { userId, restaurantId, deliveryPartnerId, admin, adminScope } = {},
 ) {
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
@@ -1821,6 +1821,12 @@ export async function getOrderById(
     .select("+deliveryOtp")
     .lean();
   if (!order) throw new NotFoundError("Order not found");
+  if (admin && Array.isArray(adminScope?.allowedZoneIds) && adminScope.allowedZoneIds.length > 0) {
+    const currentZoneId = String(order?.zoneId || '');
+    if (!currentZoneId || !adminScope.allowedZoneIds.includes(currentZoneId)) {
+      throw new NotFoundError("Order not found");
+    }
+  }
 
   const tx = await FoodTransaction.findOne({ orderId: order._id })
     .select('pricing settlement payment paymentMethod amounts')
@@ -3258,7 +3264,7 @@ export async function getPaymentStatus(orderId, deliveryPartnerId) {
 }
 
 // ----- Admin -----
-export async function listOrdersAdmin(query) {
+export async function listOrdersAdmin(query, adminScope = {}) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const refundPolicySettings = await getActiveRefundPolicySettings();
   const filter = {
@@ -3351,6 +3357,19 @@ export async function listOrdersAdmin(query) {
 
   if (restaurantIdRaw && mongoose.Types.ObjectId.isValid(restaurantIdRaw)) {
     filter.restaurantId = new mongoose.Types.ObjectId(restaurantIdRaw);
+  }
+  if (Array.isArray(adminScope.allowedZoneIds) && adminScope.allowedZoneIds.length > 0) {
+    const requestedZoneId = typeof query.zoneId === "string" ? query.zoneId.trim() : "";
+    if (requestedZoneId) {
+      if (!adminScope.allowedZoneIds.includes(requestedZoneId)) {
+        throw new ValidationError("Selected zone is outside your allowed scope");
+      }
+      filter.zoneId = new mongoose.Types.ObjectId(requestedZoneId);
+    } else {
+      filter.zoneId = { $in: adminScope.allowedZoneIds.map((id) => new mongoose.Types.ObjectId(id)) };
+    }
+  } else if (typeof query.zoneId === "string" && mongoose.Types.ObjectId.isValid(query.zoneId.trim())) {
+    filter.zoneId = new mongoose.Types.ObjectId(query.zoneId.trim());
   }
 
   if (startDateRaw || endDateRaw) {

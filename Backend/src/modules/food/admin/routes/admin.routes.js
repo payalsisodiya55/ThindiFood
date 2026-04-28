@@ -24,6 +24,7 @@ import {
     rejectDiningOfferAdminController,
 } from '../../dineIn/controllers/diningOffer.controller.js';
 import { upload } from '../../../../middleware/upload.js';
+import { enrichAdminScope, enforceAdminSidebarAccessByPath, requireSuperAdmin } from '../../../../core/admin/adminAccess.middleware.js';
 
 const router = express.Router();
 
@@ -39,6 +40,13 @@ const requireAdmin = (req, _res, next) => {
 };
 
 router.use(requireAdmin);
+router.use(enrichAdminScope);
+router.use(enforceAdminSidebarAccessByPath);
+
+router.get('/admins', requireSuperAdmin, adminController.listAdmins);
+router.post('/admins', requireSuperAdmin, adminController.createAdminManaged);
+router.patch('/admins/:id', requireSuperAdmin, adminController.updateAdminManaged);
+router.delete('/admins/:id', requireSuperAdmin, adminController.deleteAdminManaged);
 
 // ----- Broadcast Notifications -----
 router.post('/notifications/broadcast', notificationBroadcastController.createBroadcastNotificationController);

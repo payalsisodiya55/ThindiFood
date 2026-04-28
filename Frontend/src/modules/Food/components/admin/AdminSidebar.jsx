@@ -46,6 +46,7 @@ import {
   IndianRupee,
   PiggyBank,
   Lock,
+  Percent,
 } from "lucide-react"
 import { cn } from "@food/utils/utils"
 import { Input } from "@food/components/ui/input"
@@ -54,6 +55,7 @@ import { quickAdminSidebarMenu } from "@food/utils/quickAdminSidebarMenu"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { adminAPI } from "@food/api"
 import quickSpicyLogo from "@food/assets/quicky-spicy-logo.png"
+import { useAuth } from "@/core/context/AuthContext"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -101,10 +103,12 @@ const iconMap = {
   IndianRupee,
   PiggyBank,
   Lock,
+  Percent,
   X,
 }
 
 export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange }) {
+  const { user, isLoading } = useAuth()
   const location = useLocation()
   const [searchQuery, setSearchQuery] = useState("")
   const [badges, setBadges] = useState({})
@@ -282,9 +286,63 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
   const isQuickAdmin = location.pathname.startsWith("/admin/quick-commerce")
   const activeMenuData = isQuickAdmin ? quickAdminSidebarMenu : adminSidebarMenu
 
+  const effectiveAdminUser = useMemo(() => {
+    if (user && typeof user === "object") return user
+    try {
+      const stored = localStorage.getItem("admin_user")
+      const parsed = stored ? JSON.parse(stored) : null
+      return parsed && typeof parsed === "object" ? parsed : null
+    } catch {
+      return null
+    }
+  }, [user])
+
+  const isSuperAdmin = String(effectiveAdminUser?.adminType || "").toUpperCase() === "SUPERADMIN"
+  const allowedSidebarPermissions = useMemo(() => {
+    if (!Array.isArray(effectiveAdminUser?.sidebarPermissions)) return new Set()
+    return new Set(
+      effectiveAdminUser.sidebarPermissions
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    )
+  }, [effectiveAdminUser])
+
+  const filteredByAccessMenuData = useMemo(() => {
+    if (!Array.isArray(activeMenuData)) return []
+    if (isSuperAdmin) return activeMenuData
+    if (isLoading && !effectiveAdminUser) return []
+
+    const canAccess = (item) => {
+      if (!item?.permissionKey) return true
+      if (item.permissionKey === "superadmin") return false
+      return allowedSidebarPermissions.has(item.permissionKey)
+    }
+
+    return activeMenuData
+      .map((item) => {
+        if (item.type === "link") {
+          return canAccess(item) ? item : null
+        }
+        if (item.type !== "section" || !Array.isArray(item.items)) return item
+        const items = item.items
+          .map((subItem) => {
+            if (subItem.type === "link") return canAccess(subItem) ? subItem : null
+            if (subItem.type !== "expandable" || !Array.isArray(subItem.subItems)) {
+              return canAccess(subItem) ? subItem : null
+            }
+            const subItems = subItem.subItems.filter(canAccess)
+            if (subItems.length === 0) return null
+            return { ...subItem, subItems }
+          })
+          .filter(Boolean)
+        return items.length > 0 ? { ...item, items } : null
+      })
+      .filter(Boolean)
+  }, [activeMenuData, allowedSidebarPermissions, effectiveAdminUser, isLoading, isSuperAdmin])
+
   // Ensure expandable keys exist for whichever admin module is active (food/quick)
   useEffect(() => {
-    const activeKeys = getExpandableSectionKeys(activeMenuData)
+    const activeKeys = getExpandableSectionKeys(filteredByAccessMenuData)
     setExpandedSections((prev) => {
       const next = { ...prev }
       activeKeys.forEach((key) => {
@@ -294,18 +352,18 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
       })
       return next
     })
-  }, [activeMenuData])
+  }, [filteredByAccessMenuData])
 
   // Filter menu items based on search query
   const filteredMenuData = useMemo(() => {
     if (!searchQuery.trim()) {
-      return activeMenuData
+      return filteredByAccessMenuData
     }
 
     const query = searchQuery.toLowerCase().trim()
     const filtered = []
 
-    activeMenuData.forEach((item) => {
+    filteredByAccessMenuData.forEach((item) => {
       if (item.type === "link") {
         if (item.label.toLowerCase().includes(query)) {
           filtered.push(item)
@@ -343,7 +401,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     })
 
     return filtered
-  }, [searchQuery, activeMenuData])
+  }, [searchQuery, filteredByAccessMenuData])
 
   // Auto-expand sections with matches when searching
   useEffect(() => {
@@ -353,7 +411,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
       setExpandedSections((prev) => {
         const newExpandedState = { ...prev }
 
-        activeMenuData.forEach((item) => {
+        filteredByAccessMenuData.forEach((item) => {
           if (item.type === "section") {
             item.items.forEach((subItem) => {
               if (subItem.type === "expandable") {
@@ -374,7 +432,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
         return newExpandedState
       })
     }
-  }, [searchQuery, activeMenuData])
+  }, [searchQuery, filteredByAccessMenuData])
 
   const isActive = (path, allPaths = []) => {
     const currentPath = location.pathname.replace(/\/+$/, "") || "/"
@@ -530,13 +588,14 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
               <ChevronDown className="w-4 h-4 shrink-0 text-neutral-300" />
             </div>
           </button>
-          {isExpanded && item.subItems && (
-            <div className="ml-5 mt-1 space-y-1 border-neutral-800/60 pl-3 submenu-animate overflow-hidden">
+          {isExpanded && Array.isArray(item.subItems) && item.subItems.length > 0 && (
+            <div className="ml-5 mt-1 space-y-1 border-neutral-800/60 pl-3">
               {item.subItems.map((subItem, subIndex) => {
-                const allSubPaths = item.subItems.map(si => si.path)
+                const allSubPaths = item.subItems.map((si) => si.path)
+                const subItemIsActive = isActive(subItem.path, allSubPaths)
                 return (
                   <Link
-                    key={subIndex}
+                    key={subItem.path || `${sectionKey}-${subIndex}`}
                     to={subItem.path}
                     onClick={() => {
                       if (window.innerWidth < 1024 && onClose) {
@@ -544,18 +603,29 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
                       }
                     }}
                     className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 rounded-md transition-all duration-300 ease-out text-sm font-normal text-left",
-                      isActive(subItem.path, allSubPaths)
+                      "group flex w-full items-center justify-between gap-2 px-3 py-1.5 rounded-md transition-all duration-300 ease-out text-sm font-normal text-left",
+                      subItemIsActive
                         ? "bg-white/10 text-white font-semibold"
-                        : "text-neutral-300 hover:bg-white/5 hover:text-white"
+                        : "text-neutral-200 hover:bg-white/5 hover:text-white"
                     )}
                     style={{ animationDelay: `${subIndex * 0.03}s` }}
                   >
-                    <span className={cn(
-                      "w-1.5 h-1.5 rounded-full shrink-0 transition-all duration-300",
-                      isActive(subItem.path, allSubPaths) ? "bg-white scale-125" : "bg-neutral-400"
-                    )}></span>
-                    <span className="text-left flex-1 truncate">{subItem.label}</span>
+                    <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-300",
+                          subItemIsActive ? "bg-white scale-125" : "bg-neutral-400 group-hover:bg-white"
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "block overflow-hidden text-ellipsis whitespace-nowrap text-left leading-5",
+                          subItemIsActive ? "text-white" : "text-neutral-200 group-hover:text-white"
+                        )}
+                      >
+                        {subItem.label}
+                      </span>
+                    </div>
                     {getBadgeCount(subItem.label, subItem.path) > 0 && (
                       <span className="shrink-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 min-w-[18px] text-center">
                         {getBadgeCount(subItem.label, subItem.path) > 99 ? "99+" : getBadgeCount(subItem.label, subItem.path)}
