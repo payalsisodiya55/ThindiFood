@@ -42,7 +42,7 @@ const filterTabs = [
   { id: "all", label: "All" },
   { id: "preparing", label: "Preparing" },
   { id: "ready", label: "Ready" },
-  // { id: "scheduled", label: "Scheduled" },
+  { id: "scheduled", label: "Scheduled" },
   { id: "table-booking", label: "Table Booking" },
   { id: "completed", label: "Completed" },
   { id: "cancelled", label: "Cancelled" },
@@ -126,6 +126,8 @@ const normalizeOrderForPopup = (orderLike) => {
     pickupAt: orderLike.pickupAt,
     order_type: orderLike.order_type,
     prep_time: orderLike.prep_time,
+    prep_start_time: orderLike.prep_start_time,
+    isAcceptedByRestaurant: Boolean(orderLike.isAcceptedByRestaurant),
     fulfillmentType: orderLike.fulfillmentType || "delivery",
     estimatedDeliveryTime:
       Number(orderLike.prep_time) > 0
@@ -1304,6 +1306,12 @@ export default function OrdersMain() {
     return keys.some((k) => shownOrdersRef.current.has(k));
   };
 
+  const isScheduledAwaitingRestaurantAcceptance = (orderLike) =>
+    orderLike?.fulfillmentType === "takeaway" &&
+    String(orderLike?.order_type || "").toUpperCase() === "SCHEDULED" &&
+    String(orderLike?.status || orderLike?.orderStatus || "").toLowerCase() === "confirmed" &&
+    !Boolean(orderLike?.isAcceptedByRestaurant);
+
   const getPopupOrderTotal = (orderLike) => {
     if (!orderLike) return 0;
 
@@ -1537,7 +1545,13 @@ export default function OrdersMain() {
 
       const normalizedIncomingOrder = normalizeOrderForPopup(newOrder);
 
-      if (!hasOrderBeenShown(newOrder)) {
+      if (
+        !hasOrderBeenShown(newOrder) &&
+        (
+          isScheduledAwaitingRestaurantAcceptance(newOrder) ||
+          !Boolean(newOrder?.isAcceptedByRestaurant)
+        )
+      ) {
         markOrderAsShown(newOrder);
         setPopupOrder(normalizedIncomingOrder);
         setShowNewOrderPopup(true);
@@ -1747,14 +1761,23 @@ export default function OrdersMain() {
             if (hasOrderBeenShown(order)) return false;
 
             const isConfirmed = order.status === "confirmed";
-            const isCreatedScheduled =
-              order.status === "created" && order.scheduledAt;
+            const isUnacceptedScheduled =
+              isScheduledAwaitingRestaurantAcceptance(order);
 
-            if (isConfirmed && !order.scheduledAt) return true; // ordinary confirmed fallback
+            if (
+              isConfirmed &&
+              !order.scheduledAt &&
+              !Boolean(order.isAcceptedByRestaurant)
+            ) {
+              return true; // ordinary confirmed fallback
+            }
 
             if (
               order.scheduledAt &&
-              (order.status === "created" || order.status === "confirmed")
+              (
+                order.status === "created" ||
+                isUnacceptedScheduled
+              )
             ) {
               const scheduledTime = new Date(order.scheduledAt).getTime();
               // Show popup if scheduled time is <= 30 mins from now
@@ -1956,9 +1979,21 @@ export default function OrdersMain() {
                 return;
             }
         } else {
-            // Standard Takeaway/Delivery acceptance
-            await restaurantAPI.acceptOrder(orderId);
-            toast.success("Order accepted successfully");
+            const isScheduledTakeaway =
+              orderToAccept?.fulfillmentType === "takeaway" &&
+              (
+                String(orderToAccept?.order_type || "").toUpperCase() === "SCHEDULED" ||
+                Boolean(orderToAccept?.scheduledAt || orderToAccept?.prep_start_time)
+              );
+
+            if (isScheduledTakeaway) {
+              await restaurantAPI.updateOrderStatus(orderId, { orderStatus: "confirmed" });
+              toast.success("Scheduled order accepted");
+            } else {
+              // Standard Takeaway/Delivery acceptance
+              await restaurantAPI.acceptOrder(orderId);
+              toast.success("Order accepted successfully");
+            }
         }
         
         debugLog("? Order accepted:", orderId);
@@ -2518,7 +2553,12 @@ export default function OrdersMain() {
           />
         );
       case "scheduled":
-        return <EmptyState message="Scheduled orders will appear here" />;
+        return (
+          <ScheduledOrders
+            onSelectOrder={handleSelectOrder}
+            refreshToken={ordersRefreshToken}
+          />
+        );
       case "completed":
         return (
           <CompletedOrders
@@ -2853,7 +2893,9 @@ export default function OrdersMain() {
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wider">
-                          Takeaway Order
+                          {((popupOrder || newOrder)?.order_type === "SCHEDULED")
+                            ? "Scheduled Order"
+                            : "Takeaway Order"}
                         </p>
                         {(() => {
                           const activeOrder = popupOrder || newOrder;
@@ -2869,14 +2911,24 @@ export default function OrdersMain() {
                                   Prepare now
                                 </p>
                               )}
+                              {!isImmediateTakeaway && activeOrder?.pickupAt && (
+                                <p className="text-sm font-semibold text-orange-900 mt-0.5">
+                                  Pickup at {formatClockTime(activeOrder.pickupAt)}
+                                </p>
+                              )}
                               {prepTimeMinutes ? (
                                 <p className="text-xs text-orange-800 mt-1">
                                   Prep time: {prepTimeMinutes} min
                                 </p>
                               ) : null}
-                              {activeOrder?.pickupAt && (
+                              {isImmediateTakeaway && activeOrder?.pickupAt && (
                                 <p className="text-xs text-orange-800 mt-1">
                                   Ready at {formatClockTime(activeOrder.pickupAt)}
+                                </p>
+                              )}
+                              {!isImmediateTakeaway && activeOrder?.prep_start_time && (
+                                <p className="text-xs text-orange-800 mt-1">
+                                  Auto start at {formatClockTime(activeOrder.prep_start_time)}
                                 </p>
                               )}
                             </>
@@ -2898,31 +2950,6 @@ export default function OrdersMain() {
                         </p>
                         <p className="text-sm font-black text-indigo-900 mt-0.5">
                           {(popupOrder || newOrder)?.orderId || "New Table Order"}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-
-                  {(popupOrder || newOrder)?.scheduledAt && (
-                    <div className="mb-2 bg-green-50 border border-green-200 rounded-lg p-2 flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                        <Calendar className="w-4 h-4 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-green-800 uppercase tracking-wider">
-                          Scheduled Order
-                        </p>
-                        <p className="text-sm font-semibold text-green-900 mt-0.5">
-                          For{" "}
-                          {new Date(
-                            (popupOrder || newOrder).scheduledAt,
-                          ).toLocaleString("en-US", {
-                            day: "numeric",
-                            month: "short",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })}
                         </p>
                       </div>
                     </div>
@@ -3115,13 +3142,24 @@ export default function OrdersMain() {
                         {activeOrder?.pickupAt && (
                           <div className="mt-2 flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">
-                              Ready at
+                              {activeOrder?.order_type === "IMMEDIATE" ? "Ready at" : "Pickup at"}
                             </span>
                             <span className="text-sm font-semibold text-gray-900">
                               {formatClockTime(activeOrder.pickupAt)}
                             </span>
                           </div>
                         )}
+                        {activeOrder?.order_type === "SCHEDULED" &&
+                          activeOrder?.prep_start_time && (
+                            <div className="mt-2 flex items-center justify-between">
+                              <span className="text-sm font-medium text-gray-700">
+                                Auto start at
+                              </span>
+                              <span className="text-sm font-semibold text-gray-900">
+                                {formatClockTime(activeOrder.prep_start_time)}
+                              </span>
+                            </div>
+                          )}
                       </div>
                     );
                   })()}
@@ -3742,6 +3780,9 @@ function OrderCard({
   tableOrToken,
   timePlaced,
   eta,
+  prepTimeMinutes,
+  prepStartTime,
+  pickupAt,
   itemsSummary,
   paymentMethod,
   photoUrl,
@@ -3861,6 +3902,17 @@ function OrderCard({
                 {type}
                 {tableOrToken ? ` • ${tableOrToken}` : ""}
               </p>
+              {Number(prepTimeMinutes) > 0 && (
+                <p className="text-[11px] text-gray-500">
+                  Prep {Math.round(Number(prepTimeMinutes))} min
+                  {pickupAt ? ` • Pickup ${formatClockTime(pickupAt)}` : ""}
+                </p>
+              )}
+              {prepStartTime && (
+                <p className="text-[11px] text-gray-500">
+                  Prep start {formatClockTime(prepStartTime)}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {isPreparing && onMarkReady && (
@@ -4595,6 +4647,124 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchOrders = async () => {
+      try {
+        const response = await restaurantAPI.getOrders();
+
+        if (!isMounted) return;
+
+        if (response.data?.success && response.data.data?.orders) {
+          const scheduledOrders = response.data.data.orders
+            .filter((order) => {
+              const status = String(order.status || "").toLowerCase();
+              return (
+                order.order_type === "SCHEDULED" &&
+                status === "confirmed"
+              );
+            })
+            .map((order) => ({
+              orderId: order.orderId || order._id,
+              mongoId: order._id,
+              status: "scheduled",
+              customerName: order.userId?.name || "Customer",
+              type: "Takeaway",
+              tableOrToken: null,
+              timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              sortTimestamp: new Date(
+                order.pickupAt || order.scheduledAt || order.createdAt,
+              ).getTime(),
+              eta: order.pickupAt
+                ? `Pickup ${formatClockTime(order.pickupAt)}`
+                : null,
+              prepTimeMinutes:
+                Number(order.prep_time) > 0 ? Number(order.prep_time) : null,
+              prepStartTime: order.prep_start_time || null,
+              itemsSummary:
+                order.items
+                  ?.map((item) => `${item.quantity}x ${item.name}`)
+                  .join(", ") || "No items",
+              photoUrl: order.items?.[0]?.image || null,
+              photoAlt: order.items?.[0]?.name || "Order",
+              paymentMethod: order.paymentMethod || order.payment?.method || null,
+              deliveryPartnerId: order.deliveryPartnerId || null,
+              dispatchStatus: order.dispatch?.status || null,
+              order_type: order.order_type,
+              pickupAt: order.pickupAt || null,
+              prep_start_time: order.prep_start_time || null,
+            }))
+            .sort((a, b) => a.sortTimestamp - b.sortTimestamp);
+
+          setOrders(scheduledOrders);
+        } else {
+          setOrders([]);
+        }
+      } catch (error) {
+        if (!isMounted) return;
+        if (error.code !== "ERR_NETWORK" && error.response?.status !== 404) {
+          debugError("Error fetching scheduled orders:", error);
+        }
+        setOrders([]);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchOrders();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshToken]);
+
+  if (loading) {
+    return (
+      <div className="pt-4 pb-6">
+        <div className="flex items-baseline justify-between mb-3">
+          <h2 className="text-base font-semibold text-black">Scheduled orders</h2>
+          <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+        </div>
+        <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pt-4 pb-6">
+      <div className="flex items-baseline justify-between mb-3">
+        <h2 className="text-base font-semibold text-black">Scheduled orders</h2>
+        <span className="text-xs text-gray-500">{orders.length} active</span>
+      </div>
+      {orders.length === 0 ? (
+        <div className="text-center py-8 text-gray-500 text-sm">
+          No scheduled orders right now
+        </div>
+      ) : (
+        <div>
+          {orders.map((order) => (
+            <OrderCard
+              key={order.mongoId || order.orderId}
+              {...order}
+              onSelect={onSelectOrder}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

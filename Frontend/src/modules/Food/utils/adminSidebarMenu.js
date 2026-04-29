@@ -86,7 +86,7 @@ export const adminSidebarMenu = [
         permissionKey: "orders",
         subItems: [
           { label: "All", path: "/admin/food/orders/all", permissionKey: "orders" },
-          // { label: "Scheduled", path: "/admin/food/orders/scheduled" },
+          { label: "Scheduled", path: "/admin/food/orders/scheduled", permissionKey: "orders" },
           { label: "Pending", path: "/admin/food/orders/pending", permissionKey: "orders" },
           { label: "Accepted", path: "/admin/food/orders/accepted", permissionKey: "orders" },
           { label: "Processing", path: "/admin/food/orders/processing", permissionKey: "orders" },

@@ -38,10 +38,11 @@ import { invalidateCache } from '../../../../middleware/cache.js';
 import * as foodTransactionService from './foodTransaction.service.js';
 import { deriveFundingType } from './settlement-calculator.service.js';
 import { deductWalletBalance, refundWalletBalance } from '../../user/services/userWallet.service.js';
+import { getOutletTimingsForRestaurant } from '../../restaurant/services/outletTimings.service.js';
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
-
+const SCHEDULED_TAKEAWAY_POLL_MS = 60 * 1000;
 /**
  * Fire-and-forget BullMQ enqueue for order lifecycle events.
  * Never blocks API response; failures are logged only.
@@ -163,6 +164,105 @@ function pushStatusHistory(order, { byRole, byId, from, to, note = "" }) {
     to,
     note,
   });
+}
+
+function parseTimeStringToMinutes(timeValue) {
+  if (!timeValue || typeof timeValue !== "string") return null;
+  const match = timeValue.trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+  if (
+    !Number.isFinite(hours) ||
+    !Number.isFinite(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null;
+  }
+  return hours * 60 + minutes;
+}
+
+function roundUpToFiveMinutes(date) {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const remainder = minutes % 5;
+  if (remainder !== 0) {
+    rounded.setMinutes(minutes + (5 - remainder));
+  }
+  return rounded;
+}
+
+function formatTimeForScheduleMessage(date) {
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function getDayNameForDate(date) {
+  return date.toLocaleDateString("en-US", { weekday: "long" });
+}
+
+async function getTakeawayScheduleBounds(restaurantId, referenceDate, prepTimeMinutes) {
+  const { outletTimings } = await getOutletTimingsForRestaurant(restaurantId);
+  const dayName = getDayNameForDate(referenceDate);
+  const timing = outletTimings?.[dayName];
+
+  if (!timing || timing.isOpen === false) {
+    throw new ValidationError("No slots available for today");
+  }
+
+  const openingMinutes = parseTimeStringToMinutes(timing.openingTime || "09:00");
+  const closingMinutes = parseTimeStringToMinutes(timing.closingTime || "22:00");
+  if (openingMinutes === null || closingMinutes === null) {
+    throw new ValidationError("Restaurant timings are unavailable");
+  }
+
+  const openingDate = new Date(referenceDate);
+  openingDate.setHours(
+    Math.floor(openingMinutes / 60),
+    openingMinutes % 60,
+    0,
+    0,
+  );
+
+  const closingDate = new Date(referenceDate);
+  closingDate.setHours(
+    Math.floor(closingMinutes / 60),
+    closingMinutes % 60,
+    0,
+    0,
+  );
+  if (closingDate <= openingDate) {
+    closingDate.setDate(closingDate.getDate() + 1);
+  }
+
+  if (Date.now() < openingDate.getTime()) {
+    throw new ValidationError(
+      `Scheduling available after ${formatTimeForScheduleMessage(openingDate)}`,
+    );
+  }
+
+  const prepLeadMinutes = Math.max(0, Number(prepTimeMinutes) || 0);
+  const nowPlusPrep = new Date(Date.now() + prepLeadMinutes * 60000);
+  const minAllowedDate = roundUpToFiveMinutes(nowPlusPrep);
+  const maxPrepCompletionDate = new Date(closingDate.getTime() - prepLeadMinutes * 60000);
+  const maxTodayDate = new Date(referenceDate);
+  maxTodayDate.setHours(23, 55, 0, 0);
+  const maxAllowedDate = new Date(
+    Math.min(maxPrepCompletionDate.getTime(), maxTodayDate.getTime()),
+  );
+
+  return {
+    minAllowedDate,
+    maxAllowedDate,
+    hasSlots: minAllowedDate.getTime() <= maxAllowedDate.getTime(),
+  };
 }
 
 function parsePreparationTimeToMinutes(rawValue) {
@@ -1223,6 +1323,8 @@ export async function createOrder(userId, dto) {
     fulfillmentType === "takeaway" ? requestedTakeawayOrderType : null;
   let pickupAt = null;
   let startTime = null;
+  let prepStartTime = null;
+  let scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
   if (fulfillmentType === "takeaway") {
     if (takeawayOrderType === "SCHEDULED") {
       if (!dto.pickupAt) {
@@ -1237,7 +1339,28 @@ export async function createOrder(userId, dto) {
       if (parsedPickupAt <= new Date()) {
         throw new ValidationError("Pickup time must be in the future");
       }
+      if (parsedPickupAt.toDateString() !== new Date().toDateString()) {
+        throw new ValidationError("Scheduled takeaway is available only for today");
+      }
+      const scheduleBounds = await getTakeawayScheduleBounds(
+        dto.restaurantId,
+        parsedPickupAt,
+        prepTimeMinutes,
+      );
+      if (!scheduleBounds.hasSlots) {
+        throw new ValidationError("No slots available for today");
+      }
+      if (
+        parsedPickupAt < scheduleBounds.minAllowedDate ||
+        parsedPickupAt > scheduleBounds.maxAllowedDate
+      ) {
+        throw new ValidationError(
+          "Pickup time must be within the restaurant's available prep window",
+        );
+      }
       pickupAt = parsedPickupAt;
+      prepStartTime = new Date(parsedPickupAt.getTime() - prepTimeMinutes * 60000);
+      scheduledAt = parsedPickupAt;
     } else {
       startTime = new Date();
       pickupAt = new Date(startTime.getTime() + prepTimeMinutes * 60000);
@@ -1263,10 +1386,8 @@ export async function createOrder(userId, dto) {
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
-  const immediateTakeawayConfirmed =
-    fulfillmentType === "takeaway" &&
-    takeawayOrderType === "IMMEDIATE" &&
-    shouldConfirmOnCreate(paymentMethod);
+  const takeawayConfirmedOnCreate =
+    fulfillmentType === "takeaway" && shouldConfirmOnCreate(paymentMethod);
 
   // Ensure pricing is present and consistent.
   const computedSubtotal = (dto.items || []).reduce((sum, item) => {
@@ -1426,7 +1547,7 @@ export async function createOrder(userId, dto) {
     ...(deliveryAddress ? { deliveryAddress } : {}),
     pricing: normalizedPricing,
     payment,
-    orderStatus: immediateTakeawayConfirmed ? "confirmed" : "created",
+    orderStatus: takeawayConfirmedOnCreate ? "confirmed" : "created",
     ...(orderType === "food"
       ? { dispatch: { modeAtCreation: dispatchMode, status: "unassigned" } }
       : {}),
@@ -1435,9 +1556,9 @@ export async function createOrder(userId, dto) {
         at: new Date(),
         byRole: "SYSTEM",
         from: "",
-        to: immediateTakeawayConfirmed ? "confirmed" : "created",
-        note: immediateTakeawayConfirmed
-          ? "Immediate takeaway order confirmed"
+        to: takeawayConfirmedOnCreate ? "confirmed" : "created",
+        note: takeawayConfirmedOnCreate
+          ? `${takeawayOrderType === "SCHEDULED" ? "Scheduled" : "Immediate"} takeaway order confirmed`
           : "Order placed",
       },
     ],
@@ -1448,7 +1569,9 @@ export async function createOrder(userId, dto) {
     order_type: takeawayOrderType,
     prep_time: fulfillmentType === "takeaway" ? prepTimeMinutes : 0,
     start_time: startTime,
-    scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
+    prep_start_time: prepStartTime,
+    isAcceptedByRestaurant: false,
+    scheduledAt,
     pickupAt,
     riderEarning,
     platformProfit,
@@ -1658,24 +1781,33 @@ export async function verifyPayment(userId, dto) {
   order.payment.status = "paid";
   order.payment.razorpay.paymentId = dto.razorpayPaymentId;
   order.payment.razorpay.signature = dto.razorpaySignature;
-  const isImmediateTakeaway =
-    order.fulfillmentType === "takeaway" && order.order_type === "IMMEDIATE";
+  const isTakeaway = order.fulfillmentType === "takeaway";
+  const isImmediateTakeaway = isTakeaway && order.order_type === "IMMEDIATE";
   const fromStatus = order.orderStatus;
-  if (isImmediateTakeaway) {
-    const now = new Date();
+  if (isTakeaway) {
     const prepTimeMinutes =
       Number.isFinite(Number(order.prep_time)) && Number(order.prep_time) > 0
         ? Number(order.prep_time)
         : 30;
-    order.start_time = now;
-    order.pickupAt = new Date(now.getTime() + prepTimeMinutes * 60000);
+
+    if (isImmediateTakeaway) {
+      const now = new Date();
+      order.start_time = now;
+      order.pickupAt = new Date(now.getTime() + prepTimeMinutes * 60000);
+    } else if (order.order_type === "SCHEDULED" && order.pickupAt) {
+      order.prep_start_time = new Date(
+        new Date(order.pickupAt).getTime() - prepTimeMinutes * 60000,
+      );
+      order.scheduledAt = order.pickupAt;
+    }
+
     order.orderStatus = "confirmed";
   }
   pushStatusHistory(order, {
     byRole: "USER",
     byId: userId,
     from: fromStatus,
-    to: isImmediateTakeaway ? "confirmed" : "created",
+    to: isTakeaway ? "confirmed" : "created",
     note: "Payment verified",
   });
   await order.save();
@@ -2169,6 +2301,26 @@ export async function updateOrderStatusRestaurant(
   if (!order) throw new NotFoundError("Order not found");
   const nextStatus = String(orderStatus || "").toLowerCase();
   if (
+    nextStatus === "preparing" &&
+    order.fulfillmentType === "takeaway" &&
+    order.order_type === "SCHEDULED"
+  ) {
+    const prepStartTime =
+      order.prep_start_time instanceof Date && !Number.isNaN(order.prep_start_time.getTime())
+        ? order.prep_start_time
+        : order.pickupAt && Number(order.prep_time) > 0
+          ? new Date(
+              new Date(order.pickupAt).getTime() - Number(order.prep_time) * 60000,
+            )
+          : null;
+
+    if (prepStartTime && prepStartTime.getTime() > Date.now()) {
+      throw new ValidationError(
+        "Scheduled takeaway cannot move to preparing before its prep start time",
+      );
+    }
+  }
+  if (
     nextStatus === "delivered" &&
     order.deliveryVerification?.dropOtp?.required &&
     !order.deliveryVerification?.dropOtp?.verified
@@ -2207,6 +2359,9 @@ export async function updateOrderStatusRestaurant(
 
   const from = order.orderStatus;
   order.orderStatus = orderStatus;
+  if (nextStatus === "confirmed" || nextStatus === "preparing") {
+    order.isAcceptedByRestaurant = true;
+  }
   pushStatusHistory(order, {
     byRole: "RESTAURANT",
     byId: restaurantId,
@@ -2307,7 +2462,10 @@ export async function updateOrderStatusRestaurant(
     if (orderStatus === "confirmed") {
       title = "Order Accepted! 🧑‍🍳";
       body =
-        "The restaurant has accepted your order and is starting to prepare it.";
+        order.fulfillmentType === "takeaway" &&
+        order.order_type === "SCHEDULED"
+          ? "The restaurant has accepted your scheduled takeaway order."
+          : "The restaurant has accepted your order and is starting to prepare it.";
     } else if (orderStatus === "preparing") {
       title = "Food is being prepared! 🍳";
       body = "Your food is currently being prepared by the restaurant.";
@@ -2429,6 +2587,54 @@ export async function updateOrderStatusRestaurant(
     */
     return order.toObject();
 }
+
+async function autoStartDueScheduledTakeawayOrders() {
+  try {
+    const dueOrders = await FoodOrder.find({
+      fulfillmentType: "takeaway",
+      order_type: "SCHEDULED",
+      orderStatus: "confirmed",
+      prep_start_time: { $ne: null, $lte: new Date() },
+    })
+      .select("_id restaurantId orderId")
+      .lean();
+
+    for (const order of dueOrders) {
+      if (!order?._id || !order?.restaurantId) continue;
+      try {
+        await updateOrderStatusRestaurant(
+          order._id,
+          order.restaurantId,
+          "preparing",
+        );
+      } catch (error) {
+        logger.warn(
+          `Scheduled takeaway auto-start failed for order ${order.orderId || order._id}: ${error?.message || error}`,
+        );
+      }
+    }
+  } catch (error) {
+    logger.warn(
+      `Scheduled takeaway scheduler failed: ${error?.message || error}`,
+    );
+  }
+}
+
+let scheduledTakeawaySchedulerStarted = false;
+function startScheduledTakeawayScheduler() {
+  if (scheduledTakeawaySchedulerStarted) return;
+  scheduledTakeawaySchedulerStarted = true;
+
+  setTimeout(() => {
+    void autoStartDueScheduledTakeawayOrders();
+  }, 15000);
+
+  setInterval(() => {
+    void autoStartDueScheduledTakeawayOrders();
+  }, SCHEDULED_TAKEAWAY_POLL_MS);
+}
+
+startScheduledTakeawayScheduler();
 
 export async function verifyDropOtpRestaurant(orderId, restaurantId, otp) {
   const identity = buildOrderIdentityFilter(orderId);

@@ -1432,7 +1432,12 @@ export default function OrderTracking() {
     },
     confirmed: {
       title: "Order Confirmed",
-      subtitle: "Restaurant has accepted your order",
+      subtitle:
+        order?.fulfillmentType === "takeaway" &&
+        order?.order_type === "SCHEDULED" &&
+        order?.pickupAt
+          ? `Scheduled for ${new Date(order.pickupAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+          : "Restaurant has accepted your order",
       color: "bg-[#00c87e]",
       iconType: 'food'
     },

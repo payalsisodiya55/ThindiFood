@@ -24,7 +24,14 @@ const debugError = (...args) => {}
 const normalizeAdminDeliveryType = (order = {}) => {
   const rawDeliveryType = String(order.deliveryType || "").trim().toLowerCase()
   const fulfillmentType = String(order.fulfillmentType || "").trim().toLowerCase()
+  const takeawayOrderType = String(order.order_type || "").trim().toUpperCase()
   const hasPickupWindow = Boolean(order.pickupAt)
+
+  const getTakeawayLabel = () => {
+    if (takeawayOrderType === "SCHEDULED") return "Scheduled Take Away"
+    if (takeawayOrderType === "IMMEDIATE") return "Now Take Away"
+    return "Take Away"
+  }
 
   if (
     rawDeliveryType.includes("take") ||
@@ -32,7 +39,7 @@ const normalizeAdminDeliveryType = (order = {}) => {
     fulfillmentType === "takeaway" ||
     hasPickupWindow
   ) {
-    return "Take Away"
+    return getTakeawayLabel()
   }
 
   if (rawDeliveryType.includes("dine")) {
@@ -48,7 +55,41 @@ const normalizeAdminDeliveryType = (order = {}) => {
   }
 
   const hasDeliveryAddress = Boolean(order.address || order.customerAddress || order.deliveryAddress)
-  return hasDeliveryAddress ? "Home Delivery" : "Take Away"
+  return hasDeliveryAddress ? "Home Delivery" : getTakeawayLabel()
+}
+
+const getAdminPickupDateTime = (order = {}) => {
+  const rawValue = order.pickupAt || order.scheduledAt || null
+  if (!rawValue) {
+    return {
+      pickupAtRaw: null,
+      pickupDate: "",
+      pickupTime: "",
+    }
+  }
+
+  const parsed = new Date(rawValue)
+  if (Number.isNaN(parsed.getTime())) {
+    return {
+      pickupAtRaw: rawValue,
+      pickupDate: "",
+      pickupTime: "",
+    }
+  }
+
+  return {
+    pickupAtRaw: rawValue,
+    pickupDate: parsed.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    }).toUpperCase(),
+    pickupTime: parsed.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    }).toUpperCase(),
+  }
 }
 
 
@@ -488,9 +529,17 @@ export default function OrdersPage({ statusKey = "all" }) {
       }
 
       const backendStatus = String(order.orderStatus || "").toLowerCase()
+      const restaurantAccepted =
+        Boolean(order.isAcceptedByRestaurant) ||
+        backendStatus === "preparing" ||
+        backendStatus === "ready_for_pickup" ||
+        backendStatus === "picked_up" ||
+        backendStatus === "delivered"
       let displayStatus = order.orderStatus
       if (!backendStatus || backendStatus === "created" || backendStatus === "confirmed") {
-        displayStatus = "Pending"
+        displayStatus = backendStatus === "confirmed" && restaurantAccepted
+          ? "Accepted"
+          : "Pending"
       } else if (backendStatus === "preparing" || backendStatus === "ready_for_pickup") {
         displayStatus = "Processing"
       } else if (backendStatus === "picked_up") {
@@ -530,6 +579,14 @@ export default function OrdersPage({ statusKey = "all" }) {
         order.restaurantName ||
         order.restaurantId?.restaurantName ||
         ""
+      const pickupDetails = getAdminPickupDateTime(order)
+      const adminStatusHint =
+        displayStatus === "Accepted" &&
+        String(order.fulfillmentType || "").toLowerCase() === "takeaway"
+          ? String(order.order_type || "").toUpperCase() === "SCHEDULED"
+            ? "Restaurant accepted this scheduled takeaway order"
+            : "Restaurant accepted this takeaway order"
+          : ""
 
       return {
         ...order,
@@ -555,6 +612,10 @@ export default function OrdersPage({ statusKey = "all" }) {
         paymentType,
         paymentStatus,
         orderStatus: displayStatus,
+        adminStatusHint,
+        scheduledAtRaw: pickupDetails.pickupAtRaw,
+        scheduledDate: pickupDetails.pickupDate,
+        scheduledTime: pickupDetails.pickupTime,
         deliveryPartnerName,
         deliveryPartnerPhone,
         deliveryType: normalizeAdminDeliveryType(order),
@@ -571,6 +632,32 @@ export default function OrdersPage({ statusKey = "all" }) {
       }
     })
   }, [orders])
+
+  const columnsConfig = useMemo(() => {
+    const baseColumns = {
+      si: "Serial Number",
+      orderId: "Order ID",
+      orderDate: "Order Date",
+      orderOtp: "Order OTP",
+      customer: "Customer Information",
+      restaurant: "Restaurant",
+      foodItems: "Food Items",
+      totalAmount: "Total Amount",
+      paymentType: "Payment Type",
+      paymentCollectionStatus: "Payment Status",
+      orderStatus: "Order Status",
+      actions: "Actions",
+    }
+
+    if (statusKey === "scheduled" || statusKey === "all") {
+      return {
+        ...baseColumns,
+        scheduledTime: "Pickup Time",
+      }
+    }
+
+    return baseColumns
+  }, [statusKey])
 
   const {
     searchQuery,
@@ -967,6 +1054,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         visibleColumns={visibleColumns}
         toggleColumn={toggleColumn}
         resetColumns={resetColumns}
+        columnsConfig={columnsConfig}
       />
       <ViewOrderDialog
         isOpen={isViewOrderOpen}

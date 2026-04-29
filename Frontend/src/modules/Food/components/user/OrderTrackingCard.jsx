@@ -338,7 +338,19 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     const s = String(orderStatus);
     const p = String(orderPhase);
 
-    if (s === "confirmed") return "Order confirmed";
+    if (s === "confirmed") {
+      if (
+        activeOrder?.fulfillmentType === "takeaway" &&
+        activeOrder?.order_type === "SCHEDULED" &&
+        activeOrder?.pickupAt
+      ) {
+        return `Scheduled for ${new Date(activeOrder.pickupAt).toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}`;
+      }
+      return "Order confirmed";
+    }
     if (s === "preparing" || s === "created" || s === "pending") {
       if (activeOrder?.fulfillmentType === "takeaway" && typeof readyInMinutes === "number") {
         return `Ready in ${readyInMinutes} mins`;

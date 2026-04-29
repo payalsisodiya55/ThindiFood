@@ -107,6 +107,14 @@ export default function OrdersTable({
                   </div>
                 </th>
               )}
+              {visibleColumns.scheduledTime && (
+                <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <div className="flex items-center gap-2">
+                    <span>Pickup Time</span>
+                    <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                  </div>
+                </th>
+              )}
               {visibleColumns.orderOtp && (
                 <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                   <div className="flex items-center gap-2">
@@ -197,6 +205,22 @@ export default function OrdersTable({
                 {visibleColumns.orderDate && (
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-medium text-slate-700">{order.date}, {order.time}</span>
+                  </td>
+                )}
+                {visibleColumns.scheduledTime && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {order.scheduledDate || order.scheduledTime ? (
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-slate-900">
+                          {order.scheduledDate || "--"}
+                        </span>
+                        <span className="text-xs text-slate-500 mt-0.5">
+                          {order.scheduledTime || "--"}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400">--</span>
+                    )}
                   </td>
                 )}
                 {visibleColumns.orderOtp && (
@@ -328,6 +352,11 @@ export default function OrdersTable({
                         </span>
                         <span className="text-xs text-slate-500">{order.deliveryType}</span>
                       </div>
+                      {order.adminStatusHint && (
+                        <div className="text-xs text-slate-500 mt-1">
+                          {order.adminStatusHint}
+                        </div>
+                      )}
                       {order.cancellationReason && (
                         <div className="text-xs text-red-600 mt-1">
                           <span className="font-medium">

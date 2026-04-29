@@ -303,6 +303,8 @@ const orderSchema = new mongoose.Schema(
         order_type: { type: String, enum: ['IMMEDIATE', 'SCHEDULED'], default: null },
         prep_time: { type: Number, default: 0, min: 0 },
         start_time: { type: Date, default: null },
+        prep_start_time: { type: Date, default: null },
+        isAcceptedByRestaurant: { type: Boolean, default: false },
         scheduledAt: { type: Date, default: null },
         pickupAt: { type: Date, default: null },
         riderEarning: { type: Number, default: 0, min: 0 },

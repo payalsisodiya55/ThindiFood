@@ -136,6 +136,22 @@ const imageUrlToDataUrl = async (url) => {
   }
 }
 
+const getDefaultVisibleColumns = (statusKey) => ({
+  si: true,
+  orderId: true,
+  orderDate: true,
+  scheduledTime: statusKey === "scheduled" || statusKey === "all",
+  orderOtp: true,
+  customer: true,
+  restaurant: true,
+  foodItems: true,
+  totalAmount: true,
+  paymentType: true,
+  paymentCollectionStatus: true,
+  orderStatus: true,
+  actions: true,
+})
+
 export function useOrdersManagement(orders, statusKey, title) {
   const [searchQuery, setSearchQuery] = useState("")
   const [isFilterOpen, setIsFilterOpen] = useState(false)
@@ -151,20 +167,7 @@ export function useOrdersManagement(orders, statusKey, title) {
     toDate: "",
     restaurant: "",
   })
-  const [visibleColumns, setVisibleColumns] = useState({
-    si: true,
-    orderId: true,
-    orderDate: true,
-    orderOtp: true,
-    customer: true,
-    restaurant: true,
-    foodItems: true,
-    totalAmount: true,
-    paymentType: true,
-    paymentCollectionStatus: true,
-    orderStatus: true,
-    actions: true,
-  })
+  const [visibleColumns, setVisibleColumns] = useState(() => getDefaultVisibleColumns(statusKey))
 
   // Get unique restaurants from orders
   const restaurants = useMemo(() => {
@@ -639,20 +642,7 @@ export function useOrdersManagement(orders, statusKey, title) {
   }
 
   const resetColumns = () => {
-    setVisibleColumns({
-      si: true,
-      orderId: true,
-      orderDate: true,
-      orderOtp: true,
-      customer: true,
-      restaurant: true,
-      foodItems: true,
-      totalAmount: true,
-      paymentType: true,
-      paymentCollectionStatus: true,
-      orderStatus: true,
-      actions: true,
-    })
+    setVisibleColumns(getDefaultVisibleColumns(statusKey))
   }
 
   return {

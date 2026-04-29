@@ -78,6 +78,60 @@ const formatFullAddress = (address) => {
 }
 
 const RUPEE_SYMBOL = "\u20B9"
+const parseTimeValueToMinutes = (timeValue) => {
+  if (!timeValue || typeof timeValue !== "string") return null
+  const match = timeValue.trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!match) return null
+  const hours = Number.parseInt(match[1], 10)
+  const minutes = Number.parseInt(match[2], 10)
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59
+  ) {
+    return null
+  }
+  return hours * 60 + minutes
+}
+
+const roundUpToFiveMinutes = (date) => {
+  const rounded = new Date(date)
+  rounded.setSeconds(0, 0)
+  const minutes = rounded.getMinutes()
+  const remainder = minutes % 5
+  if (remainder !== 0) {
+    rounded.setMinutes(minutes + (5 - remainder))
+  }
+  return rounded
+}
+
+const formatScheduleTimeMessage = (date) =>
+  date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })
+
+const getCartPrepTimeMinutes = (items = []) => {
+  const prepTimes = items
+    .map((item) => {
+      const direct = Number(item?.preparationTime)
+      if (Number.isFinite(direct) && direct > 0) return Math.ceil(direct)
+
+      const matches = String(item?.preparationTime || "")
+        .match(/\d+(?:\.\d+)?/g)
+        ?.map(Number)
+        ?.filter((value) => Number.isFinite(value) && value > 0)
+
+      return matches?.length ? Math.ceil(Math.max(...matches)) : null
+    })
+    .filter((value) => Number.isFinite(value) && value > 0)
+
+  return prepTimes.length > 0 ? Math.max(...prepTimes) : 0
+}
 const CART_RECIPIENT_DETAILS_STORAGE_KEY = "food-cart-recipient-details-v1"
 const CART_ORDER_NOTE_STORAGE_KEY = "food-cart-order-note-v1"
 
@@ -274,54 +328,120 @@ export default function Cart() {
     }
   }, [isScheduled, scheduledDate, restaurantData])
 
-  const availablePickupTimeSlots = useMemo(() => {
-    if (!isPickupScheduled || !pickupDate || !restaurantData) return []
+  const takeawayPrepTimeMinutes = useMemo(() => getCartPrepTimeMinutes(cart), [cart])
+
+  const takeawayScheduleWindow = useMemo(() => {
+    if (!isPickupScheduled || !restaurantData) return null
 
     try {
-      const targetDate = new Date(pickupDate)
-      const status = getRestaurantAvailabilityStatus(restaurantData, targetDate)
-
-      let openingHour = 9
-      let closingHour = 22
-
-      if (status.openingTime) {
-        const [h] = status.openingTime.split(':')
-        openingHour = parseInt(h, 10)
-      }
-
-      if (status.closingTime) {
-        const [h] = status.closingTime.split(':')
-        closingHour = parseInt(h, 10)
-      }
-
-      if (closingHour < openingHour) {
-        closingHour += 24
-      }
-
-      const slots = []
       const now = new Date()
-      const nowStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0]
-      const targetStr = pickupDate
-      const isToday = targetStr === nowStr
-      const currentHour = now.getHours()
+      const status = getRestaurantAvailabilityStatus(restaurantData, now)
+      const openingMinutes = parseTimeValueToMinutes(status?.openingTime || "09:00")
+      const closingMinutes = parseTimeValueToMinutes(status?.closingTime || "22:00")
 
-      for (let h = openingHour; h <= closingHour; h++) {
-        const actualHour = h % 24
-        if (isToday && h <= currentHour) continue
+      if (openingMinutes === null || closingMinutes === null) return null
 
-        const period = actualHour >= 12 ? 'PM' : 'AM'
-        const display12 = actualHour % 12 || 12
-        const timeString = `${String(actualHour).padStart(2, '0')}:00`
-        const displayString = `${display12}:00 ${period}`
+      const openingDate = new Date(now)
+      openingDate.setHours(
+        Math.floor(openingMinutes / 60),
+        openingMinutes % 60,
+        0,
+        0,
+      )
 
-        slots.push({ value: timeString, label: displayString })
+      const closingDate = new Date(now)
+      closingDate.setHours(
+        Math.floor(closingMinutes / 60),
+        closingMinutes % 60,
+        0,
+        0,
+      )
+      if (closingDate <= openingDate) {
+        closingDate.setDate(closingDate.getDate() + 1)
       }
 
-      return slots
+      if (now.getTime() < openingDate.getTime()) {
+        return {
+          prepLeadMinutes: Math.max(0, takeawayPrepTimeMinutes),
+          openingDate,
+          minAllowedDate: null,
+          maxAllowedDate: null,
+          hasSlots: false,
+          availableAfterOpening: true,
+          message: `Scheduling available after ${formatScheduleTimeMessage(openingDate)}`,
+        }
+      }
+
+      const prepLeadMinutes = Math.max(0, takeawayPrepTimeMinutes)
+      const nowPlusPrep = new Date(now.getTime() + prepLeadMinutes * 60000)
+      const minAllowedDate = roundUpToFiveMinutes(nowPlusPrep)
+      const maxPrepCompletionDate = new Date(
+        closingDate.getTime() - prepLeadMinutes * 60000,
+      )
+      const maxTodayDate = new Date(now)
+      maxTodayDate.setHours(23, 55, 0, 0)
+      const maxAllowedDate = new Date(
+        Math.min(maxPrepCompletionDate.getTime(), maxTodayDate.getTime()),
+      )
+
+      return {
+        prepLeadMinutes,
+        openingDate,
+        minAllowedDate,
+        maxAllowedDate,
+        hasSlots: minAllowedDate.getTime() <= maxAllowedDate.getTime(),
+        availableAfterOpening: false,
+        message: "",
+      }
     } catch {
-      return []
+      return null
     }
-  }, [isPickupScheduled, pickupDate, restaurantData])
+  }, [isPickupScheduled, restaurantData, takeawayPrepTimeMinutes])
+
+  const availablePickupTimeSlots = useMemo(() => {
+    if (!takeawayScheduleWindow?.hasSlots) return []
+
+    const slots = []
+    const cursor = new Date(takeawayScheduleWindow.minAllowedDate)
+    const endMs = takeawayScheduleWindow.maxAllowedDate.getTime()
+
+    while (cursor.getTime() <= endMs) {
+      const hour24 = cursor.getHours()
+      const minute = cursor.getMinutes()
+      const period = hour24 >= 12 ? "PM" : "AM"
+      const display12 = hour24 % 12 || 12
+
+      slots.push({
+        value: `${String(hour24).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+        label: `${display12}:${String(minute).padStart(2, "0")} ${period}`,
+        hour12: String(display12).padStart(2, "0"),
+        minute: String(minute).padStart(2, "0"),
+        period,
+      })
+
+      cursor.setMinutes(cursor.getMinutes() + 5, 0, 0)
+    }
+
+    return slots
+  }, [takeawayScheduleWindow])
+
+  const availablePickupHourOptions = useMemo(() => {
+    const seen = new Set()
+    return availablePickupTimeSlots.filter((slot) => {
+      const key = `${slot.hour12}-${slot.period}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+  }, [availablePickupTimeSlots])
+
+  const availablePickupMinuteOptions = useMemo(() => {
+    if (!pickupHour12 || !pickupPeriod) return []
+
+    return availablePickupTimeSlots.filter(
+      (slot) => slot.hour12 === pickupHour12 && slot.period === pickupPeriod,
+    )
+  }, [availablePickupTimeSlots, pickupHour12, pickupPeriod])
 
   // Reset scheduledTime if it's no longer valid in the new slots
   useEffect(() => {
@@ -345,6 +465,17 @@ export default function Cart() {
       setPickupPeriod("")
     }
   }, [isPickupScheduled])
+
+  useEffect(() => {
+    if (takeawayScheduleWindow?.availableAfterOpening && isPickupScheduled) {
+      setIsPickupScheduled(false)
+      setPickupDate("")
+      setPickupTime("")
+      setPickupHour12("")
+      setPickupMinute("")
+      setPickupPeriod("")
+    }
+  }, [isPickupScheduled, takeawayScheduleWindow?.availableAfterOpening])
 
   useEffect(() => {
     if (!pickupTime) return
@@ -372,6 +503,33 @@ export default function Cart() {
       setPickupTime(nextPickupTime)
     }
   }, [isPickupScheduled, pickupHour12, pickupMinute, pickupPeriod, pickupTime])
+
+  useEffect(() => {
+    if (!isPickupScheduled) return
+
+    const selectedValue =
+      pickupHour12 && pickupMinute && pickupPeriod
+        ? (() => {
+            let hour24 = Number.parseInt(pickupHour12, 10) % 12
+            if (pickupPeriod === "PM") hour24 += 12
+            return `${String(hour24).padStart(2, "0")}:${pickupMinute}`
+          })()
+        : ""
+
+    if (
+      selectedValue &&
+      !availablePickupTimeSlots.some((slot) => slot.value === selectedValue)
+    ) {
+      setPickupTime("")
+      setPickupMinute("")
+    }
+  }, [
+    isPickupScheduled,
+    pickupHour12,
+    pickupMinute,
+    pickupPeriod,
+    availablePickupTimeSlots,
+  ])
 
   const cartCount = getCartCount()
   const getAddressId = (address) => address?.id || address?._id || null
@@ -1556,15 +1714,30 @@ export default function Cart() {
       }
     }
 
-    if (isPickupScheduled && pickupTime) {
-      const pickupDateTimeString = `${pickupDate}T${pickupTime}:00`
+    if (isPickupScheduled) {
+      if (!takeawayScheduleWindow?.hasSlots) {
+        toast.error("No slots available for today")
+        return
+      }
+
+      if (!pickupTime) {
+        toast.error("Please select a valid pickup time")
+        return
+      }
+
+      const scheduleDate = pickupDate || new Date().toLocaleDateString("en-CA")
+      const pickupDateTimeString = `${scheduleDate}T${pickupTime}:00`
       const pickupDateObj = new Date(pickupDateTimeString)
       if (Number.isNaN(pickupDateObj.getTime())) {
         toast.error("Please select a valid pickup time")
         return
       }
-      if (pickupDateObj < new Date()) {
-        toast.error("Pickup time must be in the future")
+
+      if (
+        pickupDateObj < takeawayScheduleWindow.minAllowedDate ||
+        pickupDateObj > takeawayScheduleWindow.maxAllowedDate
+      ) {
+        toast.error("Please choose a pickup time within today's available slots")
         return
       }
     }
@@ -1783,9 +1956,10 @@ export default function Cart() {
       }
 
       const fulfillmentType = "takeaway"
-      const hasPickupSelection = Boolean(pickupDate && pickupTime)
+      const effectivePickupDate = pickupDate || new Date().toLocaleDateString("en-CA")
+      const hasPickupSelection = Boolean(isPickupScheduled && pickupTime)
       const pickupAtIso = hasPickupSelection
-        ? new Date(`${pickupDate}T${pickupTime}:00`).toISOString()
+        ? new Date(`${effectivePickupDate}T${pickupTime}:00`).toISOString()
         : null
       const takeawayOrderType = hasPickupSelection ? "SCHEDULED" : "IMMEDIATE"
 
@@ -2427,20 +2601,55 @@ export default function Cart() {
                   </div>
                   <div className="flex-1">
 
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 flex items-center gap-1">
-                      Need takeaway?
-                      <button onClick={() => {
-                        const newPickupScheduled = !isPickupScheduled
-                        setIsPickupScheduled(newPickupScheduled)
-                        if (newPickupScheduled) {
-                          setIsScheduled(false)
-                          // Set today's date automatically
-                          setPickupDate(new Date().toLocaleDateString('en-CA'))
-                        }
-                      }} className="border-b border-dashed border-gray-500 font-medium outline-none">
-                        Add pickup time
-                      </button>
-                    </p>
+                    <div className="mt-2">
+                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        Takeaway timing
+                      </p>
+                      <div className="mt-3 inline-flex rounded-full bg-slate-100 p-1 dark:bg-gray-800">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPickupScheduled(false)
+                            setPickupDate("")
+                          }}
+                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                            !isPickupScheduled
+                              ? "bg-white text-[#00c87e] shadow-sm dark:bg-[#111111]"
+                              : "text-gray-600 dark:text-gray-400"
+                          }`}
+                        >
+                          Now
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (takeawayScheduleWindow?.availableAfterOpening) return
+                            setIsPickupScheduled(true)
+                            setIsScheduled(false)
+                            setPickupDate(new Date().toLocaleDateString("en-CA"))
+                          }}
+                          disabled={Boolean(takeawayScheduleWindow?.availableAfterOpening)}
+                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                            isPickupScheduled
+                              ? "bg-white text-[#00c87e] shadow-sm dark:bg-[#111111]"
+                              : takeawayScheduleWindow?.availableAfterOpening
+                                ? "text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60"
+                                : "text-gray-600 dark:text-gray-400"
+                          }`}
+                        >
+                          Schedule
+                        </button>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                        {takeawayScheduleWindow?.availableAfterOpening
+                          ? takeawayScheduleWindow.message
+                          : !isPickupScheduled
+                          ? `Ready in about ${Math.max(takeawayPrepTimeMinutes, 0)} mins`
+                          : takeawayScheduleWindow?.hasSlots
+                            ? "Today only • 5 min slots"
+                            : "No slots available for today"}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -2486,7 +2695,11 @@ export default function Cart() {
                     {/* Date selection removed - today only */}
                     <div className="flex-1">
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Pickup Time</label>
-                      {availablePickupTimeSlots.length > 0 ? (
+                      {takeawayScheduleWindow?.availableAfterOpening ? (
+                        <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
+                          {takeawayScheduleWindow.message}
+                        </div>
+                      ) : availablePickupTimeSlots.length > 0 ? (
                         <div className="grid grid-cols-3 gap-2">
                           <div className="relative">
                             <select
@@ -2495,9 +2708,9 @@ export default function Cart() {
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
                               <option value="">HH</option>
-                              {pickupHourOptions.map((hour) => (
-                                <option key={hour} value={hour}>
-                                  {hour}
+                              {availablePickupHourOptions.map((slot) => (
+                                <option key={`${slot.hour12}-${slot.period}`} value={slot.hour12}>
+                                  {slot.hour12}
                                 </option>
                               ))}
                             </select>
@@ -2510,9 +2723,9 @@ export default function Cart() {
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
                               <option value="">MM</option>
-                              {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0")).map((minute) => (
-                                <option key={minute} value={minute}>
-                                  {minute}
+                              {availablePickupMinuteOptions.map((slot) => (
+                                <option key={`${slot.value}-minute`} value={slot.minute}>
+                                  {slot.minute}
                                 </option>
                               ))}
                             </select>
@@ -2525,7 +2738,15 @@ export default function Cart() {
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
                               <option value="">AM/PM</option>
-                              {pickupPeriodOptions.map((period) => (
+                              {pickupPeriodOptions
+                                .filter((period) =>
+                                  availablePickupTimeSlots.some(
+                                    (slot) =>
+                                      (!pickupHour12 || slot.hour12 === pickupHour12) &&
+                                      slot.period === period,
+                                  ),
+                                )
+                                .map((period) => (
                                 <option key={period} value={period}>
                                   {period}
                                 </option>
@@ -2536,8 +2757,17 @@ export default function Cart() {
                         </div>
                       ) : (
                         <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
-                          No pickup slots available right now
+                          No slots available for today
                         </div>
+                      )}
+                      {takeawayScheduleWindow?.availableAfterOpening ? (
+                        <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                          {takeawayScheduleWindow.message}
+                        </p>
+                      ) : takeawayScheduleWindow?.hasSlots && (
+                        <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                          Available from {takeawayScheduleWindow.minAllowedDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })} to {takeawayScheduleWindow.maxAllowedDate.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                        </p>
                       )}
                     </div>
                   </div>
