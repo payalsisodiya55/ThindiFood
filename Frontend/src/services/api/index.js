@@ -1201,6 +1201,7 @@ export const restaurantAPI = {
           return {
             couponCode: o.couponCode,
             discountType: o.discountType,
+            discountValue: Number(o.discountValue) || 0,
             discountPercentage: isPct ? Number(o.discountValue) || 0 : 0,
             originalPrice: 0,
             discountedPrice: 0,

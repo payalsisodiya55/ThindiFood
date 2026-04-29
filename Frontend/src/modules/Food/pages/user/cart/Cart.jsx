@@ -571,6 +571,20 @@ export default function Cart() {
     ? (restaurantData?._id || restaurantData?.restaurantId || cart[0]?.restaurantId || null)
     : null
 
+  const isMongoObjectId = (value) => /^[a-f\d]{24}$/i.test(String(value || "").trim())
+
+  const resolvedPricingRestaurantId = useMemo(() => {
+    if (isMongoObjectId(restaurantData?._id)) {
+      return String(restaurantData._id)
+    }
+
+    if (isMongoObjectId(cart[0]?.restaurantId)) {
+      return String(cart[0].restaurantId)
+    }
+
+    return null
+  }, [restaurantData?._id, cart])
+
   // Stable restaurant ID for addons fetch (memoized to prevent dependency array issues)
   // Prefer restaurantData IDs (more reliable) over slug from cart
   const restaurantIdForAddons = useMemo(() => {
@@ -903,18 +917,27 @@ export default function Cart() {
             coupons.forEach(coupon => {
               if (!uniqueCouponCodes.has(coupon.couponCode)) {
                 uniqueCouponCodes.add(coupon.couponCode)
+                const isPercentageCoupon = coupon.discountType === "percentage"
+                const resolvedDiscountAmount = isPercentageCoupon
+                  ? Math.max(0, Number(coupon.discountPercentage) || 0)
+                  : Math.max(
+                      0,
+                      Number(coupon.discountValue) ||
+                        Math.max(0, (coupon.originalPrice || 0) - (coupon.discountedPrice || 0))
+                    )
                 // Convert backend coupon format to frontend format
                 allCoupons.push({
                   code: coupon.couponCode,
-                  discount: coupon.originalPrice - coupon.discountedPrice,
+                  discount: resolvedDiscountAmount,
                   discountPercentage: coupon.discountPercentage,
-                  discountDisplay: coupon.discountType === "percentage"
+                  discountType: coupon.discountType,
+                  discountDisplay: isPercentageCoupon
                     ? `${coupon.discountPercentage}% OFF`
-                    : `${RUPEE_SYMBOL}${Math.max(0, (coupon.originalPrice || 0) - (coupon.discountedPrice || 0))} OFF`,
+                    : `${RUPEE_SYMBOL}${resolvedDiscountAmount} OFF`,
                   minOrder: coupon.minOrderValue || 0,
-                  description: coupon.discountType === "percentage"
+                  description: isPercentageCoupon
                     ? `${coupon.discountPercentage}% OFF with '${coupon.couponCode}'`
-                    : `Save ${RUPEE_SYMBOL}${Math.max(0, (coupon.originalPrice || 0) - (coupon.discountedPrice || 0))} with '${coupon.couponCode}'`,
+                    : `Save ${RUPEE_SYMBOL}${resolvedDiscountAmount} with '${coupon.couponCode}'`,
                   originalPrice: coupon.originalPrice,
                   discountedPrice: coupon.discountedPrice,
                   customerGroup: coupon.customerGroup || "all",
@@ -941,35 +964,21 @@ export default function Cart() {
   // Calculate pricing from backend whenever cart, address, or coupon changes
   useEffect(() => {
     const calculatePricing = async () => {
-      if (cart.length === 0 || !hasSavedAddress) {
+      if (cart.length === 0 || !hasSavedAddress || !resolvedPricingRestaurantId) {
         setPricing(null)
         return
       }
 
       try {
         setLoadingPricing(true)
-        const items = cart.map(item => ({
-          itemId: item.itemId || item.id,
-          name: item.name,
-          price: item.price, // Price should already be in INR
-          variantId: item.variantId || undefined,
-          variantName: item.variantName || undefined,
-          variantPrice: item.variantPrice || item.price,
-          quantity: item.quantity || 1,
-          image: item.image,
-          description: item.description,
-          isVeg: item.isVeg !== false
-        }))
-
-        const resolvedRestaurantId = restaurantData?.restaurantId || restaurantData?._id || restaurantId || undefined
-        const resolvedCouponCode = appliedCoupon?.code || couponCode || undefined
-
-        const response = await orderAPI.calculateOrder({
-          items,
-          restaurantId: resolvedRestaurantId,
-          deliveryAddress: defaultAddress,
-          couponCode: resolvedCouponCode
-        })
+        const response = await orderAPI.calculateOrder(
+          buildCalculateOrderPayload({
+            cart,
+            restaurantId: resolvedPricingRestaurantId,
+            deliveryAddressId: defaultAddress,
+            couponCode: appliedCoupon?.code || couponCode
+          })
+        )
 
         if (response?.data?.success && response?.data?.data?.pricing) {
           setPricing(response.data.data.pricing)
@@ -995,7 +1004,7 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, defaultAddress, appliedCoupon, couponCode, restaurantId])
+  }, [cart, defaultAddress, appliedCoupon, couponCode, resolvedPricingRestaurantId, hasSavedAddress])
 
   // Fetch wallet balance
   useEffect(() => {
@@ -1118,6 +1127,61 @@ export default function Cart() {
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"
+
+  const isPercentageCoupon = (coupon) => String(coupon?.discountType || "").toLowerCase() === "percentage"
+
+  const getCouponSummaryText = (coupon) => {
+    if (!coupon) return ""
+
+    if (coupon.discountDisplay) {
+      return `${coupon.discountDisplay} with '${coupon.code}'`
+    }
+
+    if (isPercentageCoupon(coupon)) {
+      const percentageValue = Number(coupon.discountPercentage ?? coupon.discount ?? 0)
+      return `${percentageValue}% OFF with '${coupon.code}'`
+    }
+
+    return `${RUPEE_SYMBOL}${Math.round(Number(coupon.discount || 0))} OFF with '${coupon.code}'`
+  }
+
+  const getCouponIcon = (coupon, className) => {
+    const Icon = isPercentageCoupon(coupon) ? Percent : Tag
+    return <Icon className={className} />
+  }
+
+  const buildCalculateOrderPayload = ({ cart, restaurantId, deliveryAddressId, couponCode }) => {
+    const normalizedItems = cart.map(item => ({
+      itemId: String(item.itemId || item.id || ""),
+      name: String(item.name || ""),
+      price: Number(item.price) || 0,
+      variantId: item.variantId ? String(item.variantId) : undefined,
+      variantName: item.variantName || undefined,
+      variantPrice: item.variantPrice != null ? Number(item.variantPrice) : Number(item.price) || 0,
+      quantity: Number(item.quantity) || 1,
+      image: item.image,
+      description: item.description,
+      isVeg: item.isVeg !== false
+    }))
+
+    const normalizedDeliveryAddressId =
+      typeof deliveryAddressId === "string"
+        ? deliveryAddressId
+        : getAddressId(deliveryAddressId)
+
+    const payload = {
+      items: normalizedItems,
+      restaurantId: restaurantId || undefined,
+      deliveryAddressId: normalizedDeliveryAddressId || undefined
+    }
+
+    const normalizedCouponCode = typeof couponCode === "string" ? couponCode.trim().toUpperCase() : ""
+    if (normalizedCouponCode) {
+      payload.couponCode = normalizedCouponCode
+    }
+
+    return payload
+  }
 
   const handleShare = async () => {
     const restaurantNameStr = restaurantName || companyName || "this restaurant"
@@ -1345,26 +1409,20 @@ export default function Cart() {
 
     // Validate with backend first; only set applied if backend accepts
     if (cart.length > 0 && hasSavedAddress) {
-      try {
-        const items = cart.map(item => ({
-          itemId: item.itemId || item.id,
-          name: item.name,
-          price: item.price,
-          variantId: item.variantId || undefined,
-          variantName: item.variantName || undefined,
-          variantPrice: item.variantPrice || item.price,
-          quantity: item.quantity || 1,
-          image: item.image,
-          description: item.description,
-          isVeg: item.isVeg !== false
-        }))
+      if (!resolvedPricingRestaurantId) {
+        toast.error("Restaurant details are still loading. Please try again.")
+        return
+      }
 
-        const response = await orderAPI.calculateOrder({
-          items,
-          restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
-          deliveryAddress: defaultAddress,
-          couponCode: coupon.code
-        })
+      try {
+        const response = await orderAPI.calculateOrder(
+          buildCalculateOrderPayload({
+            cart,
+            restaurantId: resolvedPricingRestaurantId,
+            deliveryAddressId: defaultAddress,
+            couponCode: coupon.code
+          })
+        )
 
         const pricingData = response?.data?.data?.pricing
         if (!pricingData || !pricingData.appliedCoupon) {
@@ -1396,6 +1454,11 @@ export default function Cart() {
       return
     }
 
+    if (!resolvedPricingRestaurantId) {
+      toast.error("Restaurant details are still loading. Please try again.")
+      return
+    }
+
     const matchedCoupon = availableCoupons.find(
       (coupon) => String(coupon.code || "").toUpperCase() === inputCode,
     )
@@ -1407,25 +1470,14 @@ export default function Cart() {
     }
 
     try {
-      const items = cart.map(item => ({
-        itemId: item.itemId || item.id,
-        name: item.name,
-        price: item.price,
-        variantId: item.variantId || undefined,
-        variantName: item.variantName || undefined,
-        variantPrice: item.variantPrice || item.price,
-        quantity: item.quantity || 1,
-        image: item.image,
-        description: item.description,
-        isVeg: item.isVeg !== false
-      }))
-
-      const response = await orderAPI.calculateOrder({
-        items,
-        restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
-        deliveryAddress: defaultAddress,
-        couponCode: inputCode
-      })
+      const response = await orderAPI.calculateOrder(
+        buildCalculateOrderPayload({
+          cart,
+          restaurantId: resolvedPricingRestaurantId,
+          deliveryAddressId: defaultAddress,
+          couponCode: inputCode
+        })
+      )
 
       const pricingData = response?.data?.data?.pricing
       if (!pricingData) {
@@ -1441,14 +1493,15 @@ export default function Cart() {
 
       setPricing(pricingData)
       setCouponCode(inputCode)
-      setAppliedCoupon(
-        matchedCoupon || {
-          code: inputCode,
-          discount: pricingData.appliedCoupon.discount || 0,
-          minOrder: 0,
-          customerGroup: "all",
-        },
-      )
+        setAppliedCoupon(
+          matchedCoupon || {
+            code: inputCode,
+            discount: pricingData.appliedCoupon.discount || 0,
+            minOrder: 0,
+            customerGroup: "all",
+            discountType: undefined,
+          },
+        )
       setShowCoupons(false)
       toast.success("Coupon applied")
     } catch (error) {
@@ -1465,26 +1518,20 @@ export default function Cart() {
 
     // Recalculate pricing without coupon
     if (cart.length > 0 && hasSavedAddress) {
-      try {
-        const items = cart.map(item => ({
-          itemId: item.itemId || item.id,
-          name: item.name,
-          price: item.price,
-          variantId: item.variantId || undefined,
-          variantName: item.variantName || undefined,
-          variantPrice: item.variantPrice || item.price,
-          quantity: item.quantity || 1,
-          image: item.image,
-          description: item.description,
-          isVeg: item.isVeg !== false
-        }))
+      if (!resolvedPricingRestaurantId) {
+        setPricing(null)
+        return
+      }
 
-        const response = await orderAPI.calculateOrder({
-          items,
-          restaurantId: restaurantData?.restaurantId || restaurantData?._id || restaurantId || null,
-          deliveryAddress: defaultAddress,
-          couponCode: null
-        })
+      try {
+        const response = await orderAPI.calculateOrder(
+          buildCalculateOrderPayload({
+            cart,
+            restaurantId: resolvedPricingRestaurantId,
+            deliveryAddressId: defaultAddress,
+            couponCode: undefined
+          })
+        )
 
         if (response?.data?.success && response?.data?.data?.pricing) {
           setPricing(response.data.data.pricing)
@@ -2288,7 +2335,7 @@ export default function Cart() {
                 {appliedCoupon ? (
                   <div className="px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
                     <div className="flex items-start gap-3">
-                      <Percent className="h-5 w-5 text-[#00c87e] mt-0.5" />
+                      {getCouponIcon(appliedCoupon, "h-5 w-5 text-[#00c87e] mt-0.5")}
                       <div>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">'{appliedCoupon.code}' applied</p>
                         <p className="text-xs text-[#00c87e] font-medium mt-0.5">You saved {RUPEE_SYMBOL}{discount}</p>
@@ -2304,10 +2351,10 @@ export default function Cart() {
                     ) : availableCoupons.length > 0 ? (
                       <div className="flex items-start justify-between w-full">
                         <div className="flex items-start gap-3 flex-1">
-                          <Percent className="h-5 w-5 text-gray-700 dark:text-gray-300 mt-0.5" />
+                          {getCouponIcon(availableCoupons[0], "h-5 w-5 text-gray-700 dark:text-gray-300 mt-0.5")}
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight mb-0.5">
-                              {availableCoupons[0].discountDisplay || `Save ${RUPEE_SYMBOL}${availableCoupons[0].discount}`} with '{availableCoupons[0].code}'
+                              {getCouponSummaryText(availableCoupons[0])}
                             </p>
                             {availableCoupons[0].customerGroup === "new" ? (
                               <p className="text-[11px] text-[#00c87e] mb-1">First-time users only</p>
@@ -2359,10 +2406,10 @@ export default function Cart() {
                         {availableCoupons.slice(1).map((coupon) => (
                           <div key={coupon.code} className="flex items-start justify-between">
                             <div className="flex items-start gap-3 flex-1">
-                              <Percent className="h-5 w-5 text-gray-700 dark:text-gray-300 mt-0.5 opacity-50" />
+                              {getCouponIcon(coupon, "h-5 w-5 text-gray-700 dark:text-gray-300 mt-0.5 opacity-50")}
                               <div className="flex-1">
                                 <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight mb-0.5">
-                                  {coupon.discountDisplay || `Save ${RUPEE_SYMBOL}${coupon.discount}`} with '{coupon.code}'
+                                  {getCouponSummaryText(coupon)}
                                 </p>
                                 {coupon.customerGroup === "new" ? (
                                   <p className="text-[11px] text-[#00c87e] mb-1">First-time users only</p>
