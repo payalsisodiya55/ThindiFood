@@ -157,8 +157,8 @@ export default function Cart() {
   const [pickupDate, setPickupDate] = useState("")
   const [pickupTime, setPickupTime] = useState("")
   const [pickupHour12, setPickupHour12] = useState("")
-  const [pickupMinute, setPickupMinute] = useState("00")
-  const [pickupPeriod, setPickupPeriod] = useState("PM")
+  const [pickupMinute, setPickupMinute] = useState("")
+  const [pickupPeriod, setPickupPeriod] = useState("")
   const pickupHourOptions = useMemo(
     () => Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")),
     []
@@ -341,17 +341,10 @@ export default function Cart() {
       setPickupDate("")
       setPickupTime("")
       setPickupHour12("")
-      setPickupMinute("00")
-      setPickupPeriod("PM")
+      setPickupMinute("")
+      setPickupPeriod("")
     }
   }, [isPickupScheduled])
-
-  useEffect(() => {
-    if (!isPickupScheduled || availablePickupTimeSlots.length === 0) return
-    if (!pickupHour12) {
-      setPickupHour12("12")
-    }
-  }, [isPickupScheduled, availablePickupTimeSlots, pickupHour12])
 
   useEffect(() => {
     if (!pickupTime) return
@@ -1563,25 +1556,17 @@ export default function Cart() {
       }
     }
 
-    if (!isPickupScheduled) {
-      toast.error("Please add pickup time before placing order")
-      setIsPickupScheduled(true)
-      return
-    }
-
-    if (!pickupDate || !pickupTime) {
-      toast.error("Please select both date and pickup time")
-      return
-    }
-    const pickupDateTimeString = `${pickupDate}T${pickupTime}:00`
-    const pickupDateObj = new Date(pickupDateTimeString)
-    if (Number.isNaN(pickupDateObj.getTime())) {
-      toast.error("Please select a valid pickup time")
-      return
-    }
-    if (pickupDateObj < new Date()) {
-      toast.error("Pickup time must be in the future")
-      return
+    if (isPickupScheduled && pickupTime) {
+      const pickupDateTimeString = `${pickupDate}T${pickupTime}:00`
+      const pickupDateObj = new Date(pickupDateTimeString)
+      if (Number.isNaN(pickupDateObj.getTime())) {
+        toast.error("Please select a valid pickup time")
+        return
+      }
+      if (pickupDateObj < new Date()) {
+        toast.error("Pickup time must be in the future")
+        return
+      }
     }
 
     if (cart.length === 0) {
@@ -1798,13 +1783,11 @@ export default function Cart() {
       }
 
       const fulfillmentType = "takeaway"
-      const pickupAtIso = new Date(`${pickupDate}T${pickupTime}:00`).toISOString()
-
-      if (fulfillmentType === "takeaway" && !pickupAtIso) {
-        toast.error("Pickup time is required for takeaway orders")
-        setIsPlacingOrder(false)
-        return
-      }
+      const hasPickupSelection = Boolean(pickupDate && pickupTime)
+      const pickupAtIso = hasPickupSelection
+        ? new Date(`${pickupDate}T${pickupTime}:00`).toISOString()
+        : null
+      const takeawayOrderType = hasPickupSelection ? "SCHEDULED" : "IMMEDIATE"
 
       if (fulfillmentType === "takeaway" && selectedPaymentMethod === "cash" && !isTakeawayCodEnabled) {
         toast.error("Cash on Delivery is not available in your zone")
@@ -1832,7 +1815,8 @@ export default function Cart() {
         zoneId: zoneId || undefined,
         scheduledAt: isScheduled ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : undefined,
         fulfillmentType,
-        pickupAt: pickupAtIso,
+        order_type: takeawayOrderType,
+        ...(pickupAtIso ? { pickupAt: pickupAtIso } : {}),
       };
       // Log final order details (including paymentMethod for COD debugging)
       debugLog('?? FINAL: Sending order to backend with:', {
@@ -2510,6 +2494,7 @@ export default function Cart() {
                               onChange={(e) => setPickupHour12(e.target.value)}
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
+                              <option value="">HH</option>
                               {pickupHourOptions.map((hour) => (
                                 <option key={hour} value={hour}>
                                   {hour}
@@ -2524,6 +2509,7 @@ export default function Cart() {
                               onChange={(e) => setPickupMinute(e.target.value)}
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
+                              <option value="">MM</option>
                               {Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0")).map((minute) => (
                                 <option key={minute} value={minute}>
                                   {minute}
@@ -2538,6 +2524,7 @@ export default function Cart() {
                               onChange={(e) => setPickupPeriod(e.target.value)}
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
+                              <option value="">AM/PM</option>
                               {pickupPeriodOptions.map((period) => (
                                 <option key={period} value={period}>
                                   {period}
@@ -2549,7 +2536,7 @@ export default function Cart() {
                         </div>
                       ) : (
                         <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
-                          {pickupDate ? "No slots available" : "Select pickup date first"}
+                          No pickup slots available right now
                         </div>
                       )}
                     </div>

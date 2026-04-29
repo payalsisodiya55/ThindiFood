@@ -12,8 +12,6 @@ import {
   VolumeX,
   ChevronDown,
   ChevronUp,
-  Minus,
-  Plus,
   X,
   AlertCircle,
   Loader2,
@@ -68,6 +66,88 @@ const getAllOrdersTimestamp = (order) =>
   order?.updatedAt ||
   order?.createdAt ||
   new Date().toISOString();
+
+const formatClockTime = (value) => {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return parsed.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+};
+
+const getOrderPrepTimeMinutes = (orderLike) => {
+  const directValue = Number(orderLike?.prep_time);
+  if (Number.isFinite(directValue) && directValue > 0) {
+    return Math.round(directValue);
+  }
+
+  const itemPrepMinutes = (orderLike?.items || [])
+    .map((item) => {
+      const matches = String(item?.preparationTime || "")
+        .match(/\d+(?:\.\d+)?/g)
+        ?.map(Number)
+        ?.filter((value) => Number.isFinite(value) && value > 0);
+      return matches?.length ? Math.ceil(Math.max(...matches)) : null;
+    })
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  return itemPrepMinutes.length > 0 ? Math.max(...itemPrepMinutes) : null;
+};
+
+const normalizeOrderForPopup = (orderLike) => {
+  if (!orderLike) return null;
+
+  return {
+    orderId: orderLike.orderId,
+    orderMongoId: orderLike.orderMongoId || orderLike._id || orderLike.id,
+    restaurantId: orderLike.restaurantId,
+    restaurantName:
+      orderLike.restaurantName ||
+      orderLike.restaurantId?.restaurantName ||
+      orderLike.restaurantId?.name ||
+      "",
+    items: Array.isArray(orderLike.items) ? orderLike.items : [],
+    total:
+      Number(orderLike.total) > 0
+        ? Number(orderLike.total)
+        : Number(orderLike.pricing?.total) > 0
+          ? Number(orderLike.pricing.total)
+          : 0,
+    customerAddress:
+      orderLike.customerAddress || orderLike.address || orderLike.deliveryAddress,
+    status: orderLike.status || orderLike.orderStatus,
+    orderStatus: orderLike.orderStatus || orderLike.status,
+    createdAt: orderLike.createdAt,
+    updatedAt: orderLike.updatedAt,
+    scheduledAt: orderLike.scheduledAt,
+    pickupAt: orderLike.pickupAt,
+    order_type: orderLike.order_type,
+    prep_time: orderLike.prep_time,
+    fulfillmentType: orderLike.fulfillmentType || "delivery",
+    estimatedDeliveryTime:
+      Number(orderLike.prep_time) > 0
+        ? Number(orderLike.prep_time)
+        : orderLike.estimatedDeliveryTime || 30,
+    note: orderLike.note || "",
+    sendCutlery: orderLike.sendCutlery,
+    paymentMethod: orderLike.paymentMethod || orderLike.payment?.method || null,
+    payment: orderLike.payment,
+  };
+};
+
+const isPopupOrderIncomplete = (orderLike) => {
+  if (!orderLike) return true;
+  const items = Array.isArray(orderLike.items) ? orderLike.items : [];
+  const total = Number(orderLike.total || orderLike.pricing?.total || 0);
+  return (
+    !orderLike.restaurantName ||
+    items.length === 0 ||
+    total <= 0
+  );
+};
 
 const getBookingGuestName = (bookingLike) => {
   const value = String(
@@ -1141,7 +1221,6 @@ export default function OrdersMain() {
   const [showNewOrderPopup, setShowNewOrderPopup] = useState(false);
   const [popupOrder, setPopupOrder] = useState(null); // Store order for popup (from Socket.IO or API)
   const [isMuted, setIsMuted] = useState(false);
-  const [prepTime, setPrepTime] = useState(11);
   const [countdown, setCountdown] = useState(240); // 4 minutes in seconds
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(true);
   const [showRejectPopup, setShowRejectPopup] = useState(false);
@@ -1178,6 +1257,7 @@ export default function OrdersMain() {
   const showNewOrderPopupRef = useRef(showNewOrderPopup);
   const isMutedRef = useRef(isMuted);
   const newOrderRef = useRef(null);
+  const popupHydrationInFlightRef = useRef(new Set());
 
   const isCancelledStatus = (value) =>
     String(value || "")
@@ -1244,6 +1324,30 @@ export default function OrdersMain() {
     }, 0);
 
     return Number.isFinite(itemsTotal) ? itemsTotal : 0;
+  };
+
+  const hydratePopupOrder = async (orderLike) => {
+    const lookupId =
+      orderLike?.orderMongoId || orderLike?._id || orderLike?.orderId || orderLike?.id;
+    const orderKey = getOrderIdentityKey(orderLike);
+    if (!lookupId || !orderKey) return null;
+    if (popupHydrationInFlightRef.current.has(orderKey)) return null;
+
+    popupHydrationInFlightRef.current.add(orderKey);
+    try {
+      const response = await restaurantAPI.getOrderById(lookupId);
+      const freshOrder =
+        response?.data?.data?.order ||
+        response?.data?.order ||
+        response?.data?.data ||
+        null;
+      return freshOrder ? normalizeOrderForPopup(freshOrder) : null;
+    } catch (error) {
+      debugWarn("Failed to hydrate popup order in real time:", error);
+      return null;
+    } finally {
+      popupHydrationInFlightRef.current.delete(orderKey);
+    }
   };
 
   // Restaurant notifications hook for real-time orders + table bookings
@@ -1431,12 +1535,29 @@ export default function OrdersMain() {
         return; // Do not show the immediate popup
       }
 
+      const normalizedIncomingOrder = normalizeOrderForPopup(newOrder);
+
       if (!hasOrderBeenShown(newOrder)) {
         markOrderAsShown(newOrder);
-        setPopupOrder(newOrder);
+        setPopupOrder(normalizedIncomingOrder);
         setShowNewOrderPopup(true);
         setCountdown(240); // Reset countdown to 4 minutes
         requestOrdersRefresh();
+      }
+
+      if (isPopupOrderIncomplete(normalizedIncomingOrder)) {
+        const currentOrderKey = getOrderIdentityKey(normalizedIncomingOrder);
+        hydratePopupOrder(newOrder).then((hydratedOrder) => {
+          if (!hydratedOrder) return;
+          const hydratedKey = getOrderIdentityKey(hydratedOrder);
+          if (!hydratedKey || hydratedKey !== currentOrderKey) return;
+
+          setPopupOrder((prev) => {
+            const prevKey = getOrderIdentityKey(prev);
+            if (prevKey && prevKey !== hydratedKey) return prev;
+            return hydratedOrder;
+          });
+        });
       }
     }
   }, [newOrder]);
@@ -1468,7 +1589,6 @@ export default function OrdersMain() {
     setPopupOrder(null);
     clearNewOrder();
     setCountdown(240);
-    setPrepTime(11);
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
 
@@ -1653,29 +1773,7 @@ export default function OrdersMain() {
             const orderToPopup = targetOrders[0];
             const orderId = orderToPopup.orderId || orderToPopup._id;
 
-            // Transform order to match newOrder format (include payment so COD shows correctly)
-            const orderForPopup = {
-              orderId: orderToPopup.orderId,
-              orderMongoId: orderToPopup._id,
-              restaurantId: orderToPopup.restaurantId,
-              restaurantName: orderToPopup.restaurantName,
-              items: orderToPopup.items || [],
-              total: orderToPopup.pricing?.total || 0,
-              customerAddress: orderToPopup.address,
-              status: orderToPopup.status,
-              createdAt: orderToPopup.createdAt,
-              scheduledAt: orderToPopup.scheduledAt,
-              pickupAt: orderToPopup.pickupAt,
-              fulfillmentType: orderToPopup.fulfillmentType || "delivery",
-              estimatedDeliveryTime: orderToPopup.estimatedDeliveryTime || 30,
-              note: orderToPopup.note || "",
-              sendCutlery: orderToPopup.sendCutlery,
-              paymentMethod:
-                orderToPopup.paymentMethod ||
-                orderToPopup.payment?.method ||
-                null,
-              payment: orderToPopup.payment,
-            };
+            const orderForPopup = normalizeOrderForPopup(orderToPopup);
 
             debugLog("?? Found order ready for popup:", orderForPopup);
             markOrderAsShown({ orderId, _id: orderToPopup._id });
@@ -1859,7 +1957,7 @@ export default function OrdersMain() {
             }
         } else {
             // Standard Takeaway/Delivery acceptance
-            const response = await restaurantAPI.acceptOrder(orderId, prepTime);
+            await restaurantAPI.acceptOrder(orderId);
             toast.success("Order accepted successfully");
         }
         
@@ -1892,7 +1990,6 @@ export default function OrdersMain() {
     setPopupOrder(null);
     clearNewOrder();
     setCountdown(240);
-    setPrepTime(11);
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
 
@@ -1945,7 +2042,6 @@ export default function OrdersMain() {
     clearNewOrder();
     setRejectReason("");
     setCountdown(240);
-    setPrepTime(11);
   };
 
   const handleRejectCancel = () => {
@@ -2695,19 +2791,19 @@ export default function OrdersMain() {
         {showNewOrderPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4"
+              className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
               <motion.div
-                className="w-[95%] max-w-md max-h-[calc(100vh-2rem)] bg-white rounded-[2rem] shadow-2xl overflow-hidden p-1 flex flex-col"
+                className="w-[95%] max-w-md max-h-[calc(100vh-2rem)] bg-white rounded-3xl shadow-2xl overflow-hidden p-0.5 flex flex-col"
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="px-4 py-3 bg-white border-b border-gray-200 flex items-center justify-between">
+                <div className="px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between">
                   <div className="flex-1">
                     <h3 className="text-base font-bold text-gray-900">
                       {(popupOrder || newOrder)?.isDineIn
@@ -2747,40 +2843,53 @@ export default function OrdersMain() {
                 </div>
 
                 {/* Content */}
-                <div className="px-4 pt-4 pb-4 flex-1 overflow-y-auto min-h-0">
+                <div className="px-4 py-2 flex-1 overflow-y-auto min-h-0">
                   {/* Scheduled Indicator */}
                   {((popupOrder || newOrder)?.fulfillmentType === "takeaway" ||
                     (popupOrder || newOrder)?.pickupAt) && (
-                    <div className="mb-4 bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                    <div className="mb-2 bg-orange-50 border border-orange-200 rounded-lg p-2 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
                         <Calendar className="w-4 h-4 text-orange-600" />
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wider">
                           Takeaway Order
                         </p>
-                        {(popupOrder || newOrder)?.pickupAt && (
-                          <p className="text-sm font-semibold text-orange-900 mt-0.5">
-                            Pickup at{" "}
-                            {new Date(
-                              (popupOrder || newOrder).pickupAt,
-                            ).toLocaleString("en-US", {
-                              day: "numeric",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              hour12: true,
-                            })}
-                          </p>
-                        )}
+                        {(() => {
+                          const activeOrder = popupOrder || newOrder;
+                          const prepTimeMinutes = getOrderPrepTimeMinutes(activeOrder);
+                          const isImmediateTakeaway =
+                            activeOrder?.fulfillmentType === "takeaway" &&
+                            activeOrder?.order_type === "IMMEDIATE";
+
+                          return (
+                            <>
+                              {isImmediateTakeaway && (
+                                <p className="text-sm font-semibold text-orange-900 mt-0.5">
+                                  Prepare now
+                                </p>
+                              )}
+                              {prepTimeMinutes ? (
+                                <p className="text-xs text-orange-800 mt-1">
+                                  Prep time: {prepTimeMinutes} min
+                                </p>
+                              ) : null}
+                              {activeOrder?.pickupAt && (
+                                <p className="text-xs text-orange-800 mt-1">
+                                  Ready at {formatClockTime(activeOrder.pickupAt)}
+                                </p>
+                              )}
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}
 
                   {/* DINE-IN Indicator */}
                   {(popupOrder || newOrder)?.isDineIn && (
-                    <div className="mb-4 bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
+                    <div className="mb-2 bg-indigo-50 border border-indigo-200 rounded-lg p-2 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
                         <Utensils className="w-4 h-4 text-indigo-600" />
                       </div>
                       <div>
@@ -2795,8 +2904,8 @@ export default function OrdersMain() {
                   )}
 
                   {(popupOrder || newOrder)?.scheduledAt && (
-                    <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                    <div className="mb-2 bg-green-50 border border-green-200 rounded-lg p-2 flex items-center gap-3">
+                      <div className="w-7 h-7 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                         <Calendar className="w-4 h-4 text-green-600" />
                       </div>
                       <div>
@@ -2820,7 +2929,7 @@ export default function OrdersMain() {
                   )}
 
                   {/* Customer info */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <h4 className="text-sm font-semibold text-gray-900">
                       {(popupOrder || newOrder)?.items?.[0]?.name ||
                         "New Order"}
@@ -2840,10 +2949,10 @@ export default function OrdersMain() {
                   </div>
 
                   {/* Details Accordion */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <button
                       onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
-                      className="w-full flex items-center justify-between py-2 border-b border-gray-200">
+                      className="w-full flex items-center justify-between py-1.5 border-b border-gray-200">
                       <div className="flex items-center gap-2">
                         <svg
                           className="w-5 h-5 text-gray-700"
@@ -2882,14 +2991,14 @@ export default function OrdersMain() {
                           exit={{ height: 0, opacity: 0 }}
                           transition={{ duration: 0.2 }}
                           className="overflow-hidden">
-                          <div className="py-3 space-y-3">
+                          <div className="py-2 space-y-2">
                             {(popupOrder || newOrder)?.items?.map(
                               (item, index) => (
                                 <div
                                   key={index}
                                   className="flex items-start gap-3">
                                   <div
-                                    className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${item.isVeg ? "bg-green-500" : "bg-red-500"}`}></div>
+                                    className={`w-2 h-2 rounded-full mt-1 shrink-0 ${item.isVeg ? "bg-green-500" : "bg-red-500"}`}></div>
                                   <div className="flex-1">
                                     <div className="flex items-start justify-between">
                                       <p className="text-sm font-medium text-gray-900">
@@ -2913,7 +3022,7 @@ export default function OrdersMain() {
 
                   {/* Cutlery preference */}
                   <div
-                    className={`mb-4 flex items-center gap-2 rounded-lg p-3 ${(popupOrder || newOrder)?.sendCutlery === false
+                    className={`mb-2 flex items-center gap-2 rounded-lg p-2 ${(popupOrder || newOrder)?.sendCutlery === false
                         ? "bg-orange-50"
                         : "bg-gray-50"
                       }`}>
@@ -2944,7 +3053,7 @@ export default function OrdersMain() {
                   </div>
 
                   {/* Total bill */}
-                  <div className="mb-4 flex items-center justify-between py-3 border-y border-gray-200">
+                  <div className="mb-2 flex items-center justify-between py-2 border-y border-gray-200">
                     <div className="flex items-center gap-2">
                       <svg
                         className="w-5 h-5 text-gray-700"
@@ -2976,7 +3085,7 @@ export default function OrdersMain() {
                       raw != null ? String(raw).toLowerCase().trim() : "";
                     const isCod = m === "cash" || m === "cod";
                     return (
-                      <div className="mb-4 flex items-center justify-between py-2">
+                      <div className="mb-2 flex items-center justify-between py-1">
                         <span className="text-sm font-medium text-gray-700">
                           Payment
                         </span>
@@ -2988,36 +3097,41 @@ export default function OrdersMain() {
                     );
                   })()}
 
-                  {/* Preparation time */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-sm font-medium text-gray-700">
-                        Preparation time
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setPrepTime(Math.max(1, prepTime - 1))}
-                          className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
-                          <Minus className="w-4 h-4 text-gray-700" />
-                        </button>
-                        <span className="text-base font-semibold text-gray-900 min-w-[60px] text-center">
-                          {prepTime} mins
-                        </span>
-                        <button
-                          onClick={() => setPrepTime(prepTime + 1)}
-                          className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors">
-                          <Plus className="w-4 h-4 text-gray-700" />
-                        </button>
+                  {(() => {
+                    const activeOrder = popupOrder || newOrder;
+                    const prepTimeMinutes = getOrderPrepTimeMinutes(activeOrder);
+                    if (!prepTimeMinutes) return null;
+
+                    return (
+                      <div className="mb-2 rounded-lg bg-gray-50 px-3 py-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-700">
+                            Prep time
+                          </span>
+                          <span className="text-base font-semibold text-gray-900">
+                            {prepTimeMinutes} mins
+                          </span>
+                        </div>
+                        {activeOrder?.pickupAt && (
+                          <div className="mt-2 flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700">
+                              Ready at
+                            </span>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {formatClockTime(activeOrder.pickupAt)}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
                 </div>
 
-                <div className="px-4 pb-4 pt-3 border-t border-gray-200 bg-white">
-                  <div className="space-y-3">
+                <div className="px-4 pb-4 pt-2 border-t border-gray-200 bg-white">
+                  <div className="space-y-2">
                     <div
                       ref={acceptSliderRef}
-                      className="relative h-14 rounded-2xl bg-gray-900 overflow-hidden select-none touch-pan-y">
+                      className="relative h-12 rounded-2xl bg-gray-900 overflow-hidden select-none touch-pan-y">
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-blue-600"
                         initial={{ width: "100%" }}
@@ -3068,7 +3182,7 @@ export default function OrdersMain() {
                     <button
                       onClick={handleRejectClick}
                       disabled={isAcceptingOrder}
-                      className="w-full bg-white border-2 border-red-500 text-red-600 py-3 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60">
+                      className="w-full bg-white border-2 border-red-500 text-red-600 py-2.5 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60">
                       Reject Order
                     </button>
                   </div>
@@ -3819,7 +3933,10 @@ function PreparingOrders({
           );
 
           const transformedOrders = preparingOrders.map((order) => {
-            const initialETA = order.estimatedDeliveryTime || 30; // in minutes
+            const initialETA =
+              Number(order.prep_time) > 0
+                ? Number(order.prep_time)
+                : order.estimatedDeliveryTime || 30; // in minutes
             const preparingTimestamp = order.tracking?.preparing?.timestamp
               ? new Date(order.tracking.preparing.timestamp)
               : new Date(order.createdAt); // Fallback to createdAt if preparing timestamp not available

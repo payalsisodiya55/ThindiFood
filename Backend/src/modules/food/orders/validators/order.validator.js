@@ -11,7 +11,8 @@ const orderItemSchema = z.object({
     quantity: z.number().int().min(1),
     isVeg: z.boolean().optional().default(true),
     image: z.string().optional(),
-    notes: z.string().optional()
+    notes: z.string().optional(),
+    preparationTime: z.union([z.string(), z.number()]).optional()
 });
 
 const addressSchema = z.object({
@@ -110,6 +111,7 @@ export function validateCreateOrderDto(body) {
 
         sendCutlery: z.boolean().optional(),
         fulfillmentType: z.enum(['delivery', 'takeaway']).optional(),
+        order_type: z.enum(['IMMEDIATE', 'SCHEDULED']).optional(),
         pickupAt: z.string().optional(),
         // 'razorpay_qr' means COD-style flow, but payment is collected via Razorpay QR at delivery.
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet']),
@@ -130,6 +132,10 @@ export function validateCreateOrderDto(body) {
             });
         }
         if (data.fulfillmentType === 'takeaway') {
+            const takeawayOrderType = data.order_type === 'SCHEDULED' ? 'SCHEDULED' : 'IMMEDIATE';
+            if (takeawayOrderType !== 'SCHEDULED') {
+                return;
+            }
             if (!data.pickupAt) {
                 ctx.addIssue({
                     code: z.ZodIssueCode.custom,

@@ -285,42 +285,68 @@ function extractOrderFromApiResponse(response) {
   return null
 }
 
+function isSameOrderIdentity(nextOrderLike, previousOrderLike) {
+  if (!nextOrderLike || !previousOrderLike) return false
+
+  const nextIds = [
+    nextOrderLike?._id,
+    nextOrderLike?.id,
+    nextOrderLike?.orderId,
+    nextOrderLike?.mongoId,
+  ]
+    .map(normalizeLookupId)
+    .filter(Boolean)
+
+  const previousIds = [
+    previousOrderLike?._id,
+    previousOrderLike?.id,
+    previousOrderLike?.orderId,
+    previousOrderLike?.mongoId,
+  ]
+    .map(normalizeLookupId)
+    .filter(Boolean)
+
+  if (nextIds.length === 0 || previousIds.length === 0) return false
+  return nextIds.some((id) => previousIds.includes(id))
+}
+
 const transformOrderForTracking = (apiOrder, previousOrder = null, explicitRestaurantCoords = null, explicitRestaurantAddress = null) => {
-  const restaurantCoords = explicitRestaurantCoords || getRestaurantCoordsFromOrder(apiOrder, previousOrder?.restaurantLocation?.coordinates)
-  const restaurantAddress = getRestaurantAddressFromOrder(apiOrder, previousOrder, explicitRestaurantAddress)
+  const safePreviousOrder = isSameOrderIdentity(apiOrder, previousOrder) ? previousOrder : null
+  const restaurantCoords = explicitRestaurantCoords || getRestaurantCoordsFromOrder(apiOrder, safePreviousOrder?.restaurantLocation?.coordinates)
+  const restaurantAddress = getRestaurantAddressFromOrder(apiOrder, safePreviousOrder, explicitRestaurantAddress)
   // API returns `deliveryAddress`; some paths use `address`
   const addr = apiOrder?.address || apiOrder?.deliveryAddress || {}
-  const customerCoordsResolved = getCustomerCoordsFromApiOrder(apiOrder, previousOrder)
+  const customerCoordsResolved = getCustomerCoordsFromApiOrder(apiOrder, safePreviousOrder)
 
   return {
     id: apiOrder?.orderId || apiOrder?._id,
     mongoId: apiOrder?._id || null,
     orderId: apiOrder?.orderId || apiOrder?._id,
-    restaurant: apiOrder?.restaurantName || previousOrder?.restaurant || 'Restaurant',
+    restaurant: apiOrder?.restaurantName || safePreviousOrder?.restaurant || 'Restaurant',
     restaurantPhone:
       apiOrder?.restaurantPhone ||
       apiOrder?.restaurantId?.phone ||
       apiOrder?.restaurantId?.ownerPhone ||
       apiOrder?.restaurant?.phone ||
       apiOrder?.restaurant?.ownerPhone ||
-      previousOrder?.restaurantPhone ||
+      safePreviousOrder?.restaurantPhone ||
       '',
     restaurantAddress,
-    restaurantId: apiOrder?.restaurantId || previousOrder?.restaurantId || null,
-    userId: apiOrder?.userId || previousOrder?.userId || null,
-    userName: apiOrder?.userName || apiOrder?.userId?.name || apiOrder?.userId?.fullName || previousOrder?.userName || '',
-    userPhone: apiOrder?.userPhone || apiOrder?.userId?.phone || previousOrder?.userPhone || '',
+    restaurantId: apiOrder?.restaurantId || safePreviousOrder?.restaurantId || null,
+    userId: apiOrder?.userId || safePreviousOrder?.userId || null,
+    userName: apiOrder?.userName || apiOrder?.userId?.name || apiOrder?.userId?.fullName || safePreviousOrder?.userName || '',
+    userPhone: apiOrder?.userPhone || apiOrder?.userId?.phone || safePreviousOrder?.userPhone || '',
     address: {
-      street: addr?.street || previousOrder?.address?.street || '',
-      city: addr?.city || previousOrder?.address?.city || '',
-      state: addr?.state || previousOrder?.address?.state || '',
-      zipCode: addr?.zipCode || previousOrder?.address?.zipCode || '',
-      additionalDetails: addr?.additionalDetails || previousOrder?.address?.additionalDetails || '',
+      street: addr?.street || safePreviousOrder?.address?.street || '',
+      city: addr?.city || safePreviousOrder?.address?.city || '',
+      state: addr?.state || safePreviousOrder?.address?.state || '',
+      zipCode: addr?.zipCode || safePreviousOrder?.address?.zipCode || '',
+      additionalDetails: addr?.additionalDetails || safePreviousOrder?.address?.additionalDetails || '',
       formattedAddress: addr?.formattedAddress ||
         (addr?.street && addr?.city
           ? `${addr.street}${addr.additionalDetails ? `, ${addr.additionalDetails}` : ''}, ${addr.city}${addr.state ? `, ${addr.state}` : ''}${addr.zipCode ? ` ${addr.zipCode}` : ''}`
-          : previousOrder?.address?.formattedAddress || addr?.city || ''),
-      coordinates: customerCoordsResolved || addr?.location?.coordinates || previousOrder?.address?.coordinates || null
+          : safePreviousOrder?.address?.formattedAddress || addr?.city || ''),
+      coordinates: customerCoordsResolved || addr?.location?.coordinates || safePreviousOrder?.address?.coordinates || null
     },
     restaurantLocation: {
       coordinates: restaurantCoords
@@ -330,35 +356,40 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
       variantName: item.variantName || '',
       quantity: item.quantity,
       price: item.price
-    })) || previousOrder?.items || [],
-    total: apiOrder?.pricing?.total || previousOrder?.total || 0,
+    })) || safePreviousOrder?.items || [],
+    total: apiOrder?.pricing?.total || safePreviousOrder?.total || 0,
     // Backend canonical field is orderStatus; keep legacy `status` for UI compatibility.
-    status: apiOrder?.orderStatus || apiOrder?.status || previousOrder?.status || 'pending',
+    status: apiOrder?.orderStatus || apiOrder?.status || safePreviousOrder?.status || 'pending',
+    fulfillmentType: apiOrder?.fulfillmentType || safePreviousOrder?.fulfillmentType || 'delivery',
+    pickupAt: apiOrder?.pickupAt || safePreviousOrder?.pickupAt || null,
+    order_type: apiOrder?.order_type || safePreviousOrder?.order_type || null,
+    prep_time: apiOrder?.prep_time ?? safePreviousOrder?.prep_time ?? 0,
+    start_time: apiOrder?.start_time || safePreviousOrder?.start_time || null,
     deliveryPartner: apiOrder?.deliveryPartnerId ? {
       name: apiOrder.deliveryPartnerId.name || apiOrder.deliveryPartnerId.fullName || 'Delivery Partner',
       phone: apiOrder.deliveryPartnerId.phone || apiOrder.deliveryPartnerId.phoneNumber || '',
       avatar: apiOrder.deliveryPartnerId.avatar || apiOrder.deliveryPartnerId.profilePicture || null
-    } : (previousOrder?.deliveryPartner || null),
-    deliveryPartnerId: apiOrder?.deliveryPartnerId?._id || apiOrder?.deliveryPartnerId || apiOrder?.dispatch?.deliveryPartnerId?._id || apiOrder?.dispatch?.deliveryPartnerId || apiOrder?.assignmentInfo?.deliveryPartnerId || null,
-    dispatch: apiOrder?.dispatch || previousOrder?.dispatch || null,
-    assignmentInfo: apiOrder?.assignmentInfo || previousOrder?.assignmentInfo || null,
-    tracking: apiOrder?.tracking || previousOrder?.tracking || {},
-    deliveryState: apiOrder?.deliveryState || previousOrder?.deliveryState || null,
-    createdAt: apiOrder?.createdAt || previousOrder?.createdAt || null,
-    totalAmount: apiOrder?.pricing?.total || apiOrder?.totalAmount || previousOrder?.totalAmount || 0,
-    deliveryFee: apiOrder?.pricing?.deliveryFee || apiOrder?.deliveryFee || previousOrder?.deliveryFee || 0,
-    gst: apiOrder?.pricing?.tax || apiOrder?.pricing?.gst || apiOrder?.gst || apiOrder?.tax || previousOrder?.gst || 0,
+    } : (safePreviousOrder?.deliveryPartner || null),
+    deliveryPartnerId: apiOrder?.deliveryPartnerId?._id || apiOrder?.deliveryPartnerId || apiOrder?.dispatch?.deliveryPartnerId?._id || apiOrder?.dispatch?.deliveryPartnerId || apiOrder?.assignmentInfo?.deliveryPartnerId || safePreviousOrder?.deliveryPartnerId || null,
+    dispatch: apiOrder?.dispatch || safePreviousOrder?.dispatch || null,
+    assignmentInfo: apiOrder?.assignmentInfo || safePreviousOrder?.assignmentInfo || null,
+    tracking: apiOrder?.tracking || safePreviousOrder?.tracking || {},
+    deliveryState: apiOrder?.deliveryState || safePreviousOrder?.deliveryState || null,
+    createdAt: apiOrder?.createdAt || safePreviousOrder?.createdAt || null,
+    totalAmount: apiOrder?.pricing?.total || apiOrder?.totalAmount || safePreviousOrder?.totalAmount || 0,
+    deliveryFee: apiOrder?.pricing?.deliveryFee || apiOrder?.deliveryFee || safePreviousOrder?.deliveryFee || 0,
+    gst: apiOrder?.pricing?.tax || apiOrder?.pricing?.gst || apiOrder?.gst || apiOrder?.tax || safePreviousOrder?.gst || 0,
     packagingFee: apiOrder?.pricing?.packagingFee || apiOrder?.packagingFee || 0,
     platformFee: apiOrder?.pricing?.platformFee || apiOrder?.platformFee || 0,
     discount: apiOrder?.pricing?.discount || apiOrder?.discount || 0,
     subtotal: apiOrder?.pricing?.subtotal || apiOrder?.subtotal || 0,
-    paymentMethod: apiOrder?.paymentMethod || apiOrder?.payment?.method || previousOrder?.paymentMethod || null,
-    payment: apiOrder?.payment || previousOrder?.payment || null,
+    paymentMethod: apiOrder?.paymentMethod || apiOrder?.payment?.method || safePreviousOrder?.paymentMethod || null,
+    payment: apiOrder?.payment || safePreviousOrder?.payment || null,
     // Preserve delivery OTP code received via socket event.
     // API responses intentionally strip the secret code for security,
     // so without preserving it the UI would lose the OTP on each poll refresh.
     deliveryVerification: (() => {
-      const prevDV = previousOrder?.deliveryVerification || null
+      const prevDV = safePreviousOrder?.deliveryVerification || null
       const apiDV = apiOrder?.deliveryVerification || null
       const handoverOtp = apiOrder?.handoverOtp || null
       
@@ -1385,6 +1416,13 @@ export default function OrderTracking() {
     )
   }
 
+  const readyInMinutes = (() => {
+    if (order?.fulfillmentType !== "takeaway" || !order?.pickupAt) return null
+    const readyAtMs = new Date(order.pickupAt).getTime()
+    if (!Number.isFinite(readyAtMs)) return null
+    return Math.max(0, Math.ceil((readyAtMs - Date.now()) / 60000))
+  })()
+
   const statusConfig = {
     placed: {
       title: "Order Placed",
@@ -1400,7 +1438,9 @@ export default function OrderTracking() {
     },
     preparing: {
       title: "Food is being prepared",
-      subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Cooking your meal",
+      subtitle: order?.fulfillmentType === "takeaway"
+        ? (typeof readyInMinutes === 'number' ? `Ready in ${readyInMinutes} mins` : "Preparing your pickup")
+        : (typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Cooking your meal"),
       color: "bg-[#00c87e]",
       iconType: 'food'
     },

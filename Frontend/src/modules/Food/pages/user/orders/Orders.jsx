@@ -296,6 +296,10 @@ export default function Orders() {
               pricing: order.pricing || {}, // Keep full pricing object for discounts, coupons
               payment: order.payment || {},
               paymentMethod: order.payment?.method || order.paymentMethod,
+              fulfillmentType: order.fulfillmentType || 'delivery',
+              pickupAt: order.pickupAt || null,
+              order_type: order.order_type || null,
+              prep_time: order.prep_time || 0,
               restaurant: order.restaurantId?.restaurantName || order.restaurantId?.name || order.restaurantName || 'Restaurant',
               restaurantId: order.restaurantId?._id || order.restaurantId,
               restaurantSlug: order.restaurantId?.slug || null,

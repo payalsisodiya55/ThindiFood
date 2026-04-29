@@ -165,6 +165,38 @@ function pushStatusHistory(order, { byRole, byId, from, to, note = "" }) {
   });
 }
 
+function parsePreparationTimeToMinutes(rawValue) {
+  if (rawValue == null) return null;
+
+  if (typeof rawValue === "number") {
+    return Number.isFinite(rawValue) && rawValue > 0 ? Math.round(rawValue) : null;
+  }
+
+  const value = String(rawValue).trim().toLowerCase();
+  if (!value) return null;
+
+  const matches = [...value.matchAll(/(\d+(?:\.\d+)?)/g)]
+    .map((match) => Number(match[1]))
+    .filter((num) => Number.isFinite(num) && num > 0);
+
+  if (matches.length === 0) return null;
+  return Math.ceil(Math.max(...matches));
+}
+
+function getMaxPreparationTime(items = []) {
+  const prepMinutes = (items || [])
+    .map((item) => parsePreparationTimeToMinutes(item?.preparationTime))
+    .filter((mins) => Number.isFinite(mins) && mins > 0);
+
+  return prepMinutes.length > 0 ? Math.max(...prepMinutes) : 30;
+}
+
+function shouldConfirmOnCreate(paymentMethod) {
+  return ["cash", "wallet", "razorpay_qr", "counter"].includes(
+    String(paymentMethod || "").toLowerCase(),
+  );
+}
+
 const USER_CANCEL_WINDOW_MS = 60 * 1000;
 const USER_CANCEL_WINDOW_STATUSES = new Set([
   "confirmed",
@@ -1184,21 +1216,32 @@ export async function createOrder(userId, dto) {
   const dispatchMode = settings?.dispatchMode || "manual";
   const fulfillmentType =
     dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery";
+  const prepTimeMinutes = getMaxPreparationTime(dto.items);
+  const requestedTakeawayOrderType =
+    dto.order_type === "SCHEDULED" || dto.pickupAt ? "SCHEDULED" : "IMMEDIATE";
+  const takeawayOrderType =
+    fulfillmentType === "takeaway" ? requestedTakeawayOrderType : null;
   let pickupAt = null;
+  let startTime = null;
   if (fulfillmentType === "takeaway") {
-    if (!dto.pickupAt) {
-      throw new ValidationError(
-        "Pickup time is required for takeaway orders",
-      );
+    if (takeawayOrderType === "SCHEDULED") {
+      if (!dto.pickupAt) {
+        throw new ValidationError(
+          "Pickup time is required for takeaway orders",
+        );
+      }
+      const parsedPickupAt = new Date(dto.pickupAt);
+      if (Number.isNaN(parsedPickupAt.getTime())) {
+        throw new ValidationError("Invalid pickup time");
+      }
+      if (parsedPickupAt <= new Date()) {
+        throw new ValidationError("Pickup time must be in the future");
+      }
+      pickupAt = parsedPickupAt;
+    } else {
+      startTime = new Date();
+      pickupAt = new Date(startTime.getTime() + prepTimeMinutes * 60000);
     }
-    const parsedPickupAt = new Date(dto.pickupAt);
-    if (Number.isNaN(parsedPickupAt.getTime())) {
-      throw new ValidationError("Invalid pickup time");
-    }
-    if (parsedPickupAt <= new Date()) {
-      throw new ValidationError("Pickup time must be in the future");
-    }
-    pickupAt = parsedPickupAt;
   }
 
   const deliveryAddress = dto.address
@@ -1220,6 +1263,10 @@ export async function createOrder(userId, dto) {
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
+  const immediateTakeawayConfirmed =
+    fulfillmentType === "takeaway" &&
+    takeawayOrderType === "IMMEDIATE" &&
+    shouldConfirmOnCreate(paymentMethod);
 
   // Ensure pricing is present and consistent.
   const computedSubtotal = (dto.items || []).reduce((sum, item) => {
@@ -1379,7 +1426,7 @@ export async function createOrder(userId, dto) {
     ...(deliveryAddress ? { deliveryAddress } : {}),
     pricing: normalizedPricing,
     payment,
-    orderStatus: "created",
+    orderStatus: immediateTakeawayConfirmed ? "confirmed" : "created",
     ...(orderType === "food"
       ? { dispatch: { modeAtCreation: dispatchMode, status: "unassigned" } }
       : {}),
@@ -1388,14 +1435,19 @@ export async function createOrder(userId, dto) {
         at: new Date(),
         byRole: "SYSTEM",
         from: "",
-        to: "created",
-        note: "Order placed",
+        to: immediateTakeawayConfirmed ? "confirmed" : "created",
+        note: immediateTakeawayConfirmed
+          ? "Immediate takeaway order confirmed"
+          : "Order placed",
       },
     ],
 
     sendCutlery: dto.sendCutlery !== false,
     deliveryFleet: orderType === "food" ? dto.deliveryFleet || "standard" : "quick",
     fulfillmentType,
+    order_type: takeawayOrderType,
+    prep_time: fulfillmentType === "takeaway" ? prepTimeMinutes : 0,
+    start_time: startTime,
     scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
     pickupAt,
     riderEarning,
@@ -1606,11 +1658,24 @@ export async function verifyPayment(userId, dto) {
   order.payment.status = "paid";
   order.payment.razorpay.paymentId = dto.razorpayPaymentId;
   order.payment.razorpay.signature = dto.razorpaySignature;
+  const isImmediateTakeaway =
+    order.fulfillmentType === "takeaway" && order.order_type === "IMMEDIATE";
+  const fromStatus = order.orderStatus;
+  if (isImmediateTakeaway) {
+    const now = new Date();
+    const prepTimeMinutes =
+      Number.isFinite(Number(order.prep_time)) && Number(order.prep_time) > 0
+        ? Number(order.prep_time)
+        : 30;
+    order.start_time = now;
+    order.pickupAt = new Date(now.getTime() + prepTimeMinutes * 60000);
+    order.orderStatus = "confirmed";
+  }
   pushStatusHistory(order, {
     byRole: "USER",
     byId: userId,
-    from: order.orderStatus,
-    to: "created",
+    from: fromStatus,
+    to: isImmediateTakeaway ? "confirmed" : "created",
     note: "Payment verified",
   });
   await order.save();

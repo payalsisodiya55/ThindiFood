@@ -326,12 +326,25 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
 
   const restaurantName =
     activeOrder.restaurant || activeOrder.restaurantName || "Restaurant";
+  const readyInMinutes = (() => {
+    if (activeOrder?.fulfillmentType !== "takeaway" || !activeOrder?.pickupAt) {
+      return null;
+    }
+    const readyAtMs = new Date(activeOrder.pickupAt).getTime();
+    if (!Number.isFinite(readyAtMs)) return null;
+    return Math.max(0, Math.ceil((readyAtMs - Date.now()) / 60000));
+  })();
   const statusText = (() => {
     const s = String(orderStatus);
     const p = String(orderPhase);
 
     if (s === "confirmed") return "Order confirmed";
-    if (s === "preparing" || s === "created" || s === "pending") return "Preparing your order";
+    if (s === "preparing" || s === "created" || s === "pending") {
+      if (activeOrder?.fulfillmentType === "takeaway" && typeof readyInMinutes === "number") {
+        return `Ready in ${readyInMinutes} mins`;
+      }
+      return "Preparing your order";
+    }
     if (s === "ready_for_pickup") return "Ready for pickup";
 
     if (s === "reached_pickup" || p === "at_pickup") return "Ready for your pickup";
