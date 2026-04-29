@@ -428,7 +428,7 @@ export default function Cart() {
   const availablePickupHourOptions = useMemo(() => {
     const seen = new Set()
     return availablePickupTimeSlots.filter((slot) => {
-      const key = `${slot.hour12}-${slot.period}`
+      const key = slot.hour12
       if (seen.has(key)) return false
       seen.add(key)
       return true
@@ -436,12 +436,27 @@ export default function Cart() {
   }, [availablePickupTimeSlots])
 
   const availablePickupMinuteOptions = useMemo(() => {
-    if (!pickupHour12 || !pickupPeriod) return []
+    if (!pickupHour12) return []
 
-    return availablePickupTimeSlots.filter(
-      (slot) => slot.hour12 === pickupHour12 && slot.period === pickupPeriod,
-    )
+    const seen = new Set()
+    return availablePickupTimeSlots.filter((slot) => {
+      if (slot.hour12 !== pickupHour12) return false
+      if (pickupPeriod && slot.period !== pickupPeriod) return false
+      if (seen.has(slot.minute)) return false
+      seen.add(slot.minute)
+      return true
+    })
   }, [availablePickupTimeSlots, pickupHour12, pickupPeriod])
+
+  const availablePickupPeriodOptions = useMemo(() => {
+    if (!pickupHour12) return pickupPeriodOptions
+
+    return pickupPeriodOptions.filter((period) =>
+      availablePickupTimeSlots.some(
+        (slot) => slot.hour12 === pickupHour12 && slot.period === period,
+      ),
+    )
+  }, [availablePickupTimeSlots, pickupHour12, pickupPeriodOptions])
 
   // Reset scheduledTime if it's no longer valid in the new slots
   useEffect(() => {
@@ -492,6 +507,43 @@ export default function Cart() {
   }, [pickupTime])
 
   useEffect(() => {
+    if (!isPickupScheduled || !pickupHour12) return
+
+    if (availablePickupPeriodOptions.length === 1) {
+      const [onlyPeriod] = availablePickupPeriodOptions
+      if (pickupPeriod !== onlyPeriod) {
+        setPickupPeriod(onlyPeriod)
+      }
+      return
+    }
+
+    if (pickupPeriod && !availablePickupPeriodOptions.includes(pickupPeriod)) {
+      setPickupPeriod("")
+    }
+  }, [
+    isPickupScheduled,
+    pickupHour12,
+    pickupPeriod,
+    availablePickupPeriodOptions,
+  ])
+
+  useEffect(() => {
+    if (!isPickupScheduled || !pickupMinute) return
+
+    const minuteStillAvailable = availablePickupMinuteOptions.some(
+      (slot) => slot.minute === pickupMinute,
+    )
+
+    if (!minuteStillAvailable) {
+      setPickupMinute("")
+    }
+  }, [
+    isPickupScheduled,
+    pickupMinute,
+    availablePickupMinuteOptions,
+  ])
+
+  useEffect(() => {
     if (!isPickupScheduled || !pickupHour12 || !pickupPeriod) return
     const hour = Number.parseInt(pickupHour12, 10)
     const minute = Number.parseInt(pickupMinute, 10)
@@ -507,6 +559,11 @@ export default function Cart() {
   useEffect(() => {
     if (!isPickupScheduled) return
 
+    if (!pickupTime && availablePickupTimeSlots.length > 0) {
+      setPickupTime(availablePickupTimeSlots[0].value)
+      return
+    }
+
     const selectedValue =
       pickupHour12 && pickupMinute && pickupPeriod
         ? (() => {
@@ -520,11 +577,16 @@ export default function Cart() {
       selectedValue &&
       !availablePickupTimeSlots.some((slot) => slot.value === selectedValue)
     ) {
-      setPickupTime("")
-      setPickupMinute("")
+      if (availablePickupTimeSlots.length > 0) {
+        setPickupTime(availablePickupTimeSlots[0].value)
+      } else {
+        setPickupTime("")
+        setPickupMinute("")
+      }
     }
   }, [
     isPickupScheduled,
+    pickupTime,
     pickupHour12,
     pickupMinute,
     pickupPeriod,
@@ -2709,7 +2771,7 @@ export default function Cart() {
                             >
                               <option value="">HH</option>
                               {availablePickupHourOptions.map((slot) => (
-                                <option key={`${slot.hour12}-${slot.period}`} value={slot.hour12}>
+                                <option key={slot.hour12} value={slot.hour12}>
                                   {slot.hour12}
                                 </option>
                               ))}
@@ -2738,15 +2800,7 @@ export default function Cart() {
                               className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
                             >
                               <option value="">AM/PM</option>
-                              {pickupPeriodOptions
-                                .filter((period) =>
-                                  availablePickupTimeSlots.some(
-                                    (slot) =>
-                                      (!pickupHour12 || slot.hour12 === pickupHour12) &&
-                                      slot.period === period,
-                                  ),
-                                )
-                                .map((period) => (
+                              {availablePickupPeriodOptions.map((period) => (
                                 <option key={period} value={period}>
                                   {period}
                                 </option>
