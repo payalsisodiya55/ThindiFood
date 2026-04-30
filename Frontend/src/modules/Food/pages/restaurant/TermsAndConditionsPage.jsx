@@ -1,12 +1,10 @@
 import { motion } from "framer-motion"
-import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft } from "lucide-react"
 import api, { API_ENDPOINTS } from "@food/api"
 
 export default function TermsAndConditionsPage() {
-  const navigate = useNavigate()
   const goBack = useRestaurantBackNavigation()
   const [loading, setLoading] = useState(true)
   const [termsData, setTermsData] = useState({ title: "Terms and Conditions", content: "", updatedAt: "" })
@@ -14,11 +12,11 @@ export default function TermsAndConditionsPage() {
   useEffect(() => {
     const fetchTerms = async () => {
       try {
-        const response = await api.get(API_ENDPOINTS.ADMIN.TERMS_PUBLIC)
+        const response = await api.get(API_ENDPOINTS.ADMIN.RESTAURANT_TERMS_PUBLIC)
         if (response?.data?.success) {
           const payload = response?.data?.data || {}
           setTermsData({
-            title: payload?.title || "Terms and Conditions",
+            title: payload?.title || "Restaurant Terms and Conditions",
             content: payload?.content || "",
             updatedAt: payload?.updatedAt || ""
           })
@@ -54,7 +52,7 @@ export default function TermsAndConditionsPage() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6"
         >
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">{termsData.title || "Terms and Conditions"}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{termsData.title || "Restaurant Terms and Conditions"}</h2>
             <p className="text-sm text-gray-600">
               Last updated: {(termsData.updatedAt ? new Date(termsData.updatedAt) : new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>

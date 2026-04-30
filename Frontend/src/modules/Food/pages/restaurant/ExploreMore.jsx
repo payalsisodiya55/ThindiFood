@@ -34,6 +34,7 @@ import {
   Trash2,
   TicketPercent,
   Gift,
+  Shield,
 } from "lucide-react"
 import { Card, CardContent } from "@food/components/ui/card"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
@@ -801,6 +802,8 @@ export default function ExploreMore() {
   const helpItems = [
     { id: 1, label: "Support", icon: LifeBuoy, route: "/food/restaurant/help-centre/support" },
     { id: 2, label: "Share your feedback", icon: Edit, route: "/food/restaurant/Share-Feedback" },
+    { id: 3, label: "Terms & conditions", icon: FileCheck, route: "/food/restaurant/terms" },
+    { id: 4, label: "Privacy policy", icon: Shield, route: "/food/restaurant/privacy" },
   ]
 
   const accountingItems = [
@@ -1422,8 +1425,7 @@ export default function ExploreMore() {
                     className="hover:text-gray-700 transition-colors border-b border-dotted border-gray-400"
                     onClick={(e) => {
                       e.preventDefault()
-                      // Navigate to terms of service
-                      debugLog("Terms of Service clicked")
+                      navigate("/food/restaurant/terms")
                     }}
                   >
                     Terms of Service
@@ -1434,8 +1436,7 @@ export default function ExploreMore() {
                     className="hover:text-gray-700 transition-colors border-b border-dotted border-gray-400"
                     onClick={(e) => {
                       e.preventDefault()
-                      // Navigate to privacy policy
-                      debugLog("Privacy Policy clicked")
+                      navigate("/food/restaurant/privacy")
                     }}
                   >
                     Privacy Policy

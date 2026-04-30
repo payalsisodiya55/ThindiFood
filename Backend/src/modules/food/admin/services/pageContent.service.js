@@ -17,21 +17,23 @@ const decodeHtmlEntities = (value) => {
         .replace(/&apos;/g, "'");
 };
 
-const normalizeLegalForResponse = (legal) => {
+const normalizeLegalForResponse = (legal, meta = {}) => {
     if (!legal || typeof legal !== 'object') return legal;
     const title = legal.title ?? '';
     const content = decodeHtmlEntities(legal.content ?? '');
-    return { ...legal, title, content };
+    return { ...legal, title, content, updatedAt: meta.updatedAt ?? null, createdAt: meta.createdAt ?? null };
 };
 
-const normalizeAboutForResponse = (about) => {
+const normalizeAboutForResponse = (about, meta = {}) => {
     if (!about || typeof about !== 'object') return about;
     return {
         ...about,
         appName: decodeHtmlEntities(about.appName ?? ''),
         version: decodeHtmlEntities(about.version ?? ''),
         description: decodeHtmlEntities(about.description ?? ''),
-        logo: decodeHtmlEntities(about.logo ?? '')
+        logo: decodeHtmlEntities(about.logo ?? ''),
+        updatedAt: meta.updatedAt ?? null,
+        createdAt: meta.createdAt ?? null
     };
 };
 
@@ -39,15 +41,15 @@ export const getPublicPageByKey = async (key) => {
     const k = normalizeKey(key);
     const doc = await FoodPageContent.findOne({ key: k }).lean();
     if (!doc) return { key: k, data: null };
-    if (k === 'about') return { key: k, data: normalizeAboutForResponse(doc.about || null) };
-    return { key: k, data: normalizeLegalForResponse(doc.legal || null) };
+    if (k === 'about') return { key: k, data: normalizeAboutForResponse(doc.about || null, doc) };
+    return { key: k, data: normalizeLegalForResponse(doc.legal || null, doc) };
 };
 
 export const getAdminPageByKey = async (key) => getPublicPageByKey(key);
 
 export const upsertLegalPage = async (key, payload, updatedBy) => {
     const k = normalizeKey(key);
-    if (!['terms', 'privacy', 'refund', 'shipping', 'cancellation'].includes(k)) {
+    if (!['terms', 'privacy', 'restaurant_terms', 'restaurant_privacy', 'refund', 'shipping', 'cancellation'].includes(k)) {
         throw new ValidationError('Invalid page key');
     }
     const title = String(payload?.title || '').trim();
@@ -67,7 +69,7 @@ export const upsertLegalPage = async (key, payload, updatedBy) => {
         { upsert: true, new: true }
     ).lean();
 
-    return { key: k, data: normalizeLegalForResponse(doc?.legal || null) };
+    return { key: k, data: normalizeLegalForResponse(doc?.legal || null, doc) };
 };
 
 export const upsertAboutPage = async (payload, updatedBy) => {
@@ -101,6 +103,6 @@ export const upsertAboutPage = async (payload, updatedBy) => {
         { upsert: true, new: true }
     ).lean();
 
-    return { key: 'about', data: normalizeAboutForResponse(doc?.about || null) };
+    return { key: 'about', data: normalizeAboutForResponse(doc?.about || null, doc) };
 };
 
