@@ -21,7 +21,21 @@ export async function getBusinessSettings(req, res, next) {
 export async function updateBusinessSettings(req, res, next) {
     try {
         const data = req.body.data ? JSON.parse(req.body.data) : {};
-        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, logoUrl, faviconUrl } = data;
+        const {
+            companyName,
+            email,
+            phoneCountryCode,
+            phoneNumber,
+            supportContactName,
+            supportContactEmail,
+            supportContactNumber,
+            address,
+            state,
+            pincode,
+            region,
+            logoUrl,
+            faviconUrl
+        } = data;
 
         // Validation
         if (!companyName || companyName.trim().length < 2 || companyName.trim().length > 50) {
@@ -42,6 +56,21 @@ export async function updateBusinessSettings(req, res, next) {
         if (pincode && !/^\d{4,10}$/.test(pincode.trim())) {
             return res.status(400).json({ success: false, message: 'Invalid pincode (4-10 digits required)' });
         }
+        if (supportContactName !== undefined && String(supportContactName).trim().length > 80) {
+            return res.status(400).json({ success: false, message: 'Support contact name is too long (max 80 characters)' });
+        }
+        if (supportContactEmail !== undefined) {
+            const normalizedSupportEmail = String(supportContactEmail || '').trim();
+            if (normalizedSupportEmail && (normalizedSupportEmail.length > 100 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedSupportEmail))) {
+                return res.status(400).json({ success: false, message: 'Invalid support email address (max 100 characters)' });
+            }
+        }
+        if (supportContactNumber !== undefined) {
+            const normalizedSupportNumber = String(supportContactNumber || '').replace(/\D/g, '');
+            if (normalizedSupportNumber && !/^\d{7,15}$/.test(normalizedSupportNumber)) {
+                return res.status(400).json({ success: false, message: 'Invalid support contact number (7-15 digits required)' });
+            }
+        }
 
         let settings = await FoodBusinessSettings.findOne();
         if (!settings) {
@@ -54,6 +83,13 @@ export async function updateBusinessSettings(req, res, next) {
             settings.phone = {
                 countryCode: phoneCountryCode || settings.phone?.countryCode || '+91',
                 number: phoneNumber || settings.phone?.number || ''
+            };
+        }
+        if (supportContactName !== undefined || supportContactEmail !== undefined || supportContactNumber !== undefined) {
+            settings.supportContact = {
+                name: supportContactName !== undefined ? String(supportContactName || '').trim() : settings.supportContact?.name || '',
+                email: supportContactEmail !== undefined ? String(supportContactEmail || '').trim() : settings.supportContact?.email || '',
+                number: supportContactNumber !== undefined ? String(supportContactNumber || '').replace(/\D/g, '') : settings.supportContact?.number || ''
             };
         }
         if (address !== undefined) settings.address = address;

@@ -6,8 +6,10 @@ import { Input } from "@food/components/ui/input"
 import { Textarea } from "@food/components/ui/textarea"
 import { Card, CardContent } from "@food/components/ui/card"
 import { orderAPI, restaurantAPI, supportAPI, authAPI } from "@food/api"
+import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { toast } from "sonner"
-import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight } from "lucide-react"
+import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight, Mail, Phone } from "lucide-react"
+
 
 export default function Support() {
   const navigate = useNavigate()
@@ -25,6 +27,7 @@ export default function Support() {
   const [loadingTickets, setLoadingTickets] = useState(false)
   const [orderSearch, setOrderSearch] = useState("")
   const [restaurantSearch, setRestaurantSearch] = useState("")
+  const [supportContact, setSupportContact] = useState(() => getCachedSettings()?.supportContact || null)
 
   useEffect(() => {
     setLoadingTickets(true)
@@ -39,6 +42,19 @@ export default function Support() {
         } catch (_) {}
         setLoadingTickets(false)
       })
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    loadBusinessSettings()
+      .then((settings) => {
+        if (!active) return
+        setSupportContact(settings?.supportContact || null)
+      })
+      .catch(() => null)
+    return () => {
+      active = false
+    }
   }, [])
 
   const orderIssues = ["Item missing", "Wrong item", "Not delivered", "Payment issue"]
@@ -231,6 +247,50 @@ export default function Support() {
             <p className="text-sm text-slate-500 mt-1">Raise a support ticket and track updates in one place.</p>
           </CardContent>
         </Card>
+
+        {(supportContact?.name || supportContact?.email || supportContact?.number) ? (
+          <Card className="bg-gradient-to-br from-white to-[#00c87e]/5 dark:from-[#1a1a1a] dark:to-[#00c87e]/10 rounded-xl shadow-sm border border-[#00c87e]/20 dark:border-[#00c87e]/30 mb-3 overflow-hidden">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-2 w-2 rounded-full bg-[#00c87e]" />
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00c87e]">Support contact</p>
+              </div>
+              
+              <div className="flex flex-col gap-4">
+                {supportContact?.name && (
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{supportContact.name}</h3>
+                )}
+                
+                <div className="flex flex-wrap gap-3">
+                  {supportContact?.email && (
+                    <a 
+                      href={`mailto:${supportContact.email}`}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-[#252525] border border-slate-100 dark:border-gray-800 hover:border-[#00c87e]/30 hover:bg-[#00c87e]/5 transition-all group"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#1a1a1a] flex items-center justify-center group-hover:bg-[#00c87e]/10 transition-colors">
+                        <Mail className="h-4 w-4 text-slate-500 group-hover:text-[#00c87e]" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">{supportContact.email}</span>
+                    </a>
+                  )}
+                  
+                  {supportContact?.number && (
+                    <a 
+                      href={`tel:${supportContact.number}`}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white dark:bg-[#252525] border border-slate-100 dark:border-gray-800 hover:border-[#00c87e]/30 hover:bg-[#00c87e]/5 transition-all group"
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-slate-50 dark:bg-[#1a1a1a] flex items-center justify-center group-hover:bg-[#00c87e]/10 transition-colors">
+                        <Phone className="h-4 w-4 text-slate-500 group-hover:text-[#00c87e]" />
+                      </div>
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white">{supportContact.number}</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
 
         <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-slate-200 dark:border-gray-800 mb-3">
           <CardContent className="p-4 space-y-4">

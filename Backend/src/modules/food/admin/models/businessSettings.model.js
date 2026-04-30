@@ -8,6 +8,11 @@ const businessSettingsSchema = new mongoose.Schema(
             countryCode: { type: String, default: '+91' },
             number: { type: String, default: '' }
         },
+        supportContact: {
+            name: { type: String, default: '' },
+            email: { type: String, default: '' },
+            number: { type: String, default: '' }
+        },
         address: { type: String, default: '' },
         state: { type: String, default: '' },
         pincode: { type: String, default: '' },

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
-import { ChevronLeft, Loader2, Send } from "lucide-react"
+import { ChevronLeft, Loader2, Send, Mail, Phone } from "lucide-react"
+
 import { restaurantAPI } from "@food/api"
+import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { toast } from "sonner"
 
@@ -41,6 +43,7 @@ export default function RestaurantSupport() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [statusFilter, setStatusFilter] = useState("")
+  const [supportContact, setSupportContact] = useState(() => getCachedSettings()?.supportContact || null)
   const [form, setForm] = useState({
     category: "orders",
     issueType: "",
@@ -79,6 +82,19 @@ export default function RestaurantSupport() {
   useEffect(() => {
     loadTickets()
   }, [statusFilter])
+
+  useEffect(() => {
+    let active = true
+    loadBusinessSettings()
+      .then((settings) => {
+        if (!active) return
+        setSupportContact(settings?.supportContact || null)
+      })
+      .catch(() => null)
+    return () => {
+      active = false
+    }
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -125,6 +141,48 @@ export default function RestaurantSupport() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-28">
+        {(supportContact?.name || supportContact?.email || supportContact?.number) ? (
+          <div className="rounded-2xl border border-[#00c87e]/20 bg-gradient-to-br from-white to-[#00c87e]/5 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="h-2 w-2 rounded-full bg-[#00c87e]" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00c87e]">Support contact</p>
+            </div>
+            
+            <div className="flex flex-col gap-4">
+              {supportContact?.name && (
+                <h3 className="text-lg font-bold text-slate-900 leading-none">{supportContact.name}</h3>
+              )}
+              
+              <div className="flex flex-wrap gap-3">
+                {supportContact?.email && (
+                  <a 
+                    href={`mailto:${supportContact.email}`}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 hover:border-[#00c87e]/30 hover:bg-[#00c87e]/5 transition-all group"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-[#00c87e]/10 transition-colors">
+                      <Mail className="h-4 w-4 text-slate-500 group-hover:text-[#00c87e]" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900">{supportContact.email}</span>
+                  </a>
+                )}
+                
+                {supportContact?.number && (
+                  <a 
+                    href={`tel:${supportContact.number}`}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-100 hover:border-[#00c87e]/30 hover:bg-[#00c87e]/5 transition-all group"
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-slate-50 flex items-center justify-center group-hover:bg-[#00c87e]/10 transition-colors">
+                      <Phone className="h-4 w-4 text-slate-500 group-hover:text-[#00c87e]" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900">{supportContact.number}</span>
+                  </a>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-xs text-slate-500">Total</p>

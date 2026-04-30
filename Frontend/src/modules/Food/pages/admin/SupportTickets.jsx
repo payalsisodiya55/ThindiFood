@@ -1,12 +1,28 @@
 import { useEffect, useMemo, useState } from "react"
-import { supportAPI } from "@food/api"
+import { adminAPI, supportAPI } from "@food/api"
+import { setCachedSettings } from "@food/utils/businessSettings"
 import { toast } from "sonner"
 
 export default function SupportTickets() {
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
+  const [contactLoading, setContactLoading] = useState(true)
+  const [contactSaving, setContactSaving] = useState(false)
   const [filters, setFilters] = useState({ status: "", type: "", source: "all" })
   const [editing, setEditing] = useState({})
+  const [contactForm, setContactForm] = useState({
+    companyName: "",
+    email: "",
+    phoneCountryCode: "+91",
+    phoneNumber: "",
+    address: "",
+    state: "",
+    pincode: "",
+    region: "India",
+    supportContactName: "",
+    supportContactEmail: "",
+    supportContactNumber: "",
+  })
 
   const stats = useMemo(() => {
     const total = tickets.length
@@ -50,10 +66,39 @@ export default function SupportTickets() {
     }
   }
 
+  const loadSupportContact = async () => {
+    setContactLoading(true)
+    try {
+      const response = await adminAPI.getBusinessSettings()
+      const settings = response?.data?.data || response?.data || {}
+      setContactForm({
+        companyName: settings.companyName || "",
+        email: settings.email || "",
+        phoneCountryCode: settings.phone?.countryCode || "+91",
+        phoneNumber: settings.phone?.number || "",
+        address: settings.address || "",
+        state: settings.state || "",
+        pincode: settings.pincode || "",
+        region: settings.region || "India",
+        supportContactName: settings.supportContact?.name || "",
+        supportContactEmail: settings.supportContact?.email || "",
+        supportContactNumber: settings.supportContact?.number || "",
+      })
+    } catch {
+      toast.error("Failed to load support contact details")
+    } finally {
+      setContactLoading(false)
+    }
+  }
+
   useEffect(() => {
     const t = setTimeout(load, 200)
     return () => clearTimeout(t)
   }, [filters.status, filters.type, filters.source])
+
+  useEffect(() => {
+    loadSupportContact()
+  }, [])
 
   const update = async (id, patch) => {
     const ticket = tickets.find((t) => String(t._id) === String(id))
@@ -66,9 +111,106 @@ export default function SupportTickets() {
     }
   }
 
+  const handleContactChange = (field, value) => {
+    setContactForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const saveSupportContact = async () => {
+    if (!contactForm.companyName.trim() || !contactForm.email.trim() || !contactForm.phoneNumber.trim()) {
+      toast.error("Business setup fields are required to save support contact")
+      return
+    }
+
+    try {
+      setContactSaving(true)
+      const response = await adminAPI.updateBusinessSettings({
+        companyName: contactForm.companyName.trim(),
+        email: contactForm.email.trim(),
+        phoneCountryCode: contactForm.phoneCountryCode || "+91",
+        phoneNumber: contactForm.phoneNumber.trim(),
+        address: contactForm.address.trim(),
+        state: contactForm.state.trim(),
+        pincode: contactForm.pincode.trim(),
+        region: contactForm.region || "India",
+        supportContactName: contactForm.supportContactName.trim(),
+        supportContactEmail: contactForm.supportContactEmail.trim(),
+        supportContactNumber: contactForm.supportContactNumber.trim(),
+      })
+      const updatedSettings = response?.data?.data || response?.data
+      if (updatedSettings) {
+        setCachedSettings(updatedSettings)
+        window.dispatchEvent(new CustomEvent("businessSettingsUpdated"))
+      }
+      toast.success("Support contact updated")
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to update support contact")
+    } finally {
+      setContactSaving(false)
+    }
+  }
+
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 space-y-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Support Contact Details</h2>
+              <p className="text-sm text-slate-500 mt-1">These details will appear at the top of both user and restaurant support pages.</p>
+            </div>
+            <button
+              type="button"
+              onClick={saveSupportContact}
+              disabled={contactLoading || contactSaving}
+              className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-medium disabled:opacity-60"
+            >
+              {contactSaving ? "Saving..." : "Save Contact"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Name</label>
+              <input
+                type="text"
+                value={contactForm.supportContactName}
+                onChange={(e) => handleContactChange("supportContactName", e.target.value)}
+                placeholder="Support contact name"
+                maxLength={80}
+                disabled={contactLoading}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email</label>
+              <input
+                type="email"
+                value={contactForm.supportContactEmail}
+                onChange={(e) => handleContactChange("supportContactEmail", e.target.value)}
+                placeholder="support@example.com"
+                maxLength={100}
+                disabled={contactLoading}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">Number</label>
+              <input
+                type="text"
+                value={contactForm.supportContactNumber}
+                onChange={(e) => handleContactChange("supportContactNumber", e.target.value.replace(/\D/g, ""))}
+                placeholder="Support contact number"
+                maxLength={15}
+                disabled={contactLoading}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6 space-y-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
