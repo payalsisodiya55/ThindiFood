@@ -4,6 +4,21 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
+import { FoodRefreshToken } from '../../../../core/refreshTokens/refreshToken.model.js';
+import { FoodItem } from '../../admin/models/food.model.js';
+import { FoodCategory } from '../../admin/models/category.model.js';
+import { FeedbackExperience } from '../../admin/models/feedbackExperience.model.js';
+import { FoodRestaurantMenu } from '../models/restaurantMenu.model.js';
+import { FoodAddon } from '../models/foodAddon.model.js';
+import { FoodRestaurantWallet } from '../models/restaurantWallet.model.js';
+import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
+import { FoodRestaurantSupportTicket } from '../models/supportTicket.model.js';
+import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
+import { FoodDiningRestaurant } from '../../dining/models/diningRestaurant.model.js';
+import { FoodRestaurantTable } from '../../dineIn/models/restaurantTable.model.js';
+import { FoodDiningOffer } from '../../dineIn/models/diningOffer.model.js';
+import { FoodGourmetRestaurant } from '../../landing/models/gourmetRestaurant.model.js';
+import { RestaurantOffer } from '../models/restaurantOffer.model.js';
 
 const normalizeName = (value) =>
     String(value || '')
@@ -1458,5 +1473,37 @@ export const listPublicOffers = async () => {
 export const getRestaurantComplaints = async (restaurantId, query = {}) => {
     const { getRestaurantComplaints: getComplaintsInternal } = await import('../../admin/services/admin.service.js');
     return getComplaintsInternal({ ...query, restaurantId });
+};
+
+export const deleteCurrentRestaurantAccount = async (restaurantId) => {
+    const restaurant = await FoodRestaurant.findById(restaurantId).select('_id');
+    if (!restaurant) {
+        throw new ValidationError('Restaurant not found');
+    }
+
+    await Promise.all([
+        FoodRefreshToken.deleteMany({ userId: restaurant._id }),
+        FoodItem.deleteMany({ restaurantId: restaurant._id }),
+        FoodCategory.deleteMany({
+            $or: [{ restaurantId: restaurant._id }, { createdByRestaurantId: restaurant._id }]
+        }),
+        FeedbackExperience.deleteMany({ userId: restaurant._id, userModel: 'FoodRestaurant' }),
+        FoodRestaurantMenu.deleteMany({ restaurantId: restaurant._id }),
+        FoodAddon.deleteMany({ restaurantId: restaurant._id }),
+        FoodRestaurantWallet.deleteMany({ restaurantId: restaurant._id }),
+        FoodRestaurantWithdrawal.deleteMany({ restaurantId: restaurant._id }),
+        FoodRestaurantSupportTicket.deleteMany({ restaurantId: restaurant._id }),
+        FoodRestaurantOutletTimings.deleteMany({ restaurantId: restaurant._id }),
+        FoodDiningRestaurant.deleteMany({ restaurantId: restaurant._id }),
+        FoodRestaurantTable.deleteMany({ restaurantId: restaurant._id }),
+        FoodDiningOffer.deleteMany({ restaurantId: restaurant._id }),
+        FoodGourmetRestaurant.deleteMany({ restaurantId: restaurant._id }),
+        FoodOffer.deleteMany({ restaurantId: restaurant._id }),
+        RestaurantOffer.deleteMany({ restaurantId: restaurant._id })
+    ]);
+
+    await FoodRestaurant.deleteOne({ _id: restaurant._id });
+
+    return { deleted: true };
 };
 

@@ -31,6 +31,7 @@ import {
   Calendar,
   MapPin,
   LogOut,
+  Trash2,
   TicketPercent,
   Gift,
 } from "lucide-react"
@@ -482,6 +483,8 @@ export default function ExploreMore() {
 
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const [deleteAccountConfirmOpen, setDeleteAccountConfirmOpen] = useState(false)
 
   const handleLogout = async () => {
     if (isLoggingOut) return // Prevent multiple clicks
@@ -611,6 +614,43 @@ export default function ExploreMore() {
       navigate("/restaurant/welcome", { replace: true })
     } finally {
       setIsLoggingOut(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (isDeletingAccount) return
+
+    setIsDeletingAccount(true)
+    setProfileOpen(false)
+
+    try {
+      await restaurantAPI.deleteAccount()
+
+      try {
+        const { signOut } = await import("firebase/auth")
+        ensureFirebaseInitialized({ enableAuth: true, enableRealtimeDb: false })
+        if (firebaseAuth.currentUser) {
+          await signOut(firebaseAuth)
+        }
+      } catch (firebaseError) {
+        debugWarn("Firebase logout failed after account deletion, continuing with cleanup:", firebaseError)
+      }
+
+      clearModuleAuth("restaurant")
+      localStorage.removeItem("restaurant_onboarding")
+      localStorage.removeItem("restaurant_accessToken")
+      localStorage.removeItem("restaurant_authenticated")
+      localStorage.removeItem("restaurant_user")
+      sessionStorage.removeItem("restaurantAuthData")
+      window.dispatchEvent(new Event("restaurantAuthChanged"))
+
+      setDeleteAccountConfirmOpen(false)
+      navigate("/food/restaurant/login", { replace: true })
+    } catch (error) {
+      debugError("Error during restaurant account deletion:", error)
+      alert(error?.response?.data?.message || "Failed to delete account. Please try again.")
+    } finally {
+      setIsDeletingAccount(false)
     }
   }
 
@@ -1012,6 +1052,25 @@ export default function ExploreMore() {
           </div>
           <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
         </motion.button>
+
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55, duration: 0.25 }}
+          onClick={() => setDeleteAccountConfirmOpen(true)}
+          className="mt-3 w-full flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-white px-4 py-4 text-left"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-100">
+              <Trash2 className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-base font-semibold text-red-700">Delete my account</p>
+              <p className="text-sm text-red-500">Permanently remove this restaurant account</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-red-400 shrink-0" />
+        </motion.button>
       </div>
 
       {/* Search Popup */}
@@ -1064,6 +1123,59 @@ export default function ExploreMore() {
                   className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
                 >
                   {isLoggingOut ? "Logging out..." : "Yes"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+
+        {deleteAccountConfirmOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/50 z-[60]"
+              onClick={() => {
+                if (!isDeletingAccount) setDeleteAccountConfirmOpen(false)
+              }}
+            />
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 24 }}
+              transition={{ duration: 0.22 }}
+              className="fixed inset-x-4 bottom-28 z-[61] mx-auto w-auto max-w-md rounded-3xl bg-white p-5 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                  <Trash2 className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Delete account?</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  This will permanently delete your restaurant account from the database.
+                </p>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeleteAccountConfirmOpen(false)}
+                  disabled={isDeletingAccount}
+                  className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeletingAccount}
+                  className="rounded-2xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                >
+                  {isDeletingAccount ? "Deleting..." : "Delete"}
                 </button>
               </div>
             </motion.div>

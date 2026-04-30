@@ -13,7 +13,8 @@ import {
     uploadRestaurantMenuImageController,
     uploadRestaurantCoverImagesController,
     uploadRestaurantMenuImagesController,
-    getRestaurantComplaintsController
+    getRestaurantComplaintsController,
+    deleteCurrentRestaurantAccountController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
@@ -115,6 +116,12 @@ router.patch('/availability', authMiddleware, requireRestaurant, async (req, res
 router.patch('/profile', authMiddleware, requireRestaurant, updateRestaurantProfileController);
 router.patch('/availability', authMiddleware, requireRestaurant, updateRestaurantAcceptingOrdersController);
 router.patch('/dining-settings', authMiddleware, requireRestaurant, updateCurrentRestaurantDiningSettingsController);
+router.delete('/profile', authMiddleware, requireRestaurant, async (req, res, next) => {
+    await invalidateCache('restaurants:*');
+    await invalidateCache('restaurant_detail:*');
+    await invalidateCache('restaurant_menu:*');
+    next();
+}, deleteCurrentRestaurantAccountController);
 router.get('/outlet-timings', authMiddleware, requireRestaurant, getCurrentRestaurantOutletTimingsController);
 router.put('/outlet-timings', authMiddleware, requireRestaurant, upsertCurrentRestaurantOutletTimingsController);
 router.get('/finance', authMiddleware, requireRestaurant, getRestaurantFinanceController);

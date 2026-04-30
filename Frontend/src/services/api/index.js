@@ -1098,6 +1098,14 @@ export const restaurantAPI = {
         restaurantCurrentCacheTime = Date.now();
         return res;
       }),
+  deleteAccount: () => {
+    restaurantCurrentInFlight = null;
+    restaurantCurrentCached = null;
+    restaurantCurrentCacheTime = 0;
+    return apiClient.delete("/food/restaurant/profile", {
+      contextModule: "restaurant",
+    });
+  },
   updateDiningSettings: (body) =>
     apiClient
       .patch("/food/restaurant/dining-settings", body ?? {}, {
@@ -2208,6 +2216,14 @@ export const userAPI = {
     apiClient.patch("/food/user/profile", body ?? {}, {
       contextModule: "user",
     }),
+  deleteAccount: () => {
+    userMeInFlight = null;
+    userMeCached = null;
+    userMeCacheTime = 0;
+    return apiClient.delete("/food/user/profile", {
+      contextModule: "user",
+    });
+  },
   /** Upload and set user profile image (multipart). Field name: file */
   uploadProfileImage: (file) => {
     if (!file) return Promise.reject(new Error("File is required"));

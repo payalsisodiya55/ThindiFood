@@ -5,6 +5,9 @@ import { Phone, Lock, ArrowRight, ShieldCheck, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
+import logo from "@/assets/2-removebg-preview.png"
+
+
 
 export default function UnifiedOTPFastLogin() {
   const RESEND_COOLDOWN_SECONDS = 60
@@ -198,9 +201,9 @@ export default function UnifiedOTPFastLogin() {
           <motion.div 
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-xl"
+            className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-3 shadow-xl p-1.5"
           >
-             <span className="text-[#00c87e] text-3xl font-black">T</span>
+             <img src={logo} alt="Thindi Logo" className="w-full h-full object-contain" />
           </motion.div>
           <motion.h1 
             initial={{ opacity: 0, y: -20 }}

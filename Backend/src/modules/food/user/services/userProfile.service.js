@@ -1,6 +1,12 @@
 import { FoodUser } from '../../../../core/users/user.model.js';
+import { FoodRefreshToken } from '../../../../core/refreshTokens/refreshToken.model.js';
 import { AuthError, ValidationError } from '../../../../core/auth/errors.js';
 import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
+import { FoodUserWallet } from '../models/userWallet.model.js';
+import { FoodSupportTicket } from '../models/supportTicket.model.js';
+import { FoodSafetyEmergencyReport } from '../../admin/models/safetyEmergencyReport.model.js';
+import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
+import { FeedbackExperience } from '../../admin/models/feedbackExperience.model.js';
 
 const parseIsoDateOrNull = (value) => {
     if (value === undefined) return undefined;
@@ -54,5 +60,23 @@ export const uploadCurrentUserProfileImage = async (userId, file) => {
     user.profileImage = String(url || '').trim();
     await user.save();
     return { profileImage: user.profileImage, user: user.toObject() };
+};
+
+export const deleteCurrentUserAccount = async (userId) => {
+    const user = await FoodUser.findById(userId).select('_id');
+    if (!user) throw new AuthError('Profile not found');
+
+    await Promise.all([
+        FoodRefreshToken.deleteMany({ userId: user._id }),
+        FoodUserWallet.deleteMany({ userId: user._id }),
+        FoodSupportTicket.deleteMany({ userId: user._id }),
+        FoodSafetyEmergencyReport.deleteMany({ userId: user._id }),
+        FoodOfferUsage.deleteMany({ userId: user._id }),
+        FeedbackExperience.deleteMany({ userId: user._id, userModel: 'FoodUser' })
+    ]);
+
+    await FoodUser.deleteOne({ _id: user._id });
+
+    return { deleted: true };
 };
 
