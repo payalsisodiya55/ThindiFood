@@ -146,9 +146,10 @@ export default function RestaurantSignup() {
         {/* Orange half-circle text block attached to the left with animation */}
         <div className="absolute inset-0 flex items-center text-white pointer-events-none">
           <div
-            className="bg-primary-orange/80 rounded-r-full py-10 xl:py-20 pl-10 xl:pl-14 pr-10 xl:pr-20 max-w-[70%] shadow-xl backdrop-blur-[1px]"
+            className="bg-[#00c87e]/80 rounded-r-full py-10 xl:py-20 pl-10 xl:pl-14 pr-10 xl:pr-20 max-w-[70%] shadow-xl backdrop-blur-[1px]"
             style={{ animation: "slideInLeft 0.8s ease-out both" }}
           >
+
             <h1 className="text-3xl xl:text-4xl font-extrabold mb-4 tracking-wide leading-tight">
               JOIN AS
               <br />
@@ -169,21 +170,24 @@ export default function RestaurantSignup() {
             className="flex items-center gap-3"
             style={{ animation: "fadeInDown 0.7s ease-out both" }}
           >
-            <div className="h-11 w-11 rounded-xl bg-primary-orange flex items-center justify-center text-white shadow-lg">
+            <div className="h-11 w-11 rounded-xl bg-[#00c87e] flex items-center justify-center text-white shadow-lg">
               <UtensilsCrossed className="h-6 w-6" />
             </div>
+
             <div className="flex flex-col items-start">
-              <span className="text-2xl font-bold tracking-wide text-primary-orange">
+              <span className="text-2xl font-bold tracking-wide text-[#00c87e]">
                 {companyName}
               </span>
+
               <span className="text-xs font-medium text-gray-500">
                 Restaurant Panel
               </span>
             </div>
           </div>
-          <div className="absolute right-6 sm:right-10 lg:right-16 top-6 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-medium text-emerald-700 shadow-sm">
+          <div className="absolute right-6 sm:right-10 lg:right-16 top-6 px-3 py-1 rounded-full bg-[#00c87e]/10 border border-[#00c87e]/20 text-[11px] font-medium text-[#00c87e] shadow-sm">
             Software Version : 1.0.0
           </div>
+
         </div>
 
         {/* Centered content (title + form + info) */}
@@ -222,9 +226,10 @@ export default function RestaurantSignup() {
                   placeholder="Enter restaurant name"
                   value={formData.name}
                   onChange={handleChange}
-                  className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-primary-orange focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.name ? "border-red-500" : ""}`}
+                  className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-[#00c87e] focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.name ? "border-red-500" : ""}`}
                   required
                 />
+
               </div>
               {errors.name && (
                 <div className="flex items-center gap-1 text-xs sm:text-sm text-red-600">
@@ -270,9 +275,10 @@ export default function RestaurantSignup() {
                       placeholder="Enter phone number"
                       value={formData.phone}
                       onChange={handleChange}
-                      className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-primary-orange focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.phone ? "border-red-500" : ""}`}
+                      className={`h-11 pl-9 border-gray-300 rounded-md shadow-sm focus-visible:ring-[#00c87e] focus-visible:ring-2 transition-colors placeholder:text-gray-400 ${errors.phone ? "border-red-500" : ""}`}
                       required
                     />
+
                   </div>
                 </div>
               </div>
@@ -293,9 +299,10 @@ export default function RestaurantSignup() {
             {/* Sign up button */}
             <Button
               type="submit"
-              className="mt-2 h-11 w-full bg-primary-orange hover:bg-primary-orange/90 text-white text-base font-semibold rounded-md shadow-md transition-colors"
+              className="mt-2 h-11 w-full bg-[#00c87e] hover:bg-[#00b06f] text-white text-base font-semibold rounded-md shadow-md transition-colors"
               disabled={isLoading}
             >
+
               {isLoading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -313,17 +320,19 @@ export default function RestaurantSignup() {
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/login")}
-              className="text-primary-orange hover:underline font-medium"
+              className="text-[#00c87e] hover:underline font-medium"
             >
               Login
             </button>
+
           </div>
 
           {/* Demo credentials / info bar */}
-          <div className="mt-8 w-full max-w-lg rounded-lg border border-orange-100 bg-orange-50 px-4 py-3 text-xs sm:text-sm text-gray-800 flex items-start gap-3">
-            <div className="mt-0.5 text-primary-orange">
+          <div className="mt-8 w-full max-w-lg rounded-lg border-[#00c87e]/20 bg-[#00c87e]/5 px-4 py-3 text-xs sm:text-sm text-gray-800 flex items-start gap-3">
+            <div className="mt-0.5 text-[#00c87e]">
               <AlertCircle className="h-4 w-4" />
             </div>
+
             <div>
               <div className="font-semibold mb-1">Demo Credentials</div>
               <div>

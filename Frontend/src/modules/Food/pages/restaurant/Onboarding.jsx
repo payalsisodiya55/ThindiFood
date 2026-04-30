@@ -320,8 +320,9 @@ function TimeSelector({ label, value, onChange }) {
                   borderColor: "#d1d5db",
                 },
                 "&.Mui-focused fieldset": {
-                  borderColor: "#000",
+                  borderColor: "#00c87e",
                 },
+
               },
               "& .MuiInputBase-input": {
                 padding: "8px 12px",
@@ -1177,8 +1178,9 @@ export default function RestaurantOnboarding() {
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: true })}
                 className={`px-3 py-1.5 text-xs rounded-full border ${
                   step1.pureVegRestaurant === true
-                    ? "bg-green-600 text-white border-green-600"
+                    ? "bg-[#00c87e] text-white border-[#00c87e]"
                     : "bg-white text-gray-700 border-gray-200"
+
                 } ${!isEditing ? "opacity-70 cursor-not-allowed" : ""}`}
               >
                 Yes, Pure Veg
@@ -1776,8 +1778,9 @@ export default function RestaurantOnboarding() {
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
                     }`}
+
                 >
                   {day.charAt(0)}
                 </button>
@@ -1879,17 +1882,19 @@ export default function RestaurantOnboarding() {
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: true })}
-            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
               }`}
           >
+
             Yes
           </button>
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: false })}
-            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-black text-white" : "bg-gray-100 text-gray-800"
+            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
               }`}
           >
+
             No
           </button>
         </div>
@@ -2226,8 +2231,9 @@ export default function RestaurantOnboarding() {
                 onClick={() => setIsEditing(true)}
                 variant="outline"
                 size="sm"
-                className="text-xs bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100 flex items-center gap-1.5"
+                className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5"
                 title="Edit Details"
+
               >
                 <Sparkles className="w-3 h-3" />
                 Edit Details
@@ -2301,8 +2307,9 @@ export default function RestaurantOnboarding() {
             <Button
               onClick={handleNext}
               disabled={saving || (step === 4 && !isEditing)}
-              className={`text-sm bg-black text-white px-6 ${(step === 4 && !isEditing) ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`text-sm bg-[#00c87e] hover:bg-[#00b06f] text-white px-6 ${(step === 4 && !isEditing) ? "opacity-50 cursor-not-allowed" : ""}`}
             >
+
               {step === 4 ? (saving ? "Saving..." : "Finish") : saving ? "Saving..." : "Continue"}
             </Button>
           </div>

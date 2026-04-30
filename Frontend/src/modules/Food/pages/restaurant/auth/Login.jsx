@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
-import thindiLogo from "@/assets/thindiLogo.png"
+import thindiLogo from "@/assets/2-removebg-preview.png"
+
+
+
 
 const DEFAULT_COUNTRY_CODE = "+91"
 const countryCodes = [
