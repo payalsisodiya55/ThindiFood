@@ -11,7 +11,6 @@ import completedIcon from "@food/assets/Transaction-report-icons/trx1.png"
 import refundedIcon from "@food/assets/Transaction-report-icons/trx3.png"
 import adminEarningIcon from "@food/assets/Transaction-report-icons/admin-earning.png"
 import restaurantEarningIcon from "@food/assets/Transaction-report-icons/store-earning.png"
-import deliverymanEarningIcon from "@food/assets/Transaction-report-icons/deliveryman-earning.png"
 
 // Import search and export icons from Dashboard-icons
 import searchIcon from "@food/assets/Dashboard-icons/image8.png"
@@ -30,7 +29,6 @@ export default function TransactionReport() {
     refundedTransaction: 0,
     adminEarning: 0,
     restaurantEarning: 0,
-    deliverymanEarning: 0,
     adminCouponDiscount: 0,
     restaurantCouponDiscount: 0,
     restaurantOfferDiscount: 0,
@@ -108,7 +106,6 @@ export default function TransactionReport() {
             refundedTransaction: 0,
             adminEarning: 0,
             restaurantEarning: 0,
-            deliverymanEarning: 0,
             adminCouponDiscount: 0,
             restaurantCouponDiscount: 0,
             restaurantOfferDiscount: 0,
@@ -371,23 +368,6 @@ export default function TransactionReport() {
               </div>
             </div>
 
-            {/* Deliveryman Earning */}
-            <div className="rounded-lg shadow-sm border border-slate-200 p-3" style={{ backgroundColor: '#f1f5f9' }}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                    <img src={deliverymanEarningIcon} alt="Deliveryman Earning" className="w-6 h-6" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-semibold text-slate-900">Deliveryman Earning</p>
-                    <div className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center">
-                      <Info className="w-3 h-3 text-white" />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-base font-bold text-orange-600">{formatCurrency(summary.deliverymanEarning)}</p>
-              </div>
-            </div>
           </div>
         </div>
 
