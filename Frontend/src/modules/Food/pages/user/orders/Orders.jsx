@@ -6,6 +6,7 @@ import { orderAPI } from "@food/api"
 import { useCart } from "@food/context/CartContext"
 import { toast } from "sonner"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
+import { buildReorderCartItems } from "@food/utils/reorderCart"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -280,12 +281,16 @@ export default function Orders() {
               items: (order.items || []).map(item => ({
                 itemId: item.itemId || item._id || item.id,
                 name: item.name || item.foodName || 'Item',
+                variantId: item.variantId || item.variant?._id || item.variant?.id || '',
                 variantName: item.variantName || '',
                 quantity: item.quantity || 1,
                 price: item.price || 0,
                 image: item.image || null,
                 description: item.description || null,
                 isVeg: item.isVeg !== undefined ? item.isVeg : (item.category === 'veg' || item.type === 'veg'),
+                preparationTime: item.preparationTime || item.prep_time || null,
+                originalPrice: item.originalPrice || null,
+                offer: item.offer || null,
                 _id: item._id || item.id,
                 id: item.id || item._id
               })),
@@ -402,7 +407,7 @@ export default function Orders() {
     selectedRestaurantRating === null
 
   // Handle reorder
-  const handleReorder = (order) => {
+  const handleReorder = async (order) => {
     const restaurantTarget = order.restaurantSlug || order.restaurantId
 
     if (!restaurantTarget || !order.items?.length) {
@@ -410,25 +415,12 @@ export default function Orders() {
       return
     }
 
-    const reorderItems = order.items
-      .map((item, index) => {
-        const itemId = item.id || item.itemId || item._id
-        if (!itemId) return null
-
-        return {
-          id: itemId,
-          name: item.name || item.foodName || "Item",
-          price: Number(item.price) || 0,
-          image: item.image || "",
-          restaurant: order.restaurant || "Restaurant",
-          restaurantId: order.restaurantId,
-          description: item.description || "",
-          isVeg: item.isVeg !== false,
-          quantity: Math.max(1, Number(item.quantity) || 1),
-          reorderIndex: index,
-        }
-      })
-      .filter(Boolean)
+    const reorderItems = await buildReorderCartItems({
+      items: order.items,
+      restaurantName: order.restaurant,
+      restaurantId: order.restaurantId,
+      restaurantLookupId: restaurantTarget,
+    })
 
     if (!reorderItems.length) {
       toast.error("No reorderable items found in this order")
@@ -437,7 +429,7 @@ export default function Orders() {
 
     replaceCart(reorderItems)
     toast.success("Items added to cart")
-    navigate(`/food/user/restaurants/${restaurantTarget}`)
+    navigate("/user/cart")
   }
 
   // Three-dots menu handlers

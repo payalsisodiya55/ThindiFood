@@ -104,14 +104,6 @@ export const config = {
     firebaseDatabaseUrl: process.env.FIREBASE_DATABASE_URL,
     firebaseServiceAccountPath: process.env.FIREBASE_SERVICE_ACCOUNT_PATH,
     firebaseServiceAccount: process.env.FIREBASE_SERVICE_ACCOUNT,
-    firebaseWebApiKey: process.env.VITE_FIREBASE_API_KEY || process.env.FIREBASE_API_KEY,
-    firebaseWebAuthDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || process.env.FIREBASE_AUTH_DOMAIN,
-    firebaseWebStorageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET,
-    firebaseWebMessagingSenderId:
-        process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || process.env.FIREBASE_MESSAGING_SENDER_ID,
-    firebaseWebAppId: process.env.VITE_FIREBASE_APP_ID || process.env.FIREBASE_APP_ID,
-    firebaseWebMeasurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID || process.env.FIREBASE_MEASUREMENT_ID,
-    firebaseWebVapidKey: process.env.VITE_FIREBASE_VAPID_KEY || process.env.FIREBASE_VAPID_KEY,
 
     // Socket.io
     socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',

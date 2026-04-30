@@ -78,6 +78,63 @@ const formatFullAddress = (address) => {
 }
 
 const RUPEE_SYMBOL = "\u20B9"
+const toRadians = (value) => (Number(value) * Math.PI) / 180
+const calculateDistanceKm = (from, to) => {
+  if (!Array.isArray(from) || !Array.isArray(to) || from.length < 2 || to.length < 2) {
+    return null
+  }
+
+  const [fromLng, fromLat] = from.map(Number)
+  const [toLng, toLat] = to.map(Number)
+
+  if (
+    !Number.isFinite(fromLng) ||
+    !Number.isFinite(fromLat) ||
+    !Number.isFinite(toLng) ||
+    !Number.isFinite(toLat)
+  ) {
+    return null
+  }
+
+  const earthRadiusKm = 6371
+  const latDelta = toRadians(toLat - fromLat)
+  const lngDelta = toRadians(toLng - fromLng)
+  const a =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(toRadians(fromLat)) *
+      Math.cos(toRadians(toLat)) *
+      Math.sin(lngDelta / 2) ** 2
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return earthRadiusKm * c
+}
+
+const getRestaurantCoordinates = (restaurant) => {
+  if (!restaurant || typeof restaurant !== "object") return null
+
+  const directCoordinates = restaurant?.location?.coordinates
+  if (Array.isArray(directCoordinates) && directCoordinates.length >= 2) {
+    return directCoordinates
+  }
+
+  const lat =
+    restaurant?.latitude ??
+    restaurant?.lat ??
+    restaurant?.location?.latitude ??
+    restaurant?.location?.lat
+  const lng =
+    restaurant?.longitude ??
+    restaurant?.lng ??
+    restaurant?.location?.longitude ??
+    restaurant?.location?.lng
+
+  if (Number.isFinite(Number(lat)) && Number.isFinite(Number(lng))) {
+    return [Number(lng), Number(lat)]
+  }
+
+  return null
+}
+
 const parseTimeValueToMinutes = (timeValue) => {
   if (!timeValue || typeof timeValue !== "string") return null
   const match = timeValue.trim().match(/^(\d{1,2}):(\d{2})$/)
@@ -675,6 +732,21 @@ export default function Cart() {
     const parts = [address, area, city].filter(Boolean)
     return parts.length > 0 ? parts.join(", ") : "Restaurant Location"
   }, [restaurantData])
+
+  const restaurantDistanceLabel = useMemo(() => {
+    const userCoordinates = defaultAddress?.location?.coordinates
+    const restaurantCoordinates = getRestaurantCoordinates(restaurantData)
+    const distanceKm = calculateDistanceKm(userCoordinates, restaurantCoordinates)
+
+    if (!Number.isFinite(distanceKm)) return "Restaurant Location"
+
+    const roundedDistance =
+      distanceKm < 1
+        ? distanceKm.toFixed(1)
+        : distanceKm.toFixed(distanceKm < 10 ? 1 : 0)
+
+    return `${roundedDistance} km away`
+  }, [defaultAddress?.location?.coordinates, restaurantData])
 
   const hasSavedAddress = Boolean(defaultAddress && formatFullAddress(defaultAddress))
   const recipientName = String(recipientDetails.name || "").trim() || userProfile?.name || "Your Name"
@@ -2849,7 +2921,7 @@ export default function Cart() {
                             </p>
                             <div className="mt-1 flex items-center gap-2">
                               <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-green-50 text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
-                                {restaurantData?.distance ? `${restaurantData.distance} km away` : 'Restaurant Location'}
+                                {restaurantDistanceLabel}
                               </span>
                             </div>
                           </div>

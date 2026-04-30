@@ -21,6 +21,7 @@ import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { RED } from "@food/constants/color"
+import { buildReorderCartItems } from "@food/utils/reorderCart"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -317,7 +318,7 @@ export default function UserOrderDetails() {
     }
   }
 
-  const handleReorder = (currentOrder) => {
+  const handleReorder = async (currentOrder) => {
     const restaurantTarget =
       restaurantObj.slug ||
       restaurantObj._id ||
@@ -329,25 +330,17 @@ export default function UserOrderDetails() {
       return
     }
 
-    const reorderItems = items
-      .map((item, index) => {
-        const itemId = item.id || item.itemId || item._id
-        if (!itemId) return null
-
-        return {
-          id: itemId,
-          name: item.name || item.foodName || "Item",
-          price: Number(item.price) || 0,
-          image: item.image || "",
-          restaurant: restaurantName,
-          restaurantId: restaurantObj._id || restaurantObj.restaurantId || currentOrder?.restaurantId,
-          description: item.description || "",
-          isVeg: item.isVeg !== false,
-          quantity: Math.max(1, Number(item.quantity || item.qty) || 1),
-          reorderIndex: index,
-        }
-      })
-      .filter(Boolean)
+    const reorderItems = await buildReorderCartItems({
+      items,
+      restaurantName,
+      restaurantId:
+        restaurantObj._id ||
+        restaurantObj.restaurantId ||
+        currentOrder?.restaurantId?._id ||
+        currentOrder?.restaurantId ||
+        null,
+      restaurantLookupId: restaurantTarget,
+    })
 
     if (!reorderItems.length) {
       toast.error("No reorderable items found in this order")
@@ -356,7 +349,7 @@ export default function UserOrderDetails() {
 
     replaceCart(reorderItems)
     toast.success("Items added to cart")
-    navigate(`/food/user/restaurants/${restaurantTarget}`)
+    navigate("/user/cart")
   }
 
   return (
