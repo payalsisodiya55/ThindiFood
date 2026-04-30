@@ -291,12 +291,6 @@ function getMaxPreparationTime(items = []) {
   return prepMinutes.length > 0 ? Math.max(...prepMinutes) : 30;
 }
 
-function shouldConfirmOnCreate(paymentMethod) {
-  return ["cash", "wallet", "razorpay_qr", "counter"].includes(
-    String(paymentMethod || "").toLowerCase(),
-  );
-}
-
 const USER_CANCEL_WINDOW_MS = 60 * 1000;
 const USER_CANCEL_WINDOW_STATUSES = new Set([
   "confirmed",
@@ -1386,9 +1380,6 @@ export async function createOrder(userId, dto) {
     dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
-  const takeawayConfirmedOnCreate =
-    fulfillmentType === "takeaway" && shouldConfirmOnCreate(paymentMethod);
-
   // Ensure pricing is present and consistent.
   const computedSubtotal = (dto.items || []).reduce((sum, item) => {
     const price = Number(item?.price);
@@ -1547,7 +1538,7 @@ export async function createOrder(userId, dto) {
     ...(deliveryAddress ? { deliveryAddress } : {}),
     pricing: normalizedPricing,
     payment,
-    orderStatus: takeawayConfirmedOnCreate ? "confirmed" : "created",
+    orderStatus: "created",
     ...(orderType === "food"
       ? { dispatch: { modeAtCreation: dispatchMode, status: "unassigned" } }
       : {}),
@@ -1556,10 +1547,8 @@ export async function createOrder(userId, dto) {
         at: new Date(),
         byRole: "SYSTEM",
         from: "",
-        to: takeawayConfirmedOnCreate ? "confirmed" : "created",
-        note: takeawayConfirmedOnCreate
-          ? `${takeawayOrderType === "SCHEDULED" ? "Scheduled" : "Immediate"} takeaway order confirmed`
-          : "Order placed",
+        to: "created",
+        note: "Order placed",
       },
     ],
 
@@ -1801,13 +1790,13 @@ export async function verifyPayment(userId, dto) {
       order.scheduledAt = order.pickupAt;
     }
 
-    order.orderStatus = "confirmed";
+    order.orderStatus = "created";
   }
   pushStatusHistory(order, {
     byRole: "USER",
     byId: userId,
     from: fromStatus,
-    to: isTakeaway ? "confirmed" : "created",
+    to: "created",
     note: "Payment verified",
   });
   await order.save();

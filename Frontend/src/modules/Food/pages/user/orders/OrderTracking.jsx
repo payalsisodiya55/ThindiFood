@@ -437,6 +437,27 @@ function mapBackendOrderStatusToUi(raw) {
   return "placed"
 }
 
+function hasRestaurantAcceptedStatus(raw) {
+  const s = String(raw || "").toLowerCase()
+  return [
+    "confirmed",
+    "accepted",
+    "preparing",
+    "processed",
+    "ready",
+    "ready_for_pickup",
+    "reached_pickup",
+    "picked_up",
+    "out_for_delivery",
+    "en_route_to_delivery",
+    "reached_drop",
+    "at_drop",
+    "at_delivery",
+    "delivered",
+    "completed",
+  ].includes(s)
+}
+
 function mapOrderToTrackingUiStatus(orderLike) {
   if (!orderLike) return "placed"
   const statusRaw = orderLike.status || orderLike.orderStatus
@@ -549,7 +570,7 @@ export default function OrderTracking() {
   const [loading, setLoading] = useState(() => !hydratedInitialOrder)
   const [error, setError] = useState(null)
 
-  const [showConfirmation, setShowConfirmation] = useState(confirmed)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const [orderStatus, setOrderStatus] = useState('placed')
   const [estimatedTime, setEstimatedTime] = useState(29)
   const [isRefreshing, setIsRefreshing] = useState(false)
@@ -570,7 +591,7 @@ export default function OrderTracking() {
   const isInitialPollRequestedRef = useRef(null)
   const lastPollExecutionRef = useRef(0) // New: Hard throttle for extreme cases
   const restaurantRefundPromptedRef = useRef(new Set())
-  const confirmationShownAtRef = useRef(confirmed ? Date.now() : 0)
+  const confirmationShownAtRef = useRef(0)
 
   // Delivery handover OTP received via socket event.
   // Kept separately so UI still renders even if the event arrives
@@ -814,6 +835,11 @@ export default function OrderTracking() {
       "picked_up",
     ].includes(status)
   }, [order?.status])
+
+  const isRestaurantAccepted = useMemo(
+    () => hasRestaurantAcceptedStatus(order?.status || order?.orderStatus),
+    [order?.status, order?.orderStatus],
+  )
 
   // Single source of truth: backend order.status (+ deliveryState phase for live ride)
   useEffect(() => {
@@ -1112,6 +1138,17 @@ export default function OrderTracking() {
   }, [order, orderId])
 
   // Post-checkout splash only — dismiss as soon as we have order data instead of hard-blocking for 3 seconds.
+  useEffect(() => {
+    if (!confirmed) return
+    if (!isRestaurantAccepted) {
+      setShowConfirmation(false)
+      return
+    }
+    if (confirmationShownAtRef.current) return
+    confirmationShownAtRef.current = Date.now()
+    setShowConfirmation(true)
+  }, [confirmed, isRestaurantAccepted])
+
   useEffect(() => {
     if (!confirmed || !showConfirmation) return
 
