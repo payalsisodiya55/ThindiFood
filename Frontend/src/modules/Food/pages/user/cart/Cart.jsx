@@ -135,12 +135,83 @@ const getRestaurantCoordinates = (restaurant) => {
   return null
 }
 
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+]
+
+const normalizeDayName = (value) => {
+  if (!value || typeof value !== "string") return null
+  const normalized = value.trim().toLowerCase()
+  const exactMatch = DAY_NAMES.find((day) => day.toLowerCase() === normalized)
+  if (exactMatch) return exactMatch
+
+  return (
+    DAY_NAMES.find((day) => day.toLowerCase().startsWith(normalized.slice(0, 3))) ||
+    null
+  )
+}
+
+const getRestaurantTimingForDate = (restaurant, targetDate = new Date()) => {
+  const dayName = DAY_NAMES[targetDate.getDay()]
+  const outletTimingsArray = restaurant?.outletTimings?.timings
+  if (Array.isArray(outletTimingsArray)) {
+    const matchingTiming = outletTimingsArray.find(
+      (entry) => normalizeDayName(entry?.day) === dayName,
+    )
+    if (matchingTiming) return matchingTiming
+  }
+
+  const outletTimingsObject = restaurant?.outletTimings
+  if (
+    outletTimingsObject &&
+    typeof outletTimingsObject === "object" &&
+    !Array.isArray(outletTimingsObject)
+  ) {
+    const matchingTiming = outletTimingsObject[dayName]
+    if (matchingTiming && typeof matchingTiming === "object") {
+      return matchingTiming
+    }
+  }
+
+  return null
+}
+
 const parseTimeValueToMinutes = (timeValue) => {
   if (!timeValue || typeof timeValue !== "string") return null
-  const match = timeValue.trim().match(/^(\d{1,2}):(\d{2})$/)
-  if (!match) return null
-  const hours = Number.parseInt(match[1], 10)
-  const minutes = Number.parseInt(match[2], 10)
+
+  const normalized = timeValue.trim().toLowerCase()
+  const twelveHourMatch = normalized.match(/^(\d{1,2}):(\d{2})\s*([ap]m)$/)
+  if (twelveHourMatch) {
+    let hours = Number.parseInt(twelveHourMatch[1], 10)
+    const minutes = Number.parseInt(twelveHourMatch[2], 10)
+    const period = twelveHourMatch[3]
+    if (
+      Number.isNaN(hours) ||
+      Number.isNaN(minutes) ||
+      hours < 1 ||
+      hours > 12 ||
+      minutes < 0 ||
+      minutes > 59
+    ) {
+      return null
+    }
+
+    if (period === "pm" && hours < 12) hours += 12
+    if (period === "am" && hours === 12) hours = 0
+    return hours * 60 + minutes
+  }
+
+  const twentyFourHourMatch = normalized.match(/^(\d{1,2}):(\d{2})$/)
+  if (!twentyFourHourMatch) return null
+
+  const hours = Number.parseInt(twentyFourHourMatch[1], 10)
+  const minutes = Number.parseInt(twentyFourHourMatch[2], 10)
   if (
     Number.isNaN(hours) ||
     Number.isNaN(minutes) ||
@@ -171,6 +242,37 @@ const formatScheduleTimeMessage = (date) =>
     minute: "2-digit",
     hour12: true,
   })
+
+const enrichRestaurantWithOutletTimings = async (restaurant) => {
+  if (!restaurant || restaurant.outletTimings) return restaurant
+
+  const outletRestaurantId =
+    restaurant.mongoId ||
+    restaurant._id ||
+    restaurant.id ||
+    restaurant.restaurantId
+
+  if (!outletRestaurantId) return restaurant
+
+  try {
+    const outletResponse = await restaurantAPI.getOutletTimingsByRestaurantId(
+      outletRestaurantId,
+      { noCache: true },
+    )
+    const outletTimings =
+      outletResponse?.data?.data?.outletTimings ||
+      outletResponse?.data?.outletTimings ||
+      null
+
+    if (outletTimings) {
+      return { ...restaurant, outletTimings }
+    }
+  } catch (_) {
+    // Keep the fetched restaurant usable even if outlet timings enrichment fails.
+  }
+
+  return restaurant
+}
 
 const getCartPrepTimeMinutes = (items = []) => {
   const prepTimes = items
@@ -340,22 +442,32 @@ export default function Cart() {
     try {
       const targetDate = new Date(scheduledDate)
       const status = getRestaurantAvailabilityStatus(restaurantData, targetDate)
+      const openingTime = status.openingTime || "09:00"
+      const closingTime = status.closingTime || "22:00"
+      const [openingHourRaw, openingMinuteRaw = "0"] = openingTime.split(":")
+      const [closingHourRaw, closingMinuteRaw = "0"] = closingTime.split(":")
 
-      let openingHour = 9
-      let closingHour = 22
+      const openingHour = Number.parseInt(openingHourRaw, 10)
+      const openingMinute = Number.parseInt(openingMinuteRaw, 10)
+      const closingHour = Number.parseInt(closingHourRaw, 10)
+      const closingMinute = Number.parseInt(closingMinuteRaw, 10)
 
-      if (status.openingTime) {
-        const [h] = status.openingTime.split(':')
-        openingHour = parseInt(h, 10)
+      if (
+        [openingHour, openingMinute, closingHour, closingMinute].some((value) =>
+          Number.isNaN(value),
+        )
+      ) {
+        return []
       }
 
-      if (status.closingTime) {
-        const [h] = status.closingTime.split(':')
-        closingHour = parseInt(h, 10)
-      }
+      const openingDate = new Date(targetDate)
+      openingDate.setHours(openingHour, openingMinute, 0, 0)
 
-      if (closingHour < openingHour) {
-        closingHour += 24 // Handle overnight slots
+      const closingDate = new Date(targetDate)
+      closingDate.setHours(closingHour, closingMinute, 0, 0)
+
+      if (closingDate <= openingDate) {
+        closingDate.setDate(closingDate.getDate() + 1)
       }
 
       const slots = []
@@ -364,19 +476,28 @@ export default function Cart() {
       const nowStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0]
       const targetStr = scheduledDate
       const isToday = targetStr === nowStr
-      const currentHour = now.getHours()
+      const cutoffDate = new Date(now.getTime() + 60 * 60000)
+      const slotCursor = new Date(openingDate)
+      slotCursor.setMinutes(0, 0, 0)
 
-      for (let h = openingHour; h <= closingHour; h++) {
-        const actualHour = h % 24
-        // Skip past hours if today. Add 1 hour buffer so they can't order right at the boundary
-        if (isToday && h <= currentHour) continue
+      if (slotCursor < openingDate) {
+        slotCursor.setHours(slotCursor.getHours() + 1, 0, 0, 0)
+      }
 
-        const period = actualHour >= 12 ? 'PM' : 'AM'
-        const display12 = actualHour % 12 || 12
-        const timeString = `${String(actualHour).padStart(2, '0')}:00`
-        const displayString = `${display12}:00 ${period}`
+      while (slotCursor <= closingDate) {
+        // Skip past slots for today. Keep the existing 1 hour buffer.
+        if (!isToday || slotCursor > cutoffDate) {
+          const actualHour = slotCursor.getHours()
+          const actualMinute = slotCursor.getMinutes()
+          const period = actualHour >= 12 ? 'PM' : 'AM'
+          const display12 = actualHour % 12 || 12
+          const timeString = `${String(actualHour).padStart(2, '0')}:${String(actualMinute).padStart(2, '0')}`
+          const displayString = `${display12}:${String(actualMinute).padStart(2, '0')} ${period}`
 
-        slots.push({ value: timeString, label: displayString })
+          slots.push({ value: timeString, label: displayString })
+        }
+
+        slotCursor.setHours(slotCursor.getHours() + 1, 0, 0, 0)
       }
 
       return slots
@@ -393,10 +514,38 @@ export default function Cart() {
     try {
       const now = new Date()
       const status = getRestaurantAvailabilityStatus(restaurantData, now)
-      const openingMinutes = parseTimeValueToMinutes(status?.openingTime || "09:00")
-      const closingMinutes = parseTimeValueToMinutes(status?.closingTime || "22:00")
+      const todayTiming = getRestaurantTimingForDate(restaurantData, now)
 
-      if (openingMinutes === null || closingMinutes === null) return null
+      if (todayTiming?.isOpen === false || status?.reason === "day-closed") {
+        return {
+          prepLeadMinutes: Math.max(0, takeawayPrepTimeMinutes),
+          openingDate: null,
+          minAllowedDate: null,
+          maxAllowedDate: null,
+          hasSlots: false,
+          availableAfterOpening: false,
+          message: "Restaurant is closed today for pickup",
+        }
+      }
+
+      const openingMinutes = parseTimeValueToMinutes(
+        todayTiming?.openingTime || status?.openingTime,
+      )
+      const closingMinutes = parseTimeValueToMinutes(
+        todayTiming?.closingTime || status?.closingTime,
+      )
+
+      if (openingMinutes === null || closingMinutes === null) {
+        return {
+          prepLeadMinutes: Math.max(0, takeawayPrepTimeMinutes),
+          openingDate: null,
+          minAllowedDate: null,
+          maxAllowedDate: null,
+          hasSlots: false,
+          availableAfterOpening: false,
+          message: "No pickup slots available for today",
+        }
+      }
 
       const openingDate = new Date(now)
       openingDate.setHours(
@@ -441,17 +590,27 @@ export default function Cart() {
         Math.min(maxPrepCompletionDate.getTime(), maxTodayDate.getTime()),
       )
 
+      const hasSlots = minAllowedDate.getTime() <= maxAllowedDate.getTime()
+
       return {
         prepLeadMinutes,
         openingDate,
         minAllowedDate,
         maxAllowedDate,
-        hasSlots: minAllowedDate.getTime() <= maxAllowedDate.getTime(),
+        hasSlots,
         availableAfterOpening: false,
-        message: "",
+        message: hasSlots ? "" : "No pickup slots available for today",
       }
     } catch {
-      return null
+      return {
+        prepLeadMinutes: Math.max(0, takeawayPrepTimeMinutes),
+        openingDate: null,
+        minAllowedDate: null,
+        maxAllowedDate: null,
+        hasSlots: false,
+        availableAfterOpening: false,
+        message: "No pickup slots available for today",
+      }
     }
   }, [isPickupScheduled, restaurantData, takeawayPrepTimeMinutes])
 
@@ -938,7 +1097,8 @@ export default function Cart() {
 
           debugLog("?? Fetching restaurant data by restaurantId from cart:", cartRestaurantId)
           const response = await restaurantAPI.getRestaurantById(cartRestaurantId)
-          const data = response?.data?.data?.restaurant || response?.data?.restaurant
+          const rawData = response?.data?.data?.restaurant || response?.data?.restaurant
+          const data = await enrichRestaurantWithOutletTimings(rawData)
 
           if (data) {
             // CRITICAL: Validate that fetched restaurant matches cart items
@@ -1040,7 +1200,9 @@ export default function Cart() {
               slug: matchingRestaurant.slug,
               cartRestaurantName: cart[0]?.restaurant
             })
-            setRestaurantData(matchingRestaurant)
+            const enrichedRestaurant =
+              await enrichRestaurantWithOutletTimings(matchingRestaurant)
+            setRestaurantData(enrichedRestaurant)
             setLoadingRestaurant(false)
             return
           } else {

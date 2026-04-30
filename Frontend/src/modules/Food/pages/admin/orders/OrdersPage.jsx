@@ -92,6 +92,30 @@ const getAdminPickupDateTime = (order = {}) => {
   }
 }
 
+const isPaymentFailedOrder = (order = {}) => {
+  const paymentStatus = String(
+    order.paymentStatus || order.payment?.status || "",
+  )
+    .trim()
+    .toLowerCase()
+  const refundStatus = String(
+    order.refundStatus || order.payment?.refund?.status || "",
+  )
+    .trim()
+    .toLowerCase()
+  const qrStatus = String(order.payment?.qr?.status || "")
+    .trim()
+    .toLowerCase()
+
+  if (paymentStatus === "failed") return true
+  if (refundStatus === "failed") return true
+  if (["failed", "expired", "cancelled", "canceled"].includes(qrStatus)) {
+    return true
+  }
+
+  return false
+}
+
 
 // Status configuration with titles, colors, and icons
 const statusConfig = {
@@ -397,6 +421,8 @@ export default function OrdersPage({ statusKey = "all" }) {
             ? undefined
             : statusKey === "restaurant-cancelled"
               ? "cancelled"
+              : statusKey === "payment-failed"
+                ? undefined
               : statusKey,
         cancelledBy: statusKey === "restaurant-cancelled" ? "restaurant" : undefined,
       }
@@ -633,6 +659,14 @@ export default function OrdersPage({ statusKey = "all" }) {
     })
   }, [orders])
 
+  const scopedOrders = useMemo(() => {
+    if (statusKey === "payment-failed") {
+      return normalizedOrders.filter(isPaymentFailedOrder)
+    }
+
+    return normalizedOrders
+  }, [normalizedOrders, statusKey])
+
   const columnsConfig = useMemo(() => {
     const baseColumns = {
       si: "Serial Number",
@@ -683,7 +717,7 @@ export default function OrdersPage({ statusKey = "all" }) {
     handlePrintOrder,
     toggleColumn,
     resetColumns,
-  } = useOrdersManagement(normalizedOrders, statusKey, config.title)
+  } = useOrdersManagement(scopedOrders, statusKey, config.title)
 
   useEffect(() => {
     isFirstLoadRef.current = true
