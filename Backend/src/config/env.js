@@ -2,6 +2,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const parseBooleanEnv = (value, defaultValue = false) => {
+    if (value === undefined || value === null || value === '') return defaultValue;
+    const normalized = String(value).trim().toLowerCase();
+    if (['true', '1', 'yes', 'y', 'on'].includes(normalized)) return true;
+    if (['false', '0', 'no', 'n', 'off'].includes(normalized)) return false;
+    return defaultValue;
+};
+
 const normalizeOrigin = (value) => {
     if (typeof value !== 'string') return '';
     const trimmed = value.trim().replace(/^['"]|['"]$/g, '');
@@ -58,7 +66,7 @@ export const config = {
     otpExpirySeconds: Number(process.env.OTP_EXPIRY_SECONDS || 300),
     otpRateLimit: Number(process.env.OTP_RATE_LIMIT || 3),
     otpRateWindow: Number(process.env.OTP_RATE_WINDOW || 600),
-    useDefaultOtp: process.env.USE_DEFAULT_OTP === 'true',
+    useDefaultOtp: parseBooleanEnv(process.env.USE_DEFAULT_OTP, false),
 
     // SMS India Hub
     smsIndiaHubUsername: process.env.SMS_INDIA_HUB_USERNAME,
@@ -88,11 +96,11 @@ export const config = {
     uploadPath: process.env.UPLOAD_PATH || 'uploads/',
 
     // Redis
-    redisEnabled: process.env.REDIS_ENABLED === 'true',
+    redisEnabled: parseBooleanEnv(process.env.REDIS_ENABLED, false),
     redisUrl: process.env.REDIS_URL,
 
     // BullMQ
-    bullmqEnabled: process.env.BULLMQ_ENABLED === 'true',
+    bullmqEnabled: parseBooleanEnv(process.env.BULLMQ_ENABLED, false),
 
     // Cloudinary
     cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME,

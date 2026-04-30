@@ -35,7 +35,6 @@ const getPhoneCandidates = (phone) => {
  */
 const sendSmsViaIndiaHub = async (phone, otp) => {
     try {
-        // Normalize phone: strip non-digits, ensure 91 country code prefix
         const digits = String(phone || '').replace(/\D/g, '');
         const msisdn = digits.startsWith('91') ? digits : `91${digits}`;
 
@@ -44,7 +43,6 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
             .replace(/{{\s*APP_NAME\s*}}/gi, String(config.smsAppName || 'ThindiFood'))
             .replace(/{{\s*OTP\s*}}/gi, String(otp));
 
-        // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
         const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
         url.searchParams.append('APIKey', config.smsApiKey);
         url.searchParams.append('sid', config.smsSenderId);
@@ -52,6 +50,7 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         url.searchParams.append('msg', message);
         url.searchParams.append('gwid', '2');
         url.searchParams.append('fl', '0');
+
         if (config.smsIndiaHubUsername) {
             url.searchParams.append('uname', config.smsIndiaHubUsername);
         }
@@ -64,27 +63,27 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         const resultText = await response.text();
         logger.info(`[SMS] Raw response for ${msisdn}: ${resultText}`);
 
-        // SMS India Hub often returns HTTP 200 OK even for errors — check response body
         let parsed = null;
-        try { parsed = JSON.parse(resultText); } catch (_) { /* plain text response is OK */ }
+        try {
+            parsed = JSON.parse(resultText);
+        } catch {
+            parsed = null;
+        }
 
         if (parsed && parsed.ErrorCode && parsed.ErrorCode !== '000') {
             const errMsg = `SMS India Hub ERROR for ${phone}: [${parsed.ErrorCode}] ${parsed.ErrorMessage || resultText}`;
             logger.error(errMsg);
-            // eslint-disable-next-line no-console
-            console.error(`❌ [SMS ERROR] ${errMsg}`);
+            console.error(`[SMS ERROR] ${errMsg}`);
             if (parsed.ErrorCode === '006') {
-                // eslint-disable-next-line no-console
-                console.error('❌ [SMS ERROR] ErrorCode 006 = DLT Template mismatch. The message text must EXACTLY match your registered TRAI DLT template. Login to https://cloud.smsindiahub.in and verify the approved template text.');
+                console.error('[SMS ERROR] ErrorCode 006 means your DLT template text does not exactly match the approved SMS India Hub template.');
             }
         } else if (!response.ok) {
-            logger.error(`SMS API HTTP error for ${phone}: ${response.status} – ${resultText}`);
+            logger.error(`SMS API HTTP error for ${phone}: ${response.status} - ${resultText}`);
         } else {
-            logger.info(`✅ SMS sent successfully to ${msisdn}`);
+            logger.info(`[SMS] OTP sent successfully to ${msisdn}`);
         }
     } catch (error) {
         logger.error(`Error sending SMS to ${phone}: ${error.message}`);
-        // Do NOT throw — OTP is already stored in DB; SMS failure should not block the flow
     }
 };
 
@@ -95,7 +94,6 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
     const existing = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
     const now = new Date();
 
-    // Rate Limiting Logic
     if (existing) {
         const windowMs = (config.otpRateWindow || 600) * 1000;
         const isInWindow = now - existing.lastRequestAt < windowMs;
@@ -107,7 +105,6 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
             }
             existing.requestCount += 1;
         } else {
-            // Reset count if window has passed
             existing.requestCount = 1;
         }
     }
@@ -117,12 +114,12 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
     let otp;
     if (shouldUseDefaultOtp) {
         otp = '1234';
-        logger.info(`Default OTP mode enabled – OTP is ${otp} for phone ${phone}`);
+        logger.info(`Default OTP mode enabled. OTP is ${otp} for phone ${phone}`);
     } else {
         otp = generateOtpCode();
+        logger.info(`SMS OTP mode enabled. Generated OTP for phone ${phone} will be sent via SMS India Hub if credentials are configured.`);
     }
 
-    // Expiry calculation: prioritize seconds, then minutes, then fallback to MS string
     let ttlMs;
     if (config.otpExpirySeconds) {
         ttlMs = config.otpExpirySeconds * 1000;
@@ -141,16 +138,18 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         existing.lastRequestAt = now;
         await existing.save();
     } else {
-        await FoodOtp.create({ 
+        await FoodOtp.create({
             phone: normalizedPhone,
-            otp, 
+            otp,
             expiresAt,
             requestCount: 1,
-            lastRequestAt: now
+            lastRequestAt: now,
         });
     }
 
-    // Only send SMS if not in default OTP mode and credentials exist.
+    // Mode behavior:
+    // - USE_DEFAULT_OTP=true  => fixed OTP "1234", no SMS send
+    // - USE_DEFAULT_OTP=false => random OTP, send via SMS India Hub
     if (!shouldUseDefaultOtp && config.smsApiKey && config.smsSenderId) {
         await sendSmsViaIndiaHub(phone, otp);
     } else if (!shouldUseDefaultOtp) {
@@ -185,4 +184,3 @@ export const verifyOtp = async (phone, otp) => {
     await record.deleteOne();
     return { valid: true };
 };
-
