@@ -114,6 +114,10 @@ const formatClosingCountdown = (minutesUntilClose, closingTime) => {
     return closingLabel ? `Closes at ${closingLabel}` : null
   }
 
+  if (minutesUntilClose > 30) {
+    return null
+  }
+
   if (minutesUntilClose < 60) {
     return `Closes in ${minutesUntilClose} min`
   }
