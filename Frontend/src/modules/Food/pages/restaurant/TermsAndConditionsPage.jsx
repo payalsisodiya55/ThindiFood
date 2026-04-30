@@ -31,16 +31,16 @@ export default function TermsAndConditionsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-[#f6e9dc] overflow-x-hidden pb-10">
+    <div className="min-h-screen bg-[#f8fafc] overflow-x-hidden pb-10">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-4 py-3 z-50 flex items-center gap-3">
+      <div className="fixed top-0 left-0 right-0 bg-[#00c87e] border-b border-[#00c87e] px-4 py-3 z-50 flex items-center gap-3">
         <button 
           onClick={goBack}
-          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-600" />
+          <ArrowLeft className="w-5 h-5 text-white" />
         </button>
-        <h1 className="text-lg font-bold text-gray-900 flex-1">Terms & Conditions</h1>
+        <h1 className="text-lg font-bold text-white flex-1">Terms & Conditions</h1>
       </div>
 
       {/* Content */}
@@ -73,4 +73,3 @@ export default function TermsAndConditionsPage() {
     </div>
   )
 }
-
