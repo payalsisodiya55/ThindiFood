@@ -1557,7 +1557,7 @@ export default function Cart() {
       ? [{
           id: 'cash',
           name: 'Cash on Delivery',
-          description: 'Pay when order arrives',
+          description: 'Pay at restaurant',
           icon: <Banknote className="w-5 h-5" />,
           color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
           selectedColor: 'bg-red-500 text-white'
