@@ -1460,6 +1460,8 @@ export default function OrderTracking() {
     return Math.max(0, Math.ceil((readyAtMs - Date.now()) / 60000))
   })()
 
+  const isTakeawayOrder = order?.fulfillmentType === "takeaway"
+
   const statusConfig = {
     placed: {
       title: "Order Placed",
@@ -1487,34 +1489,44 @@ export default function OrderTracking() {
       iconType: 'food'
     },
     assigned: {
-      title: "Rider is arriving",
-      subtitle: "A delivery partner is arriving at the restaurant",
+      title: isTakeawayOrder ? "Pickup handover soon" : "Rider is arriving",
+      subtitle: isTakeawayOrder
+        ? "Restaurant is getting your order ready for pickup"
+        : "A delivery partner is arriving at the restaurant",
       color: "bg-[#00c87e]",
-      iconType: 'rider'
+      iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     at_pickup: {
-      title: "Rider at restaurant",
-      subtitle: "Rider is waiting for your order",
+      title: isTakeawayOrder ? "Pickup counter ready" : "Rider at restaurant",
+      subtitle: isTakeawayOrder
+        ? "Please reach the restaurant for handover"
+        : "Rider is waiting for your order",
       color: "bg-[#00c87e]",
-      iconType: 'rider'
+      iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     ready: {
-      title: "Handover in progress",
-      subtitle: "Rider is picking up your order",
+      title: isTakeawayOrder ? "Ready for pickup" : "Handover in progress",
+      subtitle: isTakeawayOrder
+        ? "Show your OTP at the restaurant to collect the order"
+        : "Rider is picking up your order",
       color: "bg-[#00c87e]",
-      iconType: 'rider'
+      iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     on_way: {
-      title: "Out for delivery",
-      subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Rider is out for delivery",
+      title: isTakeawayOrder ? "Pickup in progress" : "Out for delivery",
+      subtitle: isTakeawayOrder
+        ? "Your takeaway order is waiting at the restaurant"
+        : (typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Rider is out for delivery"),
       color: "bg-[#00c87e]",
-      iconType: 'rider'
+      iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     at_drop: {
-      title: "Arrived at location",
-      subtitle: "Please come to the door",
+      title: isTakeawayOrder ? "At pickup counter" : "Arrived at location",
+      subtitle: isTakeawayOrder
+        ? "Collect your order from the restaurant counter"
+        : "Please come to the door",
       color: "bg-[#00c87e]",
-      iconType: 'rider'
+      iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     delivered: {
       title: "Order picked up",

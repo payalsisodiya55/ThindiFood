@@ -673,11 +673,11 @@ const DeliveryTrackingMap = ({
       </AnimatePresence>
 
       {!!restaurantCoords && !!customerCoords && (
-        <div className="absolute top-4 right-4 z-[150]">
+        <div className="absolute top-4 right-4 z-20 max-w-[calc(100%-2rem)]">
           <button
             type="button"
             onClick={openGoogleMapsRoute}
-            className="inline-flex items-center gap-2 rounded-xl bg-white/95 backdrop-blur px-3 py-2 text-sm font-semibold text-gray-800 shadow-lg border border-gray-200 hover:bg-white transition-colors"
+            className="inline-flex max-w-full items-center gap-2 rounded-xl bg-white/95 backdrop-blur px-3 py-2 text-sm font-semibold text-gray-800 shadow-lg border border-gray-200 hover:bg-white transition-colors"
           >
             <Navigation className="w-4 h-4 text-blue-600" />
             <span>Google Maps</span>

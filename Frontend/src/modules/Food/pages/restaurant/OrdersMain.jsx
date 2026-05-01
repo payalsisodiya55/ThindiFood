@@ -151,9 +151,35 @@ const isPopupOrderIncomplete = (orderLike) => {
   );
 };
 
+const getRestaurantOrderTypeLabel = (orderLike = {}) => {
+  const fulfillmentType = String(orderLike?.fulfillmentType || "").trim().toLowerCase();
+  const deliveryType = String(orderLike?.deliveryType || "").trim().toLowerCase();
+  const orderType = String(orderLike?.order_type || "").trim().toUpperCase();
+  const hasPickupWindow = Boolean(orderLike?.pickupAt || orderLike?.scheduledAt);
+
+  if (
+    fulfillmentType === "takeaway" ||
+    deliveryType.includes("take") ||
+    deliveryType.includes("pickup") ||
+    hasPickupWindow ||
+    orderType === "SCHEDULED" ||
+    orderType === "IMMEDIATE"
+  ) {
+    return "Takeaway";
+  }
+
+  if (deliveryType.includes("dine")) {
+    return "Dine In";
+  }
+
+  return orderLike?.deliveryFleet === "express"
+    ? "Express Delivery"
+    : "Home Delivery";
+};
+
 const getBookingGuestName = (bookingLike) => {
   const value = String(
-    bookingLike?.userName ||
+  bookingLike?.userName ||
       bookingLike?.guestName ||
       bookingLike?.user?.name ||
       bookingLike?.user?.fullName ||
@@ -223,7 +249,7 @@ const transformOrderForList = (order) => ({
   mongoId: order._id,
   status: order.status || "pending",
   customerName: order.userId?.name || order.customerName || "Customer",
-  type: "Home Delivery",
+  type: getRestaurantOrderTypeLabel(order),
   tableOrToken: null,
   timePlaced: new Date(getAllOrdersTimestamp(order)).toLocaleDateString(
     "en-US",
@@ -361,7 +387,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
             mongoId: order._id,
             status: order.status || "delivered",
             customerName: order.userId?.name || order.customerName || "Customer",
-            type: "Home Delivery",
+            type: getRestaurantOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
@@ -618,7 +644,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
             mongoId: order._id,
             status: order.status || "cancelled",
             customerName: order.userId?.name || order.customerName || "Customer",
-            type: "Home Delivery",
+            type: getRestaurantOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
@@ -3998,10 +4024,7 @@ function PreparingOrders({
               mongoId: order._id,
               status: order.status || "preparing",
               customerName: order.userId?.name || "Customer",
-              type:
-                order.deliveryFleet === "standard"
-                  ? "Home Delivery"
-                  : "Express Delivery",
+              type: getRestaurantOrderTypeLabel(order),
               tableOrToken: null,
               timePlaced: new Date(order.createdAt).toLocaleTimeString(
                 "en-US",
@@ -4373,10 +4396,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
             mongoId: order._id,
             status: order.status || "ready",
             customerName: order.userId?.name || "Customer",
-            type:
-              order.deliveryFleet === "standard"
-                ? "Home Delivery"
-                : "Express Delivery",
+            type: getRestaurantOrderTypeLabel(order),
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
