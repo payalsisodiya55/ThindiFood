@@ -841,6 +841,31 @@ export default function OrderTracking() {
     [order?.status, order?.orderStatus],
   )
 
+  const canShowCancelOrder = useMemo(() => {
+    const rawStatus = String(order?.status || order?.orderStatus || "").toLowerCase()
+    const uiStatus = String(orderStatus || "").toLowerCase()
+    const isDeliveredLike =
+      rawStatus === "delivered" ||
+      rawStatus === "completed" ||
+      uiStatus === "delivered" ||
+      Boolean(order?.deliveredAt)
+
+    if (isAdminAccepted) return false
+    if (isDeliveredLike) return false
+    if (isFoodOrderCancelledStatus(rawStatus) || uiStatus === "cancelled") return false
+
+    return ![
+      "picked_up",
+      "out_for_delivery",
+      "en_route_to_delivery",
+      "reached_drop",
+      "at_drop",
+      "at_delivery",
+      "delivered",
+      "completed",
+    ].includes(rawStatus) && !["on_way", "at_drop", "delivered"].includes(uiStatus)
+  }, [isAdminAccepted, order?.status, order?.orderStatus, order?.deliveredAt, orderStatus])
+
   // Single source of truth: backend order.status (+ deliveryState phase for live ride)
   useEffect(() => {
     if (!order) return
@@ -1912,7 +1937,7 @@ export default function OrderTracking() {
           </div>
         </motion.div>
 
-        {!isAdminAccepted && orderStatus !== 'cancelled' && (
+        {canShowCancelOrder && (
           <motion.div
             className="bg-white rounded-xl shadow-sm overflow-hidden"
             initial={{ opacity: 0, y: 20 }}
