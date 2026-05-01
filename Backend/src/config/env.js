@@ -31,10 +31,17 @@ const parseOriginList = (...values) => {
     return Array.from(new Set(items));
 };
 
+const defaultCorsOrigins = [
+    'https://thindi.in',
+    'https://www.thindi.in',
+    'http://localhost:5173',
+];
+
 const socketCorsOrigins = parseOriginList(
+    process.env.CORS_ORIGIN,
     process.env.SOCKET_CORS_ORIGIN,
     process.env.FRONTEND_URL,
-    'http://localhost:5173'
+    ...defaultCorsOrigins
 );
 
 const isSocketOriginAllowed = (origin) => {
