@@ -53,6 +53,22 @@ const applyZoneVisibilityFilter = (filterAndList, zoneIdRaw) => {
     });
 };
 
+const buildRestaurantZoneVisibilityFilter = (context, zoneIdRaw) => {
+    const clauses = [
+        { $or: GLOBAL_CATEGORY_FILTER },
+        { restaurantId: context.restaurantId },
+        { createdByRestaurantId: context.restaurantId },
+        { zoneId: { $exists: false } },
+        { zoneId: null }
+    ];
+
+    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
+        clauses.push({ zoneId: new mongoose.Types.ObjectId(zoneIdRaw) });
+    }
+
+    return { $or: clauses };
+};
+
 export async function listRestaurantCategories(restaurantId, query = {}) {
     const context = await getRestaurantContext(restaurantId);
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 1000, 1), 1000);
@@ -101,7 +117,7 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
         const term = escapeRegex(search.slice(0, 80));
         filter.$and.push({ name: { $regex: term, $options: 'i' } });
     }
-    applyZoneVisibilityFilter(filter.$and, zoneIdRaw);
+    filter.$and.push(buildRestaurantZoneVisibilityFilter(context, zoneIdRaw));
 
     if (compact && context.pureVegRestaurant) {
         filter.$and.push({ foodTypeScope: 'Veg' });
@@ -250,8 +266,11 @@ export async function updateRestaurantCategory(restaurantId, id, body = {}) {
         throw new ValidationError('Invalid category id');
     }
 
-    const doc = await FoodCategory.findOne({ _id: id, restaurantId: context.restaurantId });
+    const doc = await FoodCategory.findById(id);
     if (!doc) return null;
+    if (String(doc.restaurantId || '') !== String(context.restaurantId)) {
+        throw new ValidationError('Admin controls this category now');
+    }
 
     const nextFoodTypeScope = body.foodTypeScope !== undefined
         ? normalizeCategoryFoodTypeScope(body.foodTypeScope, '')
@@ -304,8 +323,11 @@ export async function deleteRestaurantCategory(restaurantId, id) {
         throw new ValidationError('Invalid category id');
     }
 
-    const category = await FoodCategory.findOne({ _id: id, restaurantId: context.restaurantId }).select('_id').lean();
+    const category = await FoodCategory.findById(id).select('_id restaurantId').lean();
     if (!category?._id) return null;
+    if (String(category.restaurantId || '') !== String(context.restaurantId)) {
+        throw new ValidationError('Admin controls this category now');
+    }
 
     const inUse = await FoodItem.countDocuments({ categoryId: id, restaurantId: context.restaurantId });
     if (inUse > 0) {

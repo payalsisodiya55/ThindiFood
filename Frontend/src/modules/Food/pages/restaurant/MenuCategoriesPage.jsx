@@ -73,8 +73,13 @@ export default function MenuCategoriesPage() {
     navigate(location.pathname, { replace: true, state: null })
   }, [location.pathname, location.state, navigate])
 
-  const ownCategories = useMemo(
-    () => categories.filter((category) => category.ownedByRestaurant),
+  const restaurantCategories = useMemo(
+    () => categories.filter((category) => !category?.isGlobal),
+    [categories],
+  )
+
+  const globalCategories = useMemo(
+    () => categories.filter((category) => category?.isGlobal),
     [categories],
   )
 
@@ -244,7 +249,7 @@ export default function MenuCategoriesPage() {
           <p className="text-sm font-semibold text-slate-900">How this works</p>
           <p className="mt-2 text-sm text-slate-600">
             New categories stay pending until admin approval. Editing an approved category sends it back for review.
-            Only approved categories can be used for food uploads.
+            Global categories are shared across all restaurants and cannot be edited or deleted by restaurants.
           </p>
         </div>
 
@@ -260,16 +265,23 @@ export default function MenuCategoriesPage() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-6 w-6 animate-spin text-slate-500" />
           </div>
-        ) : ownCategories.length === 0 ? (
+        ) : restaurantCategories.length === 0 && globalCategories.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-            <p className="text-lg font-semibold text-slate-900">No restaurant categories yet</p>
+            <p className="text-lg font-semibold text-slate-900">No categories available yet</p>
             <p className="mt-2 text-sm text-slate-500">
               Start with a category and choose whether it should accept veg, non-veg, or both kinds of dishes.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            {ownCategories.map((category) => {
+            {restaurantCategories.length > 0 && (
+              <div className="mb-1">
+                <p className="text-sm font-semibold text-slate-900">Your categories</p>
+                <p className="text-xs text-slate-500">These belong to your restaurant and follow admin approval workflow.</p>
+              </div>
+            )}
+
+            {restaurantCategories.map((category) => {
               const status = category?.approvalStatus || "pending"
               const isEditable = category?.canEdit
               const isGlobal = category?.isGlobal
@@ -318,6 +330,91 @@ export default function MenuCategoriesPage() {
                         ) : (
                           <p>Foods can be added only after approval.</p>
                         )}
+                        {status === "rejected" && category?.rejectionReason && (
+                          <p className="text-rose-600">Reason: {category.rejectionReason}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleActive(category)}
+                      className="rounded-xl bg-slate-100 p-2 text-slate-700 disabled:opacity-50"
+                      disabled={!isEditable}
+                      title={category?.isActive !== false ? "Deactivate" : "Activate"}
+                    >
+                      {category?.isActive !== false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={() => openEditModal(category)}
+                      className="rounded-xl bg-blue-50 p-2 text-blue-700 disabled:opacity-50"
+                      disabled={!isEditable}
+                    >
+                      <Edit2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category)}
+                      className="rounded-xl bg-rose-50 p-2 text-rose-700 disabled:opacity-50"
+                      disabled={!category?.canDelete}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </motion.div>
+              )
+            })}
+
+            {globalCategories.length > 0 && (
+              <div className="pt-2">
+                <p className="text-sm font-semibold text-slate-900">Global categories</p>
+                <p className="text-xs text-slate-500">These categories are shared across all restaurants and are read-only for restaurants.</p>
+              </div>
+            )}
+
+            {globalCategories.map((category) => {
+              const status = category?.approvalStatus || "pending"
+              const isEditable = category?.canEdit
+              const isGlobal = category?.isGlobal
+
+              return (
+                <motion.div
+                  key={category._id || category.id}
+                  layout
+                  className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex gap-3">
+                    <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-slate-100">
+                      {category?.image ? (
+                        <img src={category.image} alt={category.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-lg font-bold text-slate-500">
+                          {String(category?.name || "C").slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-semibold text-slate-900">{category.name}</h3>
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${approvalBadgeClass(status)}`}>
+                          {status === "approved" ? <BadgeCheck className="mr-1 h-3.5 w-3.5" /> : <Clock3 className="mr-1 h-3.5 w-3.5" />}
+                          {status.charAt(0).toUpperCase() + status.slice(1)}
+                        </span>
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold ${scopePillClass(category?.foodTypeScope)}`}>
+                          {category?.foodTypeScope || "Both"}
+                        </span>
+                        {isGlobal && (
+                          <span className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700">
+                            <Globe className="mr-1 h-3.5 w-3.5" />
+                            Global
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 space-y-1 text-sm text-slate-500">
+                        <p>{category?.itemCount || 0} item(s) linked</p>
+                        <p>Admin controls this category now, so you can use it but not rename or delete it.</p>
                         {status === "rejected" && category?.rejectionReason && (
                           <p className="text-rose-600">Reason: {category.rejectionReason}</p>
                         )}
