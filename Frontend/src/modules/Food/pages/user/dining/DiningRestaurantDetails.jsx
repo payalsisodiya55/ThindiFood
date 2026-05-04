@@ -202,8 +202,8 @@ export default function DiningRestaurantDetails() {
   const cuisines =
     Array.isArray(restaurant?.cuisines) && restaurant.cuisines.length > 0
       ? restaurant.cuisines.join(", ")
-      : "Asian, Italian, Continental, Chinese, North Indian, Desserts, Beverages, Coffee"
-  const costForTwo = restaurant?.costForTwo ? `${"\u20B9"}${restaurant.costForTwo} for two` : `${"\u20B9"}1900 for two`
+      : ""
+  const costForTwo = restaurant?.costForTwo ? `${"\u20B9"}${restaurant.costForTwo} for two` : ""
   const facilities = buildFacilities(restaurant)
   const rating = Number(restaurant?.rating || restaurant?.avgRating || 0).toFixed(1)
   const reviewCount = restaurant?.totalRatings || restaurant?.reviewCount || restaurant?.reviewsCount || 0
@@ -344,7 +344,7 @@ export default function DiningRestaurantDetails() {
               <div className="min-w-0 flex-1">
                 <h1 className="text-[36px] font-black leading-none tracking-[-0.03em]">{restaurantName}</h1>
                 <p className="mt-2 max-w-[94%] text-[14px] leading-5 text-white/92">{address}</p>
-                <p className="mt-2 text-[14px] text-white/90">
+                <p className={`mt-2 text-[14px] text-white/90 ${!(costForTwo || cuisines) ? "hidden" : ""}`}>
                   {costForTwo}
                   <span className="mx-1.5 text-white/65">•</span>
                   {cuisines}
@@ -480,18 +480,16 @@ export default function DiningRestaurantDetails() {
               <h2 className="text-[28px] font-black leading-none text-[#23180f]">Menu</h2>
               <p className="mt-2 text-[13px] text-gray-400">Last updated a month ago</p>
             </div>
-            <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-              {featuredSections.length || 2} dishes
-            </div>
+            {featuredSections.length > 0 ? (
+              <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                {featuredSections.length} dishes
+              </div>
+            ) : null}
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {(featuredSections.length > 0
-              ? featuredSections
-              : [
-                  { id: "food", title: "Food", pages: 16 },
-                  { id: "beverages", title: "Beverages", pages: 10 },
-                ]).map((section, index) => (
+          {featuredSections.length > 0 ? (
+            <div className="mt-4 grid grid-cols-2 gap-3">
+            {featuredSections.map((section, index) => (
               <div key={section.id} className="overflow-hidden rounded-[18px] border border-[#ede8dd] bg-white">
                 <div className="aspect-[0.88] bg-[#f7f1e7]">
                   {menuPreviewImages[index] ? (
@@ -504,11 +502,12 @@ export default function DiningRestaurantDetails() {
                 </div>
                 <div className="px-2 pb-3 pt-2 text-center">
                   <p className="text-[16px] font-medium leading-tight text-[#2b2218]">{section.title}</p>
-                  <p className="mt-1 text-[12px] text-[#7f7a73]">{section.pages} pages</p>
+                  {section.pages > 0 ? <p className="mt-1 text-[12px] text-[#7f7a73]">{section.pages} pages</p> : null}
                 </div>
               </div>
             ))}
           </div>
+          ) : null}
         </section>
 
         <section id="restaurant-photos" className="mt-5 border-t border-[#e8e8ef] pt-4">
@@ -536,15 +535,19 @@ export default function DiningRestaurantDetails() {
 
           <div className="mt-4 rounded-[18px] border border-[#ececf4] bg-[#fafbff] p-4">
             <div className="space-y-4 text-[14px] text-[#5f6474]">
-              <div className="flex items-start gap-3">
-                <IndianRupee className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
-                <p>{costForTwo}</p>
-              </div>
+              {costForTwo ? (
+                <div className="flex items-start gap-3">
+                  <IndianRupee className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
+                  <p>{costForTwo}</p>
+                </div>
+              ) : null}
 
-              <div className="flex items-start gap-3">
-                <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-[#8a8f9d]" />
-                <p>{cuisines}</p>
-              </div>
+              {cuisines ? (
+                <div className="flex items-start gap-3">
+                  <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-[#8a8f9d]" />
+                  <p>{cuisines}</p>
+                </div>
+              ) : null}
 
               <div className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0" style={{ color: RED }} />
