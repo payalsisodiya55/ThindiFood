@@ -135,6 +135,39 @@ const getRestaurantCoordinates = (restaurant) => {
   return null
 }
 
+const formatRestaurantPickupAddress = (restaurant) => {
+  if (!restaurant || typeof restaurant !== "object") return "Restaurant Location"
+
+  const location = restaurant?.location && typeof restaurant.location === "object"
+    ? restaurant.location
+    : null
+
+  if (location) {
+    const locationAddress = formatFullAddress({
+      formattedAddress: location.formattedAddress,
+      address: location.address,
+      street: location.addressLine1,
+      additionalDetails: [location.addressLine2, location.area, location.landmark].filter(Boolean).join(", "),
+      city: location.city,
+      state: location.state,
+      zipCode: location.pincode,
+    })
+
+    if (locationAddress) return locationAddress
+  }
+
+  const fallbackAddress = formatFullAddress({
+    address: restaurant?.address,
+    street: restaurant?.addressLine1,
+    additionalDetails: [restaurant?.addressLine2, restaurant?.area, restaurant?.landmark].filter(Boolean).join(", "),
+    city: restaurant?.city,
+    state: restaurant?.state,
+    zipCode: restaurant?.pincode,
+  })
+
+  return fallbackAddress || "Restaurant Location"
+}
+
 const DAY_NAMES = [
   "Sunday",
   "Monday",
@@ -886,10 +919,7 @@ export default function Cart() {
   }, [deliveryAddressMode, currentLocationAddress, selectedAddress, savedAddress])
 
   const pickupRestaurantAddress = useMemo(() => {
-    if (!restaurantData) return "Restaurant Location"
-    const { address, area, city } = restaurantData
-    const parts = [address, area, city].filter(Boolean)
-    return parts.length > 0 ? parts.join(", ") : "Restaurant Location"
+    return formatRestaurantPickupAddress(restaurantData)
   }, [restaurantData])
 
   const restaurantDistanceLabel = useMemo(() => {
@@ -899,10 +929,11 @@ export default function Cart() {
 
     if (!Number.isFinite(distanceKm)) return "Restaurant Location"
 
-    const roundedDistance =
-      distanceKm < 1
-        ? distanceKm.toFixed(1)
-        : distanceKm.toFixed(distanceKm < 10 ? 1 : 0)
+    if (distanceKm < 1) {
+      return `${Math.max(1, Math.round(distanceKm * 1000))} m away`
+    }
+
+    const roundedDistance = distanceKm.toFixed(distanceKm < 10 ? 1 : 0)
 
     return `${roundedDistance} km away`
   }, [defaultAddress?.location?.coordinates, restaurantData])
@@ -1079,11 +1110,6 @@ export default function Cart() {
     const fetchRestaurantData = async () => {
       if (cart.length === 0) {
         setRestaurantData(null)
-        return
-      }
-
-      // If we already have restaurantData, don't fetch again
-      if (restaurantData) {
         return
       }
 

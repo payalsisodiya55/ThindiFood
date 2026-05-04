@@ -696,13 +696,19 @@ Order again from this restaurant in the ${companyName} app.`
           </div>
         ) : (
           filteredOrders.map((order) => {
-            // Check payment method - COD/wallet orders have 'pending' status which is normal
-            const isCodOrWallet = order.payment?.method === 'cash' ||
-              order.payment?.method === 'cod' ||
-              order.payment?.method === 'wallet' ||
-              order.paymentMethod === 'cash' ||
-              order.paymentMethod === 'cod' ||
-              order.paymentMethod === 'wallet'
+            const normalizedPaymentMethod = String(
+              order.payment?.method ||
+              order.paymentMethod ||
+              ""
+            )
+              .trim()
+              .toLowerCase()
+            const isCodOrder =
+              normalizedPaymentMethod === "cash" ||
+              normalizedPaymentMethod === "cod" ||
+              normalizedPaymentMethod === "cash on delivery"
+            const isCodOrWallet =
+              isCodOrder || normalizedPaymentMethod === "wallet"
 
             // Payment failed only for online payments (razorpay) that actually failed
             // Don't show payment failed for COD/wallet or cancelled orders
@@ -714,6 +720,7 @@ Order again from this restaurant in the ${companyName} app.`
             const isDelivered = order.status === 'delivered'
             const isRestaurantCancelled = order.isRestaurantCancelled || order.status === 'restaurant_cancelled'
             const isUserCancelled = order.isUserCancelled || (isCancelled && order.cancelledBy === 'user')
+            const showRefundForCancellation = isRestaurantCancelled && !isCodOrder
             // Prefer food image from first item; fallback to restaurant image, then generic food photo
             const firstItemImage = order.items?.[0]?.image
             const restaurantImage = firstItemImage
@@ -957,7 +964,9 @@ Order again from this restaurant in the ${companyName} app.`
                         </div>
                         <span className="text-xs font-semibold text-red-500">Restaurant Cancelled</span>
                       </div>
-                      <p className="text-xs text-gray-600 ml-7">Refund will be processed in 24-48 hours</p>
+                      {showRefundForCancellation && (
+                        <p className="text-xs text-gray-600 ml-7">Refund will be processed in 24-48 hours</p>
+                      )}
                     </div>
                   ) : paymentFailed ? (
                     <div className="flex items-center gap-2">

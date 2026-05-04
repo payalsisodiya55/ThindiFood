@@ -3247,6 +3247,8 @@ export async function getRestaurantById(id, scope = {}) {
     return FoodRestaurant.findById(id)
         .select('-__v')
         .populate('zoneId', 'name zoneName serviceLocation isActive')
+        .populate('locationChangeRequest.previousZoneId', 'name zoneName serviceLocation isActive')
+        .populate('locationChangeRequest.nextZoneId', 'name zoneName serviceLocation isActive')
         .lean();
 }
 
@@ -3404,12 +3406,19 @@ export async function getPendingRestaurants(scope = {}) {
     applyZoneScopeToFilter(filter, 'zoneId', scope);
     const restaurants = await FoodRestaurant.find(filter)
         .populate('zoneId', 'name zoneName serviceLocation')
+        .populate('locationChangeRequest.previousZoneId', 'name zoneName serviceLocation')
+        .populate('locationChangeRequest.nextZoneId', 'name zoneName serviceLocation')
         .sort({ createdAt: -1 })
         .lean();
     return restaurants.map((r, i) => ({
         ...r,
         sl: i + 1,
         zone: r.zoneId?.serviceLocation || r.zoneId?.zoneName || r.zoneId?.name || null,
+        requestType:
+            r.status === 'pending' && r.locationChangeRequest?.requestedAt
+                ? 'location_reverification'
+                : 'new_registration',
+        changeReason: r.locationChangeRequest?.reason || '',
     }));
 }
 
@@ -4437,12 +4446,15 @@ export async function approveRestaurant(id) {
                 approvedAt: new Date(),
                 rejectedAt: undefined,
                 rejectionReason: undefined
-            }
+            },
+            $unset: {
+                locationChangeRequest: 1
+            },
         },
         { new: true, runValidators: false }
     ).lean();
 
-    if (updated) {
+    if (false && updated) { // Approval push intentionally disabled.
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(

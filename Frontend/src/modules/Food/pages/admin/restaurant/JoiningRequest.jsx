@@ -24,6 +24,133 @@ const normalizeRequestRecord = (request, index) => ({
   fullData: request?.fullData || request,
 })
 
+const normalizeApprovalStatus = (value) => String(value || "").trim().toLowerCase()
+
+const getRequestStatusMeta = (request) => {
+  const status = normalizeApprovalStatus(request?.status || (request?.isActive !== false ? "approved" : "pending"))
+  const isReverification = request?.requestType === "location_reverification" || !!request?.locationChangeRequest?.requestedAt
+
+  if (status === "approved") {
+    return { label: "Approved", className: "bg-green-100 text-green-700" }
+  }
+
+  if (status === "rejected") {
+    return { label: isReverification ? "Reverification Rejected" : "Rejected", className: "bg-red-100 text-red-700" }
+  }
+
+  return {
+    label: isReverification ? "Reverification Requested" : "Pending Approval",
+    className: isReverification ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700",
+  }
+}
+
+const formatAddressBlock = (locationLike) => {
+  if (!locationLike || typeof locationLike !== "object") return ""
+  return (
+    locationLike.formattedAddress ||
+    locationLike.address ||
+    [
+      locationLike.addressLine1,
+      locationLike.addressLine2,
+      locationLike.area,
+      locationLike.city,
+      locationLike.state,
+      locationLike.pincode,
+      locationLike.landmark,
+    ]
+      .filter(Boolean)
+      .join(", ")
+  )
+}
+
+const isCoordinateLikeAddress = (value) =>
+  typeof value === "string" &&
+  /^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*$/.test(value.trim())
+
+const getReadableAddress = (...candidates) => {
+  for (const candidate of candidates) {
+    if (!candidate) continue
+
+    if (typeof candidate === "string") {
+      const normalized = candidate.trim()
+      if (normalized && !isCoordinateLikeAddress(normalized)) {
+        return normalized
+      }
+      continue
+    }
+
+    if (typeof candidate === "object") {
+      const formatted = formatAddressBlock(candidate)
+      if (formatted && !isCoordinateLikeAddress(formatted)) {
+        return formatted
+      }
+    }
+  }
+
+  for (const candidate of candidates) {
+    if (!candidate) continue
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim()
+    if (typeof candidate === "object") {
+      const formatted = formatAddressBlock(candidate)
+      if (formatted) return formatted
+    }
+  }
+
+  return ""
+}
+
+const getLocationChangeSummary = (request) => {
+  const changeRequest = request?.locationChangeRequest
+  if (!changeRequest) return null
+
+  const previousZone =
+    changeRequest?.previousZoneId?.serviceLocation ||
+    changeRequest?.previousZoneId?.zoneName ||
+    changeRequest?.previousZoneId?.name ||
+    ""
+  const nextZone =
+    changeRequest?.nextZoneId?.serviceLocation ||
+    changeRequest?.nextZoneId?.zoneName ||
+    changeRequest?.nextZoneId?.name ||
+    request?.zone ||
+    getZoneLabel(request)
+
+  const previousAddress = getReadableAddress(
+    changeRequest?.previousLocation,
+    {
+      formattedAddress: request?.address,
+      addressLine1: request?.addressLine1,
+      addressLine2: request?.addressLine2,
+      area: request?.area,
+      city: request?.city,
+      state: request?.state,
+      pincode: request?.pincode,
+      landmark: request?.landmark,
+    },
+    request?.onboarding?.step1?.location,
+  )
+
+  const nextAddress = getReadableAddress(
+    request?.location,
+    request?.onboarding?.step1?.location,
+    request,
+    changeRequest?.nextLocation,
+  )
+
+  const reason =
+    previousAddress && nextAddress && previousAddress !== nextAddress
+      ? `Restaurant location change requested from "${previousAddress}"${previousZone ? ` (${previousZone})` : ""} to "${nextAddress}"${nextZone ? ` (${nextZone})` : ""}.`
+      : request?.changeReason || changeRequest?.reason || ""
+
+  return {
+    reason,
+    previousAddress,
+    nextAddress,
+    previousZone,
+    nextZone,
+  }
+}
+
 const formatTime12Hour = (timeStr) => {
   if (!timeStr || typeof timeStr !== "string" || !timeStr.includes(":")) return "--:-- --"
   const [h, m] = timeStr.split(":").map(Number)
@@ -434,6 +561,9 @@ export default function JoiningRequest() {
                   </tr>
                 ) : (
                   filteredRequests.map((request, index) => (
+                    (() => {
+                      const statusMeta = getRequestStatusMeta(request)
+                      return (
                     <tr key={request._id || request.id || `${request.restaurantName}-${index}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{request.sl ?? index + 1}</span>
@@ -480,12 +610,8 @@ export default function JoiningRequest() {
                         <span className="text-sm text-slate-700">{request.businessModel || "—"}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          request.status === "Pending"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {request.status}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusMeta.className}`}>
+                          {statusMeta.label}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -520,6 +646,8 @@ export default function JoiningRequest() {
                         </div>
                       </td>
                     </tr>
+                      )
+                    })()
                   ))
                 )}
               </tbody>
@@ -759,6 +887,8 @@ export default function JoiningRequest() {
                 const openingTime = r?.openingTime || r?.deliveryTimings?.openingTime || r?.onboarding?.step2?.deliveryTimings?.openingTime
                 const closingTime = r?.closingTime || r?.deliveryTimings?.closingTime || r?.onboarding?.step2?.deliveryTimings?.closingTime
                 const approvalStatus = r?.status || (r?.isActive !== false ? "approved" : "pending")
+                const statusMeta = getRequestStatusMeta(r)
+                const locationChangeSummary = getLocationChangeSummary(r)
                 const hasFlatDocs = r?.panNumber || r?.panImage || r?.fssaiNumber || r?.accountNumber
                 const menuImgList = Array.isArray(r?.menuImages) ? r.menuImages : (r?.onboarding?.step2?.menuImageUrls || [])
                 return (
@@ -792,10 +922,8 @@ export default function JoiningRequest() {
                           <Building2 className="w-4 h-4" />
                           <span className="text-sm">{r?.restaurantId || r?._id || "N/A"}</span>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          approvalStatus === "approved" ? "bg-green-100 text-green-700" : approvalStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                        }`}>
-                          {approvalStatus === "approved" ? "Approved" : approvalStatus === "rejected" ? "Rejected" : "Pending Approval"}
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusMeta.className}`}>
+                          {statusMeta.label}
                         </span>
                       </div>
                     </div>
@@ -851,6 +979,26 @@ export default function JoiningRequest() {
                                       : r?.zone || "—"}
                               </p>
                             </div>
+                          </div>
+                        )}
+                        {locationChangeSummary && (
+                          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Location Change Review</p>
+                            {locationChangeSummary.reason ? (
+                              <p className="mt-2 text-sm text-slate-700">{locationChangeSummary.reason}</p>
+                            ) : null}
+                            {locationChangeSummary.previousAddress ? (
+                              <p className="mt-3 text-sm text-slate-700">
+                                <span className="font-semibold text-slate-900">Previous:</span> {locationChangeSummary.previousAddress}
+                                {locationChangeSummary.previousZone ? ` (${locationChangeSummary.previousZone})` : ""}
+                              </p>
+                            ) : null}
+                            {locationChangeSummary.nextAddress ? (
+                              <p className="mt-2 text-sm text-slate-700">
+                                <span className="font-semibold text-slate-900">Requested:</span> {locationChangeSummary.nextAddress}
+                                {locationChangeSummary.nextZone ? ` (${locationChangeSummary.nextZone})` : ""}
+                              </p>
+                            ) : null}
                           </div>
                         )}
                         {(r?.primaryContactNumber || r?.phone) && (

@@ -40,6 +40,26 @@ const geoPointSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const locationChangeRequestSchema = new mongoose.Schema(
+  {
+    requestedAt: { type: Date },
+    reason: { type: String, trim: true },
+    previousZoneId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FoodZone",
+    },
+    nextZoneId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FoodZone",
+    },
+    previousLocation: {
+      type: geoPointSchema,
+      default: undefined,
+    },
+  },
+  { _id: false },
+);
+
 const restaurantSchema = new mongoose.Schema(
   {
     restaurantName: {
@@ -252,6 +272,10 @@ const restaurantSchema = new mongoose.Schema(
     rejectionReason: {
       type: String,
       trim: true,
+    },
+    locationChangeRequest: {
+      type: locationChangeRequestSchema,
+      default: undefined,
     },
   },
   {

@@ -16,6 +16,11 @@ const getNotificationKey = (payload) =>
     payload?.data?.targetUrl || payload?.data?.link || "",
   ].join("::");
 
+function shouldSuppressPush(payload = {}) {
+  const type = String(payload?.data?.type || "").trim().toLowerCase();
+  return type === "restaurant_approved";
+}
+
 async function notifyOpenClients(payload) {
   pushDebugLog(PUSH_DEBUG_PREFIX, "Broadcasting push to open clients", { payload });
   const windowClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -119,6 +124,10 @@ async function loadFirebaseWebConfig() {
 
   messaging.onBackgroundMessage(async (payload) => {
     pushDebugLog(PUSH_DEBUG_PREFIX, "Received Firebase background message", { payload });
+    if (shouldSuppressPush(payload)) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Suppressed background push notification", { payload });
+      return;
+    }
     
     const visibleClient = await hasVisibleClientForTarget(payload);
     

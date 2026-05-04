@@ -33,7 +33,7 @@ import { useProfile } from "@food/context/ProfileContext"
 import { useLocation as useUserLocation } from "@food/hooks/useLocation"
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap"
 import RefundPreferenceModal from "@food/components/user/RefundPreferenceModal"
-import { orderAPI } from "@food/api"
+import { orderAPI, restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import circleIcon from "@food/assets/circleicon.png"
 import { RESTAURANT_PIN_SVG, CUSTOMER_PIN_SVG, RIDER_BIKE_SVG } from "@food/constants/mapIcons"
@@ -325,9 +325,15 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     restaurant: apiOrder?.restaurantName || safePreviousOrder?.restaurant || 'Restaurant',
     restaurantPhone:
       apiOrder?.restaurantPhone ||
+      apiOrder?.restaurantId?.primaryContactNumber ||
       apiOrder?.restaurantId?.phone ||
+      apiOrder?.restaurantId?.contactNumber ||
+      apiOrder?.restaurantId?.contact?.phone ||
       apiOrder?.restaurantId?.ownerPhone ||
+      apiOrder?.restaurant?.primaryContactNumber ||
       apiOrder?.restaurant?.phone ||
+      apiOrder?.restaurant?.contactNumber ||
+      apiOrder?.restaurant?.contact?.phone ||
       apiOrder?.restaurant?.ownerPhone ||
       safePreviousOrder?.restaurantPhone ||
       '',
@@ -567,6 +573,7 @@ export default function OrderTracking() {
   
   // State for order data
   const [order, setOrder] = useState(() => hydratedInitialOrder || null)
+  const [restaurantDetails, setRestaurantDetails] = useState(null)
   const [loading, setLoading] = useState(() => !hydratedInitialOrder)
   const [error, setError] = useState(null)
 
@@ -604,6 +611,74 @@ export default function OrderTracking() {
     setError(null)
     setLoading(false)
   }, [hydratedInitialOrder, prefetchedOrder, orderId])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const existingPhone =
+      order?.restaurantPhone ||
+      order?.restaurantId?.primaryContactNumber ||
+      order?.restaurantId?.phone ||
+      order?.restaurantId?.contactNumber ||
+      order?.restaurantId?.ownerPhone ||
+      order?.restaurantId?.contact?.phone ||
+      order?.restaurant?.primaryContactNumber ||
+      order?.restaurant?.phone ||
+      order?.restaurant?.contactNumber ||
+      order?.restaurant?.ownerPhone ||
+      order?.restaurant?.contact?.phone
+
+    if (existingPhone) {
+      setRestaurantDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const restaurantLookupId =
+      (typeof order?.restaurantId === "string" && order.restaurantId) ||
+      order?.restaurantId?._id ||
+      order?.restaurantId?.restaurantId ||
+      order?.restaurant?._id ||
+      order?.restaurant?.restaurantId ||
+      null
+
+    if (!restaurantLookupId) {
+      setRestaurantDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const fetchRestaurantDetails = async () => {
+      try {
+        const response = await restaurantAPI.getRestaurantById(restaurantLookupId)
+        if (cancelled) return
+
+        const restaurantData =
+          response?.data?.data?.restaurant ||
+          response?.data?.restaurant ||
+          response?.data?.data ||
+          null
+
+        setRestaurantDetails(restaurantData || null)
+      } catch {
+        if (!cancelled) {
+          setRestaurantDetails(null)
+        }
+      }
+    }
+
+    fetchRestaurantDetails()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    order?.restaurantPhone,
+    order?.restaurantId,
+    order?.restaurant,
+  ])
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined
@@ -882,11 +957,22 @@ export default function OrderTracking() {
 
     const rawPhone =
       order?.restaurantPhone ||
+      order?.restaurantId?.primaryContactNumber ||
       order?.restaurantId?.phone ||
+      order?.restaurantId?.contactNumber ||
       order?.restaurantId?.ownerPhone ||
       order?.restaurantId?.contact?.phone ||
+      order?.restaurant?.primaryContactNumber ||
       order?.restaurant?.phone ||
+      order?.restaurant?.contactNumber ||
       order?.restaurant?.ownerPhone ||
+      order?.restaurant?.contact?.phone ||
+      restaurantDetails?.primaryContactNumber ||
+      restaurantDetails?.phone ||
+      restaurantDetails?.contactNumber ||
+      restaurantDetails?.ownerPhone ||
+      restaurantDetails?.contact?.phone ||
+      restaurantDetails?.location?.phone ||
       order?.restaurantId?.location?.phone ||
       '';
 
@@ -1229,7 +1315,6 @@ export default function OrderTracking() {
       if (message) {
         toast.success(message, {
           duration: 5000,
-          icon: '???',
           position: 'top-center',
           description: estimatedDeliveryTime
             ? `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes`
@@ -1918,8 +2003,7 @@ export default function OrderTracking() {
             className="p-4 border-b border-dashed border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
             onClick={() => setShowOrderDetails(true)}
           >
-            <div className="flex items-start gap-3">
-              <Receipt className="w-5 h-5 text-gray-500 mt-0.5" />
+            <div className="flex items-start">
               <div className="flex-1">
                 <div className="mt-2 space-y-1">
                   {order?.items?.map((item, index) => (

@@ -202,6 +202,10 @@ const toRestaurantProfile = (doc) => {
         },
         isAcceptingOrders: doc.isAcceptingOrders !== false,
         status: doc.status || null,
+        approvedAt: doc.approvedAt || null,
+        rejectedAt: doc.rejectedAt || null,
+        rejectionReason: doc.rejectionReason || '',
+        locationChangeRequest: normalizeLocationChangeRequest(doc.locationChangeRequest),
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
         rating: normalizeRatingValue(doc.rating),
@@ -235,6 +239,113 @@ const zoneToPolygon = (zoneDoc) => {
     const last = ring[ring.length - 1];
     if (first[0] !== last[0] || first[1] !== last[1]) ring.push(first);
     return { type: 'Polygon', coordinates: [ring] };
+};
+
+const isPointInZone = (lat, lng, zoneDoc) => {
+    const coords = Array.isArray(zoneDoc?.coordinates) ? zoneDoc.coordinates : [];
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || coords.length < 3) return false;
+
+    let inside = false;
+    for (let i = 0, j = coords.length - 1; i < coords.length; j = i++) {
+        const xi = Number(coords[i]?.longitude);
+        const yi = Number(coords[i]?.latitude);
+        const xj = Number(coords[j]?.longitude);
+        const yj = Number(coords[j]?.latitude);
+
+        if (![xi, yi, xj, yj].every(Number.isFinite)) continue;
+
+        const intersects =
+            yi > lat !== yj > lat &&
+            lng < ((xj - xi) * (lat - yi)) / ((yj - yi) || Number.EPSILON) + xi;
+        if (intersects) inside = !inside;
+    }
+
+    return inside;
+};
+
+const resolveZoneForCoordinates = async (lat, lng) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+
+    const zones = await FoodZone.find({ isActive: true })
+        .select('_id name zoneName serviceLocation coordinates')
+        .lean();
+
+    return zones.find((zone) => isPointInZone(lat, lng, zone)) || null;
+};
+
+const normalizeLocationForAudit = (location, fallback = {}) => {
+    const loc = location && typeof location === 'object' ? location : {};
+    const coordinates = Array.isArray(loc.coordinates)
+        ? loc.coordinates.map((value) => Number(value)).filter((value) => Number.isFinite(value)).slice(0, 2)
+        : undefined;
+
+    return {
+        type: 'Point',
+        coordinates: coordinates?.length === 2 ? coordinates : undefined,
+        latitude: toFiniteNumber(loc.latitude) ?? toFiniteNumber(fallback.latitude) ?? undefined,
+        longitude: toFiniteNumber(loc.longitude) ?? toFiniteNumber(fallback.longitude) ?? undefined,
+        formattedAddress: String(loc.formattedAddress || loc.address || fallback.formattedAddress || '').trim(),
+        address: String(loc.address || loc.formattedAddress || fallback.address || '').trim(),
+        addressLine1: String(loc.addressLine1 || fallback.addressLine1 || '').trim(),
+        addressLine2: String(loc.addressLine2 || fallback.addressLine2 || '').trim(),
+        area: String(loc.area || fallback.area || '').trim(),
+        city: String(loc.city || fallback.city || '').trim(),
+        state: String(loc.state || fallback.state || '').trim(),
+        pincode: String(loc.pincode || fallback.pincode || '').trim(),
+        landmark: String(loc.landmark || fallback.landmark || '').trim()
+    };
+};
+
+const normalizeLocationChangeRequest = (request) => {
+    if (!request || typeof request !== 'object') return null;
+
+    const previousZone =
+        request.previousZoneId && typeof request.previousZoneId === 'object'
+            ? {
+                _id: request.previousZoneId._id || undefined,
+                name:
+                    request.previousZoneId.serviceLocation ||
+                    request.previousZoneId.zoneName ||
+                    request.previousZoneId.name ||
+                    ''
+            }
+            : null;
+
+    const nextZone =
+        request.nextZoneId && typeof request.nextZoneId === 'object'
+            ? {
+                _id: request.nextZoneId._id || undefined,
+                name:
+                    request.nextZoneId.serviceLocation ||
+                    request.nextZoneId.zoneName ||
+                    request.nextZoneId.name ||
+                    ''
+            }
+            : null;
+
+    return {
+        requestedAt: request.requestedAt || null,
+        reason: String(request.reason || '').trim(),
+        previousZoneId: previousZone,
+        nextZoneId: nextZone,
+        previousLocation: request.previousLocation ? normalizeLocationForAudit(request.previousLocation) : null
+    };
+};
+
+const buildLocationChangeReason = ({ previousAddress, nextAddress, previousZoneName, nextZoneName }) => {
+    const addressChanged = previousAddress !== nextAddress;
+    const zoneChanged = previousZoneName !== nextZoneName;
+
+    if (addressChanged && zoneChanged) {
+        return `Restaurant location changed from "${previousAddress || 'previous address'}" (${previousZoneName || 'no previous zone'}) to "${nextAddress || 'new address'}" (${nextZoneName || 'new zone'}).`;
+    }
+    if (addressChanged) {
+        return `Restaurant address changed from "${previousAddress || 'previous address'}" to "${nextAddress || 'new address'}".`;
+    }
+    if (zoneChanged) {
+        return `Restaurant zone changed from "${previousZoneName || 'no previous zone'}" to "${nextZoneName || 'new zone'}".`;
+    }
+    return 'Restaurant location details were updated and need reverification.';
 };
 
 const buildZoneRestaurantFilter = async (zoneIdRaw) => {
@@ -485,11 +596,17 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'diningSettings',
                 'isAcceptingOrders',
                 'status',
+                'approvedAt',
+                'rejectedAt',
+                'rejectionReason',
+                'locationChangeRequest',
                 'createdAt',
                 'updatedAt'
             ].join(' ')
         )
         .populate('zoneId', 'name zoneName serviceLocation')
+        .populate('locationChangeRequest.previousZoneId', 'name zoneName serviceLocation')
+        .populate('locationChangeRequest.nextZoneId', 'name zoneName serviceLocation')
         .lean();
     return toRestaurantProfile(doc);
 };
@@ -641,7 +758,8 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
     }
 
     const currentRestaurant = await FoodRestaurant.findById(restaurantId)
-        .select('restaurantName restaurantNameNormalized ownerPhone ownerPhoneDigits ownerPhoneLast10 primaryContactNumber status')
+        .select('restaurantName restaurantNameNormalized ownerPhone ownerPhoneDigits ownerPhoneLast10 primaryContactNumber status location addressLine1 addressLine2 area city state pincode landmark zoneId')
+        .populate('zoneId', 'name zoneName serviceLocation')
         .lean();
 
     if (!currentRestaurant) {
@@ -802,11 +920,20 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         // Optional geo coords for server-side distance filtering.
         const lat = toFiniteNumber(loc.latitude);
         const lng = toFiniteNumber(loc.longitude);
+        if (lat === null || lng === null) {
+            throw new ValidationError('Location latitude and longitude are required');
+        }
+
+        const matchedZone = await resolveZoneForCoordinates(lat, lng);
+        if (!matchedZone?._id) {
+            throw new ValidationError('Please select a restaurant location within one of the admin service zones');
+        }
+
         update.location = {
             type: 'Point',
-            coordinates: lat !== null && lng !== null ? [lng, lat] : undefined,
-            latitude: lat ?? undefined,
-            longitude: lng ?? undefined,
+            coordinates: [lng, lat],
+            latitude: lat,
+            longitude: lng,
             formattedAddress,
             address: formattedAddress,
             addressLine1: toStr(loc.addressLine1),
@@ -816,6 +943,70 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
             state: toStr(loc.state),
             pincode: toStr(loc.pincode),
             landmark: toStr(loc.landmark)
+        };
+        update.zoneId = new mongoose.Types.ObjectId(matchedZone._id);
+
+        const previousLocation = normalizeLocationForAudit(currentRestaurant.location, {
+            addressLine1: currentRestaurant.addressLine1,
+            addressLine2: currentRestaurant.addressLine2,
+            area: currentRestaurant.area,
+            city: currentRestaurant.city,
+            state: currentRestaurant.state,
+            pincode: currentRestaurant.pincode,
+            landmark: currentRestaurant.landmark
+        });
+        const nextLocation = normalizeLocationForAudit(update.location);
+        const previousAddress =
+            previousLocation.formattedAddress ||
+            previousLocation.address ||
+            [
+                previousLocation.addressLine1,
+                previousLocation.addressLine2,
+                previousLocation.area,
+                previousLocation.city,
+                previousLocation.state,
+                previousLocation.pincode
+            ].filter(Boolean).join(', ');
+        const nextAddress =
+            nextLocation.formattedAddress ||
+            nextLocation.address ||
+            [
+                nextLocation.addressLine1,
+                nextLocation.addressLine2,
+                nextLocation.area,
+                nextLocation.city,
+                nextLocation.state,
+                nextLocation.pincode
+            ].filter(Boolean).join(', ');
+        const previousZoneName =
+            currentRestaurant.zoneId?.serviceLocation ||
+            currentRestaurant.zoneId?.zoneName ||
+            currentRestaurant.zoneId?.name ||
+            '';
+        const nextZoneName =
+            matchedZone.serviceLocation ||
+            matchedZone.zoneName ||
+            matchedZone.name ||
+            '';
+
+        const previousZoneId =
+            currentRestaurant.zoneId?._id
+                ? new mongoose.Types.ObjectId(String(currentRestaurant.zoneId._id))
+                : mongoose.Types.ObjectId.isValid(String(currentRestaurant.zoneId || ''))
+                    ? new mongoose.Types.ObjectId(String(currentRestaurant.zoneId))
+                    : undefined;
+
+        update.locationChangeRequest = {
+            requestedAt: new Date(),
+            reason: buildLocationChangeReason({
+                previousAddress,
+                nextAddress,
+                previousZoneName,
+                nextZoneName
+            }),
+            previousZoneId,
+            nextZoneId: new mongoose.Types.ObjectId(matchedZone._id),
+            previousLocation
         };
     }
 

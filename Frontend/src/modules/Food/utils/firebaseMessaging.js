@@ -44,6 +44,11 @@ function isRecord(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function shouldSuppressForegroundPush(payload = {}) {
+  const type = String(payload?.data?.type || "").trim().toLowerCase();
+  return type === "restaurant_approved";
+}
+
 function getPushSoundSources(moduleName = normalizeModuleFromPath()) {
   // Delivery and restaurant should always use the alert tone for FCM pushes.
   if (moduleName === "delivery" || moduleName === "restaurant") {
@@ -487,6 +492,10 @@ async function registerNativeWebViewFcmToken(moduleName) {
 function showForegroundNotification(payload = {}) {
   if (!isRecord(payload)) {
     pushDebugWarn(PUSH_DEBUG_PREFIX, "Ignoring malformed foreground notification payload", { payload });
+    return;
+  }
+  if (shouldSuppressForegroundPush(payload)) {
+    pushDebugLog(PUSH_DEBUG_PREFIX, "Suppressed foreground push notification", { payload });
     return;
   }
   const notificationKey = getNotificationKey(payload);
