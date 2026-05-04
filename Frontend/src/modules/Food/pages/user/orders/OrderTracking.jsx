@@ -310,6 +310,86 @@ function isSameOrderIdentity(nextOrderLike, previousOrderLike) {
   return nextIds.some((id) => previousIds.includes(id))
 }
 
+function deriveStatusFromTracking(orderLike) {
+  const tracking = orderLike?.tracking || {}
+
+  if (tracking?.delivered?.status || tracking?.delivered?.timestamp) {
+    return "delivered"
+  }
+  if (tracking?.outForDelivery?.status || tracking?.outForDelivery?.timestamp) {
+    return "out_for_delivery"
+  }
+  if (tracking?.preparing?.status || tracking?.preparing?.timestamp) {
+    return "preparing"
+  }
+  if (tracking?.confirmed?.status || tracking?.confirmed?.timestamp) {
+    return "confirmed"
+  }
+
+  return ""
+}
+
+function deriveStatusFromHistory(orderLike) {
+  const history = Array.isArray(orderLike?.statusHistory) ? orderLike.statusHistory : []
+  if (history.length === 0) return ""
+
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    const entry = history[index]
+    const to = String(entry?.to || "").trim().toLowerCase()
+    if (!to) continue
+    if (to === "placed") return "created"
+    return to
+  }
+
+  return ""
+}
+
+const ORDER_STATUS_PROGRESS_RANK = {
+  pending: 0,
+  placed: 0,
+  created: 0,
+  confirmed: 1,
+  accepted: 1,
+  preparing: 2,
+  processed: 2,
+  ready: 3,
+  ready_for_pickup: 3,
+  reached_pickup: 3,
+  picked_up: 4,
+  out_for_delivery: 4,
+  en_route_to_delivery: 4,
+  reached_drop: 5,
+  at_drop: 5,
+  at_delivery: 5,
+  delivered: 6,
+  completed: 6,
+}
+
+function isTerminalOrderStatus(rawStatus) {
+  const s = String(rawStatus || "").trim().toLowerCase()
+  return s === "delivered" || s === "completed" || s === "cancelled" || s.includes("cancelled")
+}
+
+function resolveStableOrderStatus(nextStatus, previousStatus, trackingStatus = "") {
+  const next = String(nextStatus || "").trim().toLowerCase()
+  const prev = String(previousStatus || "").trim().toLowerCase()
+  const tracking = String(trackingStatus || "").trim().toLowerCase()
+
+  if (isTerminalOrderStatus(next)) return next
+  if (isTerminalOrderStatus(prev)) return prev
+
+  const nextRank = ORDER_STATUS_PROGRESS_RANK[next] ?? -1
+  const prevRank = ORDER_STATUS_PROGRESS_RANK[prev] ?? -1
+  const trackingRank = ORDER_STATUS_PROGRESS_RANK[tracking] ?? -1
+
+  const bestRank = Math.max(nextRank, prevRank, trackingRank)
+  if (bestRank === prevRank && prev) return prev
+  if (bestRank === nextRank && next) return next
+  if (bestRank === trackingRank && tracking) return tracking
+
+  return next || tracking || prev || "pending"
+}
+
 const transformOrderForTracking = (apiOrder, previousOrder = null, explicitRestaurantCoords = null, explicitRestaurantAddress = null) => {
   const safePreviousOrder = isSameOrderIdentity(apiOrder, previousOrder) ? previousOrder : null
   const restaurantCoords = explicitRestaurantCoords || getRestaurantCoordsFromOrder(apiOrder, safePreviousOrder?.restaurantLocation?.coordinates)
@@ -317,12 +397,43 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
   // API returns `deliveryAddress`; some paths use `address`
   const addr = apiOrder?.address || apiOrder?.deliveryAddress || {}
   const customerCoordsResolved = getCustomerCoordsFromApiOrder(apiOrder, safePreviousOrder)
+  const explicitStatus = String(apiOrder?.orderStatus || apiOrder?.status || "").trim()
+  const trackingDerivedStatus = deriveStatusFromTracking(apiOrder)
+  const historyDerivedStatus = deriveStatusFromHistory(apiOrder)
+  const previousStatus = safePreviousOrder?.status || ""
+  const acceptedFallbackStatus =
+    apiOrder?.isAcceptedByRestaurant && ["", "pending", "placed", "created"].includes(String(explicitStatus || "").trim().toLowerCase())
+      ? "confirmed"
+      : ""
+  const isPassiveExplicitStatus =
+    !explicitStatus ||
+    explicitStatus === "pending" ||
+    explicitStatus === "created"
+  const candidateStatus =
+    (trackingDerivedStatus && isPassiveExplicitStatus ? trackingDerivedStatus : "") ||
+    historyDerivedStatus ||
+    acceptedFallbackStatus ||
+    explicitStatus ||
+    trackingDerivedStatus ||
+    "pending"
+  const resolvedStatus = resolveStableOrderStatus(
+    candidateStatus,
+    previousStatus,
+    trackingDerivedStatus || historyDerivedStatus || acceptedFallbackStatus,
+  )
 
   return {
     id: apiOrder?.orderId || apiOrder?._id,
     mongoId: apiOrder?._id || null,
     orderId: apiOrder?.orderId || apiOrder?._id,
-    restaurant: apiOrder?.restaurantName || safePreviousOrder?.restaurant || 'Restaurant',
+    restaurant:
+      apiOrder?.restaurantName ||
+      apiOrder?.restaurantId?.restaurantName ||
+      apiOrder?.restaurantId?.name ||
+      apiOrder?.restaurant?.restaurantName ||
+      apiOrder?.restaurant?.name ||
+      safePreviousOrder?.restaurant ||
+      'Restaurant',
     restaurantPhone:
       apiOrder?.restaurantPhone ||
       apiOrder?.restaurantId?.primaryContactNumber ||
@@ -364,8 +475,8 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
       price: item.price
     })) || safePreviousOrder?.items || [],
     total: apiOrder?.pricing?.total || safePreviousOrder?.total || 0,
-    // Backend canonical field is orderStatus; keep legacy `status` for UI compatibility.
-    status: apiOrder?.orderStatus || apiOrder?.status || safePreviousOrder?.status || 'pending',
+    // Prefer canonical backend status, but fall back to tracking milestones if status is stale.
+    status: resolvedStatus,
     fulfillmentType: apiOrder?.fulfillmentType || safePreviousOrder?.fulfillmentType || 'delivery',
     pickupAt: apiOrder?.pickupAt || safePreviousOrder?.pickupAt || null,
     order_type: apiOrder?.order_type || safePreviousOrder?.order_type || null,
@@ -951,6 +1062,41 @@ export default function OrderTracking() {
     order?.deliveryState?.status,
   ])
 
+  useEffect(() => {
+    if (!order) return
+    console.log("[OrderTracking][StatusDebug]", {
+      pageOrderId: orderId,
+      orderId: order?.orderId,
+      mongoId: order?.mongoId || order?._id || null,
+      status: order?.status || null,
+      orderStatus: order?.orderStatus || null,
+      trackingStatus: deriveStatusFromTracking(order) || null,
+      historyStatus: deriveStatusFromHistory(order) || null,
+      isAcceptedByRestaurant: Boolean(order?.isAcceptedByRestaurant),
+      deliveryPhase: order?.deliveryState?.currentPhase || null,
+      dispatchStatus: order?.dispatch?.status || null,
+      uiStatus: mapOrderToTrackingUiStatus(order),
+      statusHistory: Array.isArray(order?.statusHistory)
+        ? order.statusHistory.map((entry) => ({
+            from: entry?.from || null,
+            to: entry?.to || null,
+            at: entry?.at || null,
+          }))
+        : [],
+    })
+  }, [
+    orderId,
+    order?.orderId,
+    order?.mongoId,
+    order?._id,
+    order?.status,
+    order?.orderStatus,
+    order?.isAcceptedByRestaurant,
+    order?.deliveryState?.currentPhase,
+    order?.dispatch?.status,
+    order?.statusHistory,
+  ])
+
   const handleCallRestaurant = (e) => {
     // Prevent event bubbling if necessary
     if (e && e.stopPropagation) e.stopPropagation();
@@ -1080,11 +1226,10 @@ export default function OrderTracking() {
           setOrder(prev => transformOrderForTracking(prefetchedOrder, prev));
           setError(null);
           setLoading(false);
-          return;
         }
         const rawContext = getOrderById(orderId);
         if (rawContext) {
-          setOrder(transformOrderForTracking(rawContext));
+          setOrder(prev => transformOrderForTracking(rawContext, prev || hydratedInitialOrder || null));
           setLoading(false);
         }
       }
@@ -1153,7 +1298,7 @@ export default function OrderTracking() {
     return () => {
       isSubscribed = false;
     };
-  }, [orderId, fetchOrderDetailsWithFallback, resolveOrderFromList, getOrderById, prefetchedOrder]);
+  }, [orderId, fetchOrderDetailsWithFallback, resolveOrderFromList, getOrderById, prefetchedOrder, hydratedInitialOrder]);
 
   const pollingStrategy = useMemo(() => {
     const hasSocketConnection = Boolean(isSocketConnected || window.orderSocketConnected)
@@ -1296,12 +1441,27 @@ export default function OrderTracking() {
       debugLog('?? Order status notification received:', { message, status, idMatches });
 
       if (idMatches) {
-        const next = mapOrderToTrackingUiStatus({
-          status,
-          orderStatus: payload.orderStatus || status,
-          deliveryState: payload.deliveryState,
-        });
-        setOrderStatus(next);
+        const incomingRawStatus = payload.orderStatus || status
+        let nextUiStatus = null
+        setOrder((prev) => {
+          if (!prev) return prev
+          const stableStatus = resolveStableOrderStatus(
+            incomingRawStatus,
+            prev?.status || prev?.orderStatus,
+            deriveStatusFromTracking(prev),
+          )
+
+          const merged = {
+            ...prev,
+            status: stableStatus,
+            orderStatus: stableStatus,
+            deliveryState: payload.deliveryState || prev.deliveryState,
+          }
+
+          nextUiStatus = mapOrderToTrackingUiStatus(merged)
+          return merged
+        })
+        if (nextUiStatus) setOrderStatus(nextUiStatus)
 
         // Pull latest order state without refresh spam on bursty socket events.
         const now = Date.now();
