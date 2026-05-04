@@ -281,6 +281,38 @@ const parseLocalYMDDate = (value) => {
   return new Date(year, month - 1, day)
 }
 
+const normalizeZoneCoordinates = (zone) =>
+  Array.isArray(zone?.coordinates)
+    ? zone.coordinates
+        .map((coord) => ({
+          lat: Number(coord?.latitude),
+          lng: Number(coord?.longitude),
+        }))
+        .filter((coord) => Number.isFinite(coord.lat) && Number.isFinite(coord.lng))
+    : []
+
+const isPointInPolygon = (lat, lng, polygon = []) => {
+  if (!Array.isArray(polygon) || polygon.length < 3) return false
+
+  let inside = false
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i]?.lng
+    const yi = polygon[i]?.lat
+    const xj = polygon[j]?.lng
+    const yj = polygon[j]?.lat
+
+    if (![xi, yi, xj, yj].every(Number.isFinite)) continue
+
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / ((yj - yi) || Number.EPSILON) + xi
+
+    if (intersect) inside = !inside
+  }
+
+  return inside
+}
+
 function TimeSelector({ label, value, onChange }) {
   const timeValue = stringToTime(value)
 
@@ -812,6 +844,18 @@ export default function RestaurantOnboarding() {
       errors.push("City is required")
     }
 
+    if (!step1.location?.latitude || !step1.location?.longitude) {
+      errors.push("Please search and select your restaurant address from the suggestions to verify it's within the service zone")
+    } else if (step1.zoneId) {
+      const selectedZone = zones.find((z) => String(z?._id || z?.id || "") === String(step1.zoneId))
+      if (selectedZone) {
+        const polygon = normalizeZoneCoordinates(selectedZone)
+        if (!isPointInPolygon(Number(step1.location.latitude), Number(step1.location.longitude), polygon)) {
+          errors.push("The selected address is outside the selected service zone")
+        }
+      }
+    }
+
     return errors
   }
 
@@ -1283,7 +1327,22 @@ export default function RestaurantOnboarding() {
             <Label className="text-xs text-gray-700">Service zone*</Label>
             <select
               value={step1.zoneId || ""}
-              onChange={(e) => setStep1({ ...step1, zoneId: e.target.value })}
+              onChange={(e) => {
+                const newZoneId = e.target.value
+                setStep1((prev) => {
+                  const newState = { ...prev, zoneId: newZoneId }
+                  if (newZoneId && prev.location?.latitude && prev.location?.longitude) {
+                    const selectedZone = zones.find((z) => String(z?._id || z?.id || "") === String(newZoneId))
+                    if (selectedZone) {
+                      const polygon = normalizeZoneCoordinates(selectedZone)
+                      if (!isPointInPolygon(Number(prev.location.latitude), Number(prev.location.longitude), polygon)) {
+                        toast.warning("The current address is outside the newly selected zone. Please search for an address within this zone.")
+                      }
+                    }
+                  }
+                  return newState
+                })
+              }}
               className="mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm"
               disabled={zonesLoading || !isEditing}
             >
@@ -1355,7 +1414,8 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, area: e.target.value },
               })
             }
-            className="bg-white text-sm"
+            readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
+            className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="Area / Sector / Locality*"
           />
           <Input
@@ -1366,7 +1426,8 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, city: e.target.value },
               })
             }
-            className="bg-white text-sm"
+            readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
+            className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="City"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1378,7 +1439,8 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, state: e.target.value },
                 })
               }
-              className="bg-white text-sm"
+              readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
+              className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="State"
             />
             <Input
@@ -1389,7 +1451,8 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, pincode: e.target.value },
                 })
               }
-              className="bg-white text-sm"
+              readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
+              className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="Pincode"
             />
           </div>
@@ -1439,7 +1502,7 @@ export default function RestaurantOnboarding() {
         await new Promise((resolve, reject) => {
           const script = document.createElement("script")
           script.id = "restaurant-onboarding-maps-script"
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&v=weekly`
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&v=weekly`
           script.async = true
           script.defer = true
           script.onload = resolve
@@ -1490,6 +1553,22 @@ export default function RestaurantOnboarding() {
       placesAutocompleteRef.current.addListener("place_changed", () => {
         const place = placesAutocompleteRef.current.getPlace()
         const parsed = parsePlace(place)
+
+        // Validation: Ensure selected location is within the chosen zone
+        if (step1.zoneId && parsed.latitude && parsed.longitude) {
+          const selectedZone = zones.find((z) => String(z?._id || z?.id || "") === String(step1.zoneId))
+          if (selectedZone) {
+            const polygon = normalizeZoneCoordinates(selectedZone)
+            if (!isPointInPolygon(parsed.latitude, parsed.longitude, polygon)) {
+              toast.error("The selected location is outside your chosen service zone. Please select a location within the zone.")
+              if (locationSearchInputRef.current) {
+                locationSearchInputRef.current.value = ""
+              }
+              return
+            }
+          }
+        }
+
         setStep1((prev) => ({
           ...prev,
           location: {
@@ -1515,7 +1594,7 @@ export default function RestaurantOnboarding() {
       cancelled = true
       placesAutocompleteRef.current = null
     }
-  }, [step])
+  }, [step, step1.zoneId, zones])
 
   // Load zones for onboarding dropdown (public endpoint).
   useEffect(() => {
