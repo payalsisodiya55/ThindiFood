@@ -2136,6 +2136,13 @@ export default function OrdersMain() {
   }, [showNewOrderPopup]);
 
   useEffect(() => {
+    const handlePointerMove = (event) => {
+      if (acceptSwipeActiveRef.current) {
+        if (typeof event.preventDefault === "function") event.preventDefault();
+        handleAcceptSwipeMove(event.clientX);
+      }
+    };
+
     const handleMouseMove = (event) => {
       if (acceptSwipeActiveRef.current) {
         handleAcceptSwipeMove(event.clientX);
@@ -2156,6 +2163,12 @@ export default function OrdersMain() {
       }
     };
 
+    // Pointer events are the most reliable option inside Android/iOS webviews.
+    window.addEventListener("pointermove", handlePointerMove, {
+      passive: false,
+    });
+    window.addEventListener("pointerup", handlePointerEnd);
+    window.addEventListener("pointercancel", handlePointerEnd);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handlePointerEnd);
     // passive: false is required to allow preventDefault() during swipe
@@ -2164,6 +2177,9 @@ export default function OrdersMain() {
     window.addEventListener("touchcancel", handlePointerEnd);
 
     return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerEnd);
+      window.removeEventListener("pointercancel", handlePointerEnd);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handlePointerEnd);
       window.removeEventListener("touchmove", handleTouchMove);
@@ -3458,7 +3474,8 @@ export default function OrdersMain() {
                   <div className="space-y-2">
                     <div
                       ref={acceptSliderRef}
-                      className="relative h-12 rounded-2xl bg-gray-900 overflow-hidden select-none touch-pan-y">
+                      className="relative h-12 rounded-2xl bg-gray-900 overflow-hidden select-none"
+                      style={{ touchAction: "none" }}>
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-blue-600"
                         initial={{ width: "100%" }}
@@ -3476,6 +3493,7 @@ export default function OrdersMain() {
                         type="button"
                         className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-white text-gray-900 shadow-md disabled:cursor-not-allowed"
                         style={{
+                          touchAction: "none",
                           x: (() => {
                             const sliderWidth =
                               acceptSliderRef.current?.offsetWidth || 320;
@@ -3486,6 +3504,36 @@ export default function OrdersMain() {
                             );
                             return acceptSwipeProgress * maxTravel;
                           })(),
+                        }}
+                        onPointerDown={(e) => {
+                          if (typeof e.preventDefault === "function") e.preventDefault();
+                          if (typeof e.currentTarget?.setPointerCapture === "function") {
+                            try {
+                              e.currentTarget.setPointerCapture(e.pointerId);
+                            } catch (_) {}
+                          }
+                          handleAcceptSwipeStart(e.clientX);
+                        }}
+                        onPointerMove={(e) => {
+                          if (!acceptSwipeActiveRef.current) return;
+                          if (typeof e.preventDefault === "function") e.preventDefault();
+                          handleAcceptSwipeMove(e.clientX);
+                        }}
+                        onPointerUp={(e) => {
+                          if (typeof e.currentTarget?.releasePointerCapture === "function") {
+                            try {
+                              e.currentTarget.releasePointerCapture(e.pointerId);
+                            } catch (_) {}
+                          }
+                          handleAcceptSwipeEnd();
+                        }}
+                        onPointerCancel={(e) => {
+                          if (typeof e.currentTarget?.releasePointerCapture === "function") {
+                            try {
+                              e.currentTarget.releasePointerCapture(e.pointerId);
+                            } catch (_) {}
+                          }
+                          handleAcceptSwipeEnd();
                         }}
                         onMouseDown={(e) => handleAcceptSwipeStart(e.clientX)}
                         onTouchStart={(e) =>
