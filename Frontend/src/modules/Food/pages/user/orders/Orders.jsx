@@ -932,7 +932,7 @@ Order again from this restaurant in the ${companyName} app.`
                               order.payment.method === 'razorpay' ? 'Online' :
                                 order.payment.method || 'N/A'}
                         </span>
-                        {displayPaymentStatus && (
+                        {displayPaymentStatus && !isCancelled && (
                           <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${paymentStatusClasses}`}>
                             {displayPaymentStatus}
                           </span>

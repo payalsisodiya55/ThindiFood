@@ -5,7 +5,7 @@ import { Phone, Lock, ArrowRight, ShieldCheck, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
-import logo from "@/assets/2-removebg-preview.png"
+import logo from "@/assets/user_app-removebg-preview.png"
 
 
 

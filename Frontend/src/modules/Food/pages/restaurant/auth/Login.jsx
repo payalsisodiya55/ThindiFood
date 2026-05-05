@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
-import thindiLogo from "@/assets/2-removebg-preview.png"
+import thindiLogo from "@/assets/rest-removebg-preview.png"
 
 
 
@@ -200,7 +200,7 @@ export default function RestaurantLogin() {
                 onClick={() => navigate("/food/restaurant/terms")}
                 className="bg-transparent border-0 p-0 text-[#00c87e] font-bold hover:underline cursor-pointer"
               >
-                Terms
+                Terms & Conditions
               </button>{" "}
               and{" "}
               <button

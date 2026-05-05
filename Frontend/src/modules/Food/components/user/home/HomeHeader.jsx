@@ -353,12 +353,6 @@ export default function HomeHeader({
                 </motion.span>
               </AnimatePresence>
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-[1px] h-[16px] bg-red-200" />
-              <div className="h-[28px] w-[28px] rounded-full flex items-center justify-center bg-red-50">
-                <Mic className="h-[14px] w-[14px]" style={{ color: RED }} strokeWidth={2.3} />
-              </div>
-            </div>
           </div>
 
           {isFood && showVegMode ? (

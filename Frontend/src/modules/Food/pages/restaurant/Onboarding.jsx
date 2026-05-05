@@ -842,6 +842,20 @@ export default function RestaurantOnboarding() {
     }
     if (!step1.location?.city?.trim()) {
       errors.push("City is required")
+    } else if (!/^[a-zA-Z\s]+$/.test(step1.location.city.trim())) {
+      errors.push("City must contain only alphabets")
+    }
+
+    if (!step1.location?.state?.trim()) {
+      errors.push("State is required")
+    } else if (!/^[a-zA-Z\s]+$/.test(step1.location.state.trim())) {
+      errors.push("State must contain only alphabets")
+    }
+
+    if (!step1.location?.pincode?.trim()) {
+      errors.push("Pincode is required")
+    } else if (!/^\d{6}$/.test(step1.location.pincode.trim())) {
+      errors.push("Pincode must be exactly 6 digits")
     }
 
     if (!step1.location?.latitude || !step1.location?.longitude) {
@@ -1420,12 +1434,13 @@ export default function RestaurantOnboarding() {
           />
           <Input
             value={step1.location?.city || ""}
-            onChange={(e) =>
+            onChange={(e) => {
+              const val = e.target.value.replace(/[^a-zA-Z\s]/g, "")
               setStep1({
                 ...step1,
-                location: { ...step1.location, city: e.target.value },
+                location: { ...step1.location, city: val },
               })
-            }
+            }}
             readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
             className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="City"
@@ -1433,24 +1448,26 @@ export default function RestaurantOnboarding() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               value={step1.location?.state || ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^a-zA-Z\s]/g, "")
                 setStep1({
                   ...step1,
-                  location: { ...step1.location, state: e.target.value },
+                  location: { ...step1.location, state: val },
                 })
-              }
+              }}
               readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
               className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="State"
             />
             <Input
               value={step1.location?.pincode || ""}
-              onChange={(e) =>
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 6)
                 setStep1({
                   ...step1,
-                  location: { ...step1.location, pincode: e.target.value },
+                  location: { ...step1.location, pincode: val },
                 })
-              }
+              }}
               readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
               className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="Pincode"

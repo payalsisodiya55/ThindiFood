@@ -101,14 +101,17 @@ export default function BusinessSetup() {
         toast.error("Phone number is required");
         return;
       }
-      const phoneRegex = /^\d{7,15}$/;
-      if (!phoneRegex.test(formData.phoneNumber.trim())) {
-        toast.error("Please enter a valid phone number (7-15 digits)");
+      if (!/^\d{10}$/.test(formData.phoneNumber.trim())) {
+        toast.error("Please enter a valid 10-digit phone number");
         return;
       }
 
-      if (formData.pincode.trim() && !/^\d{4,10}$/.test(formData.pincode.trim())) {
-        toast.error("Please enter a valid pincode (4-10 digits)");
+      if (!formData.pincode.trim()) {
+        toast.error("Pincode is required");
+        return;
+      }
+      if (!/^\d{6}$/.test(formData.pincode.trim())) {
+        toast.error("Please enter a valid 6-digit pincode");
         return;
       }
 
@@ -283,9 +286,9 @@ export default function BusinessSetup() {
                     type="text"
                     placeholder="Enter Your Phone Number"
                     value={formData.phoneNumber}
-                    maxLength={15}
+                    maxLength={10}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "");
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                       handleInputChange("phoneNumber", val);
                     }}
                     className="flex-1 px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -329,9 +332,9 @@ export default function BusinessSetup() {
                   type="text"
                   placeholder="Enter Your Pincode"
                   value={formData.pincode}
-                  maxLength={10}
+                  maxLength={6}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, "");
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
                     handleInputChange("pincode", val);
                   }}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
