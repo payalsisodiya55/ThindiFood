@@ -986,6 +986,10 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [markingReadyOrderIds, setMarkingReadyOrderIds] = useState({});
+  const [otpModalOrder, setOtpModalOrder] = useState(null);
+  const [deliveryOtp, setDeliveryOtp] = useState("");
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [verifyingOrderIds, setVerifyingOrderIds] = useState({});
 
   useEffect(() => {
     let isMounted = true;
@@ -1153,6 +1157,61 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
     }
   };
 
+  const handleOpenOtpModal = ({ orderId, mongoId, customerName }) => {
+    setOtpModalOrder({
+      orderId,
+      mongoId: mongoId || orderId,
+      customerName: customerName || "Customer",
+    });
+    setDeliveryOtp("");
+  };
+
+  const handleCloseOtpModal = () => {
+    if (isVerifyingOtp) return;
+    setOtpModalOrder(null);
+    setDeliveryOtp("");
+  };
+
+  const handleVerifyOtpAndDeliver = async () => {
+    const rawOtp = String(deliveryOtp || "").replace(/\D/g, "");
+    if (rawOtp.length < 4) {
+      toast.error("Please enter a valid OTP");
+      return;
+    }
+
+    const orderKey = otpModalOrder?.mongoId || otpModalOrder?.orderId;
+    if (!orderKey) {
+      toast.error("Order not found for OTP verification");
+      return;
+    }
+
+    try {
+      setIsVerifyingOtp(true);
+      setVerifyingOrderIds((prev) => ({ ...prev, [orderKey]: true }));
+      await restaurantAPI.verifyDeliveryOtpAndComplete(orderKey, rawOtp);
+      setOrders((prev) =>
+        prev.filter((order) => (order.mongoId || order.orderId) !== orderKey),
+      );
+      toast.success(
+        `Order ${otpModalOrder?.orderId || ""} marked delivered successfully`,
+      );
+      handleCloseOtpModal();
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to verify OTP";
+      toast.error(message);
+    } finally {
+      setIsVerifyingOtp(false);
+      setVerifyingOrderIds((prev) => {
+        const next = { ...prev };
+        delete next[orderKey];
+        return next;
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="pt-4 pb-6">
@@ -1217,6 +1276,14 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                     ? handleMarkReady
                     : undefined
                 }
+                onVerifyOtp={
+                  normalizedStatus === "ready" && !order.isDineIn
+                    ? handleOpenOtpModal
+                    : undefined
+                }
+                isVerifyingOtp={Boolean(
+                  verifyingOrderIds[order.mongoId || order.orderId],
+                )}
                 isMarkingReady={Boolean(
                   markingReadyOrderIds[order.mongoId || order.orderId],
                 )}
@@ -1225,6 +1292,69 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
           })}
         </div>
       )}
+      <AnimatePresence>
+        {otpModalOrder && (
+          <motion.div
+            className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleCloseOtpModal}>
+            <motion.div
+              className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}>
+              <div className="px-4 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Verify OTP for Order #{otpModalOrder.orderId}
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Enter customer OTP to mark this order as delivered.
+                </p>
+              </div>
+
+              <div className="px-4 py-5">
+                <label
+                  htmlFor="all-orders-delivery-otp"
+                  className="block text-sm font-semibold text-gray-700 mb-2">
+                  Delivery OTP
+                </label>
+                <input
+                  id="all-orders-delivery-otp"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={deliveryOtp}
+                  onChange={(e) =>
+                    setDeliveryOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base font-semibold tracking-[0.35em] text-center text-gray-900 outline-none focus:border-[#00c87e] focus:ring-4 focus:ring-[#00c87e]/15"
+                  placeholder="Enter OTP"
+                />
+              </div>
+
+              <div className="px-4 pb-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleCloseOtpModal}
+                  disabled={isVerifyingOtp}
+                  className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyOtpAndDeliver}
+                  disabled={isVerifyingOtp}
+                  className="flex-1 rounded-xl bg-[#00c87e] px-4 py-3 text-sm font-semibold text-white hover:bg-[#00b874] disabled:opacity-60">
+                  {isVerifyingOtp ? "Verifying..." : "Verify & Complete"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
