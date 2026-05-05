@@ -21,6 +21,7 @@ import {
   MessageSquare,
   Utensils,
   Wallet,
+  Phone,
 } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders";
@@ -97,8 +98,26 @@ const getOrderPrepTimeMinutes = (orderLike) => {
   return itemPrepMinutes.length > 0 ? Math.max(...itemPrepMinutes) : null;
 };
 
+const isDineInOrderLike = (orderLike) => {
+  if (!orderLike) return false;
+
+  if (orderLike.isDineIn) return true;
+  if (orderLike.sessionId || orderLike.tableNumber || orderLike.tableLabel) return true;
+
+  const orderType = String(orderLike.type || orderLike.order_type || "").toLowerCase();
+  if (orderType.includes("dine")) return true;
+
+  const displayOrderId = String(orderLike.orderId || "").trim();
+  return /^table\s+\S+/i.test(displayOrderId);
+};
+
+const getDineInRoundId = (orderLike) =>
+  orderLike?.orderMongoId || orderLike?.mongoId || orderLike?._id || orderLike?.id || null;
+
 const normalizeOrderForPopup = (orderLike) => {
   if (!orderLike) return null;
+
+  const isDineIn = isDineInOrderLike(orderLike);
 
   return {
     orderId: orderLike.orderId,
@@ -125,10 +144,15 @@ const normalizeOrderForPopup = (orderLike) => {
     scheduledAt: orderLike.scheduledAt,
     pickupAt: orderLike.pickupAt,
     order_type: orderLike.order_type,
+    type: orderLike.type,
     prep_time: orderLike.prep_time,
     prep_start_time: orderLike.prep_start_time,
     isAcceptedByRestaurant: Boolean(orderLike.isAcceptedByRestaurant),
     fulfillmentType: orderLike.fulfillmentType || "delivery",
+    isDineIn,
+    sessionId: orderLike.sessionId || null,
+    tableNumber: orderLike.tableNumber || null,
+    tableLabel: orderLike.tableLabel || null,
     estimatedDeliveryTime:
       Number(orderLike.prep_time) > 0
         ? Number(orderLike.prep_time)
@@ -208,6 +232,22 @@ const getBookingGuestPhone = (bookingLike) =>
       "",
   ).trim();
 
+const getOrderCustomerPhone = (orderLike) =>
+  String(
+    orderLike?.customerPhone ||
+      orderLike?.userId?.phone ||
+      orderLike?.userId?.phoneNumber ||
+      orderLike?.user?.phone ||
+      orderLike?.user?.phoneNumber ||
+      orderLike?.customer?.phone ||
+      orderLike?.phone ||
+      orderLike?.phoneNumber ||
+      orderLike?.mobile ||
+      "",
+  ).trim();
+
+const normalizePhoneForCall = (phoneLike) => String(phoneLike || "").replace(/[^\d+]/g, "").trim();
+
 const getBookingStatusMeta = (statusLike) => {
   const normalized = String(statusLike || "")
     .trim()
@@ -249,6 +289,7 @@ const transformOrderForList = (order) => ({
   mongoId: order._id,
   status: order.status || "pending",
   customerName: order.userId?.name || order.customerName || "Customer",
+  customerPhone: getOrderCustomerPhone(order),
   type: getRestaurantOrderTypeLabel(order),
   tableOrToken: null,
   timePlaced: new Date(getAllOrdersTimestamp(order)).toLocaleDateString(
@@ -325,6 +366,7 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     customerName:
       session?.userId?.name ||
       `Table ${tableNumber} (${tableLabel || "Default"})`,
+    customerPhone: getOrderCustomerPhone(session),
     type: "Dine-In",
     tableOrToken: tableLabel || `Table ${tableNumber}`,
     timePlaced: new Date(displayTimeSource || Date.now()).toLocaleDateString("en-US", {
@@ -1491,21 +1533,44 @@ export default function OrdersMain() {
   };
 
   const hydratePopupOrder = async (orderLike) => {
-    const lookupId =
-      orderLike?.orderMongoId || orderLike?._id || orderLike?.orderId || orderLike?.id;
+    if (isDineInOrderLike(orderLike)) return null;
+
+    const lookupIds = Array.from(
+      new Set(
+        [
+          orderLike?.orderMongoId,
+          orderLike?._id,
+          orderLike?.id,
+          orderLike?.orderId,
+        ]
+          .map((value) => String(value || "").trim())
+          .filter(Boolean),
+      ),
+    );
     const orderKey = getOrderIdentityKey(orderLike);
-    if (!lookupId || !orderKey) return null;
+    if (!lookupIds.length || !orderKey) return null;
     if (popupHydrationInFlightRef.current.has(orderKey)) return null;
 
     popupHydrationInFlightRef.current.add(orderKey);
     try {
-      const response = await restaurantAPI.getOrderById(lookupId);
-      const freshOrder =
-        response?.data?.data?.order ||
-        response?.data?.order ||
-        response?.data?.data ||
-        null;
-      return freshOrder ? normalizeOrderForPopup(freshOrder) : null;
+      for (const lookupId of lookupIds) {
+        try {
+          const response = await restaurantAPI.getOrderById(lookupId);
+          const freshOrder =
+            response?.data?.data?.order ||
+            response?.data?.order ||
+            response?.data?.data ||
+            null;
+          if (freshOrder) {
+            return normalizeOrderForPopup(freshOrder);
+          }
+        } catch (error) {
+          if (error?.response?.status !== 404) {
+            throw error;
+          }
+        }
+      }
+      return null;
     } catch (error) {
       debugWarn("Failed to hydrate popup order in real time:", error);
       return null;
@@ -1879,6 +1944,47 @@ export default function OrdersMain() {
     }
   }, [isMuted, setNotificationSoundMuted]);
 
+  const getRestaurantOrderActionIds = (orderLike) => {
+    const objectLikeIds = [
+      orderLike?.orderMongoId,
+      orderLike?._id,
+      orderLike?.id,
+    ]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean);
+
+    const displayOrderId = String(orderLike?.orderId || "").trim();
+    const includeDisplayOrderId =
+      displayOrderId &&
+      !isDineInOrderLike(orderLike) &&
+      !/^table\s+\S+/i.test(displayOrderId);
+
+    return Array.from(
+      new Set([
+        ...objectLikeIds,
+        ...(includeDisplayOrderId ? [displayOrderId] : []),
+      ]),
+    );
+  };
+
+  const runRestaurantOrderAction = async (orderLike, action) => {
+    const candidateIds = getRestaurantOrderActionIds(orderLike);
+    let lastError = null;
+
+    for (const candidateId of candidateIds) {
+      try {
+        return await action(candidateId);
+      } catch (error) {
+        lastError = error;
+        if (error?.response?.status !== 404) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError || new Error("Order not found");
+  };
+
   // Best-effort unlock for popup buzzer so it can keep playing when tab is backgrounded.
   useEffect(() => {
     const unlockAudio = async () => {
@@ -2136,9 +2242,9 @@ export default function OrdersMain() {
         const orderId = orderToAccept.orderMongoId || orderToAccept.orderId;
         
         // DINE-IN SPECIAL HANDLING
-        if (orderToAccept.isDineIn) {
+        if (isDineInOrderLike(orderToAccept)) {
             // For Dine-In, "accepting" moves the latest round from received -> preparing.
-            const roundId = orderToAccept.orderMongoId;
+            const roundId = getDineInRoundId(orderToAccept);
             if (roundId) {
                 await dineInAPI.updateOrderStatus(roundId, { status: "preparing" });
                 toast.success("Dine-In order accepted & marked as Preparing");
@@ -2157,11 +2263,15 @@ export default function OrdersMain() {
               );
 
             if (isScheduledTakeaway) {
-              await restaurantAPI.updateOrderStatus(orderId, { orderStatus: "confirmed" });
+              await runRestaurantOrderAction(orderToAccept, (resolvedOrderId) =>
+                restaurantAPI.updateOrderStatus(resolvedOrderId, { orderStatus: "confirmed" }),
+              );
               toast.success("Scheduled order accepted");
             } else {
               // Standard Takeaway/Delivery acceptance
-              await restaurantAPI.acceptOrder(orderId);
+              await runRestaurantOrderAction(orderToAccept, (resolvedOrderId) =>
+                restaurantAPI.acceptOrder(resolvedOrderId),
+              );
               toast.success("Order accepted successfully");
             }
         }
@@ -2216,15 +2326,20 @@ export default function OrdersMain() {
     // Reject order via API if we have a real order
     if (orderToReject?.orderMongoId || orderToReject?.orderId) {
       try {
-        const orderId = orderToReject.orderMongoId || orderToReject.orderId;
+        const orderId = isDineInOrderLike(orderToReject)
+          ? getDineInRoundId(orderToReject)
+          : orderToReject.orderMongoId || orderToReject.orderId;
         
-        if (orderToReject.isDineIn) {
+        if (isDineInOrderLike(orderToReject)) {
             // Dine-In order rejection handling
+            if (!orderId) throw new Error("Dine-In round not found");
             await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: rejectReason });
             toast.success("Dine-In order rejected");
         } else {
             // Standard order rejection
-            await restaurantAPI.rejectOrder(orderId, rejectReason);
+            await runRestaurantOrderAction(orderToReject, (resolvedOrderId) =>
+              restaurantAPI.rejectOrder(resolvedOrderId, rejectReason),
+            );
             toast.success("Order rejected successfully");
         }
 
@@ -2265,14 +2380,19 @@ export default function OrdersMain() {
     if (!cancelReason.trim() || !orderToCancel) return;
 
     try {
-      const orderId = orderToCancel.mongoId || orderToCancel.orderId;
+      const orderId = isDineInOrderLike(orderToCancel)
+        ? getDineInRoundId(orderToCancel)
+        : orderToCancel.mongoId || orderToCancel.orderId;
       
-      if (orderToCancel.isDineIn) {
+      if (isDineInOrderLike(orderToCancel)) {
         // Dine-In specific cancellation
+        if (!orderId) throw new Error("Dine-In round not found");
         await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: cancelReason.trim() });
       } else {
         // Standard order cancellation
-        await restaurantAPI.rejectOrder(orderId, cancelReason.trim());
+        await runRestaurantOrderAction(orderToCancel, (resolvedOrderId) =>
+          restaurantAPI.rejectOrder(resolvedOrderId, cancelReason.trim()),
+        );
       }
       
       toast.success("Order cancelled successfully");
@@ -3945,6 +4065,7 @@ function OrderCard({
   mongoId,
   status,
   customerName,
+  customerPhone,
   type,
   tableOrToken,
   timePlaced,
@@ -3969,7 +4090,12 @@ function OrderCard({
   const normalizedStatus = String(status || "").toLowerCase();
   const isReady = normalizedStatus === "ready";
   const isPreparing = normalizedStatus === "preparing";
+  const isConfirmed = normalizedStatus === "confirmed";
   const isActiveDineIn = isDineIn && normalizedStatus === "active";
+  const phoneForCall = normalizePhoneForCall(customerPhone);
+  const shouldShowCustomerContact =
+    Boolean(customerName || phoneForCall) &&
+    !["completed", "delivered", "cancelled", "canceled"].includes(normalizedStatus);
   
   const statusLabel = isActiveDineIn 
     ? "Live Table" 
@@ -4034,7 +4160,37 @@ function OrderCard({
               <p className="text-sm font-semibold text-black leading-tight">
                 Order #{orderId}
               </p>
-              <p className="text-[11px] text-gray-500 mt-1">{customerName}</p>
+              {shouldShowCustomerContact && (
+                <div className="mt-1.5 flex flex-col gap-1">
+                  {customerName && (
+                    <p className="text-[11px] font-medium text-gray-600 leading-tight">
+                      {customerName}
+                    </p>
+                  )}
+                  {(customerPhone || phoneForCall) && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {customerPhone && (
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-500 leading-none">
+                          {customerPhone}
+                        </span>
+                      )}
+                      {phoneForCall && (
+                        <a
+                          href={`tel:${phoneForCall}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 rounded-full bg-[#00c87e] px-2.5 py-1 text-[10px] font-semibold leading-none text-white shadow-sm transition-all hover:bg-[#00b874]"
+                        >
+                          <Phone className="h-3 w-3" />
+                          Call Now
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {!shouldShowCustomerContact && customerName && (
+                <p className="text-[11px] text-gray-500 mt-1">{customerName}</p>
+              )}
             </div>
 
             <div className="flex flex-col items-end gap-1">

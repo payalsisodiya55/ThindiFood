@@ -1509,8 +1509,22 @@ export async function deleteDiningOrderAdmin(id) {
 
     const sessionId = new mongoose.Types.ObjectId(String(id));
     const diningSession = await FoodTableSession.findById(sessionId).select('_id bookingId').lean();
-    if (!diningSession?._id) {
-        throw new ValidationError('Dining order not found');
+    const orphanOrdersCount = await FoodDineInOrder.countDocuments({ sessionId });
+    const orphanTransactionsCount = await FoodDiningTransaction.countDocuments({ sessionId });
+    const linkedBookingsCount = await FoodTableBooking.countDocuments({ sessionId });
+    const linkedTablesCount = await FoodRestaurantTable.countDocuments({ currentSessionId: sessionId });
+
+    if (
+        !diningSession?._id &&
+        orphanOrdersCount === 0 &&
+        orphanTransactionsCount === 0 &&
+        linkedBookingsCount === 0 &&
+        linkedTablesCount === 0
+    ) {
+        const directOrder = await FoodDineInOrder.findById(sessionId).select('_id sessionId').lean();
+        if (!directOrder?._id) {
+            throw new ValidationError('Dining order not found');
+        }
     }
 
     const dbSession = await mongoose.startSession();
@@ -1525,8 +1539,10 @@ export async function deleteDiningOrderAdmin(id) {
 
     try {
         await dbSession.withTransaction(async () => {
-            const deletedOrders = await FoodDineInOrder.deleteMany({ sessionId }).session(dbSession);
-            const deletedTransaction = await FoodDiningTransaction.deleteOne({ sessionId }).session(dbSession);
+            const deletedOrders = await FoodDineInOrder.deleteMany({
+                $or: [{ sessionId }, { _id: sessionId }],
+            }).session(dbSession);
+            const deletedTransaction = await FoodDiningTransaction.deleteMany({ sessionId }).session(dbSession);
             const unlinkedBookings = await FoodTableBooking.updateMany(
                 { sessionId },
                 { $set: { sessionId: null } },

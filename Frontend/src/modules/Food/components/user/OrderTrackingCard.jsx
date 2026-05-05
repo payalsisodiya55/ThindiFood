@@ -64,6 +64,9 @@ const ACTIVE_PHASES = new Set([
   "at_drop",
 ]);
 
+const LOCAL_ORDER_GRACE_MS = 2 * 60 * 1000;
+const STALE_PICKUP_OVERDUE_MS = 15 * 60 * 1000;
+
 /** Orders that should show the live tracking strip (any in-flight order, not terminal). */
 const TERMINAL_STATUSES = new Set([
   "delivered",
@@ -81,10 +84,21 @@ const isActiveOrder = (order) => {
   const phase = getOrderPhase(order);
   if (TERMINAL_STATUSES.has(status)) return false;
   if (phase === "completed" || phase === "delivered") return false;
-  // Some refresh payloads provide live phase but sparse status; keep tracking visible.
-  if (!status && phase) return ACTIVE_PHASES.has(phase);
-  if (!status) return false;
-  return true;
+
+  const isTakeaway = String(order?.fulfillmentType || "").toLowerCase() === "takeaway";
+  if (
+    isTakeaway &&
+    ["created", "pending", "confirmed", "accepted", "preparing"].includes(status)
+  ) {
+    const pickupAtMs = new Date(order?.pickupAt || 0).getTime();
+    if (Number.isFinite(pickupAtMs) && Date.now() - pickupAtMs > STALE_PICKUP_OVERDUE_MS) {
+      return false;
+    }
+  }
+
+  if (phase && ACTIVE_PHASES.has(phase)) return true;
+  if (status && ACTIVE_PHASES.has(status)) return true;
+  return false;
 };
 
 /** Cheap fingerprint so we skip setState when list content is unchanged (fewer re-renders). */
@@ -163,7 +177,9 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     );
     const seen = new Set();
 
-    return [...apiOrders, ...contextOrders].filter((order) => {
+    const mergedOrders = hasFetchedApi ? apiOrders : [...apiOrders, ...contextOrders];
+
+    return mergedOrders.filter((order) => {
       const key = getOrderKey(order);
       if (!key || seen.has(key)) {
         return false;
@@ -171,19 +187,49 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
       if (invalidOrderIds.has(key)) {
         return false;
       }
-      // After first API sync, ignore stale local Mongo-like ids that are absent server-side.
-      // This prevents repeated verification calls for already-deleted orders.
+      // After first API sync, ignore stale local/context orders that are absent server-side.
+      // Keep only a short grace window for just-placed local orders until the API catches up.
       if (
         hasFetchedApi &&
-        isMongoObjectId(key) &&
         !serverKeys.has(String(key))
       ) {
-        return false;
+        const createdAtMs = new Date(order?.createdAt || order?.updatedAt || 0).getTime();
+        const isFreshLocalOrder =
+          Number.isFinite(createdAtMs) &&
+          Date.now() - createdAtMs <= LOCAL_ORDER_GRACE_MS;
+
+        if (!isFreshLocalOrder) {
+          return false;
+        }
+
+        // Fresh locally-created server ids should still be accepted during the grace period.
+        if (isMongoObjectId(key) && !isFreshLocalOrder) {
+          return false;
+        }
       }
       seen.add(key);
       return true;
     });
   }, [contextOrders, apiOrders, invalidOrderIds, hasFetchedApi]);
+
+  useEffect(() => {
+    if (!hasFetchedApi) return;
+    if (!activeOrderOverride) return;
+
+    const overrideKey = String(getOrderKey(activeOrderOverride) || "").trim();
+    if (!overrideKey) {
+      setActiveOrderOverride(null);
+      return;
+    }
+
+    const stillPresentInApi = apiOrders.some(
+      (order) => String(getOrderKey(order) || "").trim() === overrideKey,
+    );
+
+    if (!stillPresentInApi) {
+      setActiveOrderOverride(null);
+    }
+  }, [apiOrders, activeOrderOverride, hasFetchedApi]);
 
   const activeOrder = useMemo(() => {
     const candidate = uniqueOrders.find((order) => isActiveOrder(order)) || null;
