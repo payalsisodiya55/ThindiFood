@@ -80,6 +80,19 @@ const isCancelledOrderStatus = (value) =>
     .toLowerCase()
     .includes("cancelled");
 
+const isResolvedOrderStatus = (value) => {
+  const normalized = String(value || "").trim().toLowerCase();
+  return (
+    normalized === "accepted" ||
+    normalized === "preparing" ||
+    normalized === "rejected" ||
+    normalized === "ready" ||
+    normalized === "completed" ||
+    normalized === "delivered" ||
+    isCancelledOrderStatus(normalized)
+  );
+};
+
 
 /**
  * Hook for restaurant to receive real-time order notifications with sound
@@ -94,12 +107,14 @@ export const useRestaurantNotifications = () => {
   const [newClosedSession, setNewClosedSession] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const audioRef = useRef(null);
+  const fallbackAudioRef = useRef(null);
   const activeOrderRef = useRef(null);
   const handledAlertKeysRef = useRef(new Map()); // key -> timestamp (prevents repeated alerts from polling)
   const alertLoopTimerRef = useRef(null);
   const alertLoopStartedAtRef = useRef(0);
   const userInteractedRef = useRef(false); // Track user interaction for autoplay policy
   const audioUnlockAttemptedRef = useRef(false);
+  const soundMutedRef = useRef(false);
   const [restaurantId, setRestaurantId] = useState(null);
   const lastConnectErrorLogRef = useRef(0);
   const lastAlertAtByOrderRef = useRef(new Map());
@@ -239,6 +254,15 @@ export const useRestaurantNotifications = () => {
       alertLoopTimerRef.current = null;
     }
     alertLoopStartedAtRef.current = 0;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    if (fallbackAudioRef.current) {
+      fallbackAudioRef.current.pause();
+      fallbackAudioRef.current.currentTime = 0;
+      fallbackAudioRef.current = null;
+    }
   };
 
   const startAlertLoop = () => {
@@ -876,7 +900,7 @@ export const useRestaurantNotifications = () => {
         updateOrderKey &&
         activeOrderKey === updateOrderKey;
 
-      if (isSameActiveOrder && isCancelledOrderStatus(normalizedData?.orderStatus)) {
+      if (isSameActiveOrder && isResolvedOrderStatus(normalizedData?.orderStatus)) {
         stopAlertLoop();
         activeOrderRef.current = null;
         setNewOrder(null);
@@ -930,6 +954,10 @@ export const useRestaurantNotifications = () => {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
+      }
+      if (fallbackAudioRef.current) {
+        fallbackAudioRef.current.pause();
+        fallbackAudioRef.current = null;
       }
     };
   }, [restaurantId]);
@@ -988,6 +1016,10 @@ export const useRestaurantNotifications = () => {
 
   const playNotificationSound = async (orderData = {}) => {
     try {
+      if (soundMutedRef.current) {
+        stopAlertLoop();
+        return;
+      }
       const usedNativeBridge = await triggerWebViewNativeNotification(orderData);
       const hasUserActivation =
         userInteractedRef.current ||
@@ -1013,9 +1045,13 @@ export const useRestaurantNotifications = () => {
             debugWarn('Error playing notification sound:', error);
             // Fallback: try one-shot audio instance (more reliable in background tabs on some browsers)
             try {
-              const fallbackAudio = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
-              fallbackAudio.volume = 1;
-              fallbackAudio.play().catch(() => {});
+              if (fallbackAudioRef.current) {
+                fallbackAudioRef.current.pause();
+                fallbackAudioRef.current.currentTime = 0;
+              }
+              fallbackAudioRef.current = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
+              fallbackAudioRef.current.volume = 1;
+              fallbackAudioRef.current.play().catch(() => {});
             } catch (fallbackError) {
               debugWarn('Fallback audio playback failed:', fallbackError);
             }
@@ -1034,6 +1070,19 @@ export const useRestaurantNotifications = () => {
     stopAlertLoop();
     activeOrderRef.current = null;
     setNewOrder(null);
+  };
+
+  const setNotificationSoundMuted = (muted) => {
+    soundMutedRef.current = Boolean(muted);
+    if (soundMutedRef.current) {
+      stopAlertLoop();
+      activeOrderRef.current = null;
+    }
+  };
+
+  const stopNotificationSound = () => {
+    stopAlertLoop();
+    activeOrderRef.current = null;
   };
 
   const clearNewPaymentRequest = () => {
@@ -1063,7 +1112,9 @@ export const useRestaurantNotifications = () => {
     newClosedSession,
     clearNewClosedSession,
     isConnected,
-    playNotificationSound
+    playNotificationSound,
+    stopNotificationSound,
+    setNotificationSoundMuted
   };
 };
 

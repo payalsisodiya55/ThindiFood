@@ -1525,7 +1525,9 @@ export default function OrdersMain() {
     clearNewPaymentRequest, 
     newClosedSession,
     clearNewClosedSession,
-    isConnected 
+    isConnected,
+    stopNotificationSound,
+    setNotificationSoundMuted,
   } = useRestaurantNotifications();
 
   const rejectReasons = [
@@ -1862,6 +1864,21 @@ export default function OrdersMain() {
     newOrderRef.current = newOrder;
   }, [newOrder]);
 
+  const stopOrderAlertSound = () => {
+    stopNotificationSound?.();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  useEffect(() => {
+    setNotificationSoundMuted?.(isMuted);
+    if (isMuted) {
+      stopOrderAlertSound();
+    }
+  }, [isMuted, setNotificationSoundMuted]);
+
   // Best-effort unlock for popup buzzer so it can keep playing when tab is backgrounded.
   useEffect(() => {
     const unlockAudio = async () => {
@@ -2105,10 +2122,7 @@ export default function OrdersMain() {
     if (isAcceptingOrder) return;
     setIsAcceptingOrder(true);
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopOrderAlertSound();
 
     // Use popupOrder (from Socket.IO or API fallback) or newOrder (from hook)
     const orderToAccept = popupOrder || newOrder;
@@ -2223,10 +2237,7 @@ export default function OrdersMain() {
       }
     }
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
+    stopOrderAlertSound();
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
@@ -2366,11 +2377,13 @@ export default function OrdersMain() {
 
   // Toggle mute
   const toggleMute = () => {
-    setIsMuted(!isMuted);
+    const nextMuted = !isMuted;
+    setIsMuted(nextMuted);
     if (audioRef.current) {
-      if (!isMuted) {
+      if (nextMuted) {
         audioRef.current.pause();
-      } else {
+        audioRef.current.currentTime = 0;
+      } else if (showNewOrderPopup) {
         audioRef.current.muted = false;
         audioRef.current.volume = 1;
         audioRef.current.currentTime = 0;
