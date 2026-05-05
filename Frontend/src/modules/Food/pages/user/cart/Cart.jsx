@@ -276,6 +276,8 @@ const formatScheduleTimeMessage = (date) =>
     hour12: true,
   })
 
+const TAKEAWAY_ADVANCE_BOOKING_LIMIT_MINUTES = 180
+
 const enrichRestaurantWithOutletTimings = async (restaurant) => {
   if (!restaurant || restaurant.outletTimings) return restaurant
 
@@ -409,7 +411,6 @@ export default function Cart() {
     () => Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0")),
     []
   )
-  const pickupPeriodOptions = useMemo(() => ["AM", "PM"], [])
   const [orderProgress, setOrderProgress] = useState(0)
   const [showOrderSuccess, setShowOrderSuccess] = useState(false)
   const [placedOrderId, setPlacedOrderId] = useState(null)
@@ -617,10 +618,17 @@ export default function Cart() {
       const maxPrepCompletionDate = new Date(
         closingDate.getTime() - prepLeadMinutes * 60000,
       )
+      const maxAdvanceBookingDate = new Date(
+        now.getTime() + TAKEAWAY_ADVANCE_BOOKING_LIMIT_MINUTES * 60000,
+      )
       const maxTodayDate = new Date(now)
       maxTodayDate.setHours(23, 55, 0, 0)
       const maxAllowedDate = new Date(
-        Math.min(maxPrepCompletionDate.getTime(), maxTodayDate.getTime()),
+        Math.min(
+          maxPrepCompletionDate.getTime(),
+          maxTodayDate.getTime(),
+          maxAdvanceBookingDate.getTime(),
+        ),
       )
 
       const hasSlots = minAllowedDate.getTime() <= maxAllowedDate.getTime()
@@ -690,22 +698,11 @@ export default function Cart() {
     const seen = new Set()
     return availablePickupTimeSlots.filter((slot) => {
       if (slot.hour12 !== pickupHour12) return false
-      if (pickupPeriod && slot.period !== pickupPeriod) return false
       if (seen.has(slot.minute)) return false
       seen.add(slot.minute)
       return true
     })
-  }, [availablePickupTimeSlots, pickupHour12, pickupPeriod])
-
-  const availablePickupPeriodOptions = useMemo(() => {
-    if (!pickupHour12) return pickupPeriodOptions
-
-    return pickupPeriodOptions.filter((period) =>
-      availablePickupTimeSlots.some(
-        (slot) => slot.hour12 === pickupHour12 && slot.period === period,
-      ),
-    )
-  }, [availablePickupTimeSlots, pickupHour12, pickupPeriodOptions])
+  }, [availablePickupTimeSlots, pickupHour12])
 
   // Reset scheduledTime if it's no longer valid in the new slots
   useEffect(() => {
@@ -756,27 +753,6 @@ export default function Cart() {
   }, [pickupTime])
 
   useEffect(() => {
-    if (!isPickupScheduled || !pickupHour12) return
-
-    if (availablePickupPeriodOptions.length === 1) {
-      const [onlyPeriod] = availablePickupPeriodOptions
-      if (pickupPeriod !== onlyPeriod) {
-        setPickupPeriod(onlyPeriod)
-      }
-      return
-    }
-
-    if (pickupPeriod && !availablePickupPeriodOptions.includes(pickupPeriod)) {
-      setPickupPeriod("")
-    }
-  }, [
-    isPickupScheduled,
-    pickupHour12,
-    pickupPeriod,
-    availablePickupPeriodOptions,
-  ])
-
-  useEffect(() => {
     if (!isPickupScheduled || !pickupMinute) return
 
     const minuteStillAvailable = availablePickupMinuteOptions.some(
@@ -793,17 +769,29 @@ export default function Cart() {
   ])
 
   useEffect(() => {
-    if (!isPickupScheduled || !pickupHour12 || !pickupPeriod) return
-    const hour = Number.parseInt(pickupHour12, 10)
-    const minute = Number.parseInt(pickupMinute, 10)
-    if (Number.isNaN(hour) || Number.isNaN(minute)) return
-    let hour24 = hour % 12
-    if (pickupPeriod === "PM") hour24 += 12
-    const nextPickupTime = `${String(hour24).padStart(2, "0")}:${String(Math.max(0, Math.min(59, minute))).padStart(2, "0")}`
-    if (pickupTime !== nextPickupTime) {
-      setPickupTime(nextPickupTime)
+    if (!isPickupScheduled || !pickupHour12 || !pickupMinute) return
+
+    const matchedSlot = availablePickupTimeSlots.find(
+      (slot) => slot.hour12 === pickupHour12 && slot.minute === pickupMinute,
+    )
+
+    if (!matchedSlot) return
+
+    if (pickupPeriod !== matchedSlot.period) {
+      setPickupPeriod(matchedSlot.period)
     }
-  }, [isPickupScheduled, pickupHour12, pickupMinute, pickupPeriod, pickupTime])
+
+    if (pickupTime !== matchedSlot.value) {
+      setPickupTime(matchedSlot.value)
+    }
+  }, [
+    isPickupScheduled,
+    pickupHour12,
+    pickupMinute,
+    pickupPeriod,
+    pickupTime,
+    availablePickupTimeSlots,
+  ])
 
   useEffect(() => {
     if (!isPickupScheduled) return
@@ -814,12 +802,10 @@ export default function Cart() {
     }
 
     const selectedValue =
-      pickupHour12 && pickupMinute && pickupPeriod
-        ? (() => {
-            let hour24 = Number.parseInt(pickupHour12, 10) % 12
-            if (pickupPeriod === "PM") hour24 += 12
-            return `${String(hour24).padStart(2, "0")}:${pickupMinute}`
-          })()
+      pickupHour12 && pickupMinute
+        ? availablePickupTimeSlots.find(
+            (slot) => slot.hour12 === pickupHour12 && slot.minute === pickupMinute,
+          )?.value || ""
         : ""
 
     if (
@@ -2059,7 +2045,7 @@ export default function Cart() {
         pickupDateObj < takeawayScheduleWindow.minAllowedDate ||
         pickupDateObj > takeawayScheduleWindow.maxAllowedDate
       ) {
-        toast.error("Please choose a pickup time within today's available slots")
+        toast.error("Please choose a pickup time within the next 3 hours")
         return
       }
     }
@@ -2968,7 +2954,7 @@ export default function Cart() {
                           : !isPickupScheduled
                           ? `Ready in about ${Math.max(takeawayPrepTimeMinutes, 0)} mins`
                           : takeawayScheduleWindow?.hasSlots
-                            ? "Today only • 5 min slots"
+                            ? "Up to 3 hours ahead • 5 min slots"
                             : "No slots available for today"}
                       </p>
                     </div>
@@ -3022,7 +3008,7 @@ export default function Cart() {
                           {takeawayScheduleWindow.message}
                         </div>
                       ) : availablePickupTimeSlots.length > 0 ? (
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-2 gap-2">
                           <div className="relative">
                             <select
                               value={pickupHour12}
@@ -3048,21 +3034,6 @@ export default function Cart() {
                               {availablePickupMinuteOptions.map((slot) => (
                                 <option key={`${slot.value}-minute`} value={slot.minute}>
                                   {slot.minute}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                          </div>
-                          <div className="relative">
-                            <select
-                              value={pickupPeriod}
-                              onChange={(e) => setPickupPeriod(e.target.value)}
-                              className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
-                            >
-                              <option value="">AM/PM</option>
-                              {availablePickupPeriodOptions.map((period) => (
-                                <option key={period} value={period}>
-                                  {period}
                                 </option>
                               ))}
                             </select>
