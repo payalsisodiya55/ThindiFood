@@ -16,6 +16,8 @@ import {
     cancelEmptySessionController,
     addTableController,
     listTablesController,
+    updateTableController,
+    deleteTableController,
     requestCounterPaymentController,
     markCounterPaidController,
     listRestaurantSessionsController,
@@ -60,6 +62,8 @@ router.post('/sessions/:id/mark-counter-paid', authMiddleware, requireRoles('RES
 // Table Management
 router.post('/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), addTableController);
 router.get('/restaurants/:restaurantId/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), listTablesController);
+router.patch('/tables/:id', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), updateTableController);
+router.delete('/tables/:id', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), deleteTableController);
 router.get('/restaurants/current/sessions', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), listRestaurantSessionsController);
 
 // ─── Table Bookings (Pre-book flow) ─────────────────────────────────────────

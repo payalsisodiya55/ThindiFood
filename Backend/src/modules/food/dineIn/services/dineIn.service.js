@@ -1112,7 +1112,7 @@ export async function closeSession(sessionId, paymentData) {
  * Add a new table to a restaurant (Staff/Admin).
  */
 export async function addTable(data) {
-    const { restaurantId, tableNumber, tableLabel, capacity } = data;
+    const { restaurantId, tableNumber, tableLabel, capacity, frontendBaseUrl } = data;
     const normalizedRestaurantId = String(restaurantId || '').trim();
     const normalizedTableNumber = String(tableNumber || '').trim();
 
@@ -1148,8 +1148,7 @@ export async function addTable(data) {
 
     // 2. Generate QR Code URL
     // Format: http://localhost:5173/food/user/dine-in?r=REST_ID&t=T1
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const qrCodeUrl = `${frontendUrl}/food/user/dine-in?r=${normalizedRestaurantId}&t=${normalizedTableNumber}`;
+    const qrCodeUrl = buildTableQrUrl(normalizedRestaurantId, normalizedTableNumber, frontendBaseUrl);
 
     // 3. Create
     const table = await FoodRestaurantTable.create({
@@ -1166,9 +1165,10 @@ export async function addTable(data) {
 /**
  * List all tables for a restaurant.
  */
-export async function listTables(restaurantId) {
+export async function listTables(restaurantId, frontendBaseUrl) {
     const rId = new mongoose.Types.ObjectId(restaurantId);
     const tables = await FoodRestaurantTable.find({ restaurantId: rId }).sort({ tableNumber: 1 }).lean();
+    const normalizedBaseUrl = String(frontendBaseUrl || '').trim();
 
     const sessionIds = tables
         .map((table) => table?.currentSessionId)
@@ -1176,7 +1176,10 @@ export async function listTables(restaurantId) {
         .map((value) => new mongoose.Types.ObjectId(String(value)));
 
     if (!sessionIds.length) {
-        return tables;
+        return tables.map((table) => ({
+            ...table,
+            qrCodeUrl: buildTableQrUrl(String(table.restaurantId), table.tableNumber, normalizedBaseUrl),
+        }));
     }
 
     const sessions = await FoodTableSession.find({ _id: { $in: sessionIds } })
@@ -1187,20 +1190,29 @@ export async function listTables(restaurantId) {
     const staleTableIds = [];
     const normalizedTables = tables.map((table) => {
         const currentSessionId = table?.currentSessionId ? String(table.currentSessionId) : '';
-        if (!currentSessionId) return table;
+        if (!currentSessionId) {
+            return {
+                ...table,
+                qrCodeUrl: buildTableQrUrl(String(table.restaurantId), table.tableNumber, normalizedBaseUrl),
+            };
+        }
 
         const currentSession = sessionMap.get(currentSessionId);
         const status = String(currentSession?.status || '').toLowerCase();
         const isActiveSession = status === 'active' || status === 'bill_requested';
 
         if (isActiveSession) {
-            return table;
+            return {
+                ...table,
+                qrCodeUrl: buildTableQrUrl(String(table.restaurantId), table.tableNumber, normalizedBaseUrl),
+            };
         }
 
         staleTableIds.push(table._id);
         return {
             ...table,
             currentSessionId: null,
+            qrCodeUrl: buildTableQrUrl(String(table.restaurantId), table.tableNumber, normalizedBaseUrl),
         };
     });
 
@@ -1212,6 +1224,100 @@ export async function listTables(restaurantId) {
     }
 
     return normalizedTables;
+}
+
+function buildTableQrUrl(restaurantId, tableNumber, frontendBaseUrl) {
+    const frontendUrl = String(frontendBaseUrl || process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
+    return `${frontendUrl}/food/user/dine-in?r=${restaurantId}&t=${tableNumber}`;
+}
+
+async function assertRestaurantTableIsEditable(tableId) {
+    const table = await FoodRestaurantTable.findById(tableId);
+    if (!table) {
+        const error = new Error('Table not found');
+        error.statusCode = 404;
+        throw error;
+    }
+
+    if (!table.currentSessionId) {
+        return table;
+    }
+
+    const session = await FoodTableSession.findById(table.currentSessionId).select('_id status').lean();
+    const sessionStatus = String(session?.status || '').toLowerCase();
+    const hasActiveSession = sessionStatus === 'active' || sessionStatus === 'bill_requested';
+
+    if (hasActiveSession) {
+        const error = new Error('This table currently has an active session');
+        error.statusCode = 409;
+        throw error;
+    }
+
+    table.currentSessionId = null;
+    await table.save();
+    return table;
+}
+
+export async function updateTable(tableId, data = {}) {
+    const normalizedTableId = String(tableId || '').trim();
+    const normalizedTableNumber = String(data.tableNumber || '').trim();
+    const normalizedTableLabel = String(data.tableLabel || '').trim();
+    const normalizedCapacity = Number(data.capacity);
+    const frontendBaseUrl = data.frontendBaseUrl;
+
+    if (!mongoose.Types.ObjectId.isValid(normalizedTableId)) {
+        const error = new Error('Valid table id is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!normalizedTableNumber) {
+        const error = new Error('Table number is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    if (!Number.isFinite(normalizedCapacity) || normalizedCapacity < 1) {
+        const error = new Error('Valid table capacity is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const table = await assertRestaurantTableIsEditable(normalizedTableId);
+    const existing = await FoodRestaurantTable.findOne({
+        restaurantId: table.restaurantId,
+        tableNumber: normalizedTableNumber,
+        _id: { $ne: table._id },
+    }).lean();
+
+    if (existing) {
+        const error = new Error('Table number already exists for this restaurant');
+        error.statusCode = 409;
+        throw error;
+    }
+
+    table.tableNumber = normalizedTableNumber;
+    table.tableLabel = normalizedTableLabel || `Table ${normalizedTableNumber}`;
+    table.capacity = normalizedCapacity;
+    table.qrCodeUrl = buildTableQrUrl(String(table.restaurantId), normalizedTableNumber, frontendBaseUrl);
+    await table.save();
+
+    return table;
+}
+
+export async function deleteTable(tableId) {
+    const normalizedTableId = String(tableId || '').trim();
+
+    if (!mongoose.Types.ObjectId.isValid(normalizedTableId)) {
+        const error = new Error('Valid table id is required');
+        error.statusCode = 400;
+        throw error;
+    }
+
+    const table = await assertRestaurantTableIsEditable(normalizedTableId);
+    await FoodRestaurantTable.deleteOne({ _id: table._id });
+
+    return { _id: table._id };
 }
 
 export async function listRestaurantSessions(restaurantId, filters = {}) {

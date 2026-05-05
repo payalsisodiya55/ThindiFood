@@ -164,6 +164,7 @@ export async function cancelEmptySessionController(req, res, next) {
 export async function addTableController(req, res, next) {
     try {
         const { restaurantId, tableNumber, tableLabel, capacity } = req.body;
+        const frontendBaseUrl = resolveFrontendBaseUrl(req);
 
         // Staff check
         const userRole = String(req.user.role || "").toUpperCase();
@@ -175,7 +176,8 @@ export async function addTableController(req, res, next) {
             restaurantId,
             tableNumber,
             tableLabel,
-            capacity
+            capacity,
+            frontendBaseUrl,
         });
 
         return sendResponse(res, 201, 'Table added successfully', table);
@@ -187,11 +189,58 @@ export async function addTableController(req, res, next) {
 export async function listTablesController(req, res, next) {
     try {
         const { restaurantId } = req.params;
-        const tables = await dineInService.listTables(restaurantId);
+        const frontendBaseUrl = resolveFrontendBaseUrl(req);
+        const tables = await dineInService.listTables(restaurantId, frontendBaseUrl);
         return sendResponse(res, 200, 'Tables fetched successfully', tables);
     } catch (error) {
         next(error);
     }
+}
+
+export async function updateTableController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { tableNumber, tableLabel, capacity } = req.body;
+        const frontendBaseUrl = resolveFrontendBaseUrl(req);
+        const table = await dineInService.updateTable(id, {
+            tableNumber,
+            tableLabel,
+            capacity,
+            frontendBaseUrl,
+        });
+        return sendResponse(res, 200, 'Table updated successfully', table);
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function deleteTableController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const result = await dineInService.deleteTable(id);
+        return sendResponse(res, 200, 'Table deleted successfully', result);
+    } catch (error) {
+        next(error);
+    }
+}
+
+function resolveFrontendBaseUrl(req) {
+    const origin = String(req.get('origin') || '').trim();
+    if (origin) {
+        return origin.replace(/\/+$/, '');
+    }
+
+    const referer = String(req.get('referer') || '').trim();
+    if (referer) {
+        try {
+            const refererUrl = new URL(referer);
+            return refererUrl.origin;
+        } catch {
+            // fall through to env fallback
+        }
+    }
+
+    return String(process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
 }
 
 export async function requestCounterPaymentController(req, res, next) {

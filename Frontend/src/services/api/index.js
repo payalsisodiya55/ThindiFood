@@ -2990,6 +2990,10 @@ export const dineInAPI = {
     apiClient.post('/food/dine-in/tables', body, { contextModule: "restaurant" }),
   listTables: (restaurantId) =>
     apiClient.get(`/food/dine-in/restaurants/${restaurantId}/tables`, { contextModule: "restaurant" }),
+  updateTable: (tableId, body) =>
+    apiClient.patch(`/food/dine-in/tables/${tableId}`, body, { contextModule: "restaurant" }),
+  deleteTable: (tableId) =>
+    apiClient.delete(`/food/dine-in/tables/${tableId}`, { contextModule: "restaurant" }),
   getRestaurantSessions: (params = {}) =>
     apiClient.get('/food/dine-in/restaurants/current/sessions', { params, contextModule: "restaurant" }),
 

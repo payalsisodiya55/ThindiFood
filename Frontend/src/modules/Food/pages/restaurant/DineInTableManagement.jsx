@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import QRCode from "qrcode";
 import { 
-    Plus, QrCode, Users, Trash2, Download, 
+    Plus, QrCode, Users, Trash2, Download, Pencil,
     Loader2, AlertCircle, CheckCircle2, MoreVertical, 
     Printer, Info, Search, Utensils
 } from "lucide-react";
@@ -18,9 +18,18 @@ const DineInTableManagement = () => {
     const [restaurantId, setRestaurantId] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [addingTable, setAddingTable] = useState(false);
+    const [editingTable, setEditingTable] = useState(null);
+    const [savingEdit, setSavingEdit] = useState(false);
+    const [deletingTableId, setDeletingTableId] = useState("");
+    const [tablePendingDelete, setTablePendingDelete] = useState(null);
     
     // Form state
     const [newTable, setNewTable] = useState({
+        tableNumber: "",
+        tableLabel: "",
+        capacity: 4
+    });
+    const [editTableForm, setEditTableForm] = useState({
         tableNumber: "",
         tableLabel: "",
         capacity: 4
@@ -91,6 +100,85 @@ const DineInTableManagement = () => {
             toast.error(err.response?.data?.message || "Error adding table");
         } finally {
             setAddingTable(false);
+        }
+    };
+
+    const openEditModal = (table) => {
+        setEditingTable(table);
+        setEditTableForm({
+            tableNumber: String(table?.tableNumber || ""),
+            tableLabel: String(table?.tableLabel || ""),
+            capacity: Number(table?.capacity || 4),
+        });
+    };
+
+    const closeEditModal = () => {
+        if (savingEdit) return;
+        setEditingTable(null);
+        setEditTableForm({ tableNumber: "", tableLabel: "", capacity: 4 });
+    };
+
+    const handleEditTable = async (e) => {
+        e.preventDefault();
+        if (!editingTable?._id) return;
+
+        const normalizedTableNumber = String(editTableForm.tableNumber || "").trim();
+        if (!normalizedTableNumber) {
+            toast.error("Table number is required");
+            return;
+        }
+
+        try {
+            setSavingEdit(true);
+            const res = await dineInAPI.updateTable(editingTable._id, {
+                tableNumber: normalizedTableNumber,
+                tableLabel: editTableForm.tableLabel,
+                capacity: Number(editTableForm.capacity || 1),
+            });
+
+            if (res.data?.success) {
+                toast.success("Table updated successfully!");
+                setEditingTable(null);
+                setEditTableForm({ tableNumber: "", tableLabel: "", capacity: 4 });
+                fetchInitialData();
+            } else {
+                toast.error(res.data?.message || "Failed to update table");
+            }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Error updating table");
+        } finally {
+            setSavingEdit(false);
+        }
+    };
+
+    const openDeleteModal = (table) => {
+        setTablePendingDelete(table);
+    };
+
+    const closeDeleteModal = () => {
+        if (deletingTableId) return;
+        setTablePendingDelete(null);
+    };
+
+    const handleDeleteTable = async () => {
+        const table = tablePendingDelete;
+        if (!table?._id) return;
+
+        const label = table?.tableNumber ? `Table #${table.tableNumber}` : "this table";
+        try {
+            setDeletingTableId(String(table?._id || ""));
+            const res = await dineInAPI.deleteTable(table._id);
+            if (res.data?.success) {
+                toast.success(`${label} deleted successfully`);
+                setTablePendingDelete(null);
+                fetchInitialData();
+            } else {
+                toast.error(res.data?.message || "Failed to delete table");
+            }
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Error deleting table");
+        } finally {
+            setDeletingTableId("");
         }
     };
 
@@ -337,9 +425,29 @@ const DineInTableManagement = () => {
                                     <Users className="w-3.5 h-3.5" />
                                     <span>Cap: {table.capacity}</span>
                                 </div>
-                                <button className="p-2 text-red-100 hover:text-red-500 rounded-xl transition-colors">
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => openEditModal(table)}
+                                        className="p-2 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+                                        title="Edit table"
+                                    >
+                                        <Pencil className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => openDeleteModal(table)}
+                                        disabled={deletingTableId === table._id}
+                                        className="p-2 text-red-100 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-60"
+                                        title="Delete table"
+                                    >
+                                        {deletingTableId === table._id ? (
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <Trash2 className="w-4 h-4" />
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </motion.div>
@@ -395,10 +503,10 @@ const DineInTableManagement = () => {
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Table Number</label>
                                         <input 
                                             required
-                                            type="number" 
+                                            type="text" 
                                             value={newTable.tableNumber}
                                             onChange={(e) => setNewTable({...newTable, tableNumber: e.target.value})}
-                                            placeholder="e.g. 1, 5, 12"
+                                            placeholder="e.g. 1, A1, VIP-2"
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
@@ -416,6 +524,7 @@ const DineInTableManagement = () => {
                                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Seating Capacity</label>
                                         <input 
                                             required
+                                            min="1"
                                             type="number" 
                                             value={newTable.capacity}
                                             onChange={(e) => setNewTable({...newTable, capacity: Number(e.target.value)})}
@@ -432,6 +541,153 @@ const DineInTableManagement = () => {
                                     {addingTable ? <Loader2 className="w-6 h-6 animate-spin" /> : "Generate Table QR"}
                                 </Button>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {editingTable && (
+                    <div className="fixed inset-0 z-[101] flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={closeEditModal}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+                            className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-10 overflow-hidden"
+                        >
+                            <form onSubmit={handleEditTable} className="p-10">
+                                <div className="flex items-center justify-between mb-8">
+                                    <div>
+                                        <h2 className="text-2xl font-black text-gray-900">Edit Table</h2>
+                                        <p className="text-sm text-gray-500 font-medium mt-1">The QR link will refresh automatically when you save these changes.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={closeEditModal}
+                                        className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Table Number</label>
+                                        <input
+                                            required
+                                            type="text"
+                                            value={editTableForm.tableNumber}
+                                            onChange={(e) => setEditTableForm({ ...editTableForm, tableNumber: e.target.value })}
+                                            placeholder="e.g. 1, A1, VIP-2"
+                                            className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Label (Optional)</label>
+                                        <input
+                                            type="text"
+                                            value={editTableForm.tableLabel}
+                                            onChange={(e) => setEditTableForm({ ...editTableForm, tableLabel: e.target.value })}
+                                            placeholder="e.g. Window Side, Rooftop"
+                                            className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Seating Capacity</label>
+                                        <input
+                                            required
+                                            min="1"
+                                            type="number"
+                                            value={editTableForm.capacity}
+                                            onChange={(e) => setEditTableForm({ ...editTableForm, capacity: Number(e.target.value) })}
+                                            className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
+                                        />
+                                    </div>
+                                </div>
+
+                                <Button
+                                    disabled={savingEdit}
+                                    type="submit"
+                                    className="w-full mt-10 py-8 rounded-3xl bg-[#00c87e] hover:bg-[#00b06f] text-white text-xl font-black shadow-xl shadow-green-100 flex items-center justify-center gap-3 transition-all active:scale-95"
+                                >
+                                    {savingEdit ? <Loader2 className="w-6 h-6 animate-spin" /> : "Save Changes"}
+                                </Button>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            <AnimatePresence>
+                {tablePendingDelete && (
+                    <div className="fixed inset-0 z-[102] flex items-center justify-center p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={closeDeleteModal}
+                            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 40, scale: 0.96 }}
+                            className="relative z-10 w-full max-w-md overflow-hidden rounded-[2.5rem] bg-white shadow-2xl"
+                        >
+                            <div className="p-8 sm:p-10">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-red-50">
+                                        <AlertCircle className="h-7 w-7 text-red-500" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="text-2xl font-black text-gray-900">Delete Table?</h3>
+                                        <p className="mt-2 text-sm font-medium leading-6 text-gray-500">
+                                            {`Deleting Table #${tablePendingDelete.tableNumber} will remove its QR and setup. This action cannot be undone.`}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 rounded-3xl border border-red-100 bg-red-50/60 px-5 py-4">
+                                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-red-400">Table Details</p>
+                                    <div className="mt-2 flex items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-lg font-black text-gray-900">#{tablePendingDelete.tableNumber}</p>
+                                            <p className="text-sm font-semibold text-gray-500">
+                                                {tablePendingDelete.tableLabel || "Standard Table"}
+                                            </p>
+                                        </div>
+                                        <div className="rounded-2xl bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-500 shadow-sm">
+                                            Cap {tablePendingDelete.capacity}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 flex gap-3">
+                                    <Button
+                                        type="button"
+                                        onClick={closeDeleteModal}
+                                        disabled={Boolean(deletingTableId)}
+                                        className="h-14 flex-1 rounded-2xl bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        onClick={handleDeleteTable}
+                                        disabled={Boolean(deletingTableId)}
+                                        className="h-14 flex-1 rounded-2xl bg-red-500 text-white hover:bg-red-600"
+                                    >
+                                        {deletingTableId ? <Loader2 className="h-5 w-5 animate-spin" /> : "Delete"}
+                                    </Button>
+                                </div>
+                            </div>
                         </motion.div>
                     </div>
                 )}
