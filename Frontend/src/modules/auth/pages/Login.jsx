@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from "react"
 import { motion } from "framer-motion"
 import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
-import { Phone, Lock, ArrowRight, ShieldCheck, Loader2 } from "lucide-react"
+import { Phone, ShieldCheck, Loader2, User } from "lucide-react"
 import { toast } from "sonner"
-import { authAPI } from "@food/api"
+import { authAPI, userAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
 import logo from "@/assets/user_app-removebg-preview.png"
 
@@ -16,6 +16,8 @@ export default function UnifiedOTPFastLogin() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [step, setStep] = useState(1)
+  const [name, setName] = useState("")
+  const [nameError, setNameError] = useState("")
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
@@ -23,22 +25,48 @@ export default function UnifiedOTPFastLogin() {
   const submitting = useRef(false)
 
   const normalizedPhone = () => {
-    const digits = String(phoneNumber).replace(/\D/g, "").slice(-15)
-    return digits.length >= 8 ? digits : ""
+    const digits = String(phoneNumber).replace(/\D/g, "").slice(0, 10)
+    return digits.length === 10 ? digits : ""
+  }
+
+  const hasMeaningfulName = (user) => {
+    const rawName = String(user?.name || user?.fullName || "").trim()
+    if (!rawName) return false
+
+    const normalizedName = rawName.toLowerCase()
+    const normalizedPhone = String(phoneNumber || "").replace(/\D/g, "").slice(-10)
+    const nameDigits = rawName.replace(/\D/g, "")
+
+    if (
+      normalizedName === "null" ||
+      normalizedName === "undefined" ||
+      normalizedName === "user" ||
+      normalizedName === "customer" ||
+      normalizedName === "guest" ||
+      normalizedName === "new user"
+    ) {
+      return false
+    }
+
+    if (normalizedPhone && nameDigits && nameDigits === normalizedPhone) {
+      return false
+    }
+
+    return rawName.length >= 2
   }
 
   const handleSendOTP = async (e) => {
     e.preventDefault()
     const phone = normalizedPhone()
-    if (phone.length < 8) {
-      toast.error("Please enter a valid phone number (at least 8 digits)")
+    if (phone.length !== 10) {
+      toast.error("Please enter a valid 10-digit phone number")
       return
     }
     if (submitting.current) return
     submitting.current = true
     setLoading(true)
     try {
-      await authAPI.sendOTP(phoneNumber, "login", null)
+      await authAPI.sendOTP(phone, "login", null)
       setOtpSent(true)
       setOtp("")
       setStep(2)
@@ -55,15 +83,15 @@ export default function UnifiedOTPFastLogin() {
 
   const handleResendOTP = async () => {
     const phone = normalizedPhone()
-    if (phone.length < 8) {
-      toast.error("Please enter a valid phone number (at least 8 digits)")
+    if (phone.length !== 10) {
+      toast.error("Please enter a valid 10-digit phone number")
       return
     }
     if (resendTimer > 0 || submitting.current) return
     submitting.current = true
     setLoading(true)
     try {
-      await authAPI.sendOTP(phoneNumber, "login", null)
+      await authAPI.sendOTP(phone, "login", null)
       setOtp("")
       setOtpSent(true)
       setResendTimer(RESEND_COOLDOWN_SECONDS)
@@ -80,6 +108,8 @@ export default function UnifiedOTPFastLogin() {
   const handleEditNumber = () => {
     setStep(1)
     setOtp("")
+    setName("")
+    setNameError("")
     setResendTimer(0)
   }
 
@@ -120,7 +150,7 @@ export default function UnifiedOTPFastLogin() {
         console.warn("Failed to get FCM token during login", e);
       }
 
-      const response = await authAPI.verifyOTP(phoneNumber, otpDigits, "login", null, null, "user", null, null, fcmToken, platform)
+      const response = await authAPI.verifyOTP(phone, otpDigits, "login", null, null, "user", null, null, fcmToken, platform)
       const data = response?.data?.data || response?.data || {}
       const accessToken = data.accessToken
       const refreshToken = data.refreshToken || null
@@ -128,6 +158,17 @@ export default function UnifiedOTPFastLogin() {
 
       if (!accessToken || !user) {
         throw new Error("Invalid response from server")
+      }
+
+      const needsName = data.isNewUser === true || !hasMeaningfulName(user)
+
+      if (needsName) {
+        setAuthData("user", accessToken, user, refreshToken)
+        window.dispatchEvent(new CustomEvent("userAuthChanged"))
+        setStep(3)
+        setLoading(false)
+        submitting.current = false
+        return
       }
 
       setAuthData("user", accessToken, user, refreshToken)
@@ -154,6 +195,77 @@ export default function UnifiedOTPFastLogin() {
           msg = "Invalid or expired code, or account not active."
         }
       }
+      toast.error(msg)
+    } finally {
+      setLoading(false)
+      submitting.current = false
+    }
+  }
+
+  const handleSubmitName = async (e) => {
+    e.preventDefault()
+
+    const trimmedName = name.trim()
+    if (!trimmedName) {
+      setNameError("Name is required")
+      return
+    }
+
+    if (trimmedName.length < 2) {
+      setNameError("Name must be at least 2 characters")
+      return
+    }
+
+    if (submitting.current) return
+    submitting.current = true
+    setLoading(true)
+    setNameError("")
+
+    try {
+      const response = await userAPI.updateProfile({ name: trimmedName })
+      const updatedUser = response?.data?.data?.user || response?.data?.user || {}
+      const accessToken = localStorage.getItem("user_accessToken")
+      const refreshToken = localStorage.getItem("user_refreshToken") || null
+      const existingUser = (() => {
+        try {
+          return JSON.parse(localStorage.getItem("user_user") || "null") || {}
+        } catch {
+          return {}
+        }
+      })()
+
+      if (!accessToken) {
+        throw new Error("Authentication expired. Please try again.")
+      }
+
+      setAuthData(
+        "user",
+        accessToken,
+        {
+          ...existingUser,
+          ...updatedUser,
+          name: updatedUser?.name || trimmedName,
+          fullName: updatedUser?.fullName || trimmedName,
+        },
+        refreshToken,
+      )
+      window.dispatchEvent(new CustomEvent("userAuthChanged"))
+      toast.success("Profile completed successfully!")
+
+      const params = new URLSearchParams(window.location.search)
+      const redirectPath = params.get("redirect")
+
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true })
+      } else {
+        navigate("/", { replace: true })
+      }
+    } catch (err) {
+      const msg =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.message ||
+        "Failed to save your name."
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -228,7 +340,7 @@ export default function UnifiedOTPFastLogin() {
               <div className="h-1 w-12 bg-[#00c87e] mx-auto rounded-full" />
            </div>
 
-          <form onSubmit={step === 1 ? handleSendOTP : handleVerifyOTP} className="space-y-5">
+          <form onSubmit={step === 1 ? handleSendOTP : step === 2 ? handleVerifyOTP : handleSubmitName} className="space-y-5">
             {step === 1 ? (
               <div className="space-y-6">
                 <div className="space-y-4">
@@ -255,7 +367,7 @@ export default function UnifiedOTPFastLogin() {
                   We will send success notifications and order updates via SMS
                 </p>
               </div>
-            ) : (
+            ) : step === 2 ? (
               <div className="space-y-6">
                 <div className="space-y-4">
                    <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
@@ -334,6 +446,47 @@ export default function UnifiedOTPFastLogin() {
                   </div>
                 </div>
               </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                   <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-900 p-4 rounded-2xl border border-dashed border-gray-200 dark:border-gray-800">
+                      <div className="w-10 h-10 bg-[#00c87e]/10 rounded-full flex items-center justify-center">
+                         <ShieldCheck className="w-5 h-5 text-[#00c87e]" />
+                      </div>
+                      <div className="flex-1">
+                         <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest leading-none mb-1">Verified Number</p>
+                         <p className="text-sm font-black text-gray-900 dark:text-white">+91 {phoneNumber}</p>
+                      </div>
+                      <button type="button" onClick={handleEditNumber} className="text-xs text-[#00c87e] font-black underline cursor-pointer">Change</button>
+                   </div>
+
+                  <div className="relative group mt-4">
+                    <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
+                      <User className="w-5 h-5 text-[#00c87e]" />
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      autoFocus
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value)
+                        if (nameError) setNameError("")
+                      }}
+                      className="block w-full pl-8 pr-4 py-3 bg-transparent text-gray-900 dark:text-white border-b-2 border-gray-100 dark:border-gray-800 focus:border-[#00c87e] outline-none transition-all placeholder:text-gray-300 font-bold text-lg"
+                      placeholder="Your name"
+                    />
+                  </div>
+
+                  {nameError && (
+                    <p className="text-xs text-red-500">{nameError}</p>
+                  )}
+
+                  <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+                    Please enter your name so we can save it to your profile.
+                  </p>
+                </div>
+              </div>
             )}
 
             <button
@@ -348,7 +501,7 @@ export default function UnifiedOTPFastLogin() {
               {loading ? (
                 <Loader2 className="w-7 h-7 animate-spin mx-auto text-white" />
               ) : (
-                step === 1 ? "Get Verification Code" : "Continue"
+                step === 1 ? "Get Verification Code" : step === 2 ? "Continue" : "Save Name & Continue"
               )}
             </button>
           </form>
