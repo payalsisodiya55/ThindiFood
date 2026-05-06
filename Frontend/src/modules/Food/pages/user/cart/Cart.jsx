@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -388,7 +388,6 @@ export default function Cart() {
   const [isLoadingWallet, setIsLoadingWallet] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [sharePayload, setSharePayload] = useState(null)
-  const [isEditingRecipient, setIsEditingRecipient] = useState(false)
   const [recipientDetails, setRecipientDetails] = useState({
     name: "",
     phone: "",
@@ -976,10 +975,8 @@ export default function Cart() {
         name: stored?.name || "",
         phone: sanitizeRecipientPhone(stored?.phone || ""),
       })
-      setIsEditingRecipient(Boolean(stored?.isEditingRecipient))
     } catch {
       setRecipientDetails({ name: "", phone: "" })
-      setIsEditingRecipient(false)
     } finally {
       hasRestoredRecipientRef.current = true
     }
@@ -1002,13 +999,12 @@ export default function Cart() {
         JSON.stringify({
           name: recipientDetails.name || "",
           phone: sanitizeRecipientPhone(recipientDetails.phone || ""),
-          isEditingRecipient,
         })
       )
     } catch {
       // Ignore storage errors and keep cart flow working.
     }
-  }, [recipientDetails, isEditingRecipient])
+  }, [recipientDetails])
 
 
 
@@ -3166,71 +3162,6 @@ export default function Cart() {
                 </div>
               </div>
 
-              {/* Contact */}
-              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 md:gap-4 flex-1 min-w-0">
-                    <Phone className="h-4 w-4 md:h-5 md:w-5 text-gray-500 dark:text-gray-400 mt-0.5" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm md:text-base text-gray-800 dark:text-gray-200 font-medium">
-                        {recipientName}, <span className="font-semibold">{recipientPhone || "+91-XXXXXXXXXX"}</span>
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Order recipient details
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingRecipient((prev) => !prev)}
-                    className="text-[#00c87e] text-xs md:text-sm font-semibold whitespace-nowrap"
-                  >
-                    {isEditingRecipient ? "Done" : "Change"}
-                  </button>
-                </div>
-
-                {isEditingRecipient && (
-                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-3">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                        Name
-                      </label>
-                      <input
-                        type="text"
-                        value={recipientDetails.name}
-                        onChange={(e) =>
-                          setRecipientDetails((prev) => ({
-                            ...prev,
-                            name: e.target.value,
-                          }))
-                        }
-                        placeholder="Enter recipient name"
-                        className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111111] px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#00c87e]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
-                        Phone Number
-                      </label>
-                      <input
-                        type="tel"
-                        value={recipientDetails.phone}
-                        onChange={(e) =>
-                          setRecipientDetails((prev) => ({
-                            ...prev,
-                            phone: sanitizeRecipientPhone(e.target.value),
-                          }))
-                        }
-                        placeholder="Enter recipient phone"
-                        className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#111111] px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:border-[#00c87e]"
-                      />
-                    </div>
-                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      If you are ordering for someone else, save their name and phone number here.
-                    </p>
-                  </div>
-                )}
-              </div>
 {/* Bill Details */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <button

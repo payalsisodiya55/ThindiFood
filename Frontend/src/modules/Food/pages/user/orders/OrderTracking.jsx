@@ -2062,25 +2062,6 @@ export default function OrderTracking() {
           transition={{ delay: 0.7 }}
         >
           <SectionItem
-            icon={User}
-            title={
-              order?.userName ||
-              order?.userId?.fullName ||
-              order?.userId?.name ||
-              profile?.fullName ||
-              profile?.name ||
-              'Customer'
-            }
-            subtitle={
-              order?.userPhone ||
-              order?.userId?.phone ||
-              profile?.phone ||
-              defaultAddress?.phone ||
-              'Phone number not available'
-            }
-            showArrow={false}
-          />
-          <SectionItem
             iconNode={
               <div
                 dangerouslySetInnerHTML={{ __html: SAFE_CUSTOMER_PIN }}
