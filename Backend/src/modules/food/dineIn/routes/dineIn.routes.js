@@ -25,6 +25,7 @@ import {
 import {
     createBookingController,
     getUserBookingsController,
+    getPublicBookingAvailabilityController,
     cancelBookingController,
     getRestaurantBookingsController,
     acceptBookingController,
@@ -65,6 +66,7 @@ router.get('/restaurants/:restaurantId/tables', authMiddleware, requireRoles('RE
 router.patch('/tables/:id', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), updateTableController);
 router.delete('/tables/:id', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), deleteTableController);
 router.get('/restaurants/current/sessions', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), listRestaurantSessionsController);
+router.get('/restaurants/:restaurantId/bookings/availability', getPublicBookingAvailabilityController);
 
 // ─── Table Bookings (Pre-book flow) ─────────────────────────────────────────
 

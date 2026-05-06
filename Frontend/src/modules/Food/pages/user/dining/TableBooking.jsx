@@ -11,6 +11,10 @@ import { RED } from "@food/constants/color"
 
 const BOOKING_DRAFT_KEY = "food_dining_booking_draft_v1"
 const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
+const MEAL_WINDOWS = {
+  lunch: { start: 12 * 60, end: 16 * 60, label: "Lunch" },
+  dinner: { start: 18 * 60, end: 26 * 60, label: "Dinner" },
+}
 
 const readStoredGuestCount = (slug) => {
   try {
@@ -37,10 +41,10 @@ const buildDates = (count = 7) =>
 
 const formatTimeValue = (value) => {
   if (!value) return null
-  if (/[ap]m/i.test(value)) return value.toUpperCase()
+  if (/[ap]m/i.test(value)) return String(value).trim().toLowerCase()
   const date = new Date(`2000-01-01T${String(value).padStart(5, "0")}`)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+  return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase()
 }
 
 const parseTimeToMinutes = (value) => {
@@ -49,7 +53,12 @@ const parseTimeToMinutes = (value) => {
 
   const hhmmMatch = raw.match(/^(\d{1,2}):(\d{2})$/)
   if (hhmmMatch) {
-    return Number(hhmmMatch[1]) * 60 + Number(hhmmMatch[2])
+    const hour = Number(hhmmMatch[1])
+    const minute = Number(hhmmMatch[2])
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+      return null
+    }
+    return hour * 60 + minute
   }
 
   const meridiemMatch = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i)
@@ -59,28 +68,71 @@ const parseTimeToMinutes = (value) => {
   const minute = Number(meridiemMatch[2] || 0)
   const meridiem = meridiemMatch[3].toUpperCase()
 
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+    return null
+  }
+
   if (meridiem === "PM" && hour !== 12) hour += 12
   if (meridiem === "AM" && hour === 12) hour = 0
 
   return hour * 60 + minute
 }
 
+const formatMinutesToLabel = (minutes) => {
+  const normalizedMinutes = ((minutes % (24 * 60)) + (24 * 60)) % (24 * 60)
+  const hours = Math.floor(normalizedMinutes / 60)
+  const mins = normalizedMinutes % 60
+  return formatTimeValue(`${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`)
+}
+
 const getDayName = (date) => date.toLocaleDateString("en-US", { weekday: "long" })
 
-const buildSlots = (timing) => {
+const getDateKey = (value) => {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const isSameCalendarDate = (left, right) => {
+  if (!(left instanceof Date) || Number.isNaN(left.getTime())) return false
+  if (!(right instanceof Date) || Number.isNaN(right.getTime())) return false
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  )
+}
+
+const buildSlotsForMeal = (timing, mealType, selectedDate) => {
   if (!timing || timing.isOpen === false) return []
   const opening = parseTimeToMinutes(timing.openingTime)
   const closing = parseTimeToMinutes(timing.closingTime)
   if (opening === null || closing === null) return []
 
-  const slots = []
-  let cursor = opening
-  const end = closing > opening ? closing : opening + 240
+  const mealWindow = MEAL_WINDOWS[mealType]
+  if (!mealWindow) return []
 
-  while (cursor <= end && slots.length < 48) {
-    const hours = Math.floor((cursor % (24 * 60)) / 60)
-    const minutes = cursor % 60
-    slots.push(formatTimeValue(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`))
+  const dayEnd = closing > opening ? closing : closing + 24 * 60
+  let slotStart = Math.max(opening, mealWindow.start)
+  const slotEnd = Math.min(dayEnd, mealWindow.end)
+  if (slotStart > slotEnd) return []
+
+  const now = new Date()
+  if (isSameCalendarDate(selectedDate, now)) {
+    const currentMinutes = now.getHours() * 60 + now.getMinutes()
+    const nextAllowedMinutes = Math.ceil(currentMinutes / 30) * 30
+    slotStart = Math.max(slotStart, nextAllowedMinutes)
+  }
+
+  if (slotStart > slotEnd) return []
+
+  const slots = []
+  let cursor = slotStart
+  while (cursor <= slotEnd && slots.length < 48) {
+    slots.push(formatMinutesToLabel(cursor))
     cursor += 30
   }
 
@@ -106,27 +158,32 @@ const buildFallbackTiming = (restaurant) => {
   }
 }
 
-const getMealPeriod = (slot) => {
-  if (!slot) return "all"
-  const normalized = String(slot).toUpperCase()
-  const match = normalized.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/)
-  if (!match) return "all"
+const getOfferLabel = (mealType) => MEAL_WINDOWS[mealType]?.label || "Dining"
 
-  let hour = Number(match[1])
-  const minute = Number(match[2])
-  const meridiem = match[3]
+const getNoSlotsReason = ({ selectedMealPeriod, selectedDate, selectedDayTiming, slotsByMeal, availableSlotsByMeal, availabilityLoading }) => {
+  if (availabilityLoading) {
+    return `Checking ${selectedMealPeriod} availability...`
+  }
 
-  if (meridiem === "PM" && hour !== 12) hour += 12
-  if (meridiem === "AM" && hour === 12) hour = 0
+  if (!selectedDayTiming || selectedDayTiming.isOpen === false) {
+    return "Restaurant is closed on the selected date."
+  }
 
-  const totalMinutes = hour * 60 + minute
-  if (totalMinutes < 17 * 60) return "lunch"
-  return "dinner"
-}
+  const totalMealSlots = slotsByMeal[selectedMealPeriod] || []
+  const availableMealSlots = availableSlotsByMeal[selectedMealPeriod] || []
 
-const getOfferLabel = (slot) => {
-  const period = getMealPeriod(slot)
-  return period === "lunch" ? "Lunch" : "Carnival"
+  if (availableMealSlots.length > 0) {
+    return ""
+  }
+
+  if (totalMealSlots.length === 0) {
+    if (isSameCalendarDate(selectedDate, new Date())) {
+      return `${MEAL_WINDOWS[selectedMealPeriod]?.label || "Selected"} time is over for today. Please choose Dinner or another date.`
+    }
+    return `${MEAL_WINDOWS[selectedMealPeriod]?.label || "Selected"} timings are not available for this date.`
+  }
+
+  return `All ${MEAL_WINDOWS[selectedMealPeriod]?.label?.toLowerCase() || "selected"} slots are booked for this date. Please try another time or date.`
 }
 
 export default function TableBooking() {
@@ -149,6 +206,8 @@ export default function TableBooking() {
   })
   const [selectedSlot, setSelectedSlot] = useState(location.state?.selectedTime || null)
   const [selectedMealPeriod, setSelectedMealPeriod] = useState("lunch")
+  const [unavailableSlots, setUnavailableSlots] = useState([])
+  const [availabilityLoading, setAvailabilityLoading] = useState(false)
 
   useEffect(() => {
     const fetchRestaurant = async () => {
@@ -213,11 +272,72 @@ export default function TableBooking() {
     }
     return buildFallbackTiming(restaurant)
   }, [outletTimings, selectedDate, restaurant])
-  const allSlots = useMemo(() => buildSlots(selectedDayTiming), [selectedDayTiming])
-  const filteredSlots = useMemo(
-    () => allSlots.filter((slot) => getMealPeriod(slot) === selectedMealPeriod),
-    [allSlots, selectedMealPeriod]
+
+  const slotsByMeal = useMemo(
+    () => ({
+      lunch: buildSlotsForMeal(selectedDayTiming, "lunch", selectedDate),
+      dinner: buildSlotsForMeal(selectedDayTiming, "dinner", selectedDate),
+    }),
+    [selectedDayTiming, selectedDate]
   )
+
+  const unavailableSlotSet = useMemo(
+    () => new Set((Array.isArray(unavailableSlots) ? unavailableSlots : []).map((slot) => String(slot || "").trim().toLowerCase())),
+    [unavailableSlots]
+  )
+
+  const availableSlotsByMeal = useMemo(
+    () => ({
+      lunch: (slotsByMeal.lunch || []).filter((slot) => !unavailableSlotSet.has(String(slot || "").trim().toLowerCase())),
+      dinner: (slotsByMeal.dinner || []).filter((slot) => !unavailableSlotSet.has(String(slot || "").trim().toLowerCase())),
+    }),
+    [slotsByMeal, unavailableSlotSet]
+  )
+
+  const filteredSlots = availableSlotsByMeal[selectedMealPeriod] || []
+
+  useEffect(() => {
+    const restaurantId =
+      restaurant?._id ||
+      restaurant?.id ||
+      restaurant?.restaurant?._id ||
+      restaurant?.restaurant?.id ||
+      null
+
+    if (!restaurantId || !selectedDate) {
+      setUnavailableSlots([])
+      setAvailabilityLoading(false)
+      return
+    }
+
+    let isActive = true
+    setAvailabilityLoading(true)
+    setUnavailableSlots([])
+
+    diningAPI
+      .getBookingAvailability(restaurantId, {
+        date: getDateKey(selectedDate),
+        guests: selectedGuests,
+      })
+      .then((response) => {
+        if (!isActive) return
+        const nextUnavailableSlots = response?.data?.data?.unavailableSlots
+        setUnavailableSlots(Array.isArray(nextUnavailableSlots) ? nextUnavailableSlots : [])
+      })
+      .catch(() => {
+        if (!isActive) return
+        setUnavailableSlots([])
+      })
+      .finally(() => {
+        if (isActive) {
+          setAvailabilityLoading(false)
+        }
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [restaurant, selectedDate, selectedGuests])
 
   useEffect(() => {
     if (!selectedSlot && filteredSlots.length > 0) {
@@ -235,24 +355,19 @@ export default function TableBooking() {
     }
   }, [filteredSlots, selectedSlot])
 
-  useEffect(() => {
-    if (allSlots.length === 0) return
-    const hasLunch = allSlots.some((slot) => getMealPeriod(slot) === "lunch")
-    const hasDinner = allSlots.some((slot) => getMealPeriod(slot) === "dinner")
-
-    if (selectedMealPeriod === "lunch" && !hasLunch && hasDinner) {
-      setSelectedMealPeriod("dinner")
-    }
-    if (selectedMealPeriod === "dinner" && !hasDinner && hasLunch) {
-      setSelectedMealPeriod("lunch")
-    }
-  }, [allSlots, selectedMealPeriod])
-
   if (loading) return <Loader />
   if (!restaurant) return <div className="p-6 text-center">Restaurant not found</div>
 
   const isDiningEnabled = restaurant?.diningSettings?.isEnabled !== false
-  const canProceed = Boolean(isDiningEnabled && restaurant && selectedSlot && selectedDate && selectedGuests)
+  const canProceed = Boolean(isDiningEnabled && !availabilityLoading && restaurant && selectedSlot && selectedDate && selectedGuests)
+  const noSlotsReason = getNoSlotsReason({
+    selectedMealPeriod,
+    selectedDate,
+    selectedDayTiming,
+    slotsByMeal,
+    availableSlotsByMeal,
+    availabilityLoading,
+  })
 
   const handleProceed = () => {
     if (!isDiningEnabled) {
@@ -279,6 +394,7 @@ export default function TableBooking() {
       guests: selectedGuests,
       date: selectedDate,
       timeSlot: selectedSlot,
+      mealType: selectedMealPeriod,
       discount: selectedSlot,
     }
 
@@ -393,9 +509,13 @@ export default function TableBooking() {
           </div>
 
           <div className="mt-4 grid grid-cols-3 gap-3">
-            {filteredSlots.length === 0 ? (
+            {availabilityLoading ? (
               <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] px-4 py-8 text-center text-sm text-[#7c8394]">
-                No {selectedMealPeriod} slots available for the selected date.
+                Loading available slots...
+              </div>
+            ) : filteredSlots.length === 0 ? (
+              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] px-4 py-8 text-center text-sm text-[#7c8394]">
+                {noSlotsReason || `No ${selectedMealPeriod} slots available for the selected date.`}
               </div>
             ) : (
               filteredSlots.map((slot) => {
@@ -413,7 +533,7 @@ export default function TableBooking() {
                   >
                     <span className="block text-sm font-medium text-[#334155]">{slot}</span>
                     <span className="mt-1 block text-xs font-medium" style={{ color: RED }}>
-                      {getOfferLabel(slot)}
+                      {getOfferLabel(selectedMealPeriod)}
                     </span>
                   </button>
                 )

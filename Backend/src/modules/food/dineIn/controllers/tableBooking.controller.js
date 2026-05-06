@@ -7,6 +7,7 @@ import {
     checkInBooking,
     cancelBooking,
     getBookingById,
+    getPublicBookingAvailability,
 } from '../services/tableBooking.service.js';
 
 // ─── User Controllers ─────────────────────────────────────────────────────────
@@ -28,6 +29,16 @@ export async function getUserBookingsController(req, res) {
         res.json({ success: true, data: bookings });
     } catch (err) {
         res.status(500).json({ success: false, message: err.message });
+    }
+}
+
+export async function getPublicBookingAvailabilityController(req, res) {
+    try {
+        const { restaurantId } = req.params;
+        const availability = await getPublicBookingAvailability(restaurantId, req.query || {});
+        res.json({ success: true, data: availability });
+    } catch (err) {
+        res.status(400).json({ success: false, message: err.message });
     }
 }
 

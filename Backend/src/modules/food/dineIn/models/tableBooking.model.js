@@ -61,6 +61,12 @@ const tableBookingSchema = new mongoose.Schema(
             trim: true,
         },
 
+        mealType: {
+            type: String,
+            enum: ['lunch', 'dinner'],
+            trim: true,
+        },
+
         specialRequest: {
             type: String,
             trim: true,

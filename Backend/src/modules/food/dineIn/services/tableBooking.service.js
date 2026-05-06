@@ -1,9 +1,16 @@
 import mongoose from 'mongoose';
 import { FoodTableBooking } from '../models/tableBooking.model.js';
 import { FoodTableSession } from '../models/tableSession.model.js';
+import { FoodRestaurantTable } from '../models/restaurantTable.model.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { logger } from '../../../../utils/logger.js';
+import { getOutletTimingsForRestaurant } from '../../restaurant/services/outletTimings.service.js';
+
+const MEAL_WINDOWS = {
+    lunch: { start: 12 * 60, end: 16 * 60 },
+    dinner: { start: 18 * 60, end: 26 * 60 },
+};
 
 const toSafeUserRef = (candidate) => {
     if (!candidate || typeof candidate !== 'object') return null;
@@ -14,6 +21,104 @@ const toSafeUserRef = (candidate) => {
     const id = candidate?.id || candidate?._id || null;
     if (!_id && !id && !name && !phone && !email) return null;
     return { _id, id, name, phone, email };
+};
+
+const getDayName = (value) => new Date(value).toLocaleDateString('en-US', { weekday: 'long' });
+
+const parseTimeToMinutes = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+
+    const hhmmMatch = raw.match(/^(\d{1,2}):(\d{2})$/);
+    if (hhmmMatch) {
+        const hour = Number(hhmmMatch[1]);
+        const minute = Number(hhmmMatch[2]);
+        if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+            return null;
+        }
+        return hour * 60 + minute;
+    }
+
+    const meridiemMatch = raw.match(/^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i);
+    if (!meridiemMatch) return null;
+
+    let hour = Number(meridiemMatch[1]);
+    const minute = Number(meridiemMatch[2] || 0);
+    const meridiem = meridiemMatch[3].toLowerCase();
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 1 || hour > 12 || minute < 0 || minute > 59) {
+        return null;
+    }
+
+    if (meridiem === 'pm' && hour !== 12) hour += 12;
+    if (meridiem === 'am' && hour === 12) hour = 0;
+    return hour * 60 + minute;
+};
+
+const formatMinutesToLabel = (minutes) => {
+    const normalizedMinutes = ((minutes % (24 * 60)) + (24 * 60)) % (24 * 60);
+    const hours = Math.floor(normalizedMinutes / 60);
+    const mins = normalizedMinutes % 60;
+    const period = hours >= 12 ? 'pm' : 'am';
+    const displayHour = hours % 12 || 12;
+    return `${displayHour}:${String(mins).padStart(2, '0')} ${period}`;
+};
+
+const normalizeMealType = (value) => {
+    const mealType = String(value || '').trim().toLowerCase();
+    return mealType === 'lunch' || mealType === 'dinner' ? mealType : null;
+};
+
+const normalizeDateOnly = (value) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    const normalized = new Date(date);
+    normalized.setHours(0, 0, 0, 0);
+    return normalized;
+};
+
+const getMealTypeForMinutes = (minutes) => {
+    if (!Number.isFinite(minutes)) return null;
+    if (minutes >= MEAL_WINDOWS.lunch.start && minutes <= MEAL_WINDOWS.lunch.end) return 'lunch';
+    if (minutes >= MEAL_WINDOWS.dinner.start) return 'dinner';
+    return null;
+};
+
+const isTimeWithinOperatingWindow = (slotMinutes, timing) => {
+    if (!timing || timing.isOpen === false) return false;
+    const opening = parseTimeToMinutes(timing.openingTime);
+    const closing = parseTimeToMinutes(timing.closingTime);
+    if (opening === null || closing === null || slotMinutes === null) return false;
+
+    const adjustedClosing = closing > opening ? closing : closing + 24 * 60;
+    const adjustedSlot = slotMinutes < opening ? slotMinutes + 24 * 60 : slotMinutes;
+    return adjustedSlot >= opening && adjustedSlot <= adjustedClosing;
+};
+
+const validateAndNormalizeBookingSlot = async (restaurantId, bookingDate, rawTimeSlot, requestedMealType) => {
+    const slotMinutes = parseTimeToMinutes(rawTimeSlot);
+    if (slotMinutes === null) {
+        throw new Error('Invalid time slot format');
+    }
+
+    const derivedMealType = getMealTypeForMinutes(slotMinutes);
+    if (!derivedMealType) {
+        throw new Error('Please select a valid lunch or dinner time slot');
+    }
+
+    if (requestedMealType && requestedMealType !== derivedMealType) {
+        throw new Error('Selected slot does not match the chosen meal session');
+    }
+
+    const { outletTimings } = await getOutletTimingsForRestaurant(restaurantId);
+    const dayTiming = outletTimings?.[getDayName(bookingDate)];
+    if (!isTimeWithinOperatingWindow(slotMinutes, dayTiming)) {
+        throw new Error('Selected time slot is outside restaurant operating hours');
+    }
+
+    return {
+        mealType: derivedMealType,
+        timeSlot: formatMinutesToLabel(slotMinutes),
+    };
 };
 
 const hydrateBookingGuest = (booking) => {
@@ -51,6 +156,65 @@ const hydrateBookingGuest = (booking) => {
     };
 };
 
+export async function getPublicBookingAvailability(restaurantId, query = {}) {
+    const restaurantIdStr = String(restaurantId || '').trim();
+    if (!restaurantIdStr || !mongoose.Types.ObjectId.isValid(restaurantIdStr)) {
+        throw new Error('Valid restaurantId is required');
+    }
+
+    const targetDate = normalizeDateOnly(query.date);
+    if (!targetDate) {
+        throw new Error('Valid booking date is required');
+    }
+
+    const guests = Math.max(1, Number(query.guests) || 1);
+    const dateStart = new Date(targetDate);
+    const dateEnd = new Date(targetDate);
+    dateEnd.setDate(dateEnd.getDate() + 1);
+
+    const [matchingTablesCount, bookings] = await Promise.all([
+        FoodRestaurantTable.countDocuments({
+            restaurantId: restaurantIdStr,
+            isActive: true,
+            capacity: { $gte: guests },
+        }),
+        FoodTableBooking.find({
+            restaurantId: restaurantIdStr,
+            date: { $gte: dateStart, $lt: dateEnd },
+            status: { $in: ['PENDING', 'ACCEPTED', 'CHECKED_IN'] },
+        })
+            .select('timeSlot mealType guests status')
+            .lean(),
+    ]);
+
+    const slotCounts = bookings.reduce((acc, booking) => {
+        const slotLabel = String(booking?.timeSlot || '').trim().toLowerCase();
+        if (!slotLabel) return acc;
+        acc[slotLabel] = (acc[slotLabel] || 0) + 1;
+        return acc;
+    }, {});
+
+    const effectiveCapacity = matchingTablesCount > 0 ? matchingTablesCount : null;
+    const unavailableSlots = effectiveCapacity
+        ? Object.entries(slotCounts)
+            .filter(([, count]) => Number(count || 0) >= effectiveCapacity)
+            .map(([slot]) => slot)
+        : [];
+
+    return {
+        date: dateStart.toISOString(),
+        guests,
+        totalMatchingTables: matchingTablesCount,
+        unavailableSlots,
+        bookings: bookings.map((booking) => ({
+            timeSlot: booking?.timeSlot || '',
+            mealType: booking?.mealType || null,
+            guests: Number(booking?.guests || 0),
+            status: booking?.status || '',
+        })),
+    };
+}
+
 /**
  * Create a new table booking (User side)
  * Status starts as PENDING — restaurant must accept.
@@ -65,6 +229,16 @@ export async function createTableBooking(userId, body = {}) {
     }
     if (!body.date) throw new Error('Booking date is required');
     if (!body.timeSlot) throw new Error('Time slot is required');
+
+    const bookingDate = new Date(body.date);
+    if (Number.isNaN(bookingDate.getTime())) throw new Error('Booking date is invalid');
+    const requestedMealType = normalizeMealType(body.mealType);
+    const normalizedSlot = await validateAndNormalizeBookingSlot(
+        restaurantId,
+        bookingDate,
+        body.timeSlot,
+        requestedMealType,
+    );
 
     const trustedUser =
         (mongoose.Types.ObjectId.isValid(userId)
@@ -90,13 +264,13 @@ export async function createTableBooking(userId, body = {}) {
         restaurantRef: body.restaurantRef || null,
         userRef: mergedUserRef,
         guests: Number(body.guests),
-        date: new Date(body.date),
-        timeSlot: String(body.timeSlot).trim(),
+        date: bookingDate,
+        timeSlot: normalizedSlot.timeSlot,
+        mealType: normalizedSlot.mealType,
         specialRequest: String(body.specialRequest || '').trim(),
         status: 'PENDING',
     });
 
-    // Notify restaurant in real-time about new booking
     try {
         const io = getIO();
         if (io) {
@@ -123,9 +297,6 @@ export async function createTableBooking(userId, body = {}) {
     return booking;
 }
 
-/**
- * Get all bookings for a user
- */
 export async function getUserBookings(userId) {
     const bookings = await FoodTableBooking.find({ userId })
         .populate({ path: 'userId', select: 'name phone email' })
@@ -134,9 +305,6 @@ export async function getUserBookings(userId) {
     return bookings.map(hydrateBookingGuest);
 }
 
-/**
- * Get all bookings for a restaurant
- */
 export async function getRestaurantBookings(restaurantId) {
     const bookings = await FoodTableBooking.find({ restaurantId })
         .populate({ path: 'userId', select: 'name phone email' })
@@ -145,18 +313,11 @@ export async function getRestaurantBookings(restaurantId) {
     return bookings.map(hydrateBookingGuest);
 }
 
-/**
- * Get a single booking by ID
- */
 export async function getBookingById(bookingId) {
     if (!mongoose.Types.ObjectId.isValid(bookingId)) return null;
     return FoodTableBooking.findById(bookingId).lean();
 }
 
-/**
- * Restaurant accepts a booking
- * Status: PENDING → ACCEPTED
- */
 export async function acceptBooking(bookingId, restaurantId) {
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
@@ -169,7 +330,6 @@ export async function acceptBooking(bookingId, restaurantId) {
     booking.acceptedAt = new Date();
     await booking.save();
 
-    // Notify user in real-time
     try {
         const io = getIO();
         if (io) {
@@ -187,10 +347,6 @@ export async function acceptBooking(bookingId, restaurantId) {
     return booking;
 }
 
-/**
- * Restaurant declines a booking
- * Status: PENDING → DECLINED
- */
 export async function declineBooking(bookingId, restaurantId) {
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
@@ -203,7 +359,6 @@ export async function declineBooking(bookingId, restaurantId) {
     booking.declinedAt = new Date();
     await booking.save();
 
-    // Notify user
     try {
         const io = getIO();
         if (io) {
@@ -221,12 +376,6 @@ export async function declineBooking(bookingId, restaurantId) {
     return booking;
 }
 
-/**
- * Restaurant clicks CHECK-IN button.
- * Status: ACCEPTED → CHECKED_IN
- * IMPORTANT: This does NOT create a session.
- * It only sends a notification to the user: "Your table is ready. Scan QR to start ordering."
- */
 export async function checkInBooking(bookingId, restaurantId) {
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
@@ -239,7 +388,6 @@ export async function checkInBooking(bookingId, restaurantId) {
     booking.checkedInAt = new Date();
     await booking.save();
 
-    // Notify user — "Your table is ready. Scan QR to start ordering."
     try {
         const io = getIO();
         if (io) {
@@ -257,10 +405,6 @@ export async function checkInBooking(bookingId, restaurantId) {
     return booking;
 }
 
-/**
- * User cancels a booking
- * Status: PENDING | ACCEPTED → CANCELLED
- */
 export async function cancelBooking(bookingId, userId) {
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
@@ -273,7 +417,6 @@ export async function cancelBooking(bookingId, userId) {
     booking.cancelledAt = new Date();
     await booking.save();
 
-    // Notify restaurant
     try {
         const io = getIO();
         if (io) {
@@ -290,10 +433,6 @@ export async function cancelBooking(bookingId, userId) {
     return booking;
 }
 
-/**
- * Look up an ACCEPTED booking for this user+restaurant combination.
- * Called during QR session creation to optionally attach bookingId.
- */
 export async function findAcceptedBooking(userId, restaurantId) {
     return FoodTableBooking.findOne({
         userId,
@@ -304,9 +443,6 @@ export async function findAcceptedBooking(userId, restaurantId) {
         .lean();
 }
 
-/**
- * Mark a booking as linked to a session (called after QR session creation)
- */
 export async function linkBookingToSession(bookingMongoId, sessionId) {
     if (!mongoose.Types.ObjectId.isValid(bookingMongoId)) return;
     await FoodTableBooking.findByIdAndUpdate(bookingMongoId, {

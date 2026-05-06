@@ -2830,11 +2830,13 @@ export const diningAPI = {
     });
   },
   getHeroBanners: () => apiClient.get("/food/hero-banners/dining/public"),
-  getRestaurantBySlug: (slug) =>
-    apiClient.get(`/food/restaurant/restaurants/${String(slug)}`),
-  getRestaurantOverallOffer: (restaurantId) =>
-    apiClient.get(`/food/dine-in/restaurants/${String(restaurantId)}/overall-offer`),
-  getOfferBanners: () => Promise.resolve({ data: { success: true, data: [] } }),
+    getRestaurantBySlug: (slug) =>
+      apiClient.get(`/food/restaurant/restaurants/${String(slug)}`),
+    getRestaurantOverallOffer: (restaurantId) =>
+      apiClient.get(`/food/dine-in/restaurants/${String(restaurantId)}/overall-offer`),
+    getBookingAvailability: (restaurantId, params = {}) =>
+      apiClient.get(`/food/dine-in/restaurants/${String(restaurantId)}/bookings/availability`, { params }),
+    getOfferBanners: () => Promise.resolve({ data: { success: true, data: [] } }),
   getStories: () => Promise.resolve({ data: { success: true, data: [] } }),
   getBankOffers: () => Promise.resolve({ data: { success: true, data: [] } }),
   getBookings: async () => {
@@ -2986,6 +2988,7 @@ export const diningAPI = {
         guests: Math.max(1, Number(payload?.guests) || 1),
         date: payload?.date,
         timeSlot: payload?.timeSlot,
+        mealType: String(payload?.mealType || "").trim().toLowerCase() || undefined,
         specialRequest: payload?.specialRequest || '',
         restaurantRef: restaurantData,
         userRef: normalizeBookingUser(payload?.userRef || payload?.user),
@@ -3027,6 +3030,7 @@ export const diningAPI = {
       guests: Math.max(1, Number(payload?.guests) || 1),
       date: new Date(payload?.date || nowIso).toISOString(),
       timeSlot: String(payload?.timeSlot || "").trim(),
+      mealType: String(payload?.mealType || "").trim().toLowerCase() || null,
       specialRequest: String(payload?.specialRequest || "").trim(),
       status: "PENDING",
       createdAt: nowIso,

@@ -64,7 +64,7 @@ export default function TableBookingConfirmation() {
         }
     }, [])
     const resolvedState = location.state || fallbackDraft || {}
-    const { restaurant, guests, date, timeSlot, discount } = resolvedState
+    const { restaurant, guests, date, timeSlot, mealType, discount } = resolvedState
 
     const [specialRequest, setSpecialRequest] = useState(() => String(resolvedState?.specialRequest || "").trim())
     const [specialRequestDraft, setSpecialRequestDraft] = useState("")
@@ -158,6 +158,7 @@ export default function TableBookingConfirmation() {
                 guests,
                 date,
                 timeSlot,
+                mealType,
                 specialRequest: sanitizedSpecialRequest
             })
 

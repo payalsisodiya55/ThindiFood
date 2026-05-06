@@ -2955,7 +2955,7 @@ export default function Home() {
                               {/* Bookmark top-right */}
                               <button
                                 onClick={handleToggleFavorite}
-                                className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 cursor-pointer ${
+                                className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 ${
                                   favorite ? "bg-red-500 text-white" : "bg-white/85 text-gray-600 backdrop-blur-sm"
                                 }`}>
                                 <Bookmark className={`h-3.5 w-3.5 ${favorite ? "fill-white" : ""}`} />
