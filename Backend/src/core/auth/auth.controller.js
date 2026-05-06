@@ -7,6 +7,7 @@ import {
   verifyRestaurantOtpAndLogin,
   requestDeliveryOtp,
   verifyDeliveryOtpAndLogin,
+  loginDeliveryBoy,
   logout,
   getProfile,
   updateAdminProfile,
@@ -121,6 +122,17 @@ export const verifyDeliveryOtpController = async (req, res, next) => {
   try {
     const { phone, otp, fcmToken, platform } = validateDeliveryOtpVerifyDto(req.body);
     const result = await verifyDeliveryOtpAndLogin(phone, otp, fcmToken, platform);
+    return sendResponse(res, 200, "Login successful", result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const loginDeliveryBoyController = async (req, res, next) => {
+  try {
+    const username = String(req.body?.username || "").trim();
+    const password = String(req.body?.password || "");
+    const result = await loginDeliveryBoy(username, password);
     return sendResponse(res, 200, "Login successful", result);
   } catch (error) {
     next(error);

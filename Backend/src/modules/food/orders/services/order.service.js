@@ -39,6 +39,10 @@ import * as foodTransactionService from './foodTransaction.service.js';
 import { deriveFundingType } from './settlement-calculator.service.js';
 import { deductWalletBalance, refundWalletBalance } from '../../user/services/userWallet.service.js';
 import { getOutletTimingsForRestaurant } from '../../restaurant/services/outletTimings.service.js';
+import {
+  getSelfDeliveryGlobalSettings,
+  isSelfDeliveryOrder,
+} from '../../restaurant/services/selfDelivery.service.js';
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
@@ -262,6 +266,94 @@ async function getTakeawayScheduleBounds(restaurantId, referenceDate, prepTimeMi
     minAllowedDate,
     maxAllowedDate,
     hasSlots: minAllowedDate.getTime() <= maxAllowedDate.getTime(),
+  };
+}
+
+function getOrderAddressCoordinates(address = {}) {
+  const coordinates = address?.location?.coordinates;
+  if (Array.isArray(coordinates) && coordinates.length === 2) {
+    const [lng, lat] = coordinates.map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng };
+    }
+  }
+  return null;
+}
+
+function getRestaurantCoordinates(restaurant = {}) {
+  const coordinates = restaurant?.location?.coordinates;
+  if (Array.isArray(coordinates) && coordinates.length === 2) {
+    const [lng, lat] = coordinates.map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { lat, lng };
+    }
+  }
+
+  const lat = Number(restaurant?.location?.latitude);
+  const lng = Number(restaurant?.location?.longitude);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return { lat, lng };
+  }
+  return null;
+}
+
+async function resolveSelfDeliveryContext(dto, restaurant, subtotal) {
+  const globalSettings = await getSelfDeliveryGlobalSettings();
+  if (globalSettings.globalEnabled === false) {
+    throw new ValidationError("Self-delivery is currently disabled");
+  }
+
+  const config = restaurant?.selfDelivery || {};
+  if (config.enabled !== true) {
+    throw new ValidationError("Restaurant self-delivery is not enabled");
+  }
+
+  const minimumOrder = Math.max(0, Number(config.minOrderAmount || 0) || 0);
+  if (subtotal < minimumOrder) {
+    throw new ValidationError(
+      `Minimum order amount for delivery is INR ${minimumOrder.toFixed(0)}`,
+    );
+  }
+
+  const addressCoords = getOrderAddressCoordinates(dto.address);
+  const restaurantCoords = getRestaurantCoordinates(restaurant);
+  if (!addressCoords || !restaurantCoords) {
+    throw new ValidationError("Delivery coordinates are required for self-delivery");
+  }
+
+  const distanceKm = haversineKm(
+    restaurantCoords.lat,
+    restaurantCoords.lng,
+    addressCoords.lat,
+    addressCoords.lng,
+  );
+
+  const allowedRadius = Math.max(0, Number(config.radius || 0) || 0);
+  if (!Number.isFinite(distanceKm) || distanceKm > allowedRadius) {
+    throw new ValidationError("Delivery address is outside the self-delivery radius");
+  }
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const startMinutes = parseTimeStringToMinutes(config?.timings?.start || "10:00");
+  const endMinutes = parseTimeStringToMinutes(config?.timings?.end || "22:00");
+  if (startMinutes === null || endMinutes === null) {
+    throw new ValidationError("Restaurant self-delivery timings are unavailable");
+  }
+
+  let isWithinWindow = false;
+  if (endMinutes > startMinutes) {
+    isWithinWindow = currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  } else {
+    isWithinWindow = currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  }
+  if (!isWithinWindow) {
+    throw new ValidationError("Restaurant is currently outside self-delivery timings");
+  }
+
+  return {
+    deliveryFee: Math.max(0, Number(config.fee || 0) || 0),
+    distanceKm,
   };
 }
 
@@ -591,9 +683,14 @@ function normalizeOrderForClient(orderDoc) {
     cancelledBy: cancellationMeta.cancelledBy,
     cancellationReason: cancellationMeta.cancellationReason,
     deliveredAt:
-      order?.deliveryState?.deliveredAt || order?.deliveredAt || null,
+      order?.selfDelivery?.deliveredAt ||
+      order?.deliveryState?.deliveredAt ||
+      order?.deliveredAt ||
+      null,
     deliveryPartnerId:
       order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerId || null,
+    deliveryType: order?.deliveryType || (isSelfDeliveryOrder(order) ? "self" : "partner"),
+    selfDelivery: order?.selfDelivery || {},
     rating: order?.ratings?.restaurant?.rating ?? order?.rating ?? null,
     deliveryState: {
       ...(order?.deliveryState || {}),
@@ -1081,6 +1178,9 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
   const now = context.now || new Date();
   const validationErrors = context.validationErrors || [];
   const items = Array.isArray(dto.items) ? dto.items : [];
+  const fulfillmentType =
+    dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery";
+  const deliveryType = dto.deliveryType === "self" ? "self" : "partner";
   const originalSubtotal = roundMoney(
     items.reduce(
       (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),
@@ -1093,9 +1193,25 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
     .lean();
   const feeSettings = feeDoc || { platformFee: 5, gstRate: 5 };
 
+  const restaurant = await FoodRestaurant.findById(dto.restaurantId)
+    .select("status location selfDelivery")
+    .lean();
+  if (!restaurant) throw new ValidationError("Restaurant not found");
+  if (restaurant.status !== "approved") {
+    throw new ValidationError("Restaurant not available");
+  }
+
   const packagingFee = 0;
   const platformFee = Number(feeSettings.platformFee || 0);
-  const deliveryFee = 0;
+  let deliveryFee = 0;
+  if (fulfillmentType === "delivery" && deliveryType === "self") {
+    const selfDeliveryContext = await resolveSelfDeliveryContext(
+      dto,
+      restaurant,
+      originalSubtotal,
+    );
+    deliveryFee = selfDeliveryContext.deliveryFee;
+  }
   const gstRate = Number(feeSettings.gstRate || 0);
   const tax =
     Number.isFinite(gstRate) && gstRate > 0
@@ -1152,7 +1268,9 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
   );
 
   const restaurantGrossBeforeDiscount = roundMoney(
-    offerAdjustedSubtotal + packagingFee,
+    offerAdjustedSubtotal +
+      packagingFee +
+      (fulfillmentType === "delivery" && deliveryType === "self" ? deliveryFee : 0),
   );
   const restaurantPayoutBeforeCoupon = Math.max(
     0,
@@ -1298,7 +1416,7 @@ export async function createOrder(userId, dto) {
   let restaurant = null;
   if (orderType === "food") {
     restaurant = await FoodRestaurant.findById(dto.restaurantId)
-      .select("status restaurantName zoneId location")
+      .select("status restaurantName zoneId location selfDelivery")
       .lean();
     if (!restaurant) throw new ValidationError("Restaurant not found");
     if (restaurant.status !== "approved")
@@ -1310,6 +1428,7 @@ export async function createOrder(userId, dto) {
   const dispatchMode = settings?.dispatchMode || "manual";
   const fulfillmentType =
     dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery";
+  const deliveryType = dto.deliveryType === "self" ? "self" : "partner";
   const prepTimeMinutes = getMaxPreparationTime(dto.items);
   const requestedTakeawayOrderType =
     dto.order_type === "SCHEDULED" || dto.pickupAt ? "SCHEDULED" : "IMMEDIATE";
@@ -1376,17 +1495,30 @@ export async function createOrder(userId, dto) {
       }
     : undefined;
 
-  const paymentMethod =
-    dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
-  const isCash = paymentMethod === "cash";
-  const isWallet = paymentMethod === "wallet";
-  // Ensure pricing is present and consistent.
   const computedSubtotal = (dto.items || []).reduce((sum, item) => {
     const price = Number(item?.price);
     const qty = Number(item?.quantity);
     if (!Number.isFinite(price) || !Number.isFinite(qty)) return sum;
     return sum + Math.max(0, price) * Math.max(0, qty);
   }, 0);
+
+  let selfDeliveryContext = null;
+  if (orderType === "food" && fulfillmentType === "delivery" && deliveryType === "self") {
+    if (!deliveryAddress) {
+      throw new ValidationError("Delivery address is required for self-delivery");
+    }
+    selfDeliveryContext = await resolveSelfDeliveryContext(
+      dto,
+      restaurant,
+      computedSubtotal,
+    );
+  }
+
+  const paymentMethod =
+    dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+  const isCash = paymentMethod === "cash";
+  const isWallet = paymentMethod === "wallet";
+  // Ensure pricing is present and consistent.
   const normalizedPricing = {
     originalSubtotal: toMoney(
       dto.pricing?.originalSubtotal,
@@ -1399,7 +1531,13 @@ export async function createOrder(userId, dto) {
     subtotal: toMoney(dto.pricing?.subtotal, computedSubtotal),
     tax: toMoney(dto.pricing?.tax, 0),
     packagingFee: toMoney(dto.pricing?.packagingFee, 0),
-    deliveryFee: 0,
+    deliveryFee:
+      fulfillmentType === "delivery" && deliveryType === "self"
+        ? toMoney(
+            selfDeliveryContext?.deliveryFee,
+            dto.pricing?.deliveryFee ?? 0,
+          )
+        : 0,
     platformFee: toMoney(dto.pricing?.platformFee, 0),
     restaurantCommission: toMoney(dto.pricing?.restaurantCommission, 0),
     commissionBaseAmount: toMoney(
@@ -1414,7 +1552,11 @@ export async function createOrder(userId, dto) {
       (dto.pricing?.offerAdjustedSubtotal ??
         dto.pricing?.originalSubtotal ??
         dto.pricing?.subtotal ??
-        computedSubtotal) + (dto.pricing?.packagingFee ?? 0),
+        computedSubtotal) +
+        (dto.pricing?.packagingFee ?? 0) +
+        (fulfillmentType === "delivery" && deliveryType === "self"
+          ? Number(selfDeliveryContext?.deliveryFee || dto.pricing?.deliveryFee || 0)
+          : 0),
     ),
     discount: toMoney(dto.pricing?.discount, 0),
     couponDiscount: toMoney(dto.pricing?.couponDiscount, 0),
@@ -1453,9 +1595,12 @@ export async function createOrder(userId, dto) {
   };
   const computedTotal = Math.max(
     0,
-    (Number.isFinite(normalizedPricing.offerAdjustedSubtotal)
-      ? normalizedPricing.offerAdjustedSubtotal
-      : 0) +
+      (Number.isFinite(normalizedPricing.offerAdjustedSubtotal)
+        ? normalizedPricing.offerAdjustedSubtotal
+        : 0) +
+      (Number.isFinite(normalizedPricing.deliveryFee)
+        ? normalizedPricing.deliveryFee
+        : 0) +
       (Number.isFinite(normalizedPricing.tax) ? normalizedPricing.tax : 0) +
       (Number.isFinite(normalizedPricing.packagingFee)
         ? normalizedPricing.packagingFee
@@ -1494,7 +1639,9 @@ export async function createOrder(userId, dto) {
   };
 
   let distanceKm = null;
-  if (
+  if (fulfillmentType === "delivery" && deliveryType === "self") {
+    distanceKm = Number(selfDeliveryContext?.distanceKm ?? null);
+  } else if (
     orderType === "food" &&
     restaurant?.location?.coordinates?.length === 2 &&
     dto.address?.location?.coordinates?.length === 2
@@ -1510,16 +1657,26 @@ export async function createOrder(userId, dto) {
   }
 
   const riderEarning =
-    orderType === "food" ? await getRiderEarning(distanceKm) : 0;
+    orderType === "food"
+      ? fulfillmentType === "delivery" && deliveryType === "self"
+        ? 0
+        : await getRiderEarning(distanceKm)
+      : 0;
 
   const platformProfit = Math.max(
     0,
-    (Number.isFinite(normalizedPricing.platformFee)
-      ? normalizedPricing.platformFee
-      : 0) +
-      normalizedPricing.restaurantCommission -
-      normalizedPricing.platformCouponDiscount -
-      riderEarning,
+    fulfillmentType === "delivery" && deliveryType === "self"
+      ? (Number.isFinite(normalizedPricing.platformFee)
+          ? normalizedPricing.platformFee
+          : 0) +
+        normalizedPricing.restaurantCommission -
+        normalizedPricing.platformCouponDiscount
+      : (Number.isFinite(normalizedPricing.platformFee)
+          ? normalizedPricing.platformFee
+          : 0) +
+        normalizedPricing.restaurantCommission -
+        normalizedPricing.platformCouponDiscount -
+        riderEarning,
   );
 
   const order = new FoodOrder({
@@ -1553,7 +1710,13 @@ export async function createOrder(userId, dto) {
     ],
 
     sendCutlery: dto.sendCutlery !== false,
-    deliveryFleet: orderType === "food" ? dto.deliveryFleet || "standard" : "quick",
+    deliveryFleet:
+      orderType === "food"
+        ? fulfillmentType === "delivery" && deliveryType === "self"
+          ? "self"
+          : dto.deliveryFleet || "standard"
+        : "quick",
+    deliveryType,
     fulfillmentType,
     order_type: takeawayOrderType,
     prep_time: fulfillmentType === "takeaway" ? prepTimeMinutes : 0,
@@ -1564,6 +1727,14 @@ export async function createOrder(userId, dto) {
     pickupAt,
     riderEarning,
     platformProfit,
+    deliveryOtp:
+      fulfillmentType === "delivery" && deliveryType === "self"
+        ? generateFourDigitDeliveryOtp()
+        : "",
+    selfDelivery:
+      fulfillmentType === "delivery" && deliveryType === "self"
+        ? { otpVerified: false }
+        : undefined,
   });
 
   let razorpayPayload = null;
@@ -2003,6 +2174,7 @@ export async function getOrderById(
       "restaurantName profileImage area city location rating totalRatings",
     )
     .populate("dispatch.deliveryPartnerId", "name phone rating totalRatings")
+    .populate("selfDelivery.deliveryBoyId", "name phone username isActive currentOrderId")
     .populate("userId", "name phone email")
     .select("+deliveryOtp")
     .lean();
@@ -2079,6 +2251,19 @@ export async function getOrderById(
     };
     if (drop.required && !drop.verified && secret) {
       out.handoverOtp = secret;
+    }
+    if (isSelfDeliveryOrder(order)) {
+      out.selfDelivery = {
+        ...(out.selfDelivery || {}),
+        otp: {
+          required: true,
+          verified: Boolean(order?.selfDelivery?.otpVerified),
+          code: secret || "",
+        },
+      };
+      if (secret) {
+        out.handoverOtp = secret;
+      }
     }
     return out;
   }
@@ -2213,7 +2398,7 @@ export async function submitOrderRatings(orderId, userId, dto) {
     userId: new mongoose.Types.ObjectId(userId),
   });
   if (!order) throw new NotFoundError("Order not found");
-  if (String(order.orderStatus) !== "delivered") {
+  if (!["delivered", "delivered_self"].includes(String(order.orderStatus))) {
     throw new ValidationError("You can rate only delivered orders");
   }
 
@@ -2266,6 +2451,7 @@ export async function listOrdersRestaurant(restaurantId, query) {
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)
       .populate("userId", "name phone email profileImage")
+      .populate("selfDelivery.deliveryBoyId", "name phone username isActive currentOrderId")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

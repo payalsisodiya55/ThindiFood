@@ -1,5 +1,8 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
 import { Settings, Info, Smartphone, Apple } from "lucide-react"
+import { adminAPI } from "@food/api"
+import { toast } from "sonner"
 
 function ToggleSwitch({ enabled, onToggle }) {
   return (
@@ -54,6 +57,44 @@ export default function AppWebSettings() {
     minVersion: "",
     downloadUrl: ""
   })
+  const [selfDeliverySettings, setSelfDeliverySettings] = useState({
+    globalEnabled: false,
+  })
+  const [loadingSelfDelivery, setLoadingSelfDelivery] = useState(true)
+  const [savingSelfDelivery, setSavingSelfDelivery] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadSelfDeliverySettings = async () => {
+      try {
+        setLoadingSelfDelivery(true)
+        const response = await adminAPI.getSelfDeliveryGlobalSettings()
+        const data =
+          response?.data?.data ||
+          response?.data ||
+          {}
+
+        if (!isMounted) return
+        setSelfDeliverySettings({
+          globalEnabled: data?.globalEnabled === true,
+        })
+      } catch (error) {
+        if (!isMounted) return
+        toast.error(error?.response?.data?.message || "Failed to load self-delivery settings")
+      } finally {
+        if (isMounted) {
+          setLoadingSelfDelivery(false)
+        }
+      }
+    }
+
+    loadSelfDeliverySettings()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const handleGeneralToggle = (key) => {
     setGeneralSettings(prev => ({
@@ -84,6 +125,20 @@ export default function AppWebSettings() {
 
   const handleDeliverymanAppIOSReset = () => {
     setDeliverymanAppIOS({ minVersion: "", downloadUrl: "" })
+  }
+
+  const handleSaveSelfDeliverySettings = async () => {
+    try {
+      setSavingSelfDelivery(true)
+      await adminAPI.updateSelfDeliveryGlobalSettings({
+        globalEnabled: selfDeliverySettings.globalEnabled === true,
+      })
+      toast.success("Self-delivery settings saved successfully")
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to save self-delivery settings")
+    } finally {
+      setSavingSelfDelivery(false)
+    }
   }
 
   return (
@@ -143,6 +198,31 @@ export default function AppWebSettings() {
                 onToggle={() => handleGeneralToggle("mostReviewedFoods")}
               />
             </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-900">Self Delivery Settings Moved</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Self-delivery controls now have a dedicated admin page so this screen stays clean.
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                Current status:{" "}
+                {loadingSelfDelivery
+                  ? "Loading..."
+                  : selfDeliverySettings.globalEnabled
+                    ? "Enabled globally"
+                    : "Disabled globally"}
+              </p>
+            </div>
+            <Link
+              to="/admin/food/delivery/self-delivery"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700"
+            >
+              Open Self Delivery Page
+            </Link>
           </div>
         </div>
 

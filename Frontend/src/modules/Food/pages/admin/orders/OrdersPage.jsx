@@ -46,6 +46,10 @@ const normalizeAdminDeliveryType = (order = {}) => {
     return "Dine In"
   }
 
+  if (fulfillmentType === "delivery" && rawDeliveryType === "self") {
+    return "Self Delivery"
+  }
+
   if (
     rawDeliveryType.includes("home") ||
     rawDeliveryType.includes("delivery") ||

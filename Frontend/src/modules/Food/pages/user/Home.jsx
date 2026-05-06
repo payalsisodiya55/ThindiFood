@@ -475,6 +475,7 @@ export default function Home() {
   const [loadingLandingConfig, setLoadingLandingConfig] = useState(true);
   const [restaurantsData, setRestaurantsData] = useState([]);
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
+  const [fulfillmentMode, setFulfillmentMode] = useState("pickup");
   const [realCategories, setRealCategories] = useState([]);
   const [loadingRealCategories, setLoadingRealCategories] = useState(true);
   const [menuCategories, setMenuCategories] = useState([]);
@@ -1655,6 +1656,13 @@ export default function Home() {
                 slug: restaurant.slug,
                 restaurantId: restaurant.restaurantId,
                 pureVegRestaurant: restaurant.pureVegRestaurant === true,
+                selfDelivery: restaurant.selfDelivery || {
+                  enabled: false,
+                  radius: 0,
+                  fee: 0,
+                  minOrderAmount: 0,
+                  timings: { start: "10:00", end: "22:00" },
+                },
                 location: restaurant.location, // Store location for distance recalculation
                 isActive: restaurant.isActive !== false, // Default to true if not specified
                 isAcceptingOrders: restaurant.isAcceptingOrders !== false, // Default to true if not specified
@@ -2087,6 +2095,26 @@ export default function Home() {
 
     filtered = filtered.filter(matchesVegMode);
 
+    if (fulfillmentMode === "delivery") {
+      filtered = filtered.filter((restaurant) => {
+        const selfDelivery = restaurant?.selfDelivery || {};
+        if (selfDelivery.enabled !== true) return false;
+
+        const radiusKm = Math.max(0, Number(selfDelivery.radius ?? 0) || 0);
+        if (radiusKm <= 0) return false;
+
+        if (
+          restaurant?.distanceInKm === null ||
+          restaurant?.distanceInKm === undefined ||
+          !Number.isFinite(Number(restaurant.distanceInKm))
+        ) {
+          return false;
+        }
+
+        return Number(restaurant.distanceInKm) <= radiusKm;
+      });
+    }
+
     // Apply filters
     if (activeFilters.has("price-under-200")) {
       filtered = filtered.filter(
@@ -2202,6 +2230,7 @@ export default function Home() {
   }, [
     restaurantsData,
     matchesVegMode,
+    fulfillmentMode,
     activeFilters,
     selectedCuisine,
     sortBy,
@@ -2770,13 +2799,40 @@ export default function Home() {
             initial={false}
             animate={{ opacity: 1 }}>
             <div className="px-4 mb-3 lg:mb-4">
-              <div className="flex flex-col gap-0.5 lg:gap-1">
-                <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 tracking-widest uppercase">
-                  {filteredRestaurants.length} Restaurants Delivering to You
-                </h2>
-                <span className="text-base sm:text-lg lg:text-2xl text-gray-500 font-normal">
-                  Featured
-                </span>
+              <div className="flex flex-col gap-3 lg:gap-4">
+                <div className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-sm w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setFulfillmentMode("pickup")}
+                    className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                      fulfillmentMode === "pickup"
+                        ? "bg-[#00c87e] text-white"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Pickup
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFulfillmentMode("delivery")}
+                    className={`rounded-full px-4 py-2 text-xs font-semibold transition-colors ${
+                      fulfillmentMode === "delivery"
+                        ? "bg-[#00c87e] text-white"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    Delivery
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-0.5 lg:gap-1">
+                  <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 tracking-widest uppercase">
+                    {filteredRestaurants.length} Restaurants {fulfillmentMode === "delivery" ? "Delivering Nearby" : "Available for Pickup"}
+                  </h2>
+                  <span className="text-base sm:text-lg lg:text-2xl text-gray-500 font-normal">
+                    Featured
+                  </span>
+                </div>
               </div>
             </div>
             <div
@@ -2952,6 +3008,13 @@ export default function Home() {
                                   <span>{restaurant.deliveryTime}</span>
                                   <span className="text-white/40">|</span>
                                   <span>{restaurant.distance}</span>
+                                  {fulfillmentMode === "delivery" && Number(restaurant?.selfDelivery?.fee) >= 0 && (
+                                    <>
+                                      <span className="text-white/40">|</span>
+                                      <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
+                                      <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(0)}</span>
+                                    </>
+                                  )}
                                   {restaurant.offer && (
                                     <>
                                       <span className="text-white/40">|</span>
@@ -2978,6 +3041,11 @@ export default function Home() {
                   className="text-sm font-medium border-gray-300 hover:border-gray-400">
                   Load more restaurants
                 </Button>
+              )}
+              {fulfillmentMode === "delivery" && filteredRestaurants.length === 0 && (
+                <p className="text-sm text-gray-500 text-center">
+                  No self-delivery restaurants are currently available within your delivery radius.
+                </p>
               )}
               <div
                 ref={restaurantLoadMoreRef}

@@ -416,6 +416,24 @@ export const adminAPI = {
       body ?? {},
       { contextModule: "admin" },
     ),
+  getRestaurantSelfDeliveryConfig: (restaurantId) =>
+    apiClient.get(`/food/admin/restaurants/${String(restaurantId)}/self-delivery`, {
+      contextModule: "admin",
+    }),
+  updateRestaurantSelfDeliveryConfig: (restaurantId, body = {}) =>
+    apiClient.patch(
+      `/food/admin/restaurants/${String(restaurantId)}/self-delivery`,
+      body ?? {},
+      { contextModule: "admin" },
+    ),
+  getSelfDeliveryGlobalSettings: () =>
+    apiClient.get("/food/admin/settings/self-delivery", {
+      contextModule: "admin",
+    }),
+  updateSelfDeliveryGlobalSettings: (body = {}) =>
+    apiClient.patch("/food/admin/settings/self-delivery", body ?? {}, {
+      contextModule: "admin",
+    }),
   getDiningOffers: (params = {}) =>
     apiClient.get("/food/admin/dining/offers", {
       params,
@@ -1116,6 +1134,36 @@ export const restaurantAPI = {
         restaurantCurrentCacheTime = Date.now();
         return res;
       }),
+  getSelfDeliveryConfig: () =>
+    apiClient.get("/food/restaurant/self-delivery", {
+      contextModule: "restaurant",
+    }),
+  updateSelfDeliveryConfig: (body = {}) =>
+    apiClient.patch("/food/restaurant/self-delivery", body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  getDeliveryBoys: () =>
+    apiClient.get("/food/restaurant/delivery-boys", {
+      contextModule: "restaurant",
+    }),
+  createDeliveryBoy: (body = {}) =>
+    apiClient.post("/food/restaurant/delivery-boys", body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  updateDeliveryBoy: (id, body = {}) =>
+    apiClient.patch(`/food/restaurant/delivery-boys/${String(id)}`, body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  deleteDeliveryBoy: (id) =>
+    apiClient.delete(`/food/restaurant/delivery-boys/${String(id)}`, {
+      contextModule: "restaurant",
+    }),
+  assignDeliveryBoy: (orderId, deliveryBoyId) =>
+    apiClient.patch(
+      `/food/restaurant/orders/${String(orderId)}/assign-boy`,
+      { deliveryBoyId },
+      { contextModule: "restaurant" },
+    ),
   /** PATCH /food/restaurant/availability. Body: { isAcceptingOrders: boolean } */
   updateAcceptingOrders: (isAcceptingOrders) =>
     apiClient
@@ -2594,6 +2642,38 @@ export const orderAPI = {
         description: `${payload.subject}: ${payload.description}`,
       },
       { contextModule: "user" }
+    ),
+};
+
+export const deliveryBoyAPI = {
+  login: (username, password) =>
+    apiClient.post("/food/delivery-boy/login", {
+      username: String(username || "").trim(),
+      password: String(password || ""),
+    }),
+  getOrders: () =>
+    apiClient.get("/food/delivery-boy/orders", {
+      contextModule: "delivery",
+    }),
+  getOrderById: (orderId) =>
+    apiClient.get(`/food/delivery-boy/orders/${String(orderId)}`, {
+      contextModule: "delivery",
+    }),
+  confirmPickup: (orderId) =>
+    apiClient.patch(`/food/delivery-boy/orders/${String(orderId)}/pickup`, {}, {
+      contextModule: "delivery",
+    }),
+  startDelivery: (orderId) =>
+    apiClient.patch(
+      `/food/delivery-boy/orders/${String(orderId)}/out-for-delivery`,
+      {},
+      { contextModule: "delivery" },
+    ),
+  deliver: (orderId, otp) =>
+    apiClient.post(
+      `/food/delivery-boy/orders/${String(orderId)}/deliver`,
+      { otp: String(otp || "").trim() },
+      { contextModule: "delivery" },
     ),
 };
 

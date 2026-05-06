@@ -24,6 +24,9 @@ const businessSettingsSchema = new mongoose.Schema(
         favicon: {
             url: { type: String, default: '' },
             publicId: { type: String, default: '' }
+        },
+        selfDelivery: {
+            globalEnabled: { type: Boolean, default: true }
         }
     },
     { timestamps: true }

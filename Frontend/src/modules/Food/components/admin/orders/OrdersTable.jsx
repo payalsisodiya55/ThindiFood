@@ -16,6 +16,7 @@ const getStatusColor = (orderStatus) => {
     "Refunded": "bg-sky-100 text-sky-700",
     "Dine In": "bg-indigo-100 text-indigo-700",
     "Offline Payments": "bg-slate-100 text-slate-700",
+    "Self Delivery": "bg-cyan-100 text-cyan-700",
   }
   return colors[orderStatus] || "bg-slate-100 text-slate-700"
 }

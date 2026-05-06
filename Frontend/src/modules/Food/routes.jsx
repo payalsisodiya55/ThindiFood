@@ -13,6 +13,8 @@ const UserRouter = lazy(() => import("@food/components/user/UserRouter"))
 
 // Restaurant Module
 const RestaurantRouter = lazy(() => import("@food/components/restaurant/RestaurantRouter"))
+const DeliveryBoyDashboard = lazy(() => import("@food/pages/deliveryBoy/DeliveryBoyDashboard"))
+const DeliveryBoyOrderDetail = lazy(() => import("@food/pages/deliveryBoy/DeliveryBoyOrderDetail"))
 
 // Admin Module
 const AdminRouter = lazy(() => import("@food/components/admin/AdminRouter"))
@@ -100,6 +102,27 @@ export default function App() {
             path="restaurant/*"
             element={
               <RestaurantRouter />
+            }
+          />
+
+          <Route
+            path="delivery-boy/login"
+            element={<Navigate to="/food/restaurant/login?role=delivery" replace />}
+          />
+          <Route
+            path="delivery-boy/orders"
+            element={
+              <ProtectedRoute requiredRole="delivery" loginPath="/food/restaurant/login?role=delivery">
+                <DeliveryBoyDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="delivery-boy/orders/:orderId"
+            element={
+              <ProtectedRoute requiredRole="delivery" loginPath="/food/restaurant/login?role=delivery">
+                <DeliveryBoyOrderDetail />
+              </ProtectedRoute>
             }
           />
 

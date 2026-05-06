@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
 import Lenis from "lenis"
-import { ArrowLeft, Truck, X, CheckCircle, AlertCircle } from "lucide-react"
+import { ArrowLeft, Truck, Users, X, CheckCircle, AlertCircle } from "lucide-react"
 import { Switch } from "@food/components/ui/switch"
 import { Card, CardContent } from "@food/components/ui/card"
 import { restaurantAPI } from "@food/api"
@@ -25,6 +25,14 @@ export default function DeliverySettings() {
   const [showSuccessToast, setShowSuccessToast] = useState(false)
   const [toastMessage, setToastMessage] = useState("")
   const [savingStatus, setSavingStatus] = useState(false)
+  const [selfDelivery, setSelfDelivery] = useState({
+    enabled: false,
+    radius: 3,
+    fee: 0,
+    minOrderAmount: 0,
+    timings: { start: "10:00", end: "22:00" },
+  })
+  const [savingSelfDelivery, setSavingSelfDelivery] = useState(false)
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -72,8 +80,19 @@ export default function DeliverySettings() {
           response?.data?.restaurant ||
           null
         const nextStatus = restaurant?.isAcceptingOrders === true
+        const nextSelfDelivery = restaurant?.selfDelivery || {}
         if (!cancelled) {
           setDeliveryStatus(nextStatus)
+          setSelfDelivery({
+            enabled: nextSelfDelivery?.enabled === true,
+            radius: Number(nextSelfDelivery?.radius ?? 3) || 3,
+            fee: Number(nextSelfDelivery?.fee ?? 0) || 0,
+            minOrderAmount: Number(nextSelfDelivery?.minOrderAmount ?? 0) || 0,
+            timings: {
+              start: nextSelfDelivery?.timings?.start || "10:00",
+              end: nextSelfDelivery?.timings?.end || "22:00",
+            },
+          })
           syncStatusLocally(nextStatus)
         }
       } catch (error) {
@@ -201,6 +220,29 @@ export default function DeliverySettings() {
     setPendingStatus(deliveryStatus)
   }
 
+  const handleSelfDeliveryField = (field, value) => {
+    setSelfDelivery((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSelfDeliveryTimings = (field, value) => {
+    setSelfDelivery((prev) => ({
+      ...prev,
+      timings: { ...(prev.timings || {}), [field]: value },
+    }))
+  }
+
+  const saveSelfDeliveryConfig = async () => {
+    try {
+      setSavingSelfDelivery(true)
+      await restaurantAPI.updateSelfDeliveryConfig(selfDelivery)
+      showToast("Self-delivery settings saved")
+    } catch (error) {
+      showToast(error?.response?.data?.message || "Failed to save self-delivery settings")
+    } finally {
+      setSavingSelfDelivery(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       {/* Header */}
@@ -301,6 +343,101 @@ export default function DeliverySettings() {
               <p className="text-sm text-gray-700">
                 <strong>Note:</strong> When delivery is turned off, customers won't be able to place delivery orders from your restaurant. You can turn it back on anytime.
               </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+          className="mt-4"
+        >
+          <Card className="bg-white border-gray-200 shadow-sm">
+            <CardContent className="p-4 space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold text-gray-900">Self Delivery</h2>
+                  <p className="text-sm text-gray-500">Enable your own delivery boys for nearby orders</p>
+                </div>
+                <Switch
+                  checked={selfDelivery.enabled}
+                  onCheckedChange={(checked) => handleSelfDeliveryField("enabled", checked)}
+                  disabled={savingSelfDelivery}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Delivery Radius (km)</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selfDelivery.radius}
+                    onChange={(e) => handleSelfDeliveryField("radius", Number(e.target.value))}
+                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Delivery Fee</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selfDelivery.fee}
+                    onChange={(e) => handleSelfDeliveryField("fee", Number(e.target.value))}
+                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Minimum Order</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={selfDelivery.minOrderAmount}
+                    onChange={(e) => handleSelfDeliveryField("minOrderAmount", Number(e.target.value))}
+                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                  />
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Start</span>
+                    <input
+                      type="time"
+                      value={selfDelivery.timings?.start || "10:00"}
+                      onChange={(e) => handleSelfDeliveryTimings("start", e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">End</span>
+                    <input
+                      type="time"
+                      value={selfDelivery.timings?.end || "22:00"}
+                      onChange={(e) => handleSelfDeliveryTimings("end", e.target.value)}
+                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={saveSelfDeliveryConfig}
+                  disabled={savingSelfDelivery}
+                  className="flex-1 rounded-xl bg-gray-900 text-white px-4 py-3 font-semibold disabled:opacity-60"
+                >
+                  {savingSelfDelivery ? "Saving..." : "Save Self Delivery"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate("/food/restaurant/delivery-boys")}
+                  className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-900 flex items-center justify-center gap-2"
+                >
+                  <Users className="w-4 h-4" />
+                  Manage Delivery Boys
+                </button>
+              </div>
             </CardContent>
           </Card>
         </motion.div>

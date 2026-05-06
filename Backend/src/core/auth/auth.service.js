@@ -6,6 +6,7 @@ import { sanitizeAdminForClient } from "../admin/adminAccess.constants.js";
 import { AdminResetOtp } from "../admin/adminResetOtp.model.js";
 import { FoodRestaurant } from "../../modules/food/restaurant/models/restaurant.model.js";
 import { FoodDeliveryPartner } from "../../modules/food/delivery/models/deliveryPartner.model.js";
+import { FoodDeliveryBoy } from "../../modules/food/restaurant/models/deliveryBoy.model.js";
 import { FoodReferralSettings } from "../../modules/food/admin/models/referralSettings.model.js";
 import { FoodReferralLog } from "../../modules/food/admin/models/referralLog.model.js";
 import { createOrUpdateOtp, verifyOtp } from "../otp/otp.service.js";
@@ -22,6 +23,7 @@ const ROLES = {
   USER: "USER",
   RESTAURANT: "RESTAURANT",
   DELIVERY_PARTNER: "DELIVERY_PARTNER",
+  DELIVERY_BOY: "DELIVERY_BOY",
   ADMIN: "ADMIN",
 };
 
@@ -431,6 +433,60 @@ export const verifyDeliveryOtpAndLogin = async (phone, otp, fcmToken, platform) 
   };
 };
 
+export const loginDeliveryBoy = async (username, password) => {
+  const normalizedUsername = String(username || "").trim().toLowerCase();
+  if (!normalizedUsername || !password) {
+    throw new ValidationError("Username and password are required");
+  }
+
+  const deliveryBoy = await FoodDeliveryBoy.findOne({
+    username: normalizedUsername,
+  }).populate("restaurantId", "restaurantName status");
+
+  if (!deliveryBoy) {
+    throw new AuthError("Invalid credentials");
+  }
+
+  if (deliveryBoy.isActive === false) {
+    throw new AuthError("Delivery boy account is inactive");
+  }
+
+  if (!deliveryBoy.restaurantId || deliveryBoy.restaurantId.status !== "approved") {
+    throw new AuthError("Restaurant is not active for self-delivery");
+  }
+
+  const isMatch = await deliveryBoy.comparePassword(password);
+  if (!isMatch) {
+    throw new AuthError("Invalid credentials");
+  }
+
+  const payload = {
+    userId: deliveryBoy._id.toString(),
+    role: ROLES.DELIVERY_BOY,
+    restaurantId: deliveryBoy.restaurantId._id.toString(),
+  };
+  const accessToken = signAccessToken(payload);
+  const refreshToken = signRefreshToken(payload);
+  const ttlMs = ms(config.jwtRefreshExpiresIn || "7d");
+  const expiresAt = new Date(Date.now() + ttlMs);
+
+  await FoodRefreshToken.create({
+    userId: deliveryBoy._id,
+    token: refreshToken,
+    expiresAt,
+  });
+
+  return {
+    accessToken,
+    refreshToken,
+    user: {
+      ...deliveryBoy.toObject(),
+      role: ROLES.DELIVERY_BOY,
+      restaurant: deliveryBoy.restaurantId,
+    },
+  };
+};
+
 export const logout = async (refreshToken, fcmToken, platform) => {
   if (!refreshToken) {
     throw new ValidationError("Refresh token is required");
@@ -613,6 +669,20 @@ export const getProfile = async (userId, role) => {
                 number: partner.vehicleNumber,
               }
             : null,
+      };
+      break;
+    }
+    case ROLES.DELIVERY_BOY: {
+      const deliveryBoy = await FoodDeliveryBoy.findById(id)
+        .populate("restaurantId", "restaurantName status")
+        .lean();
+      if (!deliveryBoy) break;
+      profile = {
+        ...deliveryBoy,
+        role: ROLES.DELIVERY_BOY,
+        restaurantId:
+          deliveryBoy.restaurantId?._id || deliveryBoy.restaurantId || null,
+        restaurant: deliveryBoy.restaurantId || null,
       };
       break;
     }

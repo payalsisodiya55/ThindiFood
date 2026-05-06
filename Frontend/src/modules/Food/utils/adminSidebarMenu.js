@@ -219,6 +219,7 @@ export const adminSidebarMenu = [
     type: "section",
     label: "SYSTEM SETTINGS",
     items: [
+      { type: "link", label: "Self Delivery", path: "/admin/food/delivery/self-delivery", icon: "Truck", permissionKey: "settings" },
       { type: "link", label: "Broadcast Notification", path: "/admin/food/broadcast-notification", icon: "Bell", permissionKey: "settings" },
       { type: "link", label: "Business Setup", path: "/admin/food/business-setup", icon: "Settings", permissionKey: "settings" },
       { type: "link", label: "Refund Settings", path: "/admin/food/settings/refund-policy", icon: "Receipt", permissionKey: "settings" },

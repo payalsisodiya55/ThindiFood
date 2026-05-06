@@ -48,7 +48,7 @@ export default function FilterPanel({ isOpen, onClose, filters, setFilters, onAp
               Delivery Type
             </label>
             <div className="flex flex-wrap gap-2">
-              {["All", "Home Delivery", "Take Away", "Dine In"].map((type) => (
+              {["All", "Home Delivery", "Self Delivery", "Take Away", "Dine In"].map((type) => (
                 <button
                   key={type}
                   onClick={() => setFilters(prev => ({ ...prev, deliveryType: type === "All" ? "" : type }))}

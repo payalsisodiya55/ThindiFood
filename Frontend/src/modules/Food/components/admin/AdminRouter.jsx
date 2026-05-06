@@ -98,6 +98,7 @@ const JoinUsPageSetup = lazy(() => import("@food/pages/admin/system/JoinUsPageSe
 const AnalyticsScript = lazy(() => import("@food/pages/admin/system/AnalyticsScript"));
 const AISetup = lazy(() => import("@food/pages/admin/system/AISetup"));
 const AppWebSettings = lazy(() => import("@food/pages/admin/system/AppWebSettings"));
+const SelfDeliverySettings = lazy(() => import("@food/pages/admin/system/SelfDeliverySettings"));
 const NotificationChannels = lazy(() => import("@food/pages/admin/system/NotificationChannels"));
 const NotificationBroadcast = lazy(() => import("@food/pages/admin/system/NotificationBroadcast"));
 const AdminNotifications = lazy(() => import("@food/pages/admin/system/AdminNotifications"));
@@ -268,6 +269,7 @@ export default function AdminRouter() {
             <Route path="3rd-party-configurations/join-us" element={<JoinUsPageSetup />} />
             <Route path="3rd-party-configurations/analytics" element={<AnalyticsScript />} />
             <Route path="3rd-party-configurations/ai" element={<AISetup />} />
+            <Route path="delivery/self-delivery" element={<SelfDeliverySettings />} />
             <Route path="app-web-settings" element={<AppWebSettings />} />
             <Route path="notifications" element={<AdminNotifications />} />
             <Route path="broadcast-notification" element={<NotificationBroadcast />} />

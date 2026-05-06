@@ -354,13 +354,16 @@ const ORDER_STATUS_PROGRESS_RANK = {
   processed: 2,
   ready: 3,
   ready_for_pickup: 3,
+  assigned_to_boy: 3,
   reached_pickup: 3,
   picked_up: 4,
+  picked_up_by_boy: 4,
   out_for_delivery: 4,
   en_route_to_delivery: 4,
   reached_drop: 5,
   at_drop: 5,
   at_delivery: 5,
+  delivered_self: 6,
   delivered: 6,
   completed: 6,
 }
@@ -478,6 +481,7 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     // Prefer canonical backend status, but fall back to tracking milestones if status is stale.
     status: resolvedStatus,
     fulfillmentType: apiOrder?.fulfillmentType || safePreviousOrder?.fulfillmentType || 'delivery',
+    deliveryType: apiOrder?.deliveryType || safePreviousOrder?.deliveryType || null,
     pickupAt: apiOrder?.pickupAt || safePreviousOrder?.pickupAt || null,
     order_type: apiOrder?.order_type || safePreviousOrder?.order_type || null,
     prep_time: apiOrder?.prep_time ?? safePreviousOrder?.prep_time ?? 0,
@@ -488,6 +492,14 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
       avatar: apiOrder.deliveryPartnerId.avatar || apiOrder.deliveryPartnerId.profilePicture || null
     } : (safePreviousOrder?.deliveryPartner || null),
     deliveryPartnerId: apiOrder?.deliveryPartnerId?._id || apiOrder?.deliveryPartnerId || apiOrder?.dispatch?.deliveryPartnerId?._id || apiOrder?.dispatch?.deliveryPartnerId || apiOrder?.assignmentInfo?.deliveryPartnerId || safePreviousOrder?.deliveryPartnerId || null,
+    selfDelivery: apiOrder?.selfDelivery || safePreviousOrder?.selfDelivery || null,
+    selfDeliveryBoy: apiOrder?.selfDelivery?.deliveryBoyId
+      ? {
+          name: apiOrder.selfDelivery.deliveryBoyId.name || 'Delivery Boy',
+          phone: apiOrder.selfDelivery.deliveryBoyId.phone || '',
+          username: apiOrder.selfDelivery.deliveryBoyId.username || '',
+        }
+      : (safePreviousOrder?.selfDeliveryBoy || null),
     dispatch: apiOrder?.dispatch || safePreviousOrder?.dispatch || null,
     assignmentInfo: apiOrder?.assignmentInfo || safePreviousOrder?.assignmentInfo || null,
     tracking: apiOrder?.tracking || safePreviousOrder?.tracking || {},
@@ -547,9 +559,11 @@ function mapBackendOrderStatusToUi(raw) {
   if (s === "confirmed" || s === "accepted") return "confirmed"
   if (s === "preparing" || s === "processed") return "preparing"
   if (s === "ready" || s === "ready_for_pickup" || s === "reached_pickup" || s === "order_confirmed") return "ready"
+  if (s === "assigned_to_boy") return "assigned"
+  if (s === "picked_up_by_boy") return "at_pickup"
   if (s === "picked_up" || s === "out_for_delivery" || s === "en_route_to_delivery") return "on_way"
   if (s === "reached_drop" || s === "at_drop" || s === "at_delivery") return "at_drop"
-  if (s === "delivered" || s === "completed") return "delivered"
+  if (s === "delivered" || s === "completed" || s === "delivered_self") return "delivered"
   if (s.includes("cancelled") || s === "cancelled") return "cancelled"
   return "placed"
 }
@@ -563,14 +577,17 @@ function hasRestaurantAcceptedStatus(raw) {
     "processed",
     "ready",
     "ready_for_pickup",
+    "assigned_to_boy",
     "reached_pickup",
     "picked_up",
+    "picked_up_by_boy",
     "out_for_delivery",
     "en_route_to_delivery",
     "reached_drop",
     "at_drop",
     "at_delivery",
     "delivered",
+    "delivered_self",
     "completed",
   ].includes(s)
 }
@@ -582,14 +599,16 @@ function mapOrderToTrackingUiStatus(orderLike) {
 
   // Terminal states handled first
   if (isFoodOrderCancelledStatus(statusRaw)) return "cancelled"
-  if (statusRaw === "delivered" || statusRaw === "completed") return "delivered"
+  if (statusRaw === "delivered" || statusRaw === "completed" || statusRaw === "delivered_self") return "delivered"
 
   // Live Ride / Phase-based mapping (Highest priority for precision)
   const isRiderAccepted = orderLike.dispatch?.status === "accepted" || orderLike.assignmentInfo?.status === "accepted" || orderLike.deliveryPartner?.status === "accepted";
   
   if (phase === "reached_drop" || phase === "at_drop" || statusRaw === "at_drop") return "at_drop"
-  if (phase === "en_route_to_delivery" || statusRaw === "picked_up" || statusRaw === "out_for_delivery") return "on_way"
+  if (phase === "en_route_to_delivery" || statusRaw === "picked_up" || statusRaw === "picked_up_by_boy" || statusRaw === "out_for_delivery") return "on_way"
+  if (statusRaw === "assigned_to_boy") return "assigned"
   if (phase === "at_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "at_pickup"
+  if (statusRaw === "picked_up_by_boy") return "at_pickup"
   if (phase === "en_route_to_pickup" && orderLike.deliveryPartnerId && isRiderAccepted) return "assigned"
 
   // Fallback to basic status mapping
@@ -1731,6 +1750,9 @@ export default function OrderTracking() {
   })()
 
   const isTakeawayOrder = order?.fulfillmentType === "takeaway"
+  const isSelfDeliveryOrder =
+    order?.fulfillmentType === "delivery" &&
+    String(order?.deliveryType || "").toLowerCase() === "self"
 
   const statusConfig = {
     placed: {
@@ -1759,26 +1781,32 @@ export default function OrderTracking() {
       iconType: 'food'
     },
     assigned: {
-      title: isTakeawayOrder ? "Pickup handover soon" : "Rider is arriving",
+      title: isTakeawayOrder ? "Pickup handover soon" : isSelfDeliveryOrder ? "Delivery boy assigned" : "Rider is arriving",
       subtitle: isTakeawayOrder
         ? "Restaurant is getting your order ready for pickup"
-        : "A delivery partner is arriving at the restaurant",
+        : isSelfDeliveryOrder
+          ? "Your restaurant delivery boy has been assigned"
+          : "A delivery partner is arriving at the restaurant",
       color: "bg-[#00c87e]",
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     at_pickup: {
-      title: isTakeawayOrder ? "Pickup counter ready" : "Rider at restaurant",
+      title: isTakeawayOrder ? "Pickup counter ready" : isSelfDeliveryOrder ? "Order picked by delivery boy" : "Rider at restaurant",
       subtitle: isTakeawayOrder
         ? "Please reach the restaurant for handover"
-        : "Rider is waiting for your order",
+        : isSelfDeliveryOrder
+          ? "Your order has left the restaurant"
+          : "Rider is waiting for your order",
       color: "bg-[#00c87e]",
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     ready: {
-      title: isTakeawayOrder ? "Ready for pickup" : "Handover in progress",
+      title: isTakeawayOrder ? "Ready for pickup" : isSelfDeliveryOrder ? "Ready for dispatch" : "Handover in progress",
       subtitle: isTakeawayOrder
         ? "Show your OTP at the restaurant to collect the order"
-        : "Rider is picking up your order",
+        : isSelfDeliveryOrder
+          ? "Restaurant is assigning your delivery boy"
+          : "Rider is picking up your order",
       color: "bg-[#00c87e]",
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
@@ -1799,8 +1827,8 @@ export default function OrderTracking() {
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     delivered: {
-      title: "Order picked up",
-      subtitle: "Pickup completed successfully",
+      title: isTakeawayOrder ? "Order picked up" : "Order delivered",
+      subtitle: isTakeawayOrder ? "Pickup completed successfully" : "Delivery completed successfully",
       color: "bg-[#00c87e]",
       iconType: 'delivered'
     },
@@ -1816,6 +1844,7 @@ export default function OrderTracking() {
   const isDeliveredOrder =
     orderStatus === "delivered" ||
     order?.status === "delivered" ||
+    order?.status === "delivered_self" ||
     Boolean(order?.deliveredAt)
 
   return (
@@ -1958,9 +1987,45 @@ export default function OrderTracking() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28 }}
           >
-            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">Takeaway OTP</p>
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+              {isSelfDeliveryOrder ? "Delivery OTP" : "Takeaway OTP"}
+            </p>
             <p className="text-2xl font-extrabold text-blue-900 mt-1 tracking-widest">{customerDeliveryOtp}</p>
-            <p className="text-xs text-blue-700 mt-1">Share this 4-digit OTP with the restaurant at pickup.</p>
+            <p className="text-xs text-blue-700 mt-1">
+              {isSelfDeliveryOrder
+                ? "Share this 4-digit OTP with the delivery boy only after your order reaches you."
+                : "Share this 4-digit OTP with the restaurant at pickup."}
+            </p>
+          </motion.div>
+        )}
+
+        {isSelfDeliveryOrder && order?.selfDeliveryBoy && (
+          <motion.div
+            className="bg-white rounded-xl shadow-sm overflow-hidden"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.29 }}
+          >
+            <div className="flex items-center gap-3 p-4">
+              <div className="w-12 h-12 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100">
+                <User className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-gray-900">{order.selfDeliveryBoy.name || "Delivery Boy"}</p>
+                <p className="text-sm text-gray-500">
+                  {order.selfDeliveryBoy.phone || "Contact number will appear here"}
+                </p>
+              </div>
+              {order.selfDeliveryBoy.phone && (
+                <motion.a
+                  href={`tel:${order.selfDeliveryBoy.phone}`}
+                  className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <Phone className="w-5 h-5 text-blue-600" />
+                </motion.a>
+              )}
+            </div>
           </motion.div>
         )}
 
@@ -2315,6 +2380,13 @@ export default function OrderTracking() {
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600">Packaging Charges</span>
                   <span className="text-gray-900 font-medium">₹{Number(order.packagingFee).toFixed(2)}</span>
+                </div>
+              )}
+
+              {Number(order?.deliveryFee) > 0 && (
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-gray-600">Delivery Fee</span>
+                  <span className="text-gray-900 font-medium">₹{Number(order.deliveryFee).toFixed(2)}</span>
                 </div>
               )}
 

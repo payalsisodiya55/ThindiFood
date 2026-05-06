@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@food/components/ui/button"
-import { restaurantAPI } from "@food/api"
+import { deliveryBoyAPI, restaurantAPI } from "@food/api"
+import { setAuthData } from "@food/utils/auth"
 import thindiLogo from "@/assets/rest-removebg-preview.png"
 
 
@@ -14,7 +15,11 @@ const countryCodes = [
 
 export default function RestaurantLogin() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const phoneInputRef = useRef(null)
+  const redirectTarget = searchParams.get("redirect") || ""
+  const initialRole = searchParams.get("role") === "delivery" ? "delivery" : "restaurant"
+  const [selectedRole, setSelectedRole] = useState(initialRole)
   const [formData, setFormData] = useState(() => {
     const saved = sessionStorage.getItem("restaurantLoginPhone")
     return {
@@ -25,6 +30,11 @@ export default function RestaurantLogin() {
   const [error, setError] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
+  const [deliveryForm, setDeliveryForm] = useState({ username: "", password: "" })
+
+  useEffect(() => {
+    setSelectedRole(initialRole)
+  }, [initialRole])
 
   useEffect(() => {
     if (typeof window === "undefined" || !window.visualViewport) return undefined
@@ -97,12 +107,56 @@ export default function RestaurantLogin() {
         module: "restaurant",
       }
       sessionStorage.setItem("restaurantAuthData", JSON.stringify(authData))
-      navigate("/food/restaurant/otp")
+      navigate(`/food/restaurant/otp${redirectTarget ? `?redirect=${encodeURIComponent(redirectTarget)}` : ""}`)
     } catch (apiErr) {
       const message =
         apiErr?.response?.data?.message ||
         apiErr?.response?.data?.error ||
         "Failed to send OTP. Please try again."
+      setError(message)
+    } finally {
+      setIsSending(false)
+    }
+  }
+
+  const handleRoleChange = (role) => {
+    setSelectedRole(role)
+    setError("")
+    const nextParams = new URLSearchParams(searchParams)
+    if (role === "delivery") {
+      nextParams.set("role", "delivery")
+    } else {
+      nextParams.delete("role")
+    }
+    setSearchParams(nextParams, { replace: true })
+  }
+
+  const handleDeliveryChange = (field) => (event) => {
+    const value = event.target.value
+    setDeliveryForm((prev) => ({ ...prev, [field]: value }))
+    if (error) setError("")
+  }
+
+  const handleDeliveryLogin = async () => {
+    const username = String(deliveryForm.username || "").trim()
+    const password = String(deliveryForm.password || "")
+
+    if (!username || !password) {
+      setError("Username and password are required")
+      return
+    }
+
+    try {
+      setIsSending(true)
+      const response = await deliveryBoyAPI.login(username, password)
+      const data = response?.data?.data || response?.data || {}
+      setAuthData("delivery", data.accessToken, data.user, data.refreshToken || null)
+      navigate(redirectTarget || "/food/delivery-boy/orders", { replace: true })
+    } catch (apiErr) {
+      const message =
+        apiErr?.response?.data?.message ||
+        apiErr?.response?.data?.error ||
+        "Failed to login. Please try again."
       setError(message)
     } finally {
       setIsSending(false)
@@ -140,12 +194,38 @@ export default function RestaurantLogin() {
             Thindi
           </h1>
           <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">
-            Restaurant Login
+            {selectedRole === "delivery" ? "Delivery Login" : "Restaurant Login"}
           </p>
         </div>
 
         <div className="w-full max-w-[400px] flex-1 flex flex-col justify-between animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="space-y-6">
+            <div className="rounded-[32px] bg-slate-100 p-1.5 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => handleRoleChange("restaurant")}
+                className={`flex-1 rounded-[28px] px-4 py-3 text-xs font-black uppercase tracking-[0.24em] transition-all ${
+                  selectedRole === "restaurant"
+                    ? "bg-white text-[#00c87e] shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                Restaurant
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRoleChange("delivery")}
+                className={`flex-1 rounded-[28px] px-4 py-3 text-xs font-black uppercase tracking-[0.24em] transition-all ${
+                  selectedRole === "delivery"
+                    ? "bg-white text-[#00c87e] shadow-sm"
+                    : "text-slate-500"
+                }`}
+              >
+                Delivery Boy
+              </button>
+            </div>
+
+            {selectedRole === "restaurant" ? (
             <div className="space-y-3">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Registered Mobile Number</label>
               
@@ -178,17 +258,64 @@ export default function RestaurantLogin() {
                 </p>
               )}
             </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">
+                    Username
+                  </label>
+                  <div className="flex items-center gap-2 h-16 bg-slate-50 border border-slate-100 rounded-[32px] px-6 focus-within:border-[#00c87e]/30 focus-within:ring-4 focus-within:ring-[#00c87e]/5 transition-all overflow-hidden">
+                    <input
+                      type="text"
+                      autoComplete="username"
+                      placeholder="Delivery username"
+                      value={deliveryForm.username}
+                      onChange={handleDeliveryChange("username")}
+                      className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#00c87e] px-2"
+                      style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">
+                    Password
+                  </label>
+                  <div className="flex items-center gap-2 h-16 bg-slate-50 border border-slate-100 rounded-[32px] px-6 focus-within:border-[#00c87e]/30 focus-within:ring-4 focus-within:ring-[#00c87e]/5 transition-all overflow-hidden">
+                    <input
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Delivery password"
+                      value={deliveryForm.password}
+                      onChange={handleDeliveryChange("password")}
+                      className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#00c87e] px-2"
+                      style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
+                    />
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="text-[#ef4f5f] text-xs font-bold italic ml-4 animate-bounce">
+                    {error}
+                  </p>
+                )}
+              </div>
+            )}
 
             <Button
-              onClick={handleSendOTP}
-              disabled={!isValidPhone || isSending}
+              onClick={selectedRole === "delivery" ? handleDeliveryLogin : handleSendOTP}
+              disabled={selectedRole === "restaurant" ? (!isValidPhone || isSending) : isSending}
               className={`w-full h-14 sm:h-16 rounded-[32px] font-black text-base sm:text-lg tracking-widest uppercase transition-all duration-300 ${
-                isValidPhone && !isSending
+                ((selectedRole === "restaurant" && isValidPhone) || selectedRole === "delivery") && !isSending
                   ? "bg-[#00c87e] hover:bg-[#00b06f] text-white shadow-lg shadow-[#00c87e]/20 transform active:scale-[0.98]"
                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
               }`}
             >
-              {isSending ? "Processing..." : "Continue"}
+              {isSending
+                ? "Processing..."
+                : selectedRole === "delivery"
+                  ? "Login"
+                  : "Continue"}
             </Button>
           </div>
 

@@ -466,6 +466,12 @@ export default function RestaurantOnboarding() {
     featuredDish: "",
     featuredPrice: "",
     offer: "",
+    selfDeliveryEnabled: false,
+    selfDeliveryRadius: "3",
+    selfDeliveryFee: "0",
+    selfDeliveryMinOrderAmount: "0",
+    selfDeliveryStart: "10:00",
+    selfDeliveryEnd: "22:00",
   })
   const previewUrlCacheRef = useRef(new Map())
   const locationSearchInputRef = useRef(null)
@@ -640,6 +646,12 @@ export default function RestaurantOnboarding() {
           featuredDish: localData.step4.featuredDish || "",
           featuredPrice: localData.step4.featuredPrice || "",
           offer: localData.step4.offer || "",
+          selfDeliveryEnabled: localData.step4.selfDeliveryEnabled === true,
+          selfDeliveryRadius: localData.step4.selfDeliveryRadius || "3",
+          selfDeliveryFee: localData.step4.selfDeliveryFee || "0",
+          selfDeliveryMinOrderAmount: localData.step4.selfDeliveryMinOrderAmount || "0",
+          selfDeliveryStart: localData.step4.selfDeliveryStart || "10:00",
+          selfDeliveryEnd: localData.step4.selfDeliveryEnd || "22:00",
         })
       }
       // Only set step from localStorage if URL doesn't have a step parameter
@@ -766,6 +778,12 @@ export default function RestaurantOnboarding() {
             featuredDish: data.featuredDish || "",
             featuredPrice: data.featuredPrice || "",
             offer: data.offer || "",
+            selfDeliveryEnabled: data?.selfDelivery?.enabled === true,
+            selfDeliveryRadius: String(data?.selfDelivery?.radius ?? 3),
+            selfDeliveryFee: String(data?.selfDelivery?.fee ?? 0),
+            selfDeliveryMinOrderAmount: String(data?.selfDelivery?.minOrderAmount ?? 0),
+            selfDeliveryStart: data?.selfDelivery?.timings?.start || "10:00",
+            selfDeliveryEnd: data?.selfDelivery?.timings?.end || "22:00",
           })
 
           // Only determine step automatically if not specified in URL
@@ -1171,6 +1189,12 @@ export default function RestaurantOnboarding() {
         formData.append("estimatedDeliveryTime", step4.estimatedDeliveryTime || "")
         formData.append("featuredDish", step4.featuredDish || "")
         formData.append("offer", step4.offer || "")
+        formData.append("selfDeliveryEnabled", step4.selfDeliveryEnabled ? "true" : "false")
+        formData.append("selfDeliveryRadius", step4.selfDeliveryRadius || "3")
+        formData.append("selfDeliveryFee", step4.selfDeliveryFee || "0")
+        formData.append("selfDeliveryMinOrderAmount", step4.selfDeliveryMinOrderAmount || "0")
+        formData.append("selfDeliveryStart", step4.selfDeliveryStart || "10:00")
+        formData.append("selfDeliveryEnd", step4.selfDeliveryEnd || "22:00")
 
         await restaurantAPI.register(formData)
 
@@ -2295,6 +2319,112 @@ export default function RestaurantOnboarding() {
           <p className="text-[11px] text-gray-500 mt-1">
             Optional. Leave this blank if you do not want to highlight an offer.
           </p>
+        </div>
+
+        <div className="border-t border-gray-200 pt-4 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <Label className="text-sm font-medium text-gray-800">Enable Self Delivery</Label>
+              <p className="text-[11px] text-gray-500 mt-1">
+                Turn this on if your restaurant uses its own delivery boys.
+              </p>
+            </div>
+            <input
+              type="checkbox"
+              checked={step4.selfDeliveryEnabled === true}
+              onChange={(e) =>
+                setStep4({
+                  ...step4,
+                  selfDeliveryEnabled: e.target.checked,
+                })
+              }
+              className="mt-1 h-4 w-4"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-gray-700">Self Delivery Radius (km)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={step4.selfDeliveryRadius || ""}
+                onChange={(e) =>
+                  setStep4({
+                    ...step4,
+                    selfDeliveryRadius: e.target.value,
+                  })
+                }
+                className="mt-1 bg-white text-sm"
+                placeholder="3"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-gray-700">Delivery Fee</Label>
+              <Input
+                type="number"
+                min="0"
+                value={step4.selfDeliveryFee || ""}
+                onChange={(e) =>
+                  setStep4({
+                    ...step4,
+                    selfDeliveryFee: e.target.value,
+                  })
+                }
+                className="mt-1 bg-white text-sm"
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-gray-700">Minimum Order Amount</Label>
+              <Input
+                type="number"
+                min="0"
+                value={step4.selfDeliveryMinOrderAmount || ""}
+                onChange={(e) =>
+                  setStep4({
+                    ...step4,
+                    selfDeliveryMinOrderAmount: e.target.value,
+                  })
+                }
+                className="mt-1 bg-white text-sm"
+                placeholder="0"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs text-gray-700">Start Time</Label>
+                <Input
+                  type="time"
+                  value={step4.selfDeliveryStart || "10:00"}
+                  onChange={(e) =>
+                    setStep4({
+                      ...step4,
+                      selfDeliveryStart: e.target.value,
+                    })
+                  }
+                  className="mt-1 bg-white text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-700">End Time</Label>
+                <Input
+                  type="time"
+                  value={step4.selfDeliveryEnd || "22:00"}
+                  onChange={(e) =>
+                    setStep4({
+                      ...step4,
+                      selfDeliveryEnd: e.target.value,
+                    })
+                  }
+                  className="mt-1 bg-white text-sm"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>

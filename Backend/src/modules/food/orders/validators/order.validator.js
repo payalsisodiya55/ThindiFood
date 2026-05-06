@@ -77,7 +77,10 @@ export function validateCalculateOrderDto(body) {
         deliveryAddressId: z.string().optional(),
         zoneId: z.string().optional(),
         couponCode: z.string().optional(),
-        deliveryFleet: z.string().optional()
+        deliveryFleet: z.string().optional(),
+        fulfillmentType: z.enum(['delivery', 'takeaway']).optional(),
+        deliveryType: z.enum(['partner', 'self']).optional(),
+        address: addressSchema.optional()
     }).superRefine((data, ctx) => {
         if (data.orderType !== 'quick' && !data.restaurantId) {
             ctx.addIssue({
@@ -108,6 +111,7 @@ export function validateCreateOrderDto(body) {
         customerPhone: z.string().optional(),
         pricing: pricingSchema,
         deliveryFleet: z.string().optional(),
+        deliveryType: z.enum(['partner', 'self']).optional(),
 
         sendCutlery: z.boolean().optional(),
         fulfillmentType: z.enum(['delivery', 'takeaway']).optional(),
@@ -210,8 +214,12 @@ export function validateOrderStatusDto(body) {
             'confirmed',
             'preparing',
             'ready_for_pickup',
+            'assigned_to_boy',
+            'picked_up_by_boy',
+            'out_for_delivery',
             'picked_up',
             'delivered',
+            'delivered_self',
             'cancelled_by_restaurant'
         ])
     });

@@ -103,7 +103,16 @@ const restaurantRegisterSchema = z.object({
     accountType: z.string().optional(),
     estimatedDeliveryTime: z.string().optional(),
     featuredDish: z.string().optional(),
-    offer: z.string().optional()
+    offer: z.string().optional(),
+    selfDeliveryEnabled: z
+        .string()
+        .optional()
+        .transform((val) => val === 'true' || val === '1'),
+    selfDeliveryRadius: z.string().optional(),
+    selfDeliveryFee: z.string().optional(),
+    selfDeliveryMinOrderAmount: z.string().optional(),
+    selfDeliveryStart: z.string().optional(),
+    selfDeliveryEnd: z.string().optional()
 });
 
 export const validateRestaurantRegisterDto = (body) => {

@@ -18,6 +18,7 @@ const MenuCategoriesPage = lazy(() => import("@food/pages/restaurant/MenuCategor
 const RestaurantStatus = lazy(() => import("@food/pages/restaurant/RestaurantStatus"))
 const ExploreMore = lazy(() => import("@food/pages/restaurant/ExploreMore"))
 const DeliverySettings = lazy(() => import("@food/pages/restaurant/DeliverySettings"))
+const DeliveryBoyManagement = lazy(() => import("@food/pages/restaurant/DeliveryBoyManagement"))
 const RushHour = lazy(() => import("@food/pages/restaurant/RushHour"))
 const OutletTimings = lazy(() => import("@food/pages/restaurant/OutletTimings"))
 const DaySlots = lazy(() => import("@food/pages/restaurant/DaySlots"))
@@ -83,6 +84,7 @@ export default function RestaurantRouter() {
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AddCouponPage /></ProtectedRoute>} path="coupon/new" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><EditCouponPage /></ProtectedRoute>} path="coupon/:id/edit" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DeliverySettings /></ProtectedRoute>} path="delivery-settings" />
+        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DeliveryBoyManagement /></ProtectedRoute>} path="delivery-boys" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RushHour /></ProtectedRoute>} path="rush-hour" />
         <Route path="privacy" element={<PrivacyPolicyPage />} />
         <Route path="terms" element={<TermsAndConditionsPage />} />

@@ -1484,6 +1484,7 @@ export default function RestaurantsList() {
                 const featuredDishVal = r?.featuredDish || r?.onboarding?.step4?.featuredDish || ""
                 const featuredPriceVal = r?.featuredPrice ?? r?.onboarding?.step4?.featuredPrice
                 const diningSettingsVal = r?.diningSettings || r?.onboarding?.step4?.diningSettings || null
+                const selfDeliveryVal = r?.selfDelivery || null
                 const panDocumentUrl = typeof r?.panImage === "string" ? r.panImage : (r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url || "")
                 const gstDocumentUrl = typeof r?.gstImage === "string" ? r.gstImage : (r?.gstImage?.url || r?.onboarding?.step3?.gst?.image?.url || "")
                 const fssaiDocumentUrl = typeof r?.fssaiImage === "string" ? r.fssaiImage : (r?.fssaiImage?.url || r?.onboarding?.step3?.fssai?.image?.url || "")
@@ -1684,6 +1685,41 @@ export default function RestaurantsList() {
                               {openDaysVal.map((day, idx) => (
                                 <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">{day}</span>
                               ))}
+                            </div>
+                          </div>
+                        )}
+                        {selfDeliveryVal && (
+                          <div className="rounded-2xl border border-blue-100 bg-blue-50/40 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs text-blue-600 font-bold uppercase tracking-wider">Self Delivery</p>
+                                <p className="text-sm font-semibold text-slate-900 mt-1">
+                                  {selfDeliveryVal.enabled === true ? "Enabled" : "Disabled"}
+                                </p>
+                              </div>
+                              <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${selfDeliveryVal.enabled === true ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-600"}`}>
+                                {selfDeliveryVal.enabled === true ? "Live" : "Off"}
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                              <div>
+                                <p className="text-xs text-slate-500">Radius</p>
+                                <p className="text-sm font-medium text-slate-900">{Number(selfDeliveryVal.radius || 0)} km</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-500">Delivery Fee</p>
+                                <p className="text-sm font-medium text-slate-900">₹{Number(selfDeliveryVal.fee || 0).toFixed(0)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-500">Minimum Order</p>
+                                <p className="text-sm font-medium text-slate-900">₹{Number(selfDeliveryVal.minOrderAmount || 0).toFixed(0)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-slate-500">Timings</p>
+                                <p className="text-sm font-medium text-slate-900">
+                                  {selfDeliveryVal?.timings?.start || "10:00"} - {selfDeliveryVal?.timings?.end || "22:00"}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         )}

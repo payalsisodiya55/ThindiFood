@@ -97,6 +97,12 @@ const formatOrderAddress = (address) => {
 const normalizeDeliveryTypeFilterValue = (value) => {
   const normalized = String(value || "").trim().toLowerCase()
   if (!normalized) return ""
+  if (normalized === "self delivery" || normalized === "self-delivery") {
+    return "self delivery"
+  }
+  if (normalized === "self") {
+    return "self delivery"
+  }
   if (normalized === "takeaway" || normalized === "take away" || normalized.includes("pickup")) {
     return "take away"
   }

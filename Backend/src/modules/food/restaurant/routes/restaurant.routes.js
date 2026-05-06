@@ -70,6 +70,15 @@ import * as orderController from '../../orders/controllers/order.controller.js';
 import { authMiddleware } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
 import { getRestaurantFinanceController } from '../controllers/restaurantFinance.controller.js';
+import {
+    getCurrentRestaurantSelfDeliveryController,
+    updateCurrentRestaurantSelfDeliveryController,
+    createDeliveryBoyController,
+    listDeliveryBoysController,
+    updateDeliveryBoyController,
+    deactivateDeliveryBoyController,
+    assignDeliveryBoyToOrderController
+} from '../controllers/selfDelivery.controller.js';
 
 import { cacheResponse, invalidateCache } from '../../../../middleware/cache.js';
 
@@ -116,6 +125,12 @@ router.patch('/availability', authMiddleware, requireRestaurant, async (req, res
 router.patch('/profile', authMiddleware, requireRestaurant, updateRestaurantProfileController);
 router.patch('/availability', authMiddleware, requireRestaurant, updateRestaurantAcceptingOrdersController);
 router.patch('/dining-settings', authMiddleware, requireRestaurant, updateCurrentRestaurantDiningSettingsController);
+router.get('/self-delivery', authMiddleware, requireRestaurant, getCurrentRestaurantSelfDeliveryController);
+router.patch('/self-delivery', authMiddleware, requireRestaurant, updateCurrentRestaurantSelfDeliveryController);
+router.post('/delivery-boys', authMiddleware, requireRestaurant, createDeliveryBoyController);
+router.get('/delivery-boys', authMiddleware, requireRestaurant, listDeliveryBoysController);
+router.patch('/delivery-boys/:id', authMiddleware, requireRestaurant, updateDeliveryBoyController);
+router.delete('/delivery-boys/:id', authMiddleware, requireRestaurant, deactivateDeliveryBoyController);
 router.delete('/profile', authMiddleware, requireRestaurant, async (req, res, next) => {
     await invalidateCache('restaurants:*');
     await invalidateCache('restaurant_detail:*');
@@ -231,6 +246,7 @@ router.get('/orders', authMiddleware, requireRestaurant, orderController.listOrd
 router.get('/orders/:orderId', authMiddleware, requireRestaurant, orderController.getOrderByIdRestaurantController);
 router.patch('/orders/:orderId/status', authMiddleware, requireRestaurant, orderController.updateOrderStatusRestaurantController);
 router.post('/orders/:orderId/verify-delivery-otp', authMiddleware, requireRestaurant, orderController.verifyDeliveryOtpRestaurantController);
+router.patch('/orders/:orderId/assign-boy', authMiddleware, requireRestaurant, assignDeliveryBoyToOrderController);
 
 // Complaints (restaurant dashboard)
 router.get('/complaints', authMiddleware, requireRestaurant, getRestaurantComplaintsController);

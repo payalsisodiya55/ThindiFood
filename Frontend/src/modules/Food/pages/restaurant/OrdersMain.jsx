@@ -54,7 +54,11 @@ const allOrdersStatusPriority = {
   confirmed: 1,
   preparing: 2,
   ready: 3,
+  ready_for_pickup: 3,
+  assigned_to_boy: 4,
+  picked_up_by_boy: 5,
   out_for_delivery: 4,
+  delivered_self: 6,
   scheduled: 5,
   delivered: 6,
   completed: 6,
@@ -149,6 +153,19 @@ const normalizeOrderForPopup = (orderLike) => {
     prep_start_time: orderLike.prep_start_time,
     isAcceptedByRestaurant: Boolean(orderLike.isAcceptedByRestaurant),
     fulfillmentType: orderLike.fulfillmentType || "delivery",
+    deliveryType: orderLike.deliveryType || null,
+    selfDelivery: orderLike.selfDelivery || null,
+    selfDeliveryBoy:
+      orderLike.selfDelivery?.deliveryBoyId && typeof orderLike.selfDelivery.deliveryBoyId === "object"
+        ? {
+            id:
+              orderLike.selfDelivery.deliveryBoyId._id ||
+              orderLike.selfDelivery.deliveryBoyId.id ||
+              null,
+            name: orderLike.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+            phone: orderLike.selfDelivery.deliveryBoyId.phone || "",
+          }
+        : null,
     isDineIn,
     sessionId: orderLike.sessionId || null,
     tableNumber: orderLike.tableNumber || null,
@@ -194,6 +211,10 @@ const getRestaurantOrderTypeLabel = (orderLike = {}) => {
 
   if (deliveryType.includes("dine")) {
     return "Dine In";
+  }
+
+  if (fulfillmentType === "delivery" && deliveryType === "self") {
+    return "Self Delivery";
   }
 
   return orderLike?.deliveryFleet === "express"
@@ -291,6 +312,23 @@ const transformOrderForList = (order) => ({
   customerName: order.userId?.name || order.customerName || "Customer",
   customerPhone: getOrderCustomerPhone(order),
   type: getRestaurantOrderTypeLabel(order),
+  fulfillmentType: order.fulfillmentType || "delivery",
+  deliveryType: order.deliveryType || null,
+  customerAddress:
+    order.customerAddress || order.address || order.deliveryAddress || null,
+  selfDelivery: order.selfDelivery || null,
+  selfDeliveryBoy:
+    order.selfDelivery?.deliveryBoyId &&
+    typeof order.selfDelivery.deliveryBoyId === "object"
+      ? {
+          id:
+            order.selfDelivery.deliveryBoyId._id ||
+            order.selfDelivery.deliveryBoyId.id ||
+            null,
+          name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+          phone: order.selfDelivery.deliveryBoyId.phone || "",
+        }
+      : null,
   tableOrToken: null,
   timePlaced: new Date(getAllOrdersTimestamp(order)).toLocaleDateString(
     "en-US",
@@ -310,6 +348,8 @@ const transformOrderForList = (order) => ({
   paymentMethod: order.paymentMethod || order.payment?.method || null,
   deliveryPartnerId: order.deliveryPartnerId || null,
   dispatchStatus: order.dispatch?.status || null,
+  pickupAt: order.pickupAt || null,
+  scheduledAt: order.scheduledAt || null,
   preparingTimestamp: order.tracking?.preparing?.timestamp
     ? new Date(order.tracking.preparing.timestamp)
     : new Date(order.createdAt || Date.now()),
@@ -1025,6 +1065,10 @@ function TableBookings() {
 
 function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
   const [orders, setOrders] = useState([]);
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
+  const [assigningOrder, setAssigningOrder] = useState(null);
+  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState("");
+  const [isAssigningBoy, setIsAssigningBoy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [markingReadyOrderIds, setMarkingReadyOrderIds] = useState({});
@@ -1032,7 +1076,6 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
   const [deliveryOtp, setDeliveryOtp] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [verifyingOrderIds, setVerifyingOrderIds] = useState({});
-
   useEffect(() => {
     let isMounted = true;
     let intervalId = null;
@@ -1040,9 +1083,10 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
 
     const fetchOrders = async () => {
       try {
-        const [response, dineInSessionsRes] = await Promise.all([
+        const [response, dineInSessionsRes, boysResponse] = await Promise.all([
           restaurantAPI.getOrders(),
           dineInAPI.getRestaurantSessions({ limit: 100 }),
+          restaurantAPI.getDeliveryBoys().catch(() => null),
         ]);
         
         // --- ADD DINE-IN FETCHING ---
@@ -1133,6 +1177,12 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
           regularOrders = response.data.data.orders.map(transformOrderForList);
         }
 
+        const fetchedDeliveryBoys = Array.isArray(boysResponse?.data?.data?.deliveryBoys)
+          ? boysResponse.data.data.deliveryBoys
+          : Array.isArray(boysResponse?.data?.deliveryBoys)
+            ? boysResponse.data.deliveryBoys
+            : [];
+
         // Combine and Sort
         const combined = [
           ...regularOrders,
@@ -1142,6 +1192,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
           ),
         ].sort((a, b) => b.sortTimestamp - a.sortTimestamp);
 
+        setDeliveryBoys(fetchedDeliveryBoys);
         setOrders(combined);
       } catch (error) {
         if (!isMounted) return;
@@ -1206,6 +1257,87 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
       customerName: customerName || "Customer",
     });
     setDeliveryOtp("");
+  };
+
+  const handleOpenAssignBoyModal = ({ orderId, mongoId }) => {
+    const orderKey = mongoId || orderId;
+    const matchedOrder = orders.find(
+      (entry) => (entry.mongoId || entry.orderId) === orderKey,
+    );
+    setAssigningOrder(matchedOrder || { orderId, mongoId: orderKey });
+    setSelectedDeliveryBoyId("");
+  };
+
+  const handleCloseAssignBoyModal = () => {
+    if (isAssigningBoy) return;
+    setAssigningOrder(null);
+    setSelectedDeliveryBoyId("");
+  };
+
+  const handleAssignDeliveryBoy = async () => {
+    const orderKey = assigningOrder?.mongoId || assigningOrder?.orderId;
+    if (!orderKey) {
+      toast.error("Order not found");
+      return;
+    }
+
+    if (!selectedDeliveryBoyId) {
+      toast.error("Please select a delivery boy");
+      return;
+    }
+
+    try {
+      setIsAssigningBoy(true);
+      const response = await restaurantAPI.assignDeliveryBoy(
+        orderKey,
+        selectedDeliveryBoyId,
+      );
+      const assignedOrder =
+        response?.data?.data?.order || response?.data?.order || null;
+      const matchedBoy = deliveryBoys.find(
+        (boy) => String(boy?._id || boy?.id) === String(selectedDeliveryBoyId),
+      );
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          (order.mongoId || order.orderId) === orderKey
+            ? {
+                ...order,
+                status: assignedOrder?.status || "assigned_to_boy",
+                selfDeliveryBoy:
+                  assignedOrder?.selfDelivery?.deliveryBoyId &&
+                  typeof assignedOrder.selfDelivery.deliveryBoyId === "object"
+                    ? {
+                        id:
+                          assignedOrder.selfDelivery.deliveryBoyId._id ||
+                          assignedOrder.selfDelivery.deliveryBoyId.id ||
+                          null,
+                        name:
+                          assignedOrder.selfDelivery.deliveryBoyId.name ||
+                          "Delivery Boy",
+                        phone:
+                          assignedOrder.selfDelivery.deliveryBoyId.phone || "",
+                      }
+                    : matchedBoy
+                      ? {
+                          id: matchedBoy._id || matchedBoy.id || null,
+                          name: matchedBoy.name || "Delivery Boy",
+                          phone: matchedBoy.phone || "",
+                        }
+                      : order.selfDeliveryBoy,
+              }
+            : order,
+        ),
+      );
+      toast.success("Delivery boy assigned successfully");
+      handleCloseAssignBoyModal();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Failed to assign delivery boy",
+      );
+    } finally {
+      setIsAssigningBoy(false);
+    }
   };
 
   const handleCloseOtpModal = () => {
@@ -1318,6 +1450,9 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                     ? handleMarkReady
                     : undefined
                 }
+                onAssignBoy={
+                  !order.isDineIn ? handleOpenAssignBoyModal : undefined
+                }
                 onVerifyOtp={
                   normalizedStatus === "ready" && !order.isDineIn
                     ? handleOpenOtpModal
@@ -1335,6 +1470,74 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
         </div>
       )}
       <AnimatePresence>
+        {assigningOrder && (
+          <motion.div
+            className="fixed inset-0 z-[79] bg-black/60 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleCloseAssignBoyModal}
+          >
+            <motion.div
+              className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Assign Delivery Boy
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  Choose an active delivery boy for order #{assigningOrder.orderId}
+                </p>
+              </div>
+
+              <div className="px-4 py-4 space-y-3">
+                <select
+                  value={selectedDeliveryBoyId}
+                  onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select delivery boy</option>
+                  {deliveryBoys
+                    .filter((boy) => boy?.isActive !== false)
+                    .map((boy) => (
+                      <option key={boy._id || boy.id} value={boy._id || boy.id}>
+                        {boy.name}{boy.phone ? ` • ${boy.phone}` : ""}
+                      </option>
+                    ))}
+                </select>
+                {deliveryBoys.filter((boy) => boy?.isActive !== false).length === 0 && (
+                  <p className="text-xs text-red-600">
+                    No active delivery boys available. Add them from Delivery Settings first.
+                  </p>
+                )}
+              </div>
+
+              <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleCloseAssignBoyModal}
+                  disabled={isAssigningBoy}
+                  className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAssignDeliveryBoy}
+                  disabled={isAssigningBoy || !selectedDeliveryBoyId}
+                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-60"
+                >
+                  {isAssigningBoy ? "Assigning..." : "Assign"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
         {otpModalOrder && (
           <motion.div
             className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4"
@@ -3260,6 +3463,44 @@ export default function OrdersMain() {
                     </div>
                   )}
 
+                  {/* SELF-DELIVERY Indicator */}
+                  {(popupOrder || newOrder)?.fulfillmentType === "delivery" &&
+                    (popupOrder || newOrder)?.deliveryType === "self" && (
+                      <div className="mb-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2 flex items-center gap-3">
+                        <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                          <Phone className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                            Self Delivery
+                          </p>
+                          <p className="text-sm font-semibold text-emerald-900 mt-0.5">
+                            Deliver by boy after preparation
+                          </p>
+                          {(popupOrder || newOrder)?.pickupAt ? (
+                            <p className="text-xs text-emerald-800 mt-1">
+                              Deliver by {formatClockTime((popupOrder || newOrder)?.pickupAt)}
+                            </p>
+                          ) : getOrderPrepTimeMinutes(popupOrder || newOrder) ? (
+                            <p className="text-xs text-emerald-800 mt-1">
+                              Prep time: {getOrderPrepTimeMinutes(popupOrder || newOrder)} min
+                            </p>
+                          ) : null}
+                          {(popupOrder || newOrder)?.customerAddress?.addressLine1 ||
+                          (popupOrder || newOrder)?.customerAddress?.street ? (
+                            <p className="text-xs text-emerald-800 mt-1 line-clamp-2">
+                              Address:{" "}
+                              {(popupOrder || newOrder)?.customerAddress?.addressLine1 ||
+                                (popupOrder || newOrder)?.customerAddress?.street}
+                              {(popupOrder || newOrder)?.customerAddress?.city
+                                ? `, ${(popupOrder || newOrder).customerAddress.city}`
+                                : ""}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+
                   {/* Customer info */}
                   <div className="mb-2">
                     <h4 className="text-sm font-semibold text-gray-900">
@@ -4115,6 +4356,9 @@ function OrderCard({
   customerName,
   customerPhone,
   type,
+  fulfillmentType,
+  deliveryType,
+  selfDeliveryBoy,
   tableOrToken,
   timePlaced,
   eta,
@@ -4131,15 +4375,25 @@ function OrderCard({
   onCancel,
   onMarkReady,
   onVerifyOtp,
+  onAssignBoy,
   isVerifyingOtp = false,
   isMarkingReady = false,
   isDineIn = false,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
-  const isReady = normalizedStatus === "ready";
+  const isReady = normalizedStatus === "ready" || normalizedStatus === "ready_for_pickup";
   const isPreparing = normalizedStatus === "preparing";
   const isConfirmed = normalizedStatus === "confirmed";
   const isActiveDineIn = isDineIn && normalizedStatus === "active";
+  const isSelfDeliveryOrder =
+    String(fulfillmentType || "").toLowerCase() === "delivery" &&
+    String(deliveryType || "").toLowerCase() === "self";
+  const canAssignBoy =
+    isSelfDeliveryOrder &&
+    (normalizedStatus === "ready" || normalizedStatus === "ready_for_pickup") &&
+    typeof onAssignBoy === "function";
+  const canVerifyOtp =
+    isReady && typeof onVerifyOtp === "function" && !isSelfDeliveryOrder;
   const phoneForCall = normalizePhoneForCall(customerPhone);
   const shouldShowCustomerContact =
     Boolean(customerName || phoneForCall) &&
@@ -4286,8 +4540,30 @@ function OrderCard({
                   Prep start {formatClockTime(prepStartTime)}
                 </p>
               )}
+              {isSelfDeliveryOrder && pickupAt && (
+                <p className="text-[11px] text-emerald-600 font-medium">
+                  Deliver by {formatClockTime(pickupAt)}
+                </p>
+              )}
+              {isSelfDeliveryOrder && selfDeliveryBoy?.name && (
+                <p className="text-[11px] text-blue-600 font-medium">
+                  Boy: {selfDeliveryBoy.name}
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-2">
+              {canAssignBoy && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAssignBoy({ orderId, mongoId, customerName });
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                >
+                  Assign Boy
+                </button>
+              )}
               {isPreparing && onMarkReady && (
                 <button
                   type="button"
@@ -4300,7 +4576,7 @@ function OrderCard({
                   {isMarkingReady ? "Marking..." : "Mark Ready"}
                 </button>
               )}
-              {isReady && onVerifyOtp && (
+              {canVerifyOtp && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -4717,6 +4993,10 @@ function PreparingOrders({
 function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deliveryBoys, setDeliveryBoys] = useState([]);
+  const [assigningOrder, setAssigningOrder] = useState(null);
+  const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState("");
+  const [isAssigningBoy, setIsAssigningBoy] = useState(false);
   const [otpModalOrder, setOtpModalOrder] = useState(null);
   const [deliveryOtp, setDeliveryOtp] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
@@ -4727,15 +5007,21 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
 
     const fetchOrders = async () => {
       try {
-        // Fetch all orders and filter for 'ready' status on frontend
-        const response = await restaurantAPI.getOrders();
+        // Fetch all orders and active delivery boys for self-delivery assignment.
+        const [response, boysResponse] = await Promise.all([
+          restaurantAPI.getOrders(),
+          restaurantAPI.getDeliveryBoys().catch(() => null),
+        ]);
 
         if (!isMounted) return;
 
         if (response.data?.success && response.data.data?.orders) {
           // Filter orders with 'ready' status
           const readyOrders = response.data.data.orders.filter(
-            (order) => order.status === "ready",
+            (order) =>
+              order.status === "ready" ||
+              order.status === "ready_for_pickup" ||
+              order.status === "assigned_to_boy",
           );
 
           const transformedOrders = readyOrders.map((order) => ({
@@ -4760,7 +5046,23 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            fulfillmentType: order.fulfillmentType || "delivery",
+            deliveryType: order.deliveryType || null,
+            selfDeliveryBoy:
+              order.selfDelivery?.deliveryBoyId && typeof order.selfDelivery.deliveryBoyId === "object"
+                ? {
+                    id: order.selfDelivery.deliveryBoyId._id || order.selfDelivery.deliveryBoyId.id || null,
+                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+                    phone: order.selfDelivery.deliveryBoyId.phone || "",
+                  }
+                : null,
           }));
+
+          const fetchedDeliveryBoys = Array.isArray(boysResponse?.data?.data?.deliveryBoys)
+            ? boysResponse.data.data.deliveryBoys
+            : Array.isArray(boysResponse?.data?.deliveryBoys)
+              ? boysResponse.data.deliveryBoys
+              : [];
 
           let dineInReadyOrders = [];
           try {
@@ -4823,6 +5125,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
           } catch (_) {}
 
           if (isMounted) {
+            setDeliveryBoys(fetchedDeliveryBoys);
             setOrders([...dineInReadyOrders, ...transformedOrders].sort((a, b) => b.sortTimestamp - a.sortTimestamp));
             setLoading(false);
           }
@@ -4853,6 +5156,87 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
       isMounted = false;
     };
   }, [refreshToken]); // Re-fetch only when parent requests it
+
+  const handleOpenAssignBoyModal = ({ orderId, mongoId }) => {
+    const orderKey = mongoId || orderId;
+    const matchedOrder = orders.find(
+      (entry) => (entry.mongoId || entry.orderId) === orderKey,
+    );
+    setAssigningOrder(matchedOrder || { orderId, mongoId: orderKey });
+    setSelectedDeliveryBoyId("");
+  };
+
+  const handleCloseAssignBoyModal = () => {
+    if (isAssigningBoy) return;
+    setAssigningOrder(null);
+    setSelectedDeliveryBoyId("");
+  };
+
+  const handleAssignDeliveryBoy = async () => {
+    const orderKey = assigningOrder?.mongoId || assigningOrder?.orderId;
+    if (!orderKey) {
+      toast.error("Order not found");
+      return;
+    }
+    if (!selectedDeliveryBoyId) {
+      toast.error("Please select a delivery boy");
+      return;
+    }
+
+    try {
+      setIsAssigningBoy(true);
+      const response = await restaurantAPI.assignDeliveryBoy(
+        orderKey,
+        selectedDeliveryBoyId,
+      );
+      const assignedOrder =
+        response?.data?.data?.order || response?.data?.order || null;
+      const matchedBoy = deliveryBoys.find(
+        (boy) => String(boy?._id || boy?.id) === String(selectedDeliveryBoyId),
+      );
+
+      setOrders((prev) =>
+        prev.map((order) =>
+          (order.mongoId || order.orderId) === orderKey
+            ? {
+                ...order,
+                status: assignedOrder?.status || "assigned_to_boy",
+                selfDeliveryBoy:
+                  assignedOrder?.selfDelivery?.deliveryBoyId &&
+                  typeof assignedOrder.selfDelivery.deliveryBoyId === "object"
+                    ? {
+                        id:
+                          assignedOrder.selfDelivery.deliveryBoyId._id ||
+                          assignedOrder.selfDelivery.deliveryBoyId.id ||
+                          null,
+                        name:
+                          assignedOrder.selfDelivery.deliveryBoyId.name ||
+                          "Delivery Boy",
+                        phone:
+                          assignedOrder.selfDelivery.deliveryBoyId.phone || "",
+                      }
+                    : matchedBoy
+                      ? {
+                          id: matchedBoy._id || matchedBoy.id || null,
+                          name: matchedBoy.name || "Delivery Boy",
+                          phone: matchedBoy.phone || "",
+                        }
+                      : order.selfDeliveryBoy,
+              }
+            : order,
+        ),
+      );
+      toast.success("Delivery boy assigned successfully");
+      handleCloseAssignBoyModal();
+      onStatusChanged?.();
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Failed to assign delivery boy",
+      );
+    } finally {
+      setIsAssigningBoy(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -4941,6 +5325,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
               key={order.mongoId || order.orderId}
               {...order}
               onSelect={onSelectOrder}
+              onAssignBoy={order.isDineIn ? undefined : handleOpenAssignBoyModal}
               onVerifyOtp={order.isDineIn ? undefined : handleOpenOtpModal}
               isVerifyingOtp={Boolean(
                 verifyingOrderIds[order.mongoId || order.orderId],

@@ -6,6 +6,7 @@ import {
     refreshTokenController,
     requestRestaurantOtpController,
     verifyRestaurantOtpController,
+    loginDeliveryBoyController,
     logoutController,
     getMeController,
     updateAdminProfileController,
@@ -27,6 +28,7 @@ router.post('/user/verify-otp', authRateLimiter, verifyUserOtpController);
 // Restaurant OTP login
 router.post('/restaurant/request-otp', authRateLimiter, requestRestaurantOtpController);
 router.post('/restaurant/verify-otp', authRateLimiter, verifyRestaurantOtpController);
+router.post('/delivery-boy/login', authRateLimiter, loginDeliveryBoyController);
 
 // Admin login
 router.post('/admin/login', authRateLimiter, adminLoginController);

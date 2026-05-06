@@ -92,8 +92,14 @@ export async function createInitialTransaction(order) {
     const { commissionAmount } = await getRestaurantCommissionSnapshot(order);
     
     // Split logic
+    const isSelfDelivery =
+        String(order?.fulfillmentType || '').toLowerCase() === 'delivery' &&
+        (
+            String(order?.deliveryType || '').toLowerCase() === 'self' ||
+            String(order?.deliveryFleet || '').toLowerCase() === 'self'
+        );
     const totalCustomerPaid = order.pricing?.total || 0;
-    const riderShare = order.riderEarning || 0;
+    const riderShare = isSelfDelivery ? 0 : (order.riderEarning || 0);
     // Prefer commission already computed & stored on the order (source of truth for this order),
     // fallback to rule snapshot for older orders.
     const restaurantCommissionFromOrder = Number(order.pricing?.restaurantCommission);
@@ -104,11 +110,19 @@ export async function createInitialTransaction(order) {
     const restaurantNetFromOrder = Number(order.pricing?.payoutAdjustments?.netPayout);
     const restaurantNet = Number.isFinite(restaurantNetFromOrder)
         ? restaurantNetFromOrder
-        : ((order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission);
+        : (
+            isSelfDelivery
+                ? ((order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) + (order.pricing?.deliveryFee || 0) - restaurantCommission)
+                : ((order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0) - restaurantCommission)
+        );
     const platformNetProfitFromOrder = Number(order.platformProfit);
     const platformNetProfit = Number.isFinite(platformNetProfitFromOrder)
         ? platformNetProfitFromOrder
-        : ((order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare);
+        : (
+            isSelfDelivery
+                ? ((order.pricing?.platformFee || 0) + restaurantCommission)
+                : ((order.pricing?.platformFee || 0) + (order.pricing?.deliveryFee || 0) + restaurantCommission - riderShare)
+        );
 
     const transaction = new FoodTransaction({
         orderId: order._id,
@@ -283,12 +297,18 @@ export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
         }
 
         if (!settlement.isCodLike && onlineRestaurantPayout > 0.009) {
+            const isSelfDelivery =
+                Number(tx.pricing?.deliveryFee || 0) > 0 &&
+                Number(tx.amounts?.riderShare || 0) === 0;
+            const payoutSettlementType = isSelfDelivery
+                ? 'SELF_DELIVERY_ONLINE_PAYOUT'
+                : 'TAKEAWAY_ONLINE_PAYOUT';
             const existingCreditTxn = await mongoose.model('Transaction').findOne({
                 entityType: 'restaurant',
                 entityId: tx.restaurantId,
                 type: 'credit',
                 orderId: tx.orderId,
-                'metadata.settlementType': 'TAKEAWAY_ONLINE_PAYOUT',
+                'metadata.settlementType': { $in: ['TAKEAWAY_ONLINE_PAYOUT', 'SELF_DELIVERY_ONLINE_PAYOUT'] },
             })
                 .select('_id createdAt')
                 .lean();
@@ -302,7 +322,7 @@ export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
                     category: 'settlement_payout',
                     orderId: String(tx.orderId),
                     metadata: {
-                        settlementType: 'TAKEAWAY_ONLINE_PAYOUT',
+                        settlementType: payoutSettlementType,
                         paymentMethod,
                         restaurantPayout: onlineRestaurantPayout,
                     },

@@ -200,6 +200,16 @@ const toRestaurantProfile = (doc) => {
             maxGuests: Math.max(1, parseInt(doc.diningSettings?.maxGuests, 10) || 6),
             diningType: String(doc.diningSettings?.diningType || 'family-dining').trim() || 'family-dining'
         },
+        selfDelivery: {
+            enabled: doc.selfDelivery?.enabled === true,
+            radius: Math.max(0, Number(doc.selfDelivery?.radius ?? 3) || 0),
+            fee: Math.max(0, Number(doc.selfDelivery?.fee ?? 0) || 0),
+            minOrderAmount: Math.max(0, Number(doc.selfDelivery?.minOrderAmount ?? 0) || 0),
+            timings: {
+                start: String(doc.selfDelivery?.timings?.start || '10:00').trim() || '10:00',
+                end: String(doc.selfDelivery?.timings?.end || '22:00').trim() || '22:00'
+            }
+        },
         isAcceptingOrders: doc.isAcceptingOrders !== false,
         status: doc.status || null,
         approvedAt: doc.approvedAt || null,
@@ -418,7 +428,13 @@ export const registerRestaurant = async (payload, files) => {
         accountHolderName,
         accountType,
         featuredDish,
-        offer
+        offer,
+        selfDeliveryEnabled,
+        selfDeliveryRadius,
+        selfDeliveryFee,
+        selfDeliveryMinOrderAmount,
+        selfDeliveryStart,
+        selfDeliveryEnd
     } = payload;
 
     if (!ownerPhone) {
@@ -471,6 +487,11 @@ export const registerRestaurant = async (payload, files) => {
     }
     const estimatedDeliveryTimeText = String(estimatedDeliveryTime || '').trim();
     const estimatedDeliveryTimeMinutes = parseEstimatedDeliveryMinutes(estimatedDeliveryTimeText);
+    const selfDeliveryRadiusValue = Math.max(0, Number(selfDeliveryRadius ?? 3) || 0);
+    const selfDeliveryFeeValue = Math.max(0, Number(selfDeliveryFee ?? 0) || 0);
+    const selfDeliveryMinOrderAmountValue = Math.max(0, Number(selfDeliveryMinOrderAmount ?? 0) || 0);
+    const selfDeliveryStartTime = normalizeRestaurantTime(selfDeliveryStart) || '10:00';
+    const selfDeliveryEndTime = normalizeRestaurantTime(selfDeliveryEnd) || '22:00';
 
     try {
         const latNum = toFiniteNumber(latitude);
@@ -526,6 +547,16 @@ export const registerRestaurant = async (payload, files) => {
             estimatedDeliveryTime: estimatedDeliveryTime || '',
             featuredDish: featuredDish || '',
             offer: offer || '',
+            selfDelivery: {
+                enabled: selfDeliveryEnabled === true,
+                radius: selfDeliveryRadiusValue,
+                fee: selfDeliveryFeeValue,
+                minOrderAmount: selfDeliveryMinOrderAmountValue,
+                timings: {
+                    start: selfDeliveryStartTime,
+                    end: selfDeliveryEndTime
+                }
+            },
             menuImages,
             ...images
         });
@@ -594,6 +625,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'offer',
                 'estimatedDeliveryTimeMinutes',
                 'diningSettings',
+                'selfDelivery',
                 'isAcceptingOrders',
                 'status',
                 'approvedAt',
@@ -651,6 +683,7 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
                 'closingTime',
                 'openDays',
                 'diningSettings',
+                'selfDelivery',
                 'isAcceptingOrders',
                 'status',
                 'createdAt',
@@ -741,6 +774,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
                 'estimatedDeliveryTime',
                 'estimatedDeliveryTimeMinutes',
                 'diningSettings',
+                'selfDelivery',
                 'isAcceptingOrders',
                 'status',
                 'createdAt',
@@ -1447,6 +1481,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         featuredPrice: 1,
         rating: 1,
         totalRatings: 1,
+        selfDelivery: 1,
         isAcceptingOrders: 1,
         status: 1,
         pureVegRestaurant: 1,
@@ -1541,6 +1576,16 @@ export const listApprovedRestaurants = async (query = {}) => {
         openingTime: r.openingTime || null,
         closingTime: r.closingTime || null,
         openDays: Array.isArray(r.openDays) ? r.openDays : [],
+        selfDelivery: {
+            enabled: r?.selfDelivery?.enabled === true,
+            radius: Math.max(0, Number(r?.selfDelivery?.radius ?? 3) || 0),
+            fee: Math.max(0, Number(r?.selfDelivery?.fee ?? 0) || 0),
+            minOrderAmount: Math.max(0, Number(r?.selfDelivery?.minOrderAmount ?? 0) || 0),
+            timings: {
+                start: String(r?.selfDelivery?.timings?.start || '10:00').trim() || '10:00',
+                end: String(r?.selfDelivery?.timings?.end || '22:00').trim() || '22:00'
+            }
+        },
         // Keep menuImages as an array for fallbacks; allow both string and {url} on client.
         menuImages: Array.isArray(r.menuImages) ? r.menuImages : []
     }));

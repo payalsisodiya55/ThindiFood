@@ -255,6 +255,16 @@ const restaurantSchema = new mongoose.Schema(
       maxGuests: { type: Number, default: 6 },
       diningType: { type: String, default: "family-dining" },
     },
+    selfDelivery: {
+      enabled: { type: Boolean, default: false },
+      radius: { type: Number, default: 3, min: 0 },
+      fee: { type: Number, default: 0, min: 0 },
+      minOrderAmount: { type: Number, default: 0, min: 0 },
+      timings: {
+        start: { type: String, default: "10:00" },
+        end: { type: String, default: "22:00" },
+      },
+    },
     menu: {
       sections: { type: Array, default: [] },
     },

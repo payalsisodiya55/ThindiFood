@@ -30,7 +30,10 @@ export async function calculateOrderPricing(userId, dto) {
 
   const packagingFee = 0;
   const platformFee = Number(feeSettings.platformFee || 0);
-  const deliveryFee = 0;
+  const deliveryFee =
+    dto.fulfillmentType === "delivery" && dto.deliveryType === "self"
+      ? Number(dto.deliveryFee || 0)
+      : 0;
 
   const gstRate = Number(feeSettings.gstRate || 0);
   const tax =

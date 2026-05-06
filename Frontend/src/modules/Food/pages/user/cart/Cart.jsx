@@ -415,6 +415,7 @@ export default function Cart() {
   const [placedOrderId, setPlacedOrderId] = useState(null)
   const [placedOrderSnapshot, setPlacedOrderSnapshot] = useState(null)
   const [selectedAddressId, setSelectedAddressId] = useState(null)
+  const [fulfillmentMode, setFulfillmentMode] = useState("takeaway")
   const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
     try {
       if (typeof window === "undefined") return "saved"
@@ -1419,7 +1420,8 @@ export default function Cart() {
   // Calculate pricing from backend whenever cart, address, or coupon changes
   useEffect(() => {
     const calculatePricing = async () => {
-      if (cart.length === 0 || !hasSavedAddress || !resolvedPricingRestaurantId) {
+      const needsDeliveryAddress = fulfillmentMode === "delivery"
+      if (cart.length === 0 || !resolvedPricingRestaurantId || (needsDeliveryAddress && !hasSavedAddress)) {
         setPricing(null)
         return
       }
@@ -1431,7 +1433,9 @@ export default function Cart() {
             cart,
             restaurantId: resolvedPricingRestaurantId,
             deliveryAddressId: defaultAddress,
-            couponCode: appliedCoupon?.code || couponCode
+            couponCode: appliedCoupon?.code || couponCode,
+            fulfillmentMode,
+            deliveryAddress: defaultAddress,
           })
         )
 
@@ -1459,7 +1463,7 @@ export default function Cart() {
     }
 
     calculatePricing()
-  }, [cart, defaultAddress, appliedCoupon, couponCode, resolvedPricingRestaurantId, hasSavedAddress])
+  }, [cart, defaultAddress, appliedCoupon, couponCode, resolvedPricingRestaurantId, hasSavedAddress, fulfillmentMode])
 
   // Fetch wallet balance
   useEffect(() => {
@@ -1534,7 +1538,7 @@ export default function Cart() {
 
   // Use backend pricing if available, otherwise fallback to database fee settings
   const subtotal = Math.round(pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0))
-  const deliveryFee = 0
+  const deliveryFee = Math.round(pricing?.deliveryFee || 0)
   const platformFee = Math.round(pricing?.platformFee || feeSettings.platformFee)
   const gstCharges = Math.round(pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100)))
   const discount = Math.round(pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0))
@@ -1564,8 +1568,8 @@ export default function Cart() {
     ...(isTakeawayCodEnabled
       ? [{
           id: 'cash',
-          name: 'Cash on Delivery',
-          description: 'Pay at restaurant',
+          name: fulfillmentMode === "delivery" ? 'Cash on Delivery' : 'Pay at Pickup',
+          description: fulfillmentMode === "delivery" ? 'Pay when your order arrives' : 'Pay at the restaurant counter',
           icon: <Banknote className="w-5 h-5" />,
           color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
           selectedColor: 'bg-red-500 text-white'
@@ -1578,7 +1582,9 @@ export default function Cart() {
       ? "Wallet"
       : selectedPaymentMethod === "razorpay"
         ? "Online Payment"
-        : "Cash on Delivery"
+        : fulfillmentMode === "delivery"
+          ? "Cash on Delivery"
+          : "Pay at Pickup"
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"
@@ -1605,7 +1611,7 @@ export default function Cart() {
     return <Icon className={className} />
   }
 
-  const buildCalculateOrderPayload = ({ cart, restaurantId, deliveryAddressId, couponCode }) => {
+  const buildCalculateOrderPayload = ({ cart, restaurantId, deliveryAddressId, couponCode, fulfillmentMode, deliveryAddress }) => {
     const normalizedItems = cart.map(item => ({
       itemId: String(item.itemId || item.id || ""),
       name: String(item.name || ""),
@@ -1627,7 +1633,16 @@ export default function Cart() {
     const payload = {
       items: normalizedItems,
       restaurantId: restaurantId || undefined,
-      deliveryAddressId: normalizedDeliveryAddressId || undefined
+      deliveryAddressId: normalizedDeliveryAddressId || undefined,
+      fulfillmentType: fulfillmentMode === "delivery" ? "delivery" : "takeaway",
+    }
+
+    if (deliveryAddress) {
+      payload.address = deliveryAddress
+    }
+
+    if (fulfillmentMode === "delivery") {
+      payload.deliveryType = "self"
     }
 
     const normalizedCouponCode = typeof couponCode === "string" ? couponCode.trim().toUpperCase() : ""
@@ -1863,7 +1878,7 @@ export default function Cart() {
     }
 
     // Validate with backend first; only set applied if backend accepts
-    if (cart.length > 0 && hasSavedAddress) {
+    if (cart.length > 0 && (fulfillmentMode === "takeaway" || hasSavedAddress)) {
       if (!resolvedPricingRestaurantId) {
         toast.error("Restaurant details are still loading. Please try again.")
         return
@@ -1875,7 +1890,9 @@ export default function Cart() {
             cart,
             restaurantId: resolvedPricingRestaurantId,
             deliveryAddressId: defaultAddress,
-            couponCode: coupon.code
+            couponCode: coupon.code,
+            fulfillmentMode,
+            deliveryAddress: defaultAddress,
           })
         )
 
@@ -1904,8 +1921,12 @@ export default function Cart() {
       return
     }
 
-    if (cart.length === 0 || !hasSavedAddress) {
-      toast.error("Add items and delivery address first")
+    if (cart.length === 0 || (fulfillmentMode === "delivery" && !hasSavedAddress)) {
+      toast.error(
+        fulfillmentMode === "delivery"
+          ? "Add items and delivery address first"
+          : "Add items first",
+      )
       return
     }
 
@@ -1930,7 +1951,9 @@ export default function Cart() {
           cart,
           restaurantId: resolvedPricingRestaurantId,
           deliveryAddressId: defaultAddress,
-          couponCode: inputCode
+          couponCode: inputCode,
+          fulfillmentMode,
+          deliveryAddress: defaultAddress,
         })
       )
 
@@ -1972,7 +1995,7 @@ export default function Cart() {
     setManualCouponCode("")
 
     // Recalculate pricing without coupon
-    if (cart.length > 0 && hasSavedAddress) {
+    if (cart.length > 0 && (fulfillmentMode === "takeaway" || hasSavedAddress)) {
       if (!resolvedPricingRestaurantId) {
         setPricing(null)
         return
@@ -1984,7 +2007,9 @@ export default function Cart() {
             cart,
             restaurantId: resolvedPricingRestaurantId,
             deliveryAddressId: defaultAddress,
-            couponCode: undefined
+            couponCode: undefined,
+            fulfillmentMode,
+            deliveryAddress: defaultAddress,
           })
         )
 
@@ -1999,7 +2024,7 @@ export default function Cart() {
 
 
   const handlePlaceOrder = async () => {
-    if (!hasSavedAddress) {
+    if (fulfillmentMode === "delivery" && !hasSavedAddress) {
       toast.error("Please choose a delivery location to continue")
       openLocationSelector()
       return
@@ -2259,7 +2284,7 @@ export default function Cart() {
         return;
       }
 
-      const fulfillmentType = "takeaway"
+      const fulfillmentType = fulfillmentMode === "delivery" ? "delivery" : "takeaway"
       const effectivePickupDate = pickupDate || new Date().toLocaleDateString("en-CA")
       const hasPickupSelection = Boolean(isPickupScheduled && pickupTime)
       const pickupAtIso = hasPickupSelection
@@ -2293,8 +2318,9 @@ export default function Cart() {
         zoneId: zoneId || undefined,
         scheduledAt: isScheduled ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : undefined,
         fulfillmentType,
-        order_type: takeawayOrderType,
-        ...(pickupAtIso ? { pickupAt: pickupAtIso } : {}),
+        ...(fulfillmentType === "delivery" ? { deliveryType: "self" } : {}),
+        ...(fulfillmentType === "takeaway" ? { order_type: takeawayOrderType } : {}),
+        ...(fulfillmentType === "takeaway" && pickupAtIso ? { pickupAt: pickupAtIso } : {}),
       };
       // Log final order details (including paymentMethod for COD debugging)
       debugLog('?? FINAL: Sending order to backend with:', {
@@ -3057,6 +3083,35 @@ export default function Cart() {
 
               {/* Delivery Address */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
+                <div className="flex items-center gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setFulfillmentMode("takeaway")}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                      fulfillmentMode === "takeaway"
+                        ? "bg-gray-900 text-white border-gray-900"
+                        : "bg-white text-gray-700 border-gray-300"
+                    }`}
+                  >
+                    Pickup
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (restaurantData?.selfDelivery?.enabled) {
+                        setFulfillmentMode("delivery")
+                      }
+                    }}
+                    disabled={!restaurantData?.selfDelivery?.enabled}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                      fulfillmentMode === "delivery"
+                        ? "bg-[#00c87e] text-white border-[#00c87e]"
+                        : "bg-white text-gray-700 border-gray-300"
+                    } disabled:opacity-50`}
+                  >
+                    Delivery
+                  </button>
+                </div>
                 <div className="flex items-start justify-between w-full text-left">
                   <div className="flex items-start gap-4 flex-1">
                     <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-xl mt-0.5">
@@ -3065,23 +3120,31 @@ export default function Cart() {
                     <div className="flex-1">
                         <div className="flex flex-col">
                           <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
-                            Pickup at{" "}
+                            {fulfillmentMode === "delivery" ? "Deliver to" : "Pickup at "}
                             <span className="font-semibold">
-                              Restaurant
+                              {fulfillmentMode === "delivery" ? (getDisplayAddressLabel(defaultAddress?.label || "Home")) : "Restaurant"}
                             </span>
                           </p>
                           <div className="mt-1">
                             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                              {pickupRestaurantAddress}
+                              {fulfillmentMode === "delivery"
+                                ? (formatFullAddress(defaultAddress) || defaultAddress?.address || "Select a delivery location")
+                                : pickupRestaurantAddress}
                             </p>
                             <div className="mt-1 flex items-center gap-2">
-                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-green-50 text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
-                                {restaurantDistanceLabel}
-                              </span>
+                              {fulfillmentMode === "takeaway" ? (
+                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-green-50 text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
+                                  {restaurantDistanceLabel}
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                  Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(0)}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
-                        {!hasSavedAddress && (
+                        {fulfillmentMode === "delivery" && !hasSavedAddress && (
                           <p className="text-sm text-[#00c87e] mt-2 font-medium">
                             Select a delivery location to continue
                           </p>
@@ -3153,7 +3216,8 @@ export default function Cart() {
                   </div>
                   <button
                     type="button"
-                    onClick={openLocationSelector}
+                    onClick={fulfillmentMode === "delivery" ? openLocationSelector : undefined}
+                    disabled={fulfillmentMode !== "delivery"}
                     className="p-2 text-[#00c87e] bg-red-50 rounded-full hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:hover:bg-red-900/40"
                     aria-label="Open location selector"
                   >
@@ -3197,6 +3261,12 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">Item Total</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
                     </div>
+                    {fulfillmentMode === "delivery" && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{deliveryFee.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{platformFee.toFixed(2)}</span>

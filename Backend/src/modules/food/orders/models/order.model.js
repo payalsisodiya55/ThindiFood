@@ -163,7 +163,7 @@ const deliveryStateSchema = new mongoose.Schema(
 const statusHistorySchema = new mongoose.Schema(
     {
         at: { type: Date, default: Date.now },
-        byRole: { type: String, enum: ['USER', 'RESTAURANT', 'DELIVERY_PARTNER', 'ADMIN', 'SYSTEM'] },
+        byRole: { type: String, enum: ['USER', 'RESTAURANT', 'DELIVERY_PARTNER', 'DELIVERY_BOY', 'ADMIN', 'SYSTEM'] },
         byId: { type: mongoose.Schema.Types.ObjectId },
         from: { type: String },
         to: { type: String },
@@ -195,6 +195,18 @@ const deliveryVerificationSchema = new mongoose.Schema(
             required: { type: Boolean, default: false },
             verified: { type: Boolean, default: false }
         }
+    },
+    { _id: false }
+);
+
+const selfDeliverySchema = new mongoose.Schema(
+    {
+        deliveryBoyId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryBoy', default: null },
+        assignedAt: { type: Date, default: null },
+        pickedUpAt: { type: Date, default: null },
+        outForDeliveryAt: { type: Date, default: null },
+        deliveredAt: { type: Date, default: null },
+        otpVerified: { type: Boolean, default: false }
     },
     { _id: false }
 );
@@ -273,8 +285,12 @@ const orderSchema = new mongoose.Schema(
                 'confirmed',
                 'preparing',
                 'ready_for_pickup',
+                'assigned_to_boy',
+                'picked_up_by_boy',
+                'out_for_delivery',
                 'picked_up',
                 'delivered',
+                'delivered_self',
                 'cancelled_by_user',
                 'cancelled_by_restaurant',
                 'cancelled_by_admin'
@@ -299,6 +315,7 @@ const orderSchema = new mongoose.Schema(
         },
         sendCutlery: { type: Boolean, default: true },
         deliveryFleet: { type: String, default: 'standard', trim: true },
+        deliveryType: { type: String, enum: ['partner', 'self'], default: 'partner', trim: true },
         fulfillmentType: { type: String, enum: ['delivery', 'takeaway'], default: 'delivery' },
         order_type: { type: String, enum: ['IMMEDIATE', 'SCHEDULED'], default: null },
         prep_time: { type: Number, default: 0, min: 0 },
@@ -313,6 +330,10 @@ const orderSchema = new mongoose.Schema(
         deliveryOtp: { type: String, default: '', select: false },
         deliveryVerification: {
             type: deliveryVerificationSchema,
+            default: () => ({})
+        },
+        selfDelivery: {
+            type: selfDeliverySchema,
             default: () => ({})
         },
         /** Latest rider location for this specific order (GeoJSON Point) */
@@ -333,6 +354,7 @@ orderSchema.index({ orderType: 1, sessionId: 1, createdAt: -1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
 orderSchema.index({ restaurantId: 1, orderStatus: 1, createdAt: -1 });
 orderSchema.index({ 'dispatch.deliveryPartnerId': 1, orderStatus: 1 });
+orderSchema.index({ 'selfDelivery.deliveryBoyId': 1, orderStatus: 1 });
 orderSchema.index({ 'dispatch.status': 1, orderStatus: 1 });
 orderSchema.index({ 'payment.status': 1, createdAt: -1 });
 orderSchema.index({ 'payment.method': 1, createdAt: -1 });
