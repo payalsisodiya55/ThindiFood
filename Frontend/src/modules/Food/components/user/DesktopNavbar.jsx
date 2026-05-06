@@ -50,12 +50,17 @@ export default function DesktopNavbar({ showLogo = true }) {
         openLocationSelector()
     }
 
-    // Check active routes - support both /user/* and /* paths
     const isQuick = location.pathname.endsWith("/quick")
     const isDining = location.pathname === "/food/user/dining" || location.pathname === "/food/dining" || location.pathname === "/user/dining" || location.pathname === "/dining"
     const isUnder250 = location.pathname === "/food/user/under-250" || location.pathname === "/food/under-250" || location.pathname === "/user/under-250" || location.pathname === "/under-250"
     const isProfile = location.pathname.startsWith("/food/user/profile") || location.pathname.startsWith("/food/profile")
-    const isDelivery = !isDining && !isUnder250 && !isProfile && !isQuick && (location.pathname === "/food/user" || location.pathname === "/food" || (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile")))
+    const isDelivery = !isDining && !isUnder250 && !isProfile && !isQuick && (
+        location.pathname === "/food/user" || 
+        location.pathname === "/food" || 
+        location.pathname === "/user" || 
+        location.pathname === "/" ||
+        (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile"))
+    )
     const isBannerRoute =
         location.pathname === "/food/user" ||
         location.pathname === "/food" ||

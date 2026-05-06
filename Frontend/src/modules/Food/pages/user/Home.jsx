@@ -2719,7 +2719,7 @@ export default function Home() {
                   animate={{ opacity: 1, y: 0 }}
                 >
                   <div className="px-4">
-                    <div className="h-48 sm:h-56 rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
+                    <div className="h-48 sm:h-72 md:h-[360px] rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm">
                       {HeroBannerSection}
                     </div>
                   </div>
@@ -2955,7 +2955,7 @@ export default function Home() {
                               {/* Bookmark top-right */}
                               <button
                                 onClick={handleToggleFavorite}
-                                className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 ${
+                                className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 cursor-pointer ${
                                   favorite ? "bg-red-500 text-white" : "bg-white/85 text-gray-600 backdrop-blur-sm"
                                 }`}>
                                 <Bookmark className={`h-3.5 w-3.5 ${favorite ? "fill-white" : ""}`} />

@@ -289,6 +289,7 @@ export default function HubFinance() {
       restaurantOffers: Number(breakdown?.restaurantOffers || 0),
       commissionPaid: Number(breakdown?.commissionPaid || 0),
       netPayout: Number(breakdown?.netPayout || 0),
+      deliveryFee: Number(breakdown?.deliveryFee || 0),
     }
   }, [financeData])
 
@@ -961,6 +962,14 @@ export default function HubFinance() {
                             -₹{takeawayBreakdown.commissionPaid.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
+                        {takeawayBreakdown.deliveryFee > 0.009 && (
+                          <div className="flex items-center justify-between text-gray-700">
+                            <span>Delivery Fee (Self Delivery)</span>
+                            <span className="font-medium text-emerald-600">
+                              +₹{takeawayBreakdown.deliveryFee.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between border-t border-emerald-200 pt-1.5 text-gray-900">
                           <span className="font-semibold">Takeaway Net Payout</span>
                           <span className="font-semibold">

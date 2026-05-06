@@ -11,7 +11,7 @@ const HomeHeroBanner = ({
 }) => {
   if (loadingBanners) {
     return (
-      <div className="mx-4 mt-6 h-48 sm:h-64 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
+      <div className="mx-4 mt-6 h-64 sm:h-96 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
     );
   }
 
@@ -19,7 +19,7 @@ const HomeHeroBanner = ({
 
   return (
     <div className="mx-0 sm:mx-4 mt-4 sm:mt-6 mb-8 overflow-hidden">
-      <div className="relative h-48 sm:h-64 md:h-80 w-full group">
+      <div className="relative h-64 sm:h-96 md:h-[480px] w-full group">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentBannerIndex}

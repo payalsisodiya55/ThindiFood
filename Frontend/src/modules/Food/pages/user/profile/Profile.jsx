@@ -1063,7 +1063,7 @@ export default function Profile() {
 
       {/* Veg Mode Dialog */}
       <Dialog open={vegModeOpen} onOpenChange={setVegModeOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-t-3xl sm:rounded-2xl bottom-0 sm:bottom-auto fixed sm:relative translate-y-0 sm:-translate-y-1/2 p-0 overflow-hidden border-0 dark:bg-[#1a1a1a]">
+        <DialogContent className="sm:max-w-[425px] rounded-t-[2rem] sm:rounded-2xl p-0 overflow-hidden border-0 dark:bg-[#1a1a1a] bottom-0 sm:bottom-auto translate-y-0 sm:-translate-y-1/2">
           <DialogHeader className="p-6 pb-2 text-left">
             <DialogTitle className="text-xl font-bold dark:text-white">Veg Mode</DialogTitle>
             <DialogDescription className="dark:text-gray-400">
@@ -1114,7 +1114,7 @@ export default function Profile() {
 
       {/* Appearance Dialog */}
       <Dialog open={appearanceOpen} onOpenChange={setAppearanceOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-t-3xl sm:rounded-2xl bottom-0 sm:bottom-auto fixed sm:relative translate-y-0 sm:-translate-y-1/2 p-0 overflow-hidden border-0 dark:bg-[#1a1a1a]">
+        <DialogContent className="sm:max-w-[425px] rounded-t-[2rem] sm:rounded-2xl p-0 overflow-hidden border-0 dark:bg-[#1a1a1a] bottom-0 sm:bottom-auto translate-y-0 sm:-translate-y-1/2">
           <DialogHeader className="p-6 pb-2 text-left">
             <DialogTitle className="text-xl font-bold dark:text-white">Appearance</DialogTitle>
             <DialogDescription className="dark:text-gray-400">

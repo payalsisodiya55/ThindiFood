@@ -113,6 +113,12 @@ function mapFinanceOrder(tx) {
     const commission = codLike
         ? commissionFromSettlement
         : (Number.isFinite(commissionFromPricing) ? commissionFromPricing : 0);
+    const deliveryFee = Number(pricing.deliveryFee || order?.pricing?.deliveryFee || 0);
+    const riderShare = Number(tx.amounts?.riderShare || 0);
+    const fulfillmentType = String(order?.fulfillmentType || '').toLowerCase();
+    const deliveryType = String(order?.deliveryType || order?.deliveryFleet || '').toLowerCase();
+    // Self-delivery: order type is 'delivery' AND restaurant uses own fleet (no external rider)
+    const isSelfDelivery = fulfillmentType === 'delivery' && (deliveryType === 'self' || (deliveryFee > 0 && riderShare === 0));
 
     return {
         orderId: order?.orderId || tx.orderReadableId,
@@ -125,6 +131,8 @@ function mapFinanceOrder(tx) {
         totalAmount: tx.amounts?.totalCustomerPaid || 0,
         payout: walletImpact,
         commission,
+        deliveryFee,
+        isSelfDelivery,
         platformCouponDiscount: Number(pricing.platformCouponDiscount || payoutAdjustments.platformCouponDiscount || 0),
         restaurantCouponDiscount: Number(pricing.restaurantCouponDiscount || payoutAdjustments.restaurantCouponDiscount || 0),
         restaurantOfferDiscount: Number(pricing.restaurantOfferDiscount || payoutAdjustments.restaurantOfferDiscount || 0),
@@ -285,18 +293,22 @@ async function reconcileTakeawayOnlineWalletCredits(transactions = []) {
         const paymentMethod = normalizePaymentMethod(tx, tx?.orderId || {});
         if (COD_LIKE_METHODS.has(paymentMethod)) continue;
 
+        // Skip if settlement was already applied by applyWalletSettlementForFoodOrder
+        if (tx?.settlement?.walletSettlement?.applied === true) continue;
+
         const pricing = tx?.pricing || tx?.orderId?.pricing || {};
         const payoutAmount = Number(
             tx?.amounts?.restaurantShare ?? pricing?.payoutAdjustments?.netPayout ?? 0
         );
         if (payoutAmount <= 0.009) continue;
 
+        // Check BOTH settlement types to avoid duplicate credits
         const existingCreditTxn = await Transaction.findOne({
             entityType: 'restaurant',
             entityId: tx.restaurantId,
             type: 'credit',
             orderId: tx.orderId?._id || tx.orderId,
-            'metadata.settlementType': 'TAKEAWAY_ONLINE_PAYOUT',
+            'metadata.settlementType': { $in: ['TAKEAWAY_ONLINE_PAYOUT', 'SELF_DELIVERY_ONLINE_PAYOUT'] },
         })
             .select('_id createdAt')
             .lean();
@@ -505,7 +517,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
             ...financeEligibilityMatch,
             createdAt: { $gte: effectiveCurrentStart, $lte: nowWindow.end }
         })
-            .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
+            .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus fulfillmentType deliveryType deliveryFleet')
             .sort({ createdAt: -1 })
             .lean(),
         FoodTableSession.find({
@@ -586,6 +598,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
             restaurantOffers: currentCycleTakeawayOrders.reduce((sum, order) => sum + (Number(order.restaurantOfferDiscount) || 0), 0),
             commissionPaid: currentCycleTakeawayOnlineOrders.reduce((sum, order) => sum + (Number(order.commission) || 0), 0),
             netPayout: currentCycleTakeawayOrders.reduce((sum, order) => sum + (Number(order.payout) || 0), 0),
+            deliveryFee: currentCycleTakeawayOrders.reduce((sum, order) => sum + (order.isSelfDelivery ? (Number(order.deliveryFee) || 0) : 0), 0),
             totalOrders: currentCycleTakeawayOrders.length,
         },
         settlementBreakdown: {
@@ -620,7 +633,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
                 ...financeEligibilityMatch,
                 createdAt: { $gte: startDate, $lte: endDate }
             })
-                .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus')
+                .populate('orderId', 'orderId createdAt items pricing deliveryState orderStatus fulfillmentType deliveryType deliveryFleet')
                 .sort({ createdAt: -1 })
                 .lean(),
             FoodTableSession.find({

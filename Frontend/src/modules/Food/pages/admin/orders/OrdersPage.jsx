@@ -546,6 +546,14 @@ export default function OrdersPage({ statusKey = "all" }) {
 
       const paymentStatusRaw = order.payment?.status || ""
       const refundStatusRaw = order.refundStatus || order.payment?.refund?.status || ""
+      const orderStatusForPayment = String(order.orderStatus || "").toLowerCase()
+      const paymentMethodForStatus = String(order.payment?.method || "").toLowerCase()
+      const isCodPayment = paymentMethodForStatus === "cash" || paymentMethodForStatus === "cod"
+      const isOrderDelivered = orderStatusForPayment === "delivered" || orderStatusForPayment === "delivered_self"
+      const isOrderCancelled =
+        orderStatusForPayment.includes("cancelled") ||
+        orderStatusForPayment.includes("canceled")
+
       let paymentStatus = order.paymentStatus
       if (!paymentStatus) {
         const refundStatus = String(refundStatusRaw || "").toLowerCase()
@@ -555,6 +563,14 @@ export default function OrdersPage({ statusKey = "all" }) {
         else if (s === "refunded" || refundStatus === "processed") paymentStatus = "Refunded"
         else if (s === "paid" || s === "authorized" || s === "captured" || s === "settled") paymentStatus = "Paid"
         else if (s === "failed") paymentStatus = "Failed"
+        // COD-aware resolution
+        else if (isCodPayment && (s === "cod_pending" || s === "pending")) {
+          if (isOrderDelivered) paymentStatus = "Collected (COD)"
+          else if (isOrderCancelled) paymentStatus = "Not Charged"
+          else paymentStatus = "COD Pending"
+        }
+        // Non-COD fallback
+        else if (isOrderCancelled) paymentStatus = "Not Charged"
         else paymentStatus = "Pending"
       }
 

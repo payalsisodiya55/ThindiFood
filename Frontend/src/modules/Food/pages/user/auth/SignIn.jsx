@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, Link, useSearchParams } from "react-router-dom"
-import { AlertCircle, Loader2 } from "lucide-react"
+import { AlertCircle, Loader2, ArrowLeft } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
@@ -125,6 +125,15 @@ export default function SignIn() {
 
   return (
     <AnimatedPage className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] flex items-center justify-center p-4">
+      {/* Desktop-only Back Button — top left corner */}
+      <button
+        onClick={() => navigate("/food/user")}
+        className="hidden md:flex fixed top-5 left-5 z-20 items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </button>
+
       {/* Background decoration (desktop only) */}
       <div className="fixed inset-0 z-0 hidden md:block opacity-40">
         <img src={loginBanner} alt="" className="w-full h-full object-cover blur-sm" />

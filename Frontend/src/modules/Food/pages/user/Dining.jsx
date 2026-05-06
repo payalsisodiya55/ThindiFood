@@ -634,7 +634,7 @@ export default function Dining() {
           <button
             type="button"
             onClick={() => navigate("/user/dine-in/scan")}
-            className="w-full rounded-[2rem] bg-white border border-gray-100 p-5 shadow-sm flex items-center justify-between text-left"
+            className="w-full rounded-[2rem] bg-white border border-gray-100 p-5 shadow-sm flex items-center justify-between text-left cursor-pointer"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center">

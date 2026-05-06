@@ -107,6 +107,8 @@ function RestaurantDetailsContent() {
   const [highlightedDishId, setHighlightedDishId] = useState(null)
   const [loadingMenuItems, setLoadingMenuItems] = useState(true)
   const [selectedMenuCategory, setSelectedMenuCategory] = useState("all")
+  const [highlyReorderedIds, setHighlyReorderedIds] = useState(new Set())
+  const [showInfoPopover, setShowInfoPopover] = useState(false)
   const dishCardRefs = useRef({})
 
   const getLineItemIdForDish = (item, variant = null) =>
@@ -711,6 +713,48 @@ function RestaurantDetailsContent() {
 
                   return !!targetRestaurantName && candidateNames.includes(targetRestaurantName)
                 })
+
+                // Build dish order frequency map for this restaurant
+                const dishOrderCount = {}
+                allOrders.forEach((order) => {
+                  const orderRestaurantField = order?.restaurantId
+                  const candidateIds = [
+                    order?.restaurantId,
+                    orderRestaurantField?._id,
+                    orderRestaurantField?.id,
+                    orderRestaurantField?.restaurantId,
+                    order?.restaurant,
+                    order?.restaurant_id,
+                  ].map(normalize).filter(Boolean)
+                  const candidateNames = [
+                    order?.restaurantName,
+                    orderRestaurantField?.name,
+                    order?.restaurant?.name,
+                  ].map(normalize).filter(Boolean)
+
+                  const belongsToRestaurant =
+                    candidateIds.some((id) => targetRestaurantIds.has(id)) ||
+                    (!!targetRestaurantName && candidateNames.includes(targetRestaurantName))
+
+                  if (!belongsToRestaurant) return
+
+                  const items = order?.items || order?.orderItems || []
+                  items.forEach((item) => {
+                    const itemId = String(item?.itemId || item?.id || item?._id || item?.foodId || item?.productId || "").trim().toLowerCase()
+                    const itemName = normalize(item?.name || item?.itemName || item?.foodName || "")
+                    const key = itemId || itemName
+                    if (!key) return
+                    dishOrderCount[key] = (dishOrderCount[key] || 0) + (item?.quantity || 1)
+                  })
+                })
+
+                // Dishes ordered 2+ times = highly reordered; fallback to top 5 if none qualify
+                const sortedEntries = Object.entries(dishOrderCount).sort((a, b) => b[1] - a[1])
+                const qualifiedIds = new Set(sortedEntries.filter(([, c]) => c >= 2).map(([id]) => id))
+                if (qualifiedIds.size === 0 && sortedEntries.length > 0) {
+                  sortedEntries.slice(0, 5).forEach(([id]) => qualifiedIds.add(id))
+                }
+                setHighlyReorderedIds(qualifiedIds)
               } catch (orderCheckError) {
                 debugWarn("Could not verify previous orders for recommendation section:", orderCheckError)
               }
@@ -1362,7 +1406,7 @@ function RestaurantDetailsContent() {
     if (filters.sortBy) count++
     if (filters.vegNonVeg) count++
     if (filters.highlyReordered) count++
-    if (filters.spicy) count++
+
     return count
   }
 
@@ -1392,6 +1436,13 @@ function RestaurantDetailsContent() {
 
   // Handle bookmark click
   const handleBookmarkClick = (item) => {
+    // Check authentication first
+    if (!isModuleAuthenticated('user')) {
+      toast.error("Please login to save favourites")
+      navigate('/user/auth/login', { state: { from: window.location.pathname } })
+      return
+    }
+
     const restaurantId = restaurant?.restaurantId || restaurant?._id || restaurant?.id
     if (!restaurantId) {
       toast.error("Restaurant information is missing")
@@ -1691,8 +1742,18 @@ function RestaurantDetailsContent() {
         if (item.foodType !== "Non-Veg") return false
       }
 
-      if (filters.highlyReordered && !isRecommendedItem(item)) return false
-      if (filters.spicy && item.isSpicy !== true) return false
+      if (filters.highlyReordered) {
+        if (highlyReorderedIds.size > 0) {
+          const norm = (v) => String(v || "").trim().toLowerCase()
+          const itemId = norm(item?.id || item?._id || "")
+          const itemName = norm(item?.name || "")
+          if (!highlyReorderedIds.has(itemId) && !highlyReorderedIds.has(itemName)) return false
+        } else {
+          // No order history — fall back to isRecommended
+          if (!isRecommendedItem(item)) return false
+        }
+      }
+
 
       return true
     })
@@ -1839,8 +1900,7 @@ function RestaurantDetailsContent() {
     vegMode === true ||
     filters.sortBy ||
     filters.vegNonVeg ||
-    filters.highlyReordered ||
-    filters.spicy
+    filters.highlyReordered
   )
 
   const filteredSections = useMemo(
@@ -1849,7 +1909,20 @@ function RestaurantDetailsContent() {
   )
 
   useEffect(() => {
-    if (!hasActiveMenuFilters) return
+    if (!hasActiveMenuFilters) {
+      // Filters cleared — expand ALL sections so items are visible
+      const nextExpanded = new Set()
+      if (restaurant?.menuSections) {
+        restaurant.menuSections.forEach((section, originalIndex) => {
+          nextExpanded.add(originalIndex)
+          toRenderableArray(section?.subsections).forEach((_, subIndex) => {
+            nextExpanded.add(`${originalIndex}-${subIndex}`)
+          })
+        })
+      }
+      setExpandedSections(nextExpanded)
+      return
+    }
 
     const nextExpanded = new Set()
     filteredSections.forEach(({ section, originalIndex }) => {
@@ -1860,7 +1933,7 @@ function RestaurantDetailsContent() {
     })
 
     setExpandedSections(nextExpanded)
-  }, [filteredSections, hasActiveMenuFilters])
+  }, [filteredSections, hasActiveMenuFilters, restaurant?.menuSections])
 
   useEffect(() => {
     if (!restaurant?.menuSections || !targetDishId) return
@@ -2085,7 +2158,73 @@ function RestaurantDetailsContent() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{restaurant?.name || "Unknown Restaurant"}</h1>
-              <Info className="h-5 w-5 text-gray-400" />
+              <div className="relative group/info">
+                <Info 
+                  className={`h-5 w-5 cursor-help transition-colors ${showInfoPopover ? "text-[#00c87e]" : "text-gray-400 hover:text-[#00c87e]"}`} 
+                  onClick={() => setShowInfoPopover(!showInfoPopover)}
+                />
+                
+                {/* Overlay for mobile to close when clicking outside */}
+                {showInfoPopover && (
+                  <div 
+                    className="fixed inset-0 z-[90] md:hidden" 
+                    onClick={() => setShowInfoPopover(false)}
+                  />
+                )}
+
+                <div className={`absolute left-1/2 -translate-x-1/2 md:left-0 md:translate-x-0 top-full mt-3 w-[85vw] max-w-72 p-4 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-100 dark:border-gray-800 transition-all duration-300 z-[100] transform 
+                  ${showInfoPopover 
+                    ? "opacity-100 visible translate-y-0" 
+                    : "opacity-0 invisible -translate-y-2 md:group-hover/info:opacity-100 md:group-hover/info:visible md:group-hover/info:translate-y-0"
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="pb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">Restaurant Info</h3>
+                        <Info className="h-3.5 w-3.5 text-[#00c87e]" />
+                      </div>
+                      <button 
+                        onClick={() => setShowInfoPopover(false)}
+                        className="md:hidden p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                      >
+                        <X className="h-4 w-4 text-gray-500" />
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2.5">
+                        <div className="mt-0.5 p-1 rounded-md bg-gray-50 dark:bg-gray-800 shrink-0">
+                          <MapPin className="h-3 w-3 text-gray-500" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">Outlet Address</p>
+                          <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                            {restaurant?.location || "Address not available"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {(restaurant?.onboarding?.step3?.fssai?.registrationNumber || restaurant?.licenseNo) && (
+                        <div className="flex items-start gap-2.5 pt-2 border-t border-gray-50 dark:border-gray-800">
+                          <div className="mt-0.5 p-1 rounded-md bg-gray-50 dark:bg-gray-800 shrink-0">
+                            <img src={fssaiLogo} className="h-3 w-auto object-contain" alt="FSSAI" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">License Number</p>
+                            <p className="text-[11px] font-bold text-gray-700 dark:text-gray-200">
+                              {restaurant?.onboarding?.step3?.fssai?.registrationNumber || restaurant?.licenseNo}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Arrow pointer (Top) */}
+                  <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 md:left-4 md:translate-x-0 w-3 h-3 bg-white dark:bg-[#1a1a1a] rotate-45 border-l border-t border-gray-100 dark:border-gray-800" />
+                </div>
+              </div>
             </div>
             <div className="flex flex-col items-end">
               <Badge className="bg-green-600 text-white mb-1 flex items-center gap-1 px-2 py-1">
@@ -2257,19 +2396,31 @@ function RestaurantDetailsContent() {
         {/* Menu Items Section */}
         {restaurant?.menuSections && Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0 && (
           <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-6 sm:py-8 md:py-10 lg:py-12 space-y-6 md:space-y-8 lg:space-y-10">
-            {filteredSections.length === 0 && hasActiveMenuFilters && (
-              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-5 py-8 text-center">
-                <p className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">
-                  No dishes match the selected filters.
-                </p>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  Clear filters or try a different combination.
-                </p>
-              </div>
-            )}
             {filteredSections.length === 0 && (
-              <div className="rounded-3xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center text-sm text-gray-500">
-                No dishes match the current filters.
+              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-5 py-10 text-center shadow-sm">
+                <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-gray-300" />
+                </div>
+                <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white">
+                  No dishes match {hasActiveMenuFilters ? "your filters" : "the current menu"}.
+                </p>
+                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-[250px] mx-auto">
+                  {hasActiveMenuFilters 
+                    ? "Try clearing some filters or using a different combination to find what you're looking for."
+                    : "This restaurant doesn't seem to have any items in this category right now."}
+                </p>
+                {hasActiveMenuFilters && (
+                  <button
+                    onClick={() => setFilters({
+                      sortBy: null,
+                      vegNonVeg: null,
+                      highlyReordered: false,
+                    })}
+                    className="mt-5 text-sm font-bold text-[#00c87e] hover:underline"
+                  >
+                    Clear all filters
+                  </button>
+                )}
               </div>
             )}
 
@@ -3050,7 +3201,8 @@ function RestaurantDetailsContent() {
                       </div>
                     </div>
 
-                    {/* Top picks */}
+                    {/* Top picks — only show when user is logged in */}
+                    {isModuleAuthenticated('user') && (
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Top picks:</h3>
                       <button
@@ -3069,26 +3221,8 @@ function RestaurantDetailsContent() {
                         <span className="font-medium">Highly reordered</span>
                       </button>
                     </div>
+                    )}
 
-                    {/* Dietary preference */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Dietary preference:</h3>
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            spicy: !prev.spicy,
-                          }))
-                        }
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all w-full ${filters.spicy
-                          ? "border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                          }`}
-                      >
-                        <Flame className="h-4 w-4" />
-                        <span className="font-medium">Spicy</span>
-                      </button>
-                    </div>
                   </div>
 
                   {/* Bottom Action Bar */}
@@ -3099,7 +3233,6 @@ function RestaurantDetailsContent() {
                           sortBy: null,
                           vegNonVeg: null,
                           highlyReordered: false,
-                          spicy: false,
                         })
                       }}
                       className="text-red-600 dark:text-red-400 font-medium text-sm hover:text-red-700 dark:hover:text-red-500"

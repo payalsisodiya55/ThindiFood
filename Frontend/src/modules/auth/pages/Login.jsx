@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react"
 import { motion } from "framer-motion"
 import { Routes, Route, Navigate, Link, useNavigate } from "react-router-dom"
-import { Phone, ShieldCheck, Loader2, User } from "lucide-react"
+import { Phone, ShieldCheck, Loader2, User, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI, userAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
@@ -301,7 +301,14 @@ export default function UnifiedOTPFastLogin() {
   ]
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0">
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col pt-0 sm:pt-0 relative">
+      {/* Back Button - Desktop Web View Only */}
+      <button
+        onClick={() => navigate("/")}
+        className="hidden md:flex fixed top-8 left-8 z-50 items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 shadow-xl text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-all hover:-translate-y-0.5 active:scale-95"
+      >
+        <ArrowLeft className="w-6 h-6" />
+      </button>
       {/* Top Banner section - Thindi Green */}
       <div className="w-full bg-[#00c87e] dark:bg-[#00c87e] rounded-b-[2.5rem] p-6 text-center text-white relative overflow-hidden shadow-2xl">
         <div className="absolute inset-0 bg-white/5 opacity-50 blur-3xl rounded-full -top-1/2 -left-1/4 animate-pulse" />

@@ -724,8 +724,15 @@ Order again from this restaurant in the ${companyName} app.`
             const rawPaymentStatus = String(order.payment?.status || "").trim().toLowerCase()
             const displayPaymentStatus = (() => {
               if (!rawPaymentStatus) return ""
+              // Never show a payment badge for cancelled orders
+              if (isCancelled) return ""
+              // COD delivered → paid physically
               if (isCodOrder && isDelivered && (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")) {
                 return "paid"
+              }
+              // Active COD order → show clean label instead of raw 'cod_pending'
+              if (isCodOrder && (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")) {
+                return "cod"
               }
               return rawPaymentStatus
             })()
@@ -734,9 +741,11 @@ Order again from this restaurant in the ${companyName} app.`
                 ? 'bg-green-100 text-green-700'
                 : displayPaymentStatus === 'failed'
                   ? 'bg-red-100 text-red-700'
-                  : displayPaymentStatus === 'pending' || displayPaymentStatus === 'cod_pending'
+                  : displayPaymentStatus === 'cod'
                     ? 'bg-yellow-100 text-yellow-700'
-                    : 'bg-gray-100 text-gray-700'
+                    : displayPaymentStatus === 'pending'
+                      ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-gray-100 text-gray-700'
             // Prefer food image from first item; fallback to restaurant image, then generic food photo
             const firstItemImage = order.items?.[0]?.image
             const restaurantImage = firstItemImage
@@ -932,7 +941,7 @@ Order again from this restaurant in the ${companyName} app.`
                               order.payment.method === 'razorpay' ? 'Online' :
                                 order.payment.method || 'N/A'}
                         </span>
-                        {displayPaymentStatus && !isCancelled && (
+                        {displayPaymentStatus && (
                           <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-medium ${paymentStatusClasses}`}>
                             {displayPaymentStatus}
                           </span>

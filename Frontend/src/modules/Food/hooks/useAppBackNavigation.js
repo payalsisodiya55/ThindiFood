@@ -13,10 +13,41 @@ const toFoodPath = (value) => {
 }
 
 const getNormalizedUserPath = (pathname) => {
-  if (pathname.startsWith("/food")) {
-    return pathname.slice(5) || "/"
+  let normalized = pathname || "/"
+  if (normalized.startsWith("/food")) {
+    normalized = normalized.slice(5) || "/"
   }
-  return pathname || "/"
+  
+  if (!normalized.startsWith("/")) normalized = "/" + normalized
+  
+  // If it's a root-level user route that doesn't start with /user, /admin, or /restaurant, prefix with /user
+  if (
+    !normalized.startsWith("/user") && 
+    !normalized.startsWith("/admin") && 
+    !normalized.startsWith("/restaurant") &&
+    (
+      normalized.startsWith("/dining") || 
+      normalized.startsWith("/restaurants") || 
+      normalized.startsWith("/quick") ||
+      normalized.startsWith("/cart") ||
+      normalized.startsWith("/orders") ||
+      normalized.startsWith("/profile") ||
+      normalized.startsWith("/wallet") ||
+      normalized.startsWith("/notifications") ||
+      normalized.startsWith("/collections") ||
+      normalized.startsWith("/categories") ||
+      normalized.startsWith("/category") ||
+      normalized.startsWith("/product") ||
+      normalized.startsWith("/offers") ||
+      normalized.startsWith("/gourmet") ||
+      normalized.startsWith("/coffee") ||
+      normalized.startsWith("/address-selector")
+    )
+  ) {
+    return "/user" + normalized
+  }
+
+  return normalized
 }
 
 const resolveBackPath = ({ pathname, search, state }) => {
@@ -60,6 +91,15 @@ const resolveBackPath = ({ pathname, search, state }) => {
       return "/food/user/under-250"
     }
     return explicitBackPath || "/food/user"
+  }
+
+  if (
+    normalizedPath === "/user/dining/book-confirmation" ||
+    normalizedPath === "/user/dining/book-success"
+  ) {
+    const slug = state?.restaurant?.slug || state?.slug
+    if (slug) return `/food/user/dining/book/${slug}`
+    return "/food/user/dining"
   }
 
   if (/^\/user\/dining\/book(\/|$)/.test(normalizedPath)) {
