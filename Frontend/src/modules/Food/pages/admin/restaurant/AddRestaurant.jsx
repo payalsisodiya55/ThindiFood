@@ -39,7 +39,21 @@ const sanitizeIfsc = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, "
 const sanitizeGst = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15)
 const normalizeName = (value = "") => value.replace(/\s+/g, " ").trimStart()
 const hasLetters = (value = "") => /[A-Za-z]/.test(value)
-const getTodayLocalYMD = () => new Date().toISOString().split("T")[0]
+const FSSAI_VALIDITY_YEARS = 5
+const formatDateToLocalYMD = (date) => {
+  if (!date || Number.isNaN(date.getTime?.())) return ""
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+const getTodayLocalYMD = () => formatDateToLocalYMD(new Date())
+const getLocalDateYearsFromToday = (yearsToAdd) => {
+  const today = new Date()
+  return new Date(today.getFullYear() + yearsToAdd, today.getMonth(), today.getDate())
+}
+const getMaxFssaiExpiryLocalYMD = () =>
+  formatDateToLocalYMD(getLocalDateYearsFromToday(FSSAI_VALIDITY_YEARS))
 const timeStringToMinutes = (value = "") => {
   const raw = String(value || "").trim()
   if (!/^\d{2}:\d{2}$/.test(raw)) return null
@@ -465,6 +479,7 @@ export default function AddRestaurant() {
     if (step3.fssaiNumber?.trim() && !FSSAI_REGEX.test(step3.fssaiNumber.trim())) errors.push("FSSAI number must be 14 digits")
     if (!step3.fssaiExpiry?.trim()) errors.push("FSSAI expiry date is required")
     if (step3.fssaiExpiry?.trim() && step3.fssaiExpiry < getTodayLocalYMD()) errors.push("FSSAI expiry date cannot be in the past")
+    if (step3.fssaiExpiry?.trim() && step3.fssaiExpiry > getMaxFssaiExpiryLocalYMD()) errors.push(`FSSAI expiry date cannot be more than ${FSSAI_VALIDITY_YEARS} years from today`)
     if (!step3.fssaiImage) errors.push("FSSAI image is required")
     if (step3.gstRegistered) {
       if (!step3.gstNumber?.trim()) errors.push("GST number is required when GST registered")
@@ -1387,8 +1402,18 @@ export default function AddRestaurant() {
             <Input
               type="date"
               value={step3.fssaiExpiry || ""}
-              onChange={(e) => setStep3({ ...step3, fssaiExpiry: e.target.value })}
+              onChange={(e) => {
+                const nextValue = e.target.value
+                if (nextValue && nextValue > getMaxFssaiExpiryLocalYMD()) {
+                  toast.error(`Please select an FSSAI expiry date within ${FSSAI_VALIDITY_YEARS} years from today`, {
+                    duration: 4000,
+                  })
+                  return
+                }
+                setStep3({ ...step3, fssaiExpiry: nextValue })
+              }}
               min={getTodayLocalYMD()}
+              max={getMaxFssaiExpiryLocalYMD()}
               autoComplete="off"
               className="bg-white text-sm"
             />

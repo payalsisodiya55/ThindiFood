@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { Label } from "@food/components/ui/label"
-import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut } from "lucide-react"
+import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut, Eye, EyeOff } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { Calendar } from "@food/components/ui/calendar"
 import {
@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@food/components/ui/select"
+import { Switch } from "@food/components/ui/switch"
 import { restaurantAPI, zoneAPI, api } from "@food/api"
 import { MobileTimePicker } from "@mui/x-date-pickers/MobileTimePicker"
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
@@ -47,13 +48,16 @@ const PAN_NUMBER_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
 const GST_NUMBER_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
 const FSSAI_NUMBER_REGEX = /^\d{14}$/
 const BANK_ACCOUNT_NUMBER_REGEX = /^\d{9,18}$/
-const IFSC_CODE_REGEX = /^[A-Z0-9]{11}$/
+const IFSC_CODE_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/
 const ACCOUNT_HOLDER_NAME_REGEX = /^[A-Za-z ]+$/
 const GST_LEGAL_NAME_REGEX = /^[A-Za-z ]+$/
 const FEATURED_DISH_NAME_REGEX = /^[A-Za-z ]+$/
-const LOCAL_IMAGE_FILE_ACCEPT = ".jpg,.jpeg,.png,.webp,.heic,.heif"
-const GALLERY_IMAGE_ACCEPT =
-  ".jpg,.jpeg,.png,.webp,.heic,.heif,image/jpeg,image/png,image/webp,image/heic,image/heif"
+const LOCAL_IMAGE_FILE_ACCEPT = ".jpg,.jpeg,.png,.webp"
+const GALLERY_IMAGE_ACCEPT = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
+const MAX_MENU_IMAGES_COUNT = 10
+const VALID_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
+const INDIAN_PRIMARY_CONTACT_REGEX = /^(?:[6-9]\d{9}|0\d{10}|\d{10,11})$/
 let onboardingFileCache = {
   step2: {
     menuImages: [],
@@ -79,6 +83,24 @@ const isUploadableFile = (value) => {
 }
 
 const normalizePhoneDigits = (value) => String(value || "").replace(/\D/g, "").slice(-15)
+const normalizePrimaryContactNumber = (value) =>
+  String(value || "").replace(/\D/g, "").slice(0, 11)
+
+const isValidIndianPrimaryContactNumber = (value) =>
+  INDIAN_PRIMARY_CONTACT_REGEX.test(normalizePrimaryContactNumber(value))
+
+const validateFile = (file) => {
+  if (!file) return false
+  if (!VALID_IMAGE_TYPES.includes(file.type.toLowerCase())) {
+    toast.error(`${file.name} format is not supported. Please use JPG, PNG or WEBP.`)
+    return false
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) {
+    toast.error(`${file.name} is too large (${(file.size / (1024 * 1024)).toFixed(2)}MB). Max size is 5MB.`)
+    return false
+  }
+  return true
+}
 
 const getVerifiedPhoneFromStoredRestaurant = () => {
   try {
@@ -121,6 +143,7 @@ const normalizeZoneIdValue = (value) => {
   return String(value?._id || value?.id || value || "")
 }
 
+const FSSAI_VALIDITY_YEARS = 5
 const getTodayLocalYMD = () => formatDateToLocalYMD(new Date())
 
 // Helper functions for localStorage
@@ -281,6 +304,21 @@ const parseLocalYMDDate = (value) => {
   return new Date(year, month - 1, day)
 }
 
+const getLocalDateYearsFromToday = (yearsToAdd) => {
+  const today = new Date()
+  return new Date(today.getFullYear() + yearsToAdd, today.getMonth(), today.getDate())
+}
+
+const getMaxFssaiExpiryLocalYMD = () =>
+  formatDateToLocalYMD(getLocalDateYearsFromToday(FSSAI_VALIDITY_YEARS))
+
+const isFssaiExpiryOutsideAllowedRange = (value) => {
+  if (!value || typeof value !== "string") return false
+  const today = getTodayLocalYMD()
+  const maxExpiry = getMaxFssaiExpiryLocalYMD()
+  return value < today || value > maxExpiry
+}
+
 const normalizeZoneCoordinates = (zone) =>
   Array.isArray(zone?.coordinates)
     ? zone.coordinates
@@ -383,6 +421,8 @@ export default function RestaurantOnboarding() {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
+  const [accountNumberError, setAccountNumberError] = useState("")
+  const [showConfirmAccountNumber, setShowConfirmAccountNumber] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
@@ -851,6 +891,8 @@ export default function RestaurantOnboarding() {
     }
     if (!step1.primaryContactNumber?.trim()) {
       errors.push("Primary contact number is required")
+    } else if (!isValidIndianPrimaryContactNumber(step1.primaryContactNumber)) {
+      errors.push("Please enter a valid Indian mobile or landline number")
     }
     if (!step1.zoneId?.trim()) {
       errors.push("Service zone is required")
@@ -931,6 +973,15 @@ export default function RestaurantOnboarding() {
     if (!step2.closingTime?.trim()) {
       errors.push("Closing time is required")
     }
+    const normalizedOpeningTime = normalizeTimeValue(step2.openingTime)
+    const normalizedClosingTime = normalizeTimeValue(step2.closingTime)
+    if (
+      normalizedOpeningTime &&
+      normalizedClosingTime &&
+      normalizedOpeningTime === normalizedClosingTime
+    ) {
+      errors.push("Opening time and closing time cannot be the same")
+    }
     if (!step2.openDays || step2.openDays.length === 0) {
       errors.push("Please select at least one open day")
     }
@@ -984,6 +1035,8 @@ export default function RestaurantOnboarding() {
       errors.push("FSSAI expiry date is required")
     } else if (step3.fssaiExpiry < getTodayLocalYMD()) {
       errors.push("FSSAI expiry date cannot be in the past")
+    } else if (step3.fssaiExpiry > getMaxFssaiExpiryLocalYMD()) {
+      errors.push(`FSSAI expiry date cannot be more than ${FSSAI_VALIDITY_YEARS} years from today`)
     }
     // Validate FSSAI image - must be a File or existing URL
     if (!step3.fssaiImage) {
@@ -1039,11 +1092,14 @@ export default function RestaurantOnboarding() {
     }
     if (step3.accountNumber && step3.confirmAccountNumber && step3.accountNumber !== step3.confirmAccountNumber) {
       errors.push("Account number and confirmation do not match")
+      setAccountNumberError("Account numbers do not match")
+    } else {
+      setAccountNumberError("")
     }
     if (!step3.ifscCode?.trim()) {
       errors.push("IFSC code is required")
     } else if (!IFSC_CODE_REGEX.test(step3.ifscCode.trim().toUpperCase())) {
-      errors.push("IFSC code must contain exactly 11 alphanumeric characters")
+      errors.push("Invalid IFSC code format (e.g., SBIN0001234)")
     }
     if (!step3.accountHolderName?.trim()) {
       errors.push("Account holder name is required")
@@ -1247,7 +1303,7 @@ export default function RestaurantOnboarding() {
             <Input
               value={step1.restaurantName || ""}
               onChange={(e) => setStep1({ ...step1, restaurantName: e.target.value })}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="Customers will see this name"
               disabled={!isEditing}
             />
@@ -1258,23 +1314,22 @@ export default function RestaurantOnboarding() {
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: true })}
-                className={`px-3 py-1.5 text-xs rounded-full border ${
+                className={`px-3 py-1.5 text-xs rounded-full border cursor-pointer ${
                   step1.pureVegRestaurant === true
                     ? "bg-[#00c87e] text-white border-[#00c87e]"
                     : "bg-white text-gray-700 border-gray-200"
-
-                } ${!isEditing ? "opacity-70 cursor-not-allowed" : ""}`}
+                } ${!isEditing ? "opacity-70 !cursor-not-allowed" : ""}`}
               >
                 Yes, Pure Veg
               </button>
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: false })}
-                className={`px-3 py-1.5 text-xs rounded-full border ${
+                className={`px-3 py-1.5 text-xs rounded-full border cursor-pointer ${
                   step1.pureVegRestaurant === false
                     ? "bg-gray-900 text-white border-gray-900"
                     : "bg-white text-gray-700 border-gray-200"
-                } ${!isEditing ? "opacity-70 cursor-not-allowed" : ""}`}
+                } ${!isEditing ? "opacity-70 !cursor-not-allowed" : ""}`}
               >
                 No, Mixed Menu
               </button>
@@ -1297,7 +1352,7 @@ export default function RestaurantOnboarding() {
             <Input
               value={step1.ownerName || ""}
               onChange={(e) => setStep1({ ...step1, ownerName: e.target.value })}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="Owner full name"
               disabled={!isEditing}
             />
@@ -1308,7 +1363,7 @@ export default function RestaurantOnboarding() {
               type="email"
               value={step1.ownerEmail || ""}
               onChange={(e) => setStep1({ ...step1, ownerEmail: e.target.value })}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="owner@example.com"
               disabled={!isEditing}
             />
@@ -1319,7 +1374,7 @@ export default function RestaurantOnboarding() {
               value={step1.ownerPhone || ""}
               onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
               readOnly={Boolean(verifiedPhoneNumber)}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="+91 98XXXXXX"
               disabled={!isEditing}
             />
@@ -1334,17 +1389,17 @@ export default function RestaurantOnboarding() {
           <Input
             value={step1.primaryContactNumber || ""}
             onChange={(e) => {
-              const val = e.target.value.replace(/\D/g, "").slice(0, 10)
+              const val = normalizePrimaryContactNumber(e.target.value)
               setStep1({ ...step1, primaryContactNumber: val })
             }}
             onKeyDown={(e) => {
               const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"]
               if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault()
-              if (/^\d$/.test(e.key) && (step1.primaryContactNumber || "").length >= 10) e.preventDefault()
+              if (/^\d$/.test(e.key) && (step1.primaryContactNumber || "").length >= 11) e.preventDefault()
             }}
             onPaste={(e) => {
               e.preventDefault()
-              const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 10)
+              const pasted = normalizePrimaryContactNumber(e.clipboardData.getData("text"))
               setStep1({ ...step1, primaryContactNumber: pasted })
             }}
             inputMode="numeric"
@@ -1403,8 +1458,7 @@ export default function RestaurantOnboarding() {
             <Label className="text-xs text-gray-700">Search location</Label>
             <Input
               ref={locationSearchInputRef}
-              className="mt-1 bg-white text-sm text-black! dark:text-white! placeholder:text-gray-500 dark:placeholder:text-gray-400 caret-black dark:caret-white"
-              style={{ color: "#000", WebkitTextFillColor: "#000" }}
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="Start typing your restaurant address..."
             />
             <p className="text-[11px] text-gray-500 mt-1">
@@ -1419,7 +1473,7 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, addressLine1: e.target.value },
               })
             }
-            className="bg-white text-sm"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Shop no. / building no. (optional)"
           />
           <Input
@@ -1430,7 +1484,7 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, addressLine2: e.target.value },
               })
             }
-            className="bg-white text-sm"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Floor / tower (optional)"
           />
           <Input
@@ -1441,7 +1495,7 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, landmark: e.target.value },
               })
             }
-            className="bg-white text-sm"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Nearby landmark (optional)"
           />
           <Input
@@ -1700,11 +1754,33 @@ export default function RestaurantOnboarding() {
               onChange={(e) => {
                 const files = Array.from(e.target.files || [])
                 if (!files.length) return
-                debugLog('?? Menu images selected:', files.length, 'files')
-                setStep2((prev) => ({
-                  ...prev,
-                  menuImages: [...(prev.menuImages || []), ...files], // Append new files to existing ones
-                }))
+                
+                const currentCount = step2.menuImages.length
+                const validFiles = []
+                
+                for (const file of files) {
+                  if (validateFile(file)) {
+                    validFiles.push(file)
+                  }
+                }
+                
+                if (validFiles.length + currentCount > MAX_MENU_IMAGES_COUNT) {
+                  toast.error(`Maximum ${MAX_MENU_IMAGES_COUNT} menu images allowed.`)
+                  const remaining = MAX_MENU_IMAGES_COUNT - currentCount
+                  if (remaining <= 0) {
+                    e.target.value = ''
+                    return
+                  }
+                  validFiles.splice(remaining)
+                }
+                
+                if (validFiles.length > 0) {
+                  debugLog('?? Valid menu images selected:', validFiles.length)
+                  setStep2((prev) => ({
+                    ...prev,
+                    menuImages: [...(prev.menuImages || []), ...validFiles],
+                  }))
+                }
                 // Reset input to allow selecting same file again
                 e.target.value = ''
               }}
@@ -1844,7 +1920,7 @@ export default function RestaurantOnboarding() {
             ref={profileImageInputRef}
             onChange={(e) => {
               const file = e.target.files?.[0] || null
-              if (file) {
+              if (file && validateFile(file)) {
                 debugLog('?? Profile image selected:', file.name)
                 setStep2((prev) => ({
                   ...prev,
@@ -1888,7 +1964,7 @@ export default function RestaurantOnboarding() {
             <span>Open days</span>
           </Label>
           <p className="text-[11px] text-gray-500">
-            Select the days your restaurant accepts delivery orders.
+            Select the days your restaurant accepts orders.
           </p>
           <div className="mt-1 grid grid-cols-7 gap-1.5 sm:gap-2">
             {daysOfWeek.map((day) => {
@@ -1898,11 +1974,11 @@ export default function RestaurantOnboarding() {
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`aspect-square flex items-center justify-center rounded-md text-[11px] font-medium ${active ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
+                  className={`flex h-10 items-center justify-center rounded-md px-1 text-[10px] font-medium leading-none sm:h-11 sm:text-xs ${active ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
                     }`}
 
                 >
-                  {day.charAt(0)}
+                  {day}
                 </button>
               )
             })}
@@ -1918,7 +1994,7 @@ export default function RestaurantOnboarding() {
         <h2 className="text-lg font-semibold text-black">PAN details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">PAN number</Label>
+            <Label className="text-xs text-gray-700">PAN number*</Label>
             <Input
               value={step3.panNumber || ""}
               onChange={(e) => {
@@ -1928,12 +2004,12 @@ export default function RestaurantOnboarding() {
                   .slice(0, 10)
                 setStep3({ ...step3, panNumber: normalized })
               }}
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="ABCDE1234F"
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">PAN Card Holder Name</Label>
+            <Label className="text-xs text-gray-700">PAN Card Holder Name*</Label>
             <Input
               value={step3.nameOnPan || ""}
               onChange={(e) =>
@@ -1942,12 +2018,12 @@ export default function RestaurantOnboarding() {
                   nameOnPan: e.target.value.replace(/[^A-Za-z ]/g, ""),
                 })
               }
-              className="mt-1 bg-white text-sm text-black placeholder-black"
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             />
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">PAN image</Label>
+          <Label className="text-xs text-gray-700">PAN image*</Label>
           <Button
             type="button"
             variant="outline"
@@ -1962,9 +2038,13 @@ export default function RestaurantOnboarding() {
             accept={GALLERY_IMAGE_ACCEPT}
             className="hidden"
             ref={panImageInputRef}
-            onChange={(e) =>
-              setStep3((prev) => ({ ...prev, panImage: e.target.files?.[0] || null }))
-            }
+            onChange={(e) => {
+              const file = e.target.files?.[0] || null
+              if (file && validateFile(file)) {
+                setStep3((prev) => ({ ...prev, panImage: file }))
+              }
+              e.target.value = ''
+            }}
           />
           {step3.panImage && (
             <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
@@ -2020,51 +2100,67 @@ export default function RestaurantOnboarding() {
         </div>
         {step3.gstRegistered && (
           <div className="space-y-3">
-            <Input
-              value={step3.gstNumber || ""}
-              onChange={(e) =>
-                setStep3({
-                  ...step3,
-                  gstNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15),
-                })
-              }
-              className="bg-white text-sm"
-              placeholder="GST number (15 characters)"
-            />
-            <Input
-              value={step3.gstLegalName || ""}
-              onChange={(e) =>
-                setStep3({
-                  ...step3,
-                  gstLegalName: e.target.value.replace(/[^A-Za-z ]/g, ""),
-                })
-              }
-              className="bg-white text-sm"
-              placeholder="Legal name"
-            />
-            <Input
-              value={step3.gstAddress || ""}
-              onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })}
-              className="bg-white text-sm"
-              placeholder="Registered address"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full text-xs"
-              onClick={() => gstImageInputRef.current?.click()}
-            >
-              <Upload className="w-4 h-4 mr-1.5" />
-              Upload
-            </Button>
+            <div>
+              <Label className="text-xs text-gray-700">GST number*</Label>
+              <Input
+                value={step3.gstNumber || ""}
+                onChange={(e) =>
+                  setStep3({
+                    ...step3,
+                    gstNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15),
+                  })
+                }
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                placeholder="GST number (15 characters)"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-700">GST legal name*</Label>
+              <Input
+                value={step3.gstLegalName || ""}
+                onChange={(e) =>
+                  setStep3({
+                    ...step3,
+                    gstLegalName: e.target.value.replace(/[^A-Za-z ]/g, ""),
+                  })
+                }
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                placeholder="Legal name"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-700">GST registered address*</Label>
+              <Input
+                value={step3.gstAddress || ""}
+                onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })}
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                placeholder="Registered address"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-700">GST image*</Label>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-2 w-full text-xs"
+                onClick={() => gstImageInputRef.current?.click()}
+              >
+                <Upload className="w-4 h-4 mr-1.5" />
+                Upload
+              </Button>
+            </div>
             <input
               type="file"
               accept={GALLERY_IMAGE_ACCEPT}
               className="hidden"
               ref={gstImageInputRef}
-              onChange={(e) =>
-                setStep3((prev) => ({ ...prev, gstImage: e.target.files?.[0] || null }))
-              }
+              onChange={(e) => {
+                const file = e.target.files?.[0] || null
+                if (file && validateFile(file)) {
+                  setStep3((prev) => ({ ...prev, gstImage: file }))
+                }
+                e.target.value = ''
+              }}
             />
             {step3.gstImage && (
               <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
@@ -2099,16 +2195,19 @@ export default function RestaurantOnboarding() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            value={step3.fssaiNumber || ""}
-            onChange={(e) =>
-              setStep3({ ...step3, fssaiNumber: e.target.value.replace(/\D/g, "").slice(0, 14) })
-            }
-            className="bg-white text-sm"
-            placeholder="FSSAI number (14 digits)"
-          />
           <div>
-            <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date</Label>
+            <Label className="text-xs text-gray-700">FSSAI number*</Label>
+            <Input
+              value={step3.fssaiNumber || ""}
+              onChange={(e) =>
+                setStep3({ ...step3, fssaiNumber: e.target.value.replace(/\D/g, "").slice(0, 14) })
+              }
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              placeholder="FSSAI number (14 digits)"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date*</Label>
             <Popover open={isFssaiCalendarOpen} onOpenChange={setIsFssaiCalendarOpen}>
               <PopoverTrigger asChild>
                 <button
@@ -2132,14 +2231,27 @@ export default function RestaurantOnboarding() {
                 <div className="bg-white rounded-md shadow-lg border border-gray-200">
                   <Calendar
                     mode="single"
+                    captionLayout="dropdown"
+                    fromYear={new Date().getFullYear()}
+                    toYear={getLocalDateYearsFromToday(FSSAI_VALIDITY_YEARS).getFullYear()}
                     selected={parseLocalYMDDate(step3.fssaiExpiry)}
-                    disabled={(date) => formatDateToLocalYMD(date) < getTodayLocalYMD()}
+                    disabled={(date) => {
+                      const formattedDate = formatDateToLocalYMD(date)
+                      return isFssaiExpiryOutsideAllowedRange(formattedDate)
+                    }}
                     onSelect={(date) => {
-                      if (date && formatDateToLocalYMD(date) >= getTodayLocalYMD()) {
-                        const formattedDate = formatDateToLocalYMD(date)
+                      if (!date) return
+
+                      const formattedDate = formatDateToLocalYMD(date)
+                      if (!isFssaiExpiryOutsideAllowedRange(formattedDate)) {
                         setStep3({ ...step3, fssaiExpiry: formattedDate })
                         setIsFssaiCalendarOpen(false)
+                        return
                       }
+
+                      toast.error(`Please select an FSSAI expiry date within ${FSSAI_VALIDITY_YEARS} years from today`, {
+                        duration: 4000,
+                      })
                     }}
                     initialFocus
                     classNames={{
@@ -2151,23 +2263,30 @@ export default function RestaurantOnboarding() {
             </Popover>
           </div>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full text-xs"
-          onClick={() => fssaiImageInputRef.current?.click()}
-        >
-          <Upload className="w-4 h-4 mr-1.5" />
-          Upload
-        </Button>
+        <div>
+          <Label className="text-xs text-gray-700">FSSAI image*</Label>
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-2 w-full text-xs"
+            onClick={() => fssaiImageInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-1.5" />
+            Upload
+          </Button>
+        </div>
         <input
           type="file"
           accept={GALLERY_IMAGE_ACCEPT}
           className="hidden"
           ref={fssaiImageInputRef}
-          onChange={(e) =>
-            setStep3((prev) => ({ ...prev, fssaiImage: e.target.files?.[0] || null }))
-          }
+          onChange={(e) => {
+            const file = e.target.files?.[0] || null
+            if (file && validateFile(file)) {
+              setStep3((prev) => ({ ...prev, fssaiImage: file }))
+            }
+            e.target.value = ''
+          }}
         />
         {step3.fssaiImage && (
           <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
@@ -2200,62 +2319,108 @@ export default function RestaurantOnboarding() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">Bank account details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            value={step3.accountNumber || ""}
-            onChange={(e) =>
-              setStep3({ ...step3, accountNumber: e.target.value.replace(/\D/g, "").slice(0, 18) })
-            }
-            className="bg-white text-sm"
-            placeholder="Account number"
-          />
-          <Input
-            value={step3.confirmAccountNumber || ""}
-            onChange={(e) =>
-              setStep3({
-                ...step3,
-                confirmAccountNumber: e.target.value.replace(/\D/g, "").slice(0, 18),
-              })
-            }
-            className="bg-white text-sm"
-            placeholder="Re-enter account number"
-          />
+          <div>
+            <Label className="text-xs text-gray-700">Account number*</Label>
+            <Input
+              value={step3.accountNumber || ""}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "").slice(0, 18)
+                setStep3({ ...step3, accountNumber: val })
+                if (val === step3.confirmAccountNumber) setAccountNumberError("")
+              }}
+              onBlur={() => {
+                if (step3.accountNumber && step3.confirmAccountNumber && step3.accountNumber !== step3.confirmAccountNumber) {
+                  setAccountNumberError("Account numbers do not match")
+                }
+              }}
+              className={`mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 ${accountNumberError ? "border-red-500 focus:ring-red-500" : ""}`}
+              placeholder="Account number"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700">Confirm account number*</Label>
+            <div className="relative mt-1">
+              <Input
+                type={showConfirmAccountNumber ? "text" : "password"}
+                value={step3.confirmAccountNumber || ""}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 18)
+                  setStep3({ ...step3, confirmAccountNumber: val })
+                  if (val === step3.accountNumber) setAccountNumberError("")
+                }}
+                onBlur={() => {
+                  if (step3.accountNumber && step3.confirmAccountNumber && step3.accountNumber !== step3.confirmAccountNumber) {
+                    setAccountNumberError("Account numbers do not match")
+                  }
+                }}
+                className={`bg-white text-sm text-gray-900 placeholder:text-gray-400 pr-10 ${accountNumberError ? "border-red-500 focus:ring-red-500" : ""}`}
+                placeholder="Re-enter account number"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmAccountNumber(!showConfirmAccountNumber)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                aria-label={showConfirmAccountNumber ? "Hide account number" : "Show account number"}
+              >
+                {showConfirmAccountNumber ? (
+                  <EyeOff className="w-4 h-4" />
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+            {accountNumberError && (
+              <p className="text-[10px] text-red-500 mt-1 font-medium">
+                {accountNumberError}
+              </p>
+            )}
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <Label className="text-xs text-gray-700">IFSC code*</Label>
+            <Input
+              value={step3.ifscCode || ""}
+              onChange={(e) =>
+                setStep3({
+                  ...step3,
+                  ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11),
+                })
+              }
+              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              placeholder="e.g. SBIN0001234"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-gray-700">Account type*</Label>
+            <Select
+              value={step3.accountType || ""}
+              onValueChange={(value) => setStep3({ ...step3, accountType: value })}
+            >
+              <SelectTrigger className="mt-1 bg-white text-sm text-gray-900">
+                <SelectValue placeholder="Select account type" className="placeholder:text-gray-400" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Saving">Saving</SelectItem>
+                <SelectItem value="Current">Current</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div>
+          <Label className="text-xs text-gray-700">Account holder name*</Label>
           <Input
-            value={step3.ifscCode || ""}
+            value={step3.accountHolderName || ""}
             onChange={(e) =>
               setStep3({
                 ...step3,
-                ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11),
+                accountHolderName: e.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 50),
               })
             }
-            className="bg-white text-sm"
-            placeholder="IFSC code"
+            className="mt-1 bg-white text-sm"
+            placeholder="Account holder name"
           />
-          <Select
-            value={step3.accountType || ""}
-            onValueChange={(value) => setStep3({ ...step3, accountType: value })}
-          >
-            <SelectTrigger className="bg-white text-sm">
-              <SelectValue placeholder="Select account type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Saving">Saving</SelectItem>
-              <SelectItem value="Current">Current</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
-        <Input
-          value={step3.accountHolderName || ""}
-          onChange={(e) =>
-            setStep3({
-              ...step3,
-              accountHolderName: e.target.value.replace(/[^A-Za-z ]/g, ""),
-            })
-          }
-          className="bg-white text-sm"
-          placeholder="Account holder name"
-        />
       </section>
     </div>
   )
@@ -2274,8 +2439,8 @@ export default function RestaurantOnboarding() {
             value={step4.estimatedDeliveryTime || ""}
             onValueChange={(value) => setStep4({ ...step4, estimatedDeliveryTime: value })}
           >
-            <SelectTrigger className="mt-1 bg-white text-sm">
-              <SelectValue placeholder="Select estimated timing" />
+            <SelectTrigger className="mt-1 bg-white text-sm text-gray-900">
+              <SelectValue placeholder="Select estimated timing" className="placeholder:text-gray-400" />
             </SelectTrigger>
             <SelectContent>
               {[
@@ -2303,7 +2468,7 @@ export default function RestaurantOnboarding() {
                 featuredDish: e.target.value.replace(/[^A-Za-z ]/g, ""),
               })
             }
-            className="mt-1 bg-white text-sm"
+            className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="e.g., Butter Chicken Special"
           />
         </div>
@@ -2313,7 +2478,7 @@ export default function RestaurantOnboarding() {
           <Input
             value={step4.offer || ""}
             onChange={(e) => setStep4({ ...step4, offer: e.target.value })}
-            className="mt-1 bg-white text-sm"
+            className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="e.g., Flat 50 Rs. OFF on Order Above Rs.199"
           />
           <p className="text-[11px] text-gray-500 mt-1">
@@ -2329,20 +2494,19 @@ export default function RestaurantOnboarding() {
                 Turn this on if your restaurant uses its own delivery boys.
               </p>
             </div>
-            <input
-              type="checkbox"
+            <Switch
               checked={step4.selfDeliveryEnabled === true}
-              onChange={(e) =>
+              onCheckedChange={(checked) =>
                 setStep4({
                   ...step4,
-                  selfDeliveryEnabled: e.target.checked,
+                  selfDeliveryEnabled: checked,
                 })
               }
-              className="mt-1 h-4 w-4"
+              className="mt-1 data-[state=checked]:bg-[#00c87e]"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-opacity ${!step4.selfDeliveryEnabled ? "opacity-40 pointer-events-none" : ""}`}>
             <div>
               <Label className="text-xs text-gray-700">Self Delivery Radius (km)</Label>
               <Input
@@ -2355,7 +2519,8 @@ export default function RestaurantOnboarding() {
                     selfDeliveryRadius: e.target.value,
                   })
                 }
-                className="mt-1 bg-white text-sm"
+                disabled={!step4.selfDeliveryEnabled}
+                className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
                 placeholder="3"
               />
             </div>
@@ -2372,7 +2537,8 @@ export default function RestaurantOnboarding() {
                     selfDeliveryFee: e.target.value,
                   })
                 }
-                className="mt-1 bg-white text-sm"
+                disabled={!step4.selfDeliveryEnabled}
+                className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
                 placeholder="0"
               />
             </div>
@@ -2389,7 +2555,8 @@ export default function RestaurantOnboarding() {
                     selfDeliveryMinOrderAmount: e.target.value,
                   })
                 }
-                className="mt-1 bg-white text-sm"
+                disabled={!step4.selfDeliveryEnabled}
+                className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
                 placeholder="0"
               />
             </div>
@@ -2406,7 +2573,8 @@ export default function RestaurantOnboarding() {
                       selfDeliveryStart: e.target.value,
                     })
                   }
-                  className="mt-1 bg-white text-sm"
+                  disabled={!step4.selfDeliveryEnabled}
+                  className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
                 />
               </div>
               <div>
@@ -2420,7 +2588,8 @@ export default function RestaurantOnboarding() {
                       selfDeliveryEnd: e.target.value,
                     })
                   }
-                  className="mt-1 bg-white text-sm"
+                  disabled={!step4.selfDeliveryEnabled}
+                  className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -2544,6 +2713,3 @@ export default function RestaurantOnboarding() {
     </LocalizationProvider>
   )
 }
-
-
-

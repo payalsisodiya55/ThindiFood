@@ -13,9 +13,23 @@ const errorHandler = (err, req, res, next) => {
         logger.error(`[${requestId}] ${err.stack}`);
     }
 
-    res.status(statusCode).json({
+    let finalStatusCode = statusCode;
+    let finalMessage = message;
+
+    // Handle Multer specific errors
+    if (err.code === 'LIMIT_FILE_SIZE') {
+        finalStatusCode = 400;
+        finalMessage = 'File size is too large. Max limit is 10MB per file.';
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+        finalStatusCode = 400;
+        finalMessage = 'Too many files uploaded at once.';
+    } else if (err.message === 'Invalid file type. Only JPG, PNG and WEBP are allowed.') {
+        finalStatusCode = 400;
+    }
+
+    res.status(finalStatusCode).json({
         success: false,
-        error: message
+        error: finalMessage
     });
 };
 

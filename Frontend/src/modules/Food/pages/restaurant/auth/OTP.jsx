@@ -372,8 +372,8 @@ export default function RestaurantOTP() {
         </div>
 
         <div className="text-center space-y-1.5 sm:space-y-2 mb-6 sm:mb-10">
-          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight lowercase">
-            verify otp
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Verify OTP
           </h2>
           <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-relaxed">
             Sent to <span className="text-[#00c87e] font-black">{contactInfo}</span>
