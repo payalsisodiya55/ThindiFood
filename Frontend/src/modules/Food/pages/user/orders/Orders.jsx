@@ -657,7 +657,12 @@ Order again from this restaurant in the ${companyName} app.`
         <div className="px-4 py-8 text-center">
           <p className="text-gray-600">You haven't placed any orders yet</p>
           <Link to="/user">
-            <button className="mt-4 font-medium" style={{ color: RED }}>Start Ordering</button>
+            <button
+                className="mt-4 px-6 py-2.5 rounded-lg text-white text-sm font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: RED }}
+              >
+                Start Ordering
+              </button>
           </Link>
         </div>
       </div>
