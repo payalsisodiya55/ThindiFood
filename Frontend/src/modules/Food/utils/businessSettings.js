@@ -8,6 +8,45 @@ import { API_ENDPOINTS } from "@food/api/config";
 import { publicGetOnce } from "@food/api";
 
 const SETTINGS_KEY = 'food_business_settings';
+const DEFAULT_CUSTOMER_TITLE = 'Thindi Food';
+const DEFAULT_RESTAURANT_TITLE = 'Thindi Restaurant';
+const DEFAULT_ADMIN_TITLE = 'Thindi Admin';
+
+const getCurrentPathname = (pathname) => {
+  if (typeof pathname === "string" && pathname.trim()) {
+    return pathname.trim();
+  }
+
+  if (typeof window === "undefined") return "/";
+
+  const hashPath = String(window.location?.hash || "");
+  if (hashPath.startsWith("#/")) {
+    return hashPath.slice(1);
+  }
+
+  return String(window.location?.pathname || "/");
+};
+
+export const resolveWindowTitle = (companyName, pathname) => {
+  const currentPath = getCurrentPathname(pathname).toLowerCase();
+
+  if (currentPath.startsWith("/admin")) {
+    return DEFAULT_ADMIN_TITLE;
+  }
+
+  if (
+    currentPath.startsWith("/food/restaurant") ||
+    currentPath.startsWith("/restaurant")
+  ) {
+    return DEFAULT_RESTAURANT_TITLE;
+  }
+
+  if (typeof companyName === "string" && companyName.trim()) {
+    return companyName.trim();
+  }
+
+  return DEFAULT_CUSTOMER_TITLE;
+};
 
 // Initialize from localStorage immediately so it's available for components on mount
 let cachedSettings = (() => {
@@ -96,9 +135,9 @@ export const updateFavicon = (url) => {
 /**
  * Update page title
  */
-export const updateTitle = (companyName) => {
-  if (companyName && typeof document !== 'undefined') {
-    document.title = companyName;
+export const updateTitle = (companyName, pathname) => {
+  if (typeof document !== 'undefined') {
+    document.title = resolveWindowTitle(companyName, pathname);
   }
 };
 

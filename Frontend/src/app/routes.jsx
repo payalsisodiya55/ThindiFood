@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Suspense, lazy, useEffect } from 'react'
 import { AppShellSkeleton } from '@food/components/ui/loading-skeletons'
+import { getCachedSettings, updateTitle } from '@food/utils/businessSettings'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
@@ -46,6 +47,11 @@ const AppRoutes = () => {
       localStorage.setItem(NATIVE_LAST_ROUTE_KEY, route)
     }
   }, [location.pathname, location.search])
+
+  useEffect(() => {
+    const companyName = getCachedSettings()?.companyName
+    updateTitle(companyName, location.pathname)
+  }, [location.pathname])
 
   return (
     <Routes>

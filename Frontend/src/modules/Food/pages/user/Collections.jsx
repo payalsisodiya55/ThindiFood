@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { ArrowLeft, Plus, Share2, UtensilsCrossed, Store, X } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
@@ -21,7 +21,6 @@ const gradientColors = [
 ]
 
 export default function Collections() {
-  const navigate = useNavigate()
   const goBack = useAppBackNavigation()
   const [activeTab, setActiveTab] = useState("delivery")
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -115,6 +114,9 @@ export default function Collections() {
               <Link
                 key={collection.id}
                 to={collection.isDefault ? "/user/profile/favorites" : `/user/collections/${collection.id}`}
+                state={{
+                  backTo: "/food/user/collections",
+                }}
                 className="block"
               >
                 <div className={`${getGradientColor(index)} rounded-2xl p-4 h-48 relative overflow-hidden group`}>

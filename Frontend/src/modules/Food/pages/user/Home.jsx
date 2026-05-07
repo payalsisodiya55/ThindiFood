@@ -746,7 +746,7 @@ export default function Home() {
         id: "collection",
         label: "Collections",
         image: exploreCollection,
-        href: "/food/user/profile/favorites",
+        href: "/food/user/collections",
       },
     ];
 
@@ -767,7 +767,11 @@ export default function Home() {
           image:
             normalizeImageUrl(apiItem.imageUrl || apiItem.image || "") ||
             item.image,
-          href,
+          href:
+            (apiItem.type || item.id)?.toString().toLowerCase() === "collections" ||
+            item.label?.toLowerCase() === "collections"
+              ? "/food/user/collections"
+              : href,
         };
       }
       return item;
@@ -2759,7 +2763,15 @@ export default function Home() {
                         whileHover={{ y: -5 }}
                         whileTap={{ scale: 0.95 }}
                       >
-                        <Link to={item.href} className="flex-shrink-0">
+                        <Link
+                          to={item.href}
+                          state={
+                            item.label?.toLowerCase() === "collections"
+                              ? { backTo: "/food/user" }
+                              : undefined
+                          }
+                          className="flex-shrink-0"
+                        >
                           <div className="flex flex-col items-center gap-3 w-24 sm:w-28 group">
                             <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-white dark:bg-[#1a1a1a] flex items-center justify-center shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08)] group-hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12)] transition-all duration-500 overflow-hidden p-3 border border-gray-100 dark:border-gray-800 group-hover:border-red-500/30">
                               <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${index % 3 === 0 ? 'from-red-500 to-red-600' : index % 3 === 1 ? 'from-blue-500 to-purple-500' : 'from-green-500 to-teal-500'}`} />
