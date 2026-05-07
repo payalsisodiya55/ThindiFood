@@ -21,6 +21,8 @@ export default function UnifiedOTPFastLogin() {
   const [loading, setLoading] = useState(false)
   const [otpSent, setOtpSent] = useState(false)
   const [resendTimer, setResendTimer] = useState(0)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  const [termsError, setTermsError] = useState(false)
   const navigate = useNavigate()
   const submitting = useRef(false)
 
@@ -57,6 +59,12 @@ export default function UnifiedOTPFastLogin() {
 
   const handleSendOTP = async (e) => {
     e.preventDefault()
+    if (!termsAccepted) {
+      setTermsError(true)
+      toast.error("Please accept the Terms of Service & Privacy Policy to continue.")
+      return
+    }
+    setTermsError(false)
     const phone = normalizedPhone()
     if (phone.length !== 10) {
       toast.error("Please enter a valid 10-digit phone number")
@@ -498,10 +506,12 @@ export default function UnifiedOTPFastLogin() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (step === 1 && !termsAccepted)}
               className={`w-full py-4 rounded-2xl font-black text-lg transition-all relative overflow-hidden shadow-xl ${
                 loading
                   ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
+                  : step === 1 && !termsAccepted
+                  ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed text-gray-400 dark:text-gray-500"
                   : "bg-[#00c87e] hover:bg-[#00b371] text-white hover:shadow-2xl hover:shadow-[#00c87e]/30 active:scale-[0.98] hover:-translate-y-0.5"
               }`}
             >
@@ -515,10 +525,45 @@ export default function UnifiedOTPFastLogin() {
         </div>
 
         <div className="mt-6 text-center space-y-2">
-           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
-             By continuing, you agree to our <br />
-             <Link to="/food/user/profile/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Terms of Service</Link> & <Link to="/food/user/profile/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Privacy Policy</Link>
-           </p>
+           {/* Consent checkbox — only shown on step 1 */}
+           {step === 1 && (
+             <label className={`flex items-start gap-2.5 cursor-pointer text-left px-1 ${termsError ? 'animate-shake' : ''}`}>
+               <input
+                 type="checkbox"
+                 checked={termsAccepted}
+                 onChange={(e) => {
+                   setTermsAccepted(e.target.checked)
+                   if (e.target.checked) setTermsError(false)
+                 }}
+                 className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 accent-[#00c87e] cursor-pointer"
+                 aria-label="Accept Terms of Service and Privacy Policy"
+               />
+               <span className={`text-[11px] font-semibold leading-relaxed ${termsError ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                 I agree to the{' '}
+                 <Link
+                   to="/food/user/profile/terms"
+                   onClick={(e) => e.stopPropagation()}
+                   className="text-gray-900 dark:text-white underline hover:text-[#00c87e] transition-colors"
+                 >
+                   Terms of Service
+                 </Link>
+                 {' & '}
+                 <Link
+                   to="/food/user/profile/privacy"
+                   onClick={(e) => e.stopPropagation()}
+                   className="text-gray-900 dark:text-white underline hover:text-[#00c87e] transition-colors"
+                 >
+                   Privacy Policy
+                 </Link>
+               </span>
+             </label>
+           )}
+           {step !== 1 && (
+             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
+               By continuing, you agree to our <br />
+               <Link to="/food/user/profile/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Terms of Service</Link> & <Link to="/food/user/profile/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Privacy Policy</Link>
+             </p>
+           )}
         </div>
       </div>
     </div>
