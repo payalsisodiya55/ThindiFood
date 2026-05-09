@@ -415,7 +415,15 @@ export default function Cart() {
   const [placedOrderId, setPlacedOrderId] = useState(null)
   const [placedOrderSnapshot, setPlacedOrderSnapshot] = useState(null)
   const [selectedAddressId, setSelectedAddressId] = useState(null)
-  const [fulfillmentMode, setFulfillmentMode] = useState("takeaway")
+  const [fulfillmentMode, setFulfillmentMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem("thindi_fulfillment_mode")
+      // Only switch to delivery if the restaurant supports self-delivery (checked later via restaurantData)
+      return saved === "delivery" ? "delivery" : "takeaway"
+    } catch {
+      return "takeaway"
+    }
+  })
   const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
     try {
       if (typeof window === "undefined") return "saved"
@@ -2604,8 +2612,20 @@ export default function Cart() {
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
-                  Pickup at <span className="font-semibold">Restaurant</span>
-                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">{pickupRestaurantAddress}</span>
+                  {fulfillmentMode === "delivery" ? (
+                    <>
+                      Deliver to <span className="font-semibold">{getDisplayAddressLabel(defaultAddress?.label || "Home")}</span>
+                    </>
+                  ) : (
+                    <>
+                      Pickup at <span className="font-semibold">Restaurant</span>
+                    </>
+                  )}
+                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">
+                    {fulfillmentMode === "delivery"
+                      ? (formatFullAddress(defaultAddress) || defaultAddress?.address || "Select a delivery location")
+                      : pickupRestaurantAddress}
+                  </span>
                 </p>
               </div>
             </div>
@@ -2630,7 +2650,7 @@ export default function Cart() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#00c87e] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-[#00c87e]"></span>
             </span>
-            Takeaway Order
+            {fulfillmentMode === "delivery" ? "Delivery Order" : "Takeaway Order"}
           </p>
         </div>
 
@@ -2933,7 +2953,7 @@ export default function Cart() {
 
                     <div className="mt-2">
                       <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        Takeaway timing
+                        {fulfillmentMode === "delivery" ? "Delivery timing" : "Takeaway timing"}
                       </p>
                       <div className="mt-3 inline-flex rounded-full bg-slate-100 p-1 dark:bg-gray-800">
                         <button
@@ -2974,7 +2994,7 @@ export default function Cart() {
                         {takeawayScheduleWindow?.availableAfterOpening
                           ? takeawayScheduleWindow.message
                           : !isPickupScheduled
-                          ? `Ready in about ${Math.max(takeawayPrepTimeMinutes, 0)} mins`
+                          ? `${fulfillmentMode === "delivery" ? "Delivered" : "Ready"} in about ${Math.max(takeawayPrepTimeMinutes, 0)} mins`
                           : takeawayScheduleWindow?.hasSlots
                             ? "Up to 3 hours ahead • 5 min slots"
                             : "No slots available for today"}

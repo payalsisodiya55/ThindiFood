@@ -31,6 +31,24 @@ export default function DesktopNavbar({ showLogo = true }) {
     const [hasScrolledPastBanner, setHasScrolledPastBanner] = useState(false)
     const navRef = useRef(null)
     const cartCount = getCartCount()
+    const [fulfillmentMode, setFulfillmentModeLocal] = useState(
+        () => localStorage.getItem("thindi_fulfillment_mode") || "pickup"
+    )
+
+    // Sync with Home.jsx via CustomEvent
+    useEffect(() => {
+        const handler = (e) => {
+            if (e.detail?.mode) setFulfillmentModeLocal(e.detail.mode)
+        }
+        window.addEventListener("thindi:fulfillmentMode", handler)
+        return () => window.removeEventListener("thindi:fulfillmentMode", handler)
+    }, [])
+
+    const handleFulfillmentChange = (mode) => {
+        setFulfillmentModeLocal(mode)
+        localStorage.setItem("thindi_fulfillment_mode", mode)
+        window.dispatchEvent(new CustomEvent("thindi:fulfillmentMode", { detail: { mode } }))
+    }
 
 
     // Show area if available, otherwise show city
@@ -54,12 +72,13 @@ export default function DesktopNavbar({ showLogo = true }) {
     const isDining = location.pathname === "/food/user/dining" || location.pathname === "/food/dining" || location.pathname === "/user/dining" || location.pathname === "/dining"
     const isUnder250 = location.pathname === "/food/user/under-250" || location.pathname === "/food/under-250" || location.pathname === "/user/under-250" || location.pathname === "/under-250"
     const isProfile = location.pathname.startsWith("/food/user/profile") || location.pathname.startsWith("/food/profile")
-    const isDelivery = !isDining && !isUnder250 && !isProfile && !isQuick && (
+    const isDeliveryPage = location.pathname === "/food/user/delivery" || location.pathname === "/food/delivery" || location.pathname === "/user/delivery"
+    const isDelivery = !isDining && !isUnder250 && !isProfile && !isQuick && !isDeliveryPage && (
         location.pathname === "/food/user" || 
         location.pathname === "/food" || 
         location.pathname === "/user" || 
         location.pathname === "/" ||
-        (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile"))
+        (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile") && !location.pathname.includes("/delivery"))
     )
     const isBannerRoute =
         location.pathname === "/food/user" ||
@@ -310,13 +329,36 @@ export default function DesktopNavbar({ showLogo = true }) {
                             {/* Takeaway Tab */}
                             <Link
                                 to="/food/user"
-                                className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${isDelivery
-                                    ? "text-[#00c87e] dark:text-[#00c87e]"
-                                    : "text-gray-600 dark:text-gray-400 hover:text-[#00c87e] dark:hover:text-[#00c87e]"
-                                    }`}
+                                onClick={() => handleFulfillmentChange("pickup")}
+                                className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${
+                                    isDelivery
+                                        ? "text-[#00c87e] dark:text-[#00c87e]"
+                                        : "text-gray-600 dark:text-gray-400 hover:text-[#00c87e] dark:hover:text-[#00c87e]"
+                                }`}
                             >
                                 <span className="text-sm font-bold tracking-wide uppercase">Takeaway</span>
                                 {isDelivery && (
+                                    <motion.div
+                                        layoutId="navIndicator"
+                                        className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[#00c87e] dark:bg-[#00c87e]"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: 0.3 }}
+                                    />
+                                )}
+                            </Link>
+
+                            {/* Delivery Tab */}
+                            <Link
+                                to="/food/user/delivery"
+                                className={`flex flex-col items-center gap-1 px-2 py-1 transition-colors relative group ${
+                                    isDeliveryPage
+                                        ? "text-[#00c87e] dark:text-[#00c87e]"
+                                        : "text-gray-600 dark:text-gray-400 hover:text-[#00c87e] dark:hover:text-[#00c87e]"
+                                }`}
+                            >
+                                <span className="text-sm font-bold tracking-wide uppercase">Delivery</span>
+                                {isDeliveryPage && (
                                     <motion.div
                                         layoutId="navIndicator"
                                         className="absolute -bottom-3 left-0 right-0 h-0.5 bg-[#00c87e] dark:bg-[#00c87e]"

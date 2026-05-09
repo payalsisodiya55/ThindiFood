@@ -475,7 +475,21 @@ export default function Home() {
   const [loadingLandingConfig, setLoadingLandingConfig] = useState(true);
   const [restaurantsData, setRestaurantsData] = useState([]);
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
-  const [fulfillmentMode, setFulfillmentMode] = useState("pickup");
+  const [fulfillmentMode, setFulfillmentModeRaw] = useState(
+    () => localStorage.getItem("thindi_fulfillment_mode") || "pickup"
+  );
+  // Wrap setter to keep navbar in sync
+  const setFulfillmentMode = (mode) => {
+    setFulfillmentModeRaw(mode);
+    localStorage.setItem("thindi_fulfillment_mode", mode);
+    window.dispatchEvent(new CustomEvent("thindi:fulfillmentMode", { detail: { mode } }));
+  };
+  // Listen for navbar toggle changes
+  useEffect(() => {
+    const handler = (e) => { if (e.detail?.mode) setFulfillmentModeRaw(e.detail.mode); };
+    window.addEventListener("thindi:fulfillmentMode", handler);
+    return () => window.removeEventListener("thindi:fulfillmentMode", handler);
+  }, []);
   const [realCategories, setRealCategories] = useState([]);
   const [loadingRealCategories, setLoadingRealCategories] = useState(true);
   const [menuCategories, setMenuCategories] = useState([]);
@@ -2812,7 +2826,7 @@ export default function Home() {
             animate={{ opacity: 1 }}>
             <div className="px-4 mb-3 lg:mb-4">
               <div className="flex flex-col gap-3 lg:gap-4">
-                <div className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-sm w-fit">
+                <div className="md:hidden inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white p-1 shadow-sm w-fit">
                   <button
                     type="button"
                     onClick={() => setFulfillmentMode("pickup")}
