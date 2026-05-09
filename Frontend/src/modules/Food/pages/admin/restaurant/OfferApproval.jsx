@@ -257,8 +257,8 @@ export default function OfferApproval() {
                       <tr key={offer._id || offer.id} className="hover:bg-gray-50">
                         <td className="px-3 py-3 font-semibold">{index + 1}</td>
                         <td className="px-3 py-3">
-                          <div className="font-semibold text-gray-900">{offer.restaurantName}</div>
-                          <div className="text-gray-500 text-xs">{offer.restaurantId}</div>
+                          <div className="font-semibold text-gray-900">{offer.restaurantName || "Restaurant"}</div>
+                          <div className="text-gray-500 text-[10px]">{offer.restaurantId}</div>
                         </td>
                         <td className="px-3 py-3 font-semibold">{offer.title}</td>
                         <td className="px-3 py-3">

@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { RestaurantOffer } from '../models/restaurantOffer.model.js';
+import { FoodRestaurant } from '../models/restaurant.model.js';
 
 const ensureObjectId = (value, message) => {
     if (!value || !mongoose.Types.ObjectId.isValid(String(value))) {
@@ -12,11 +13,24 @@ const ensureObjectId = (value, message) => {
 const normalizeOffer = (doc) => {
     if (!doc) return null;
     const obj = doc.toObject ? doc.toObject() : { ...doc };
+    
+    // Handle populated restaurantId
+    let restaurantId = obj.restaurantId;
+    let restaurantName = obj.restaurantName || '';
+    
+    if (obj.restaurantId && typeof obj.restaurantId === 'object' && obj.restaurantId._id) {
+        restaurantId = String(obj.restaurantId._id);
+        restaurantName = obj.restaurantId.restaurantName || '';
+    } else {
+        restaurantId = obj.restaurantId ? String(obj.restaurantId) : null;
+    }
+
     return {
         ...obj,
         id: String(obj._id),
         _id: String(obj._id),
-        restaurantId: obj.restaurantId ? String(obj.restaurantId) : null,
+        restaurantId,
+        restaurantName,
     };
 };
 
@@ -119,6 +133,7 @@ export const getAllRestaurantOffersAdmin = async (query = {}) => {
     }
 
     const offers = await RestaurantOffer.find(filter)
+        .populate('restaurantId', 'restaurantName')
         .sort({ createdAt: -1 })
         .lean();
     return { offers: offers.map(normalizeOffer) };
