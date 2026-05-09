@@ -289,7 +289,7 @@ export default function Orders() {
                 price: item.price || 0,
                 image: item.image || null,
                 description: item.description || null,
-                isVeg: item.isVeg !== undefined ? item.isVeg : (item.category === 'veg' || item.type === 'veg'),
+                isVeg: item.isVeg !== undefined ? item.isVeg : ((item.category === 'veg' || item.type === 'veg' || item.foodType === 'Veg') && !(String(item.name || "").toLowerCase().includes("chicken") || String(item.name || "").toLowerCase().includes("mutton"))),
                 preparationTime: item.preparationTime || item.prep_time || null,
                 originalPrice: item.originalPrice || null,
                 offer: item.offer || null,
@@ -833,7 +833,9 @@ Order again from this restaurant in the ${companyName} app.`
                 <div className="px-4 py-2 space-y-2">
                   {order.items && order.items.length > 0 ? (
                     order.items.map((item, idx) => {
-                      const isVeg = item.isVeg !== undefined ? item.isVeg : (item.category === 'veg' || item.type === 'veg')
+                      const name = String(item.name || "").toLowerCase();
+                      const isNonVegByName = name.includes("chicken") || name.includes("mutton") || name.includes("fish") || name.includes("egg") || name.includes("non-veg") || name.includes("non veg");
+                      const isVeg = item.isVeg !== undefined ? item.isVeg : ((item.category === 'veg' || item.type === 'veg' || item.foodType === 'Veg') && !isNonVegByName)
                       const itemName = item.name || item.foodName || 'Item'
                       const itemQuantity = item.quantity || 1
                       const itemPrice = item.price || 0

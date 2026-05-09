@@ -803,6 +803,7 @@ function RestaurantDetailsContent() {
                       id: String(item.id || item._id || `${Date.now()}-${Math.random()}`),
                       name: item.name || "Unnamed Item",
                       foodType,
+                      isVeg: foodType === "Veg",
                       price: getFoodDisplayPrice(item),
                       variants: getFoodVariants(item),
                       variations: getFoodVariants(item),
@@ -1227,7 +1228,7 @@ function RestaurantDetailsContent() {
       restaurantId: validRestaurantId, // Use validated restaurantId
       description: item.description,
       originalPrice: item.originalPrice,
-      isVeg: item.isVeg !== false, // Add isVeg property
+      isVeg: item.isVeg, // Use the already normalized isVeg property
       preparationTime: item.preparationTime, // Add preparationTime property
       offer: item.offer // Attach offer for dynamic calculation and validation
     }

@@ -104,6 +104,12 @@ export const useUserNotifications = () => {
         });
       }
 
+      // Automatically dismiss OTP toast if order is delivered, completed, or cancelled
+      if (data.orderId && ['delivered', 'completed', 'delivered_self', 'cancelled', 'failed'].includes(data.orderStatus)) {
+        const otpToastId = `delivery-drop-otp-${data.orderId}`;
+        toast.dismiss(otpToastId);
+      }
+
       // Dispatch custom event for OrderTrackingCard and other listeners
       const event = new CustomEvent('orderStatusNotification', {
         detail: {
