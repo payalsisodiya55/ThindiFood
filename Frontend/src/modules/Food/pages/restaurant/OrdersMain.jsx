@@ -22,6 +22,7 @@ import {
   Utensils,
   Wallet,
   Phone,
+  User,
 } from "lucide-react";
 import { toast } from "sonner";
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders";
@@ -101,6 +102,23 @@ const getOrderPrepTimeMinutes = (orderLike) => {
 
   return itemPrepMinutes.length > 0 ? Math.max(...itemPrepMinutes) : null;
 };
+
+const isScheduledRestaurantOrder = (orderLike) => {
+  if (!orderLike) return false;
+
+  const orderType = String(orderLike?.order_type || "").trim().toUpperCase();
+  const scheduledAt = orderLike?.scheduledAt ? new Date(orderLike.scheduledAt).getTime() : null;
+  const hasScheduledAt = Number.isFinite(scheduledAt);
+
+  return (
+    orderType === "SCHEDULED" ||
+    Boolean(orderLike?.prep_start_time) ||
+    hasScheduledAt
+  );
+};
+
+const getNormalizedRestaurantOrderStatus = (orderLike) =>
+  String(orderLike?.status || orderLike?.orderStatus || "").trim().toLowerCase();
 
 const isDineInOrderLike = (orderLike) => {
   if (!orderLike) return false;
@@ -196,25 +214,27 @@ const getRestaurantOrderTypeLabel = (orderLike = {}) => {
   const fulfillmentType = String(orderLike?.fulfillmentType || "").trim().toLowerCase();
   const deliveryType = String(orderLike?.deliveryType || "").trim().toLowerCase();
   const orderType = String(orderLike?.order_type || "").trim().toUpperCase();
-  const hasPickupWindow = Boolean(orderLike?.pickupAt || orderLike?.scheduledAt);
 
-  if (
-    fulfillmentType === "takeaway" ||
-    deliveryType.includes("take") ||
-    deliveryType.includes("pickup") ||
-    hasPickupWindow ||
-    orderType === "SCHEDULED" ||
-    orderType === "IMMEDIATE"
-  ) {
-    return "Takeaway";
+  // Self-delivery check FIRST — before pickupAt guard so scheduled delivery
+  // orders with a pickupAt are not mislabelled as "Takeaway".
+  if (fulfillmentType === "delivery" && deliveryType === "self") {
+    return "Self Delivery";
   }
 
   if (deliveryType.includes("dine")) {
     return "Dine In";
   }
 
-  if (fulfillmentType === "delivery" && deliveryType === "self") {
-    return "Self Delivery";
+  const hasPickupWindow = Boolean(orderLike?.pickupAt);
+  if (
+    fulfillmentType === "takeaway" ||
+    deliveryType.includes("take") ||
+    deliveryType.includes("pickup") ||
+    hasPickupWindow ||
+    (fulfillmentType === "takeaway" &&
+      (orderType === "SCHEDULED" || orderType === "IMMEDIATE"))
+  ) {
+    return "Takeaway";
   }
 
   return orderLike?.deliveryFleet === "express"
@@ -1611,6 +1631,7 @@ export default function OrdersMain() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const contentRef = useRef(null);
+  const lenisRef = useRef(null);
   const filterBarRef = useRef(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -1622,6 +1643,34 @@ export default function OrdersMain() {
 
   // New order popup states
   const [showNewOrderPopup, setShowNewOrderPopup] = useState(false);
+
+  // Body scroll lock for popup
+  useEffect(() => {
+    if (showNewOrderPopup) {
+      if (lenisRef.current) lenisRef.current.stop();
+      const scrollY = window.scrollY;
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+      document.body.style.overflow = "hidden";
+    } else {
+      if (lenisRef.current) lenisRef.current.start();
+      const scrollY = document.body.style.top;
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || "0") * -1);
+      }
+    }
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
+      document.body.style.overflow = "";
+    };
+  }, [showNewOrderPopup]);
   const [popupOrder, setPopupOrder] = useState(null); // Store order for popup (from Socket.IO or API)
   const [isMuted, setIsMuted] = useState(false);
   const [countdown, setCountdown] = useState(240); // 4 minutes in seconds
@@ -1708,9 +1757,8 @@ export default function OrdersMain() {
   };
 
   const isScheduledAwaitingRestaurantAcceptance = (orderLike) =>
-    orderLike?.fulfillmentType === "takeaway" &&
-    String(orderLike?.order_type || "").toUpperCase() === "SCHEDULED" &&
-    String(orderLike?.status || orderLike?.orderStatus || "").toLowerCase() === "confirmed" &&
+    isScheduledRestaurantOrder(orderLike) &&
+    getNormalizedRestaurantOrderStatus(orderLike) === "confirmed" &&
     !Boolean(orderLike?.isAcceptedByRestaurant);
 
   const getPopupOrderTotal = (orderLike) => {
@@ -1933,6 +1981,7 @@ export default function OrdersMain() {
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
     });
+    lenisRef.current = lenis;
 
     function raf(time) {
       lenis.raf(time);
@@ -1943,6 +1992,7 @@ export default function OrdersMain() {
 
     return () => {
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
 
@@ -2474,14 +2524,9 @@ export default function OrdersMain() {
                 return;
             }
         } else {
-            const isScheduledTakeaway =
-              orderToAccept?.fulfillmentType === "takeaway" &&
-              (
-                String(orderToAccept?.order_type || "").toUpperCase() === "SCHEDULED" ||
-                Boolean(orderToAccept?.scheduledAt || orderToAccept?.prep_start_time)
-              );
+            const isScheduledOrder = isScheduledRestaurantOrder(orderToAccept);
 
-            if (isScheduledTakeaway) {
+            if (isScheduledOrder) {
               await runRestaurantOrderAction(orderToAccept, (resolvedOrderId) =>
                 restaurantAPI.updateOrderStatus(resolvedOrderId, { orderStatus: "confirmed" }),
               );
@@ -3339,19 +3384,20 @@ export default function OrdersMain() {
         {showNewOrderPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-3"
+              className="fixed inset-0 z-[60] bg-black/60 flex items-center justify-center p-4 pt-10 pb-20 overflow-y-auto"
+              style={{ overscrollBehavior: "none" }}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
               <motion.div
-                className="w-[95%] max-w-md max-h-[calc(100vh-2rem)] bg-white rounded-3xl shadow-2xl overflow-hidden p-0.5 flex flex-col"
+                className="w-[95%] max-w-md max-h-[82vh] bg-white rounded-3xl shadow-2xl overflow-hidden p-0.5 flex flex-col"
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="px-4 py-2 bg-white border-b border-gray-200 flex items-center justify-between">
+                <div className="px-4 py-1.5 bg-white border-b border-gray-200 flex items-center justify-between">
                   <div className="flex-1">
                     <h3 className="text-base font-bold text-gray-900">
                       {(popupOrder || newOrder)?.isDineIn
@@ -3391,60 +3437,157 @@ export default function OrdersMain() {
                 </div>
 
                 {/* Content */}
-                <div className="px-4 py-2 flex-1 overflow-y-auto min-h-0">
-                  {/* Scheduled Indicator */}
-                  {((popupOrder || newOrder)?.fulfillmentType === "takeaway" ||
-                    (popupOrder || newOrder)?.pickupAt) && (
-                    <div className="mb-2 bg-orange-50 border border-orange-200 rounded-lg p-2 flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                        <Calendar className="w-4 h-4 text-orange-600" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wider">
-                          {((popupOrder || newOrder)?.order_type === "SCHEDULED")
-                            ? "Scheduled Order"
-                            : "Takeaway Order"}
-                        </p>
-                        {(() => {
-                          const activeOrder = popupOrder || newOrder;
-                          const prepTimeMinutes = getOrderPrepTimeMinutes(activeOrder);
-                          const isImmediateTakeaway =
-                            activeOrder?.fulfillmentType === "takeaway" &&
-                            activeOrder?.order_type === "IMMEDIATE";
+                <div 
+                  className="px-4 py-1 flex-1 overflow-y-scroll min-h-0"
+                  style={{ 
+                    WebkitOverflowScrolling: "touch", 
+                    touchAction: "pan-y",
+                    overscrollBehavior: "contain"
+                  }}
+                  data-lenis-prevent="true"
+                >
+                  {/* COMBINED SCHEDULED DELIVERY OR SEPARATE INDICATORS */}
+                  {(() => {
+                    const order = popupOrder || newOrder;
+                    if (!order) return null;
 
-                          return (
-                            <>
-                              {isImmediateTakeaway && (
-                                <p className="text-sm font-semibold text-orange-900 mt-0.5">
-                                  Prepare now
+                    const isScheduled = isScheduledRestaurantOrder(order);
+                    const isSelfDelivery = order.fulfillmentType === "delivery" && order.deliveryType === "self";
+                    const isImmediateTakeaway = !isScheduled && order.fulfillmentType === "takeaway";
+
+                    // CASE 1: Unified Scheduled Delivery Card
+                    if (isScheduled && isSelfDelivery) {
+                      return (
+                        <div className="mb-2 bg-gradient-to-br from-amber-50 to-emerald-50 border border-amber-200 rounded-xl p-2.5 shadow-sm">
+                          <div className="flex items-center gap-3 mb-2 pb-2 border-b border-amber-100">
+                            <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                              <Calendar className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <div>
+                              <p className="text-[9px] font-bold text-amber-800 uppercase tracking-widest">
+                                Scheduled Delivery
+                              </p>
+                              <p className="text-sm font-black text-amber-900 leading-tight">
+                                {formatClockTime(order.pickupAt || order.scheduledAt)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-gray-500 font-medium">Prep starts at</span>
+                              <span className="font-bold text-amber-700">
+                                {formatClockTime(order.prep_start_time || order.pickupAt || order.scheduledAt)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px]">
+                              <span className="text-gray-500 font-medium">
+                                {order.fulfillmentType === "delivery" ? "Prep + Delivery" : "Preparation"}
+                              </span>
+                              <span className="font-bold text-gray-800">
+                                {getOrderPrepTimeMinutes(order)} mins
+                              </span>
+                            </div>
+                            <div className="pt-1.5 border-t border-emerald-100 flex items-start gap-2">
+                              <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                                <Phone className="w-3 h-3 text-emerald-600" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                                  Self Delivery
                                 </p>
-                              )}
-                              {!isImmediateTakeaway && activeOrder?.pickupAt && (
-                                <p className="text-sm font-semibold text-orange-900 mt-0.5">
-                                  Pickup at {formatClockTime(activeOrder.pickupAt)}
-                                </p>
-                              )}
-                              {prepTimeMinutes ? (
-                                <p className="text-xs text-orange-800 mt-1">
-                                  Prep time: {prepTimeMinutes} min
-                                </p>
-                              ) : null}
-                              {isImmediateTakeaway && activeOrder?.pickupAt && (
-                                <p className="text-xs text-orange-800 mt-1">
-                                  Ready at {formatClockTime(activeOrder.pickupAt)}
-                                </p>
-                              )}
-                              {!isImmediateTakeaway && activeOrder?.prep_start_time && (
-                                <p className="text-xs text-orange-800 mt-1">
-                                  Auto start at {formatClockTime(activeOrder.prep_start_time)}
-                                </p>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  )}
+                                {order?.customerAddress && (
+                                  <p className="text-[10px] text-emerald-700 mt-0.5 leading-relaxed line-clamp-1">
+                                    {order.customerAddress.addressLine1 || order.customerAddress.street}
+                                    {order.customerAddress.city ? `, ${order.customerAddress.city}` : ""}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // CASE 2: Regular Scheduled Takeaway
+                    if (isScheduled) {
+                      return (
+                        <div className="mb-2 bg-orange-50 border border-orange-200 rounded-lg p-2 flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
+                            <Calendar className="w-4 h-4 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] font-bold text-orange-800 uppercase tracking-wider">
+                              Scheduled Pickup
+                            </p>
+                            <p className="text-sm font-black text-orange-900 mt-0.5">
+                              Pickup at {formatClockTime(order.pickupAt || order.scheduledAt)}
+                            </p>
+                            <div className="flex gap-3 mt-1">
+                              <p className="text-[10px] text-orange-700">
+                                <span className="font-medium opacity-70">Starts:</span> {formatClockTime(order.prep_start_time || order.pickupAt || order.scheduledAt)}
+                              </p>
+                              <p className="text-[10px] text-orange-700">
+                                <span className="font-medium opacity-70">Prep:</span> {getOrderPrepTimeMinutes(order)} min
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // CASE 3: Regular Self Delivery (Not Scheduled)
+                    if (isSelfDelivery) {
+                      return (
+                        <div className="mb-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2 flex items-center gap-3">
+                          <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                            <Phone className="w-4 h-4 text-emerald-600" />
+                          </div>
+                          <div className="min-w-0 text-left">
+                            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
+                              Self Delivery
+                            </p>
+                            <p className="text-sm font-semibold text-emerald-900 mt-0.5">
+                              Deliver by boy after preparation
+                            </p>
+                            {order?.customerAddress && (
+                              <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed line-clamp-1">
+                                <span className="font-semibold">Address: </span>
+                                {order.customerAddress.addressLine1 || order.customerAddress.street}
+                                {order.customerAddress.city ? `, ${order.customerAddress.city}` : ""}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    // CASE 4: Immediate Takeaway
+                    if (isImmediateTakeaway) {
+                      return (
+                        <div className="mb-3 bg-[#fff8f2] border border-[#fddbb8] rounded-xl p-3 flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-[#ffedd5] flex items-center justify-center shrink-0">
+                            <Calendar className="w-5 h-5 text-[#ea580c]" />
+                          </div>
+                          <div className="flex flex-col">
+                            <p className="text-[10px] font-bold text-[#b45309] uppercase tracking-wider mb-0.5">
+                              Takeaway Order
+                            </p>
+                            <p className="text-sm font-medium text-[#ea580c] leading-tight">
+                              Prepare now
+                            </p>
+                            {order?.pickupAt && (
+                              <p className="text-[13px] font-bold text-[#78350f] mt-0.5">
+                                Pickup at {new Date(order.pickupAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()}
 
                   {/* DINE-IN Indicator */}
                   {(popupOrder || newOrder)?.isDineIn && (
@@ -3462,44 +3605,6 @@ export default function OrdersMain() {
                       </div>
                     </div>
                   )}
-
-                  {/* SELF-DELIVERY Indicator */}
-                  {(popupOrder || newOrder)?.fulfillmentType === "delivery" &&
-                    (popupOrder || newOrder)?.deliveryType === "self" && (
-                      <div className="mb-2 bg-emerald-50 border border-emerald-200 rounded-lg p-2 flex items-center gap-3">
-                        <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
-                          <Phone className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                            Self Delivery
-                          </p>
-                          <p className="text-sm font-semibold text-emerald-900 mt-0.5">
-                            Deliver by boy after preparation
-                          </p>
-                          {(popupOrder || newOrder)?.pickupAt ? (
-                            <p className="text-xs text-emerald-800 mt-1">
-                              Deliver by {formatClockTime((popupOrder || newOrder)?.pickupAt)}
-                            </p>
-                          ) : getOrderPrepTimeMinutes(popupOrder || newOrder) ? (
-                            <p className="text-xs text-emerald-800 mt-1">
-                              Prep time: {getOrderPrepTimeMinutes(popupOrder || newOrder)} min
-                            </p>
-                          ) : null}
-                          {(popupOrder || newOrder)?.customerAddress?.addressLine1 ||
-                          (popupOrder || newOrder)?.customerAddress?.street ? (
-                            <p className="text-xs text-emerald-800 mt-1 line-clamp-2">
-                              Address:{" "}
-                              {(popupOrder || newOrder)?.customerAddress?.addressLine1 ||
-                                (popupOrder || newOrder)?.customerAddress?.street}
-                              {(popupOrder || newOrder)?.customerAddress?.city
-                                ? `, ${(popupOrder || newOrder).customerAddress.city}`
-                                : ""}
-                            </p>
-                          ) : null}
-                        </div>
-                      </div>
-                    )}
 
                   {/* Customer info */}
                   <div className="mb-2">
@@ -3674,6 +3779,9 @@ export default function OrdersMain() {
                     const activeOrder = popupOrder || newOrder;
                     const prepTimeMinutes = getOrderPrepTimeMinutes(activeOrder);
                     if (!prepTimeMinutes) return null;
+                    const isTakeawaySchedule = activeOrder?.fulfillmentType === "takeaway";
+                    const isDeliverySchedule = activeOrder?.fulfillmentType === "delivery";
+                    const prepStartTime = activeOrder?.prep_start_time;
 
                     return (
                       <div className="mb-2 rounded-lg bg-gray-50 px-3 py-2">
@@ -3685,24 +3793,27 @@ export default function OrdersMain() {
                             {prepTimeMinutes} mins
                           </span>
                         </div>
-                        {activeOrder?.pickupAt && (
+                        {(activeOrder?.pickupAt || activeOrder?.scheduledAt) && (
                           <div className="mt-2 flex items-center justify-between">
                             <span className="text-sm font-medium text-gray-700">
-                              {activeOrder?.order_type === "IMMEDIATE" ? "Ready at" : "Pickup at"}
+                              {activeOrder?.order_type === "IMMEDIATE"
+                                ? "Ready at"
+                                : isDeliverySchedule
+                                  ? "Delivery at"
+                                  : "Pickup at"}
                             </span>
                             <span className="text-sm font-semibold text-gray-900">
-                              {formatClockTime(activeOrder.pickupAt)}
+                              {formatClockTime(activeOrder.pickupAt || activeOrder.scheduledAt)}
                             </span>
                           </div>
                         )}
-                        {activeOrder?.order_type === "SCHEDULED" &&
-                          activeOrder?.prep_start_time && (
+                        {prepStartTime && (
                             <div className="mt-2 flex items-center justify-between">
                               <span className="text-sm font-medium text-gray-700">
-                                Auto start at
+                                Prep start at
                               </span>
                               <span className="text-sm font-semibold text-gray-900">
-                                {formatClockTime(activeOrder.prep_start_time)}
+                                {formatClockTime(prepStartTime)}
                               </span>
                             </div>
                           )}
@@ -3711,7 +3822,7 @@ export default function OrdersMain() {
                   })()}
                 </div>
 
-                <div className="px-4 pb-4 pt-2 border-t border-gray-200 bg-white">
+                <div className="px-4 pb-2.5 pt-1.5 border-t border-gray-200 bg-white">
                   <div className="space-y-2">
                     <div
                       ref={acceptSliderRef}
@@ -3798,7 +3909,7 @@ export default function OrdersMain() {
                     <button
                       onClick={handleRejectClick}
                       disabled={isAcceptingOrder}
-                      className="w-full bg-white border-2 border-red-500 text-red-600 py-2.5 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60">
+                      className="w-full bg-white border-2 border-red-500 text-red-600 py-2 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60">
                       Reject Order
                     </button>
                   </div>
@@ -4365,6 +4476,7 @@ function OrderCard({
   prepTimeMinutes,
   prepStartTime,
   pickupAt,
+  scheduledAt,
   itemsSummary,
   paymentMethod,
   photoUrl,
@@ -4388,6 +4500,7 @@ function OrderCard({
   const isSelfDeliveryOrder =
     String(fulfillmentType || "").toLowerCase() === "delivery" &&
     String(deliveryType || "").toLowerCase() === "self";
+  const scheduledFulfillmentTime = pickupAt || scheduledAt;
   const canAssignBoy =
     isSelfDeliveryOrder &&
     (normalizedStatus === "ready" || normalizedStatus === "ready_for_pickup") &&
@@ -4470,9 +4583,9 @@ function OrderCard({
                     </p>
                   )}
                   {(customerPhone || phoneForCall) && (
-                    <div className="flex flex-wrap items-center gap-1.5">
+                    <div className="mt-1.5 flex items-center flex-wrap gap-2">
                       {customerPhone && (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-500 leading-none">
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500 leading-none">
                           {customerPhone}
                         </span>
                       )}
@@ -4480,10 +4593,10 @@ function OrderCard({
                         <a
                           href={`tel:${phoneForCall}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 rounded-full bg-[#00c87e] px-2.5 py-1 text-[10px] font-semibold leading-none text-white shadow-sm transition-all hover:bg-[#00b874]"
+                          className="inline-flex items-center gap-1 rounded-full bg-[#00c87e] px-2 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm transition-all hover:bg-[#00b874]"
                         >
-                          <Phone className="h-3 w-3" />
-                          Call Now
+                          <Phone className="h-2.5 w-2.5" />
+                          Call
                         </a>
                       )}
                     </div>
@@ -4522,36 +4635,66 @@ function OrderCard({
             <p className="text-xs text-gray-600 line-clamp-1">{itemsSummary}</p>
           </div>
 
-          {/* Bottom row */}
-          <div className="mt-2 flex items-end justify-between gap-2">
-            <div className="flex flex-col gap-1">
-              <p className="text-[11px] text-gray-500">
-                {type}
-                {tableOrToken ? ` • ${tableOrToken}` : ""}
-              </p>
-              {Number(prepTimeMinutes) > 0 && (
-                <p className="text-[11px] text-gray-500">
-                  Prep {Math.round(Number(prepTimeMinutes))} min
-                  {pickupAt ? ` • Pickup ${formatClockTime(pickupAt)}` : ""}
-                </p>
-              )}
-              {prepStartTime && (
-                <p className="text-[11px] text-gray-500">
-                  Prep start {formatClockTime(prepStartTime)}
-                </p>
-              )}
-              {isSelfDeliveryOrder && pickupAt && (
-                <p className="text-[11px] text-emerald-600 font-medium">
-                  Deliver by {formatClockTime(pickupAt)}
-                </p>
-              )}
+          {/* Bottom row - Compact Scheduled Design */}
+          <div className="mt-3">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-tight">
+                  {type} {tableOrToken ? `• ${tableOrToken}` : ""}
+                </span>
+                {normalizedStatus === "scheduled" && (
+                  <span className="px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[9px] font-bold uppercase border border-amber-100">
+                    Scheduled
+                  </span>
+                )}
+              </div>
               {isSelfDeliveryOrder && selfDeliveryBoy?.name && (
-                <p className="text-[11px] text-blue-600 font-medium">
-                  Boy: {selfDeliveryBoy.name}
-                </p>
+                <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded">
+                  <User className="h-2.5 w-2.5" />
+                  {selfDeliveryBoy.name}
+                </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+
+            {/* Timing Grid - Clean & Compact */}
+            <div className="bg-gray-50/80 rounded-xl p-2 border border-gray-100">
+              <div className="grid grid-cols-2 gap-y-1.5 gap-x-4">
+                {scheduledFulfillmentTime && (
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
+                      {String(fulfillmentType || "").toLowerCase() === "takeaway" ? "Pickup At" : "Delivery At"}
+                    </span>
+                    <span className="text-xs font-bold text-[#00c87e]">
+                      {formatClockTime(scheduledFulfillmentTime)}
+                    </span>
+                  </div>
+                )}
+                {prepStartTime && (
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">Prep Starts</span>
+                    <span className="text-xs font-bold text-amber-600">
+                      {formatClockTime(prepStartTime)}
+                    </span>
+                  </div>
+                )}
+                {Number(prepTimeMinutes) > 0 && (
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
+                      {String(fulfillmentType || "").toLowerCase() === "delivery" ? "Prep + Delivery" : "Prep Time"}
+                    </span>
+                    <span className="text-[11px] font-semibold text-gray-700">{Math.round(Number(prepTimeMinutes))} mins</span>
+                  </div>
+                )}
+                {!isReady && eta && (
+                  <div className="flex flex-col">
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">Current ETA</span>
+                    <span className="text-[11px] font-semibold text-black">{eta.replace(/^(Pickup|Delivery)\s+/i, "")}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-2">
               {canAssignBoy && (
                 <button
                   type="button"
@@ -4588,13 +4731,6 @@ function OrderCard({
                   {isVerifyingOtp ? "Verifying..." : "Verify OTP"}
                 </button>
               )}
-              {/* Hide ETA for ready orders */}
-              {!isReady && eta && (
-                <div className="flex items-baseline gap-1">
-                  <span className="text-[11px] text-gray-500">ETA</span>
-                  <span className="text-xs font-medium text-black">{eta}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -4630,7 +4766,7 @@ function PreparingOrders({
           // 'confirmed' orders should only appear in popup notification, not in preparing list
           // After accepting, order status changes to 'preparing' and then appears here
           const preparingOrders = response.data.data.orders.filter(
-            (order) => order.status === "preparing",
+            (order) => getNormalizedRestaurantOrderStatus(order) === "preparing",
           );
 
           const transformedOrders = preparingOrders.map((order) => {
@@ -4645,7 +4781,7 @@ function PreparingOrders({
             return {
               orderId: order.orderId || order._id,
               mongoId: order._id,
-              status: order.status || "preparing",
+              status: getNormalizedRestaurantOrderStatus(order) || "preparing",
               customerName: order.userId?.name || "Customer",
               type: getRestaurantOrderTypeLabel(order),
               tableOrToken: null,
@@ -5017,17 +5153,19 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
 
         if (response.data?.success && response.data.data?.orders) {
           // Filter orders with 'ready' status
-          const readyOrders = response.data.data.orders.filter(
-            (order) =>
-              order.status === "ready" ||
-              order.status === "ready_for_pickup" ||
-              order.status === "assigned_to_boy",
-          );
+          const readyOrders = response.data.data.orders.filter((order) => {
+            const status = getNormalizedRestaurantOrderStatus(order);
+            return (
+              status === "ready" ||
+              status === "ready_for_pickup" ||
+              status === "assigned_to_boy"
+            );
+          });
 
           const transformedOrders = readyOrders.map((order) => ({
             orderId: order.orderId || order._id,
             mongoId: order._id,
-            status: order.status || "ready",
+            status: getNormalizedRestaurantOrderStatus(order) || "ready",
             customerName: order.userId?.name || "Customer",
             type: getRestaurantOrderTypeLabel(order),
             tableOrToken: null,
@@ -5419,9 +5557,9 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
         if (response.data?.success && response.data.data?.orders) {
           const scheduledOrders = response.data.data.orders
             .filter((order) => {
-              const status = String(order.status || "").toLowerCase();
+              const status = getNormalizedRestaurantOrderStatus(order);
               return (
-                order.order_type === "SCHEDULED" &&
+                isScheduledRestaurantOrder(order) &&
                 status === "confirmed"
               );
             })
@@ -5430,7 +5568,22 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
               mongoId: order._id,
               status: "scheduled",
               customerName: order.userId?.name || "Customer",
-              type: "Takeaway",
+              type: getRestaurantOrderTypeLabel(order),
+              fulfillmentType: order.fulfillmentType || "delivery",
+              deliveryType: order.deliveryType || null,
+              selfDeliveryBoy:
+                order.selfDelivery?.deliveryBoyId &&
+                typeof order.selfDelivery.deliveryBoyId === "object"
+                  ? {
+                      id:
+                        order.selfDelivery.deliveryBoyId._id ||
+                        order.selfDelivery.deliveryBoyId.id ||
+                        null,
+                      name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+                      phone: order.selfDelivery.deliveryBoyId.phone || "",
+                    }
+                  : null,
+              customerPhone: getOrderCustomerPhone(order),
               tableOrToken: null,
               timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
                 hour: "2-digit",
@@ -5439,8 +5592,8 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
               sortTimestamp: new Date(
                 order.pickupAt || order.scheduledAt || order.createdAt,
               ).getTime(),
-              eta: order.pickupAt
-                ? `Pickup ${formatClockTime(order.pickupAt)}`
+              eta: order.pickupAt || order.scheduledAt
+                ? `${order.fulfillmentType === "takeaway" ? "Pickup" : "Delivery"} ${formatClockTime(order.pickupAt || order.scheduledAt)}`
                 : null,
               prepTimeMinutes:
                 Number(order.prep_time) > 0 ? Number(order.prep_time) : null,
@@ -5456,6 +5609,7 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
               dispatchStatus: order.dispatch?.status || null,
               order_type: order.order_type,
               pickupAt: order.pickupAt || null,
+              scheduledAt: order.scheduledAt || null,
               prep_start_time: order.prep_start_time || null,
             }))
             .sort((a, b) => a.sortTimestamp - b.sortTimestamp);

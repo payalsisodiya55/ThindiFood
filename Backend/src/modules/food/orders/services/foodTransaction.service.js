@@ -377,6 +377,85 @@ export async function applyWalletSettlementForFoodOrder(orderId, opts = {}) {
     }
 }
 
+export async function reverseRestaurantOnlinePayoutForOrder(orderId, opts = {}) {
+    const orderObjectId = mongoose.Types.ObjectId.isValid(orderId)
+        ? new mongoose.Types.ObjectId(orderId)
+        : null;
+    if (!orderObjectId) return null;
+
+    const tx = await FoodTransaction.findOne({ orderId: orderObjectId });
+    if (!tx) return null;
+
+    const Transaction = mongoose.model('Transaction');
+    const creditTxn = await Transaction.findOne({
+        entityType: 'restaurant',
+        entityId: tx.restaurantId,
+        type: 'credit',
+        orderId: tx.orderId,
+        'metadata.settlementType': { $in: ['TAKEAWAY_ONLINE_PAYOUT', 'SELF_DELIVERY_ONLINE_PAYOUT'] },
+    })
+        .select('_id amount metadata createdAt')
+        .lean();
+
+    if (!creditTxn) return tx;
+
+    const existingReversal = await Transaction.findOne({
+        entityType: 'restaurant',
+        entityId: tx.restaurantId,
+        type: 'debit',
+        orderId: tx.orderId,
+        'metadata.settlementType': 'ONLINE_PAYOUT_REVERSAL',
+        'metadata.reversedTransactionId': String(creditTxn._id),
+    })
+        .select('_id')
+        .lean();
+
+    if (existingReversal) return tx;
+
+    const reversalAmount = Number(creditTxn.amount || 0);
+    if (reversalAmount <= 0.009) return tx;
+
+    await debitWallet({
+        entityType: 'restaurant',
+        entityId: String(tx.restaurantId),
+        amount: reversalAmount,
+        description: `Order ${String(tx.orderId)} online payout reversal`,
+        category: 'adjustment',
+        orderId: String(tx.orderId),
+        allowNegative: true,
+        metadata: {
+            settlementType: 'ONLINE_PAYOUT_REVERSAL',
+            reversedSettlementType: creditTxn.metadata?.settlementType || '',
+            reversedTransactionId: String(creditTxn._id),
+            reason: opts.reason || 'restaurant_cancelled',
+        },
+    });
+
+    tx.settlement = tx.settlement || {};
+    tx.settlement.walletSettlement = {
+        ...(tx.settlement.walletSettlement?.toObject?.() || tx.settlement.walletSettlement || {}),
+        onlinePayoutReversed: true,
+        onlinePayoutReversedAt: new Date(),
+        onlinePayoutReversalAmount: reversalAmount,
+        note: 'Online payout reversed because order was cancelled.',
+        recordedBy: {
+            role: opts.recordedByRole || 'SYSTEM',
+            id: opts.recordedById || null,
+        },
+    };
+
+    tx.history.push({
+        kind: 'wallet_settlement_reversed',
+        amount: reversalAmount,
+        at: new Date(),
+        note: opts.note || 'Restaurant online payout reversed after cancellation',
+        recordedBy: { role: opts.recordedByRole || 'SYSTEM', id: opts.recordedById || null },
+    });
+
+    await tx.save();
+    return tx;
+}
+
 /**
  * Updates transaction status (captured, settled, etc) and appends to history.
  */

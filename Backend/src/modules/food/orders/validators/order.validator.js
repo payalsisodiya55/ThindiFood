@@ -116,6 +116,7 @@ export function validateCreateOrderDto(body) {
         sendCutlery: z.boolean().optional(),
         fulfillmentType: z.enum(['delivery', 'takeaway']).optional(),
         order_type: z.enum(['IMMEDIATE', 'SCHEDULED']).optional(),
+        scheduledAt: z.string().optional(),
         pickupAt: z.string().optional(),
         // 'razorpay_qr' means COD-style flow, but payment is collected via Razorpay QR at delivery.
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet']),
@@ -162,6 +163,24 @@ export function validateCreateOrderDto(body) {
                     code: z.ZodIssueCode.custom,
                     path: ['pickupAt'],
                     message: 'Pickup time must be in the future'
+                });
+            }
+        }
+        if (data.fulfillmentType !== 'takeaway' && data.scheduledAt) {
+            const scheduledAt = new Date(data.scheduledAt);
+            if (Number.isNaN(scheduledAt.getTime())) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['scheduledAt'],
+                    message: 'Invalid scheduled delivery time'
+                });
+                return;
+            }
+            if (scheduledAt <= new Date()) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    path: ['scheduledAt'],
+                    message: 'Scheduled delivery time must be in the future'
                 });
             }
         }

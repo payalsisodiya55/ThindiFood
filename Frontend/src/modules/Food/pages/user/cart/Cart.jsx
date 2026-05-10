@@ -2298,7 +2298,7 @@ export default function Cart() {
       const pickupAtIso = hasPickupSelection
         ? new Date(`${effectivePickupDate}T${pickupTime}:00`).toISOString()
         : null
-      const takeawayOrderType = hasPickupSelection ? "SCHEDULED" : "IMMEDIATE"
+      const orderTypeValue = hasPickupSelection ? "SCHEDULED" : "IMMEDIATE"
 
       if (fulfillmentType === "takeaway" && selectedPaymentMethod === "cash" && !isTakeawayCodEnabled) {
         toast.error("Cash on Delivery is not available in your zone")
@@ -2324,10 +2324,17 @@ export default function Cart() {
         paymentMethod: selectedPaymentMethod,
         // `useZone()` can return `null`. Zod expects string/undefined, not null.
         zoneId: zoneId || undefined,
-        scheduledAt: isScheduled ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : undefined,
+        // Delivery uses the shared pickup scheduler for scheduledAt
+        scheduledAt: fulfillmentType === "delivery" && pickupAtIso
+          ? pickupAtIso
+          : isScheduled
+            ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+            : undefined,
         fulfillmentType,
         ...(fulfillmentType === "delivery" ? { deliveryType: "self" } : {}),
-        ...(fulfillmentType === "takeaway" ? { order_type: takeawayOrderType } : {}),
+        // Send order_type for BOTH takeaway and delivery
+        order_type: orderTypeValue,
+        // pickupAt only for takeaway (pickup window)
         ...(fulfillmentType === "takeaway" && pickupAtIso ? { pickupAt: pickupAtIso } : {}),
       };
       // Log final order details (including paymentMethod for COD debugging)

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { 
     Clock, CheckCircle2, ChevronRight, Loader2, 
     AlertCircle, RefreshCw, Utensils, Hash,
-    Timer, Bell, Check, Flame, PackageCheck
+    Timer, Bell, Check, Flame, PackageCheck, Printer
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
 import { Card, CardContent } from "@food/components/ui/card";
@@ -240,10 +240,81 @@ const DineInOrders = () => {
                             </div>
                             <Button 
                                 variant="outline"
-                                className="rounded-xl border-gray-200 text-gray-500 font-bold text-xs"
-                                onClick={() => navigate(`/food/restaurant/orders/${session._id}`)} // Link to details if needed
+                                className="rounded-xl border-gray-200 text-gray-500 font-bold text-xs flex items-center gap-2"
+                                onClick={() => {
+                                    const printWindow = window.open("", "_blank", "width=800,height=900");
+                                    if (!printWindow) {
+                                        toast.error("Popup blocked. Please allow popups to print.");
+                                        return;
+                                    }
+                                    
+                                    const itemsHtml = (session.orders || []).flatMap((order, oIdx) => 
+                                        (order.items || []).map(item => `
+                                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                                <div>${item.name} x${item.quantity} <span style="font-size: 10px; color: #666;">(Round ${session.orders.length - oIdx})</span></div>
+                                                <div>₹${(item.price * item.quantity).toFixed(2)}</div>
+                                            </div>
+                                        `)
+                                    ).join('');
+
+                                    const subtotal = session.subtotal || session.orders?.reduce((sum, o) => sum + (o.subtotal || 0), 0) || 0;
+                                    const taxAmount = session.taxAmount || session.billingSnapshot?.summary?.taxAmount || 0;
+                                    const platformFee = session.billingSnapshot?.summary?.platformFee || 0;
+                                    const gstRate = session.billingSnapshot?.summary?.gstRate || 5;
+
+                                    printWindow.document.write(`
+                                        <html>
+                                            <head>
+                                                <title>Bill - Table ${session.tableNumber}</title>
+                                                <style>
+                                                    body { font-family: monospace; padding: 40px; max-width: 400px; margin: 0 auto; color: #000; }
+                                                    .header { text-align: center; margin-bottom: 30px; border-bottom: 1px dashed #000; padding-bottom: 20px; }
+                                                    .total-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+                                                    .grand-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 18px; border-top: 1px dashed #000; padding-top: 15px; margin-top: 15px; }
+                                                    @media print { body { padding: 0; } }
+                                                </style>
+                                            </head>
+                                            <body>
+                                                <div class="header">
+                                                    <h2>Table ${session.tableNumber}</h2>
+                                                    <p>${session.tableLabel || 'Dine-In Order'}</p>
+                                                    <p>Time: ${new Date().toLocaleTimeString()}</p>
+                                                </div>
+                                                <div style="margin-bottom: 20px; border-bottom: 1px dashed #000; padding-bottom: 20px;">
+                                                    ${itemsHtml || '<div>No items ordered yet</div>'}
+                                                </div>
+                                                
+                                                <div class="total-row">
+                                                    <span>Subtotal</span>
+                                                    <span>₹${subtotal}</span>
+                                                </div>
+                                                <div class="total-row">
+                                                    <span>Platform Fee</span>
+                                                    <span>₹${platformFee}</span>
+                                                </div>
+                                                <div class="total-row">
+                                                    <span>Taxes & GST (${gstRate}%)</span>
+                                                    <span>₹${taxAmount}</span>
+                                                </div>
+                                                
+                                                <div class="grand-total">
+                                                    <span>Grand Total</span>
+                                                    <span>₹${session.totalAmount || 0}</span>
+                                                </div>
+                                                <div style="text-align: center; margin-top: 40px; font-size: 12px; color: #666;">
+                                                    Thank you for dining with us!
+                                                </div>
+                                                <script>
+                                                    window.onload = () => { window.print(); }
+                                                </script>
+                                            </body>
+                                        </html>
+                                    `);
+                                    printWindow.document.close();
+                                }}
                             >
-                                Details
+                                <Printer className="w-3.5 h-3.5" />
+                                Print Bill
                             </Button>
                         </div>
                     </motion.div>

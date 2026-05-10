@@ -117,6 +117,12 @@ const foodTransactionSchema = new mongoose.Schema({
                 total: { type: Number, default: 0, min: 0 }
             },
             note: { type: String, default: '' },
+            onlinePayoutCredited: { type: Boolean, default: false },
+            onlinePayoutAmount: { type: Number, default: 0, min: 0 },
+            onlinePayoutCreditedAt: { type: Date, default: null },
+            onlinePayoutReversed: { type: Boolean, default: false },
+            onlinePayoutReversedAt: { type: Date, default: null },
+            onlinePayoutReversalAmount: { type: Number, default: 0, min: 0 },
             recordedBy: {
                 role: { type: String, default: 'SYSTEM' },
                 id: { type: mongoose.Schema.Types.ObjectId, default: null }

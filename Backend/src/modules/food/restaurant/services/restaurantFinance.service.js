@@ -290,6 +290,9 @@ function dedupeTakeawayTransactions(transactions = []) {
 
 async function reconcileTakeawayOnlineWalletCredits(transactions = []) {
     for (const tx of transactions) {
+        const orderStatus = String(tx?.orderId?.orderStatus || tx?.orderStatus || '').trim().toLowerCase();
+        if (orderStatus.includes('cancel')) continue;
+
         const paymentMethod = normalizePaymentMethod(tx, tx?.orderId || {});
         if (COD_LIKE_METHODS.has(paymentMethod)) continue;
 

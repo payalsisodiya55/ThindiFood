@@ -1438,6 +1438,9 @@ export async function createOrder(userId, dto) {
   let startTime = null;
   let prepStartTime = null;
   let scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : null;
+  if (scheduledAt && Number.isNaN(scheduledAt.getTime())) {
+    scheduledAt = null;
+  }
   if (fulfillmentType === "takeaway") {
     if (takeawayOrderType === "SCHEDULED") {
       if (!dto.pickupAt) {
@@ -1478,7 +1481,15 @@ export async function createOrder(userId, dto) {
       startTime = new Date();
       pickupAt = new Date(startTime.getTime() + prepTimeMinutes * 60000);
     }
+  } else if (scheduledAt) {
+    prepStartTime = new Date(scheduledAt.getTime() - prepTimeMinutes * 60000);
   }
+  const restaurantOrderType =
+    fulfillmentType === "takeaway"
+      ? takeawayOrderType
+      : scheduledAt
+        ? "SCHEDULED"
+        : null;
 
   const deliveryAddress = dto.address
     ? {
@@ -1718,8 +1729,11 @@ export async function createOrder(userId, dto) {
         : "quick",
     deliveryType,
     fulfillmentType,
-    order_type: takeawayOrderType,
-    prep_time: fulfillmentType === "takeaway" ? prepTimeMinutes : 0,
+    order_type: restaurantOrderType,
+    prep_time:
+      orderType === "food" && Number.isFinite(prepTimeMinutes) && prepTimeMinutes > 0
+        ? prepTimeMinutes
+        : 0,
     start_time: startTime,
     prep_start_time: prepStartTime,
     isAcceptedByRestaurant: false,
@@ -1942,6 +1956,7 @@ export async function verifyPayment(userId, dto) {
   order.payment.razorpay.paymentId = dto.razorpayPaymentId;
   order.payment.razorpay.signature = dto.razorpaySignature;
   const isTakeaway = order.fulfillmentType === "takeaway";
+  const isDelivery = order.fulfillmentType === "delivery";
   const isImmediateTakeaway = isTakeaway && order.order_type === "IMMEDIATE";
   const fromStatus = order.orderStatus;
   if (isTakeaway) {
@@ -1961,6 +1976,21 @@ export async function verifyPayment(userId, dto) {
       order.scheduledAt = order.pickupAt;
     }
 
+    order.orderStatus = "created";
+  } else if (isDelivery && order.order_type === "SCHEDULED") {
+    const prepTimeMinutes =
+      Number.isFinite(Number(order.prep_time)) && Number(order.prep_time) > 0
+        ? Number(order.prep_time)
+        : 30;
+    const targetTime = order.scheduledAt || order.pickupAt;
+    if (targetTime) {
+      order.prep_start_time = new Date(
+        new Date(targetTime).getTime() - prepTimeMinutes * 60000,
+      );
+      if (!order.scheduledAt) {
+        order.scheduledAt = new Date(targetTime);
+      }
+    }
     order.orderStatus = "created";
   }
   pushStatusHistory(order, {
@@ -2477,21 +2507,23 @@ export async function updateOrderStatusRestaurant(
   const nextStatus = String(orderStatus || "").toLowerCase();
   if (
     nextStatus === "preparing" &&
-    order.fulfillmentType === "takeaway" &&
-    order.order_type === "SCHEDULED"
+    order.scheduledAt &&
+    (order.order_type === "SCHEDULED" || order.prep_start_time)
   ) {
     const prepStartTime =
       order.prep_start_time instanceof Date && !Number.isNaN(order.prep_start_time.getTime())
         ? order.prep_start_time
-        : order.pickupAt && Number(order.prep_time) > 0
+        : (order.pickupAt || order.scheduledAt) && Number(order.prep_time) > 0
           ? new Date(
-              new Date(order.pickupAt).getTime() - Number(order.prep_time) * 60000,
+              order.pickupAt
+                ? new Date(order.pickupAt).getTime() - Number(order.prep_time) * 60000
+                : new Date(order.scheduledAt).getTime(),
             )
           : null;
 
     if (prepStartTime && prepStartTime.getTime() > Date.now()) {
       throw new ValidationError(
-        "Scheduled takeaway cannot move to preparing before its prep start time",
+        "Scheduled order cannot move to preparing before its prep start time",
       );
     }
   }
@@ -2580,6 +2612,33 @@ export async function updateOrderStatusRestaurant(
   }
 
   await order.save();
+  if (String(orderStatus || "").toLowerCase().includes("cancel")) {
+    try {
+      const recordedById = mongoose.Types.ObjectId.isValid(restaurantId)
+        ? new mongoose.Types.ObjectId(restaurantId)
+        : null;
+      const transactionDetails = {
+        note: "Order cancelled by restaurant/admin",
+        recordedByRole: "RESTAURANT",
+        recordedById,
+      };
+      if (refundOutcome.transactionStatus) {
+        transactionDetails.status = refundOutcome.transactionStatus;
+      }
+      await foodTransactionService.updateTransactionStatus(
+        order._id,
+        "cancelled_by_restaurant",
+        transactionDetails,
+      );
+      await foodTransactionService.reverseRestaurantOnlinePayoutForOrder(order._id, {
+        recordedByRole: "RESTAURANT",
+        recordedById,
+        reason: "restaurant_cancelled",
+      });
+    } catch (err) {
+      logger.warn(`updateOrderStatusRestaurant transaction sync failed: ${err?.message || err}`);
+    }
+  }
   if (String(orderStatus || "").toLowerCase() === "delivered") {
     const recordedById = mongoose.Types.ObjectId.isValid(restaurantId)
       ? new mongoose.Types.ObjectId(restaurantId)
@@ -2637,9 +2696,9 @@ export async function updateOrderStatusRestaurant(
     if (orderStatus === "confirmed") {
       title = "Order Accepted! 🧑‍🍳";
       body =
-        order.fulfillmentType === "takeaway" &&
-        order.order_type === "SCHEDULED"
-          ? "The restaurant has accepted your scheduled takeaway order."
+        order.scheduledAt &&
+        (order.order_type === "SCHEDULED" || order.prep_start_time)
+          ? `The restaurant has accepted your scheduled ${order.fulfillmentType === "takeaway" ? "takeaway" : "delivery"} order.`
           : "The restaurant has accepted your order and is starting to prepare it.";
     } else if (orderStatus === "preparing") {
       title = "Food is being prepared! 🍳";
@@ -2675,20 +2734,6 @@ export async function updateOrderStatusRestaurant(
       riderTitle = "Order Cancelled ❌";
       riderBody = `Order #${order.orderId} has been cancelled. Please stop your current task.`;
       
-      // Sync transaction status
-      try {
-        const transactionDetails = {
-            note: `Order cancelled by restaurant/admin`,
-            recordedByRole: 'RESTAURANT',
-            recordedById: restaurantId
-        };
-        if (refundOutcome.transactionStatus) {
-            transactionDetails.status = refundOutcome.transactionStatus;
-        }
-        await foodTransactionService.updateTransactionStatus(order._id, 'cancelled_by_restaurant', transactionDetails);
-      } catch (err) {
-        logger.warn(`updateOrderStatusRestaurant transaction sync failed: ${err?.message || err}`);
-      }
     }
 
     await notifyOwnersSafely(
@@ -2766,8 +2811,7 @@ export async function updateOrderStatusRestaurant(
 async function autoStartDueScheduledTakeawayOrders() {
   try {
     const dueOrders = await FoodOrder.find({
-      fulfillmentType: "takeaway",
-      order_type: "SCHEDULED",
+      scheduledAt: { $ne: null },
       orderStatus: "confirmed",
       prep_start_time: { $ne: null, $lte: new Date() },
     })
@@ -2784,13 +2828,13 @@ async function autoStartDueScheduledTakeawayOrders() {
         );
       } catch (error) {
         logger.warn(
-          `Scheduled takeaway auto-start failed for order ${order.orderId || order._id}: ${error?.message || error}`,
+          `Scheduled order auto-start failed for order ${order.orderId || order._id}: ${error?.message || error}`,
         );
       }
     }
   } catch (error) {
     logger.warn(
-      `Scheduled takeaway scheduler failed: ${error?.message || error}`,
+      `Scheduled order scheduler failed: ${error?.message || error}`,
     );
   }
 }
