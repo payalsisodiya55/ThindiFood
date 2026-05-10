@@ -166,7 +166,7 @@ export default function Cashback() {
                   type="number"
                   value={formData.cashbackAmount}
                   onChange={(e) => handleInputChange("cashbackAmount", e.target.value)}
-                  placeholder="Ex: 100"
+                  placeholder="100"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -179,7 +179,7 @@ export default function Cashback() {
                   type="number"
                   value={formData.minPurchase}
                   onChange={(e) => handleInputChange("minPurchase", e.target.value)}
-                  placeholder="Ex: 100"
+                  placeholder="100"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -192,7 +192,7 @@ export default function Cashback() {
                   type="number"
                   value={formData.maxDiscount}
                   onChange={(e) => handleInputChange("maxDiscount", e.target.value)}
-                  placeholder="Ex: 100"
+                  placeholder="100"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -235,7 +235,7 @@ export default function Cashback() {
                   type="number"
                   value={formData.limitForSameUser}
                   onChange={(e) => handleInputChange("limitForSameUser", e.target.value)}
-                  placeholder="Ex: 5"
+                  placeholder="5"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -283,7 +283,7 @@ export default function Cashback() {
               <div className="relative flex-1 sm:flex-initial min-w-[200px]">
                 <input
                   type="text"
-                  placeholder="Ex: Search by title"
+                  placeholder="Search by title"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"

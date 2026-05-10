@@ -42,19 +42,62 @@ export default function DiningRestaurantCommission() {
     status: true,
     actions: true,
   })
+  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" })
 
   const filteredCommissions = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return commissions
+    let filtered = commissions
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(commission =>
+        commission.restaurantName?.toLowerCase().includes(query) ||
+        commission.restaurantId?.toLowerCase().includes(query) ||
+        commission.restaurant?.name?.toLowerCase().includes(query)
+      )
+    }
+
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue, bValue
+        switch (sortConfig.key) {
+          case 'sl':
+            aValue = a.sl || 0
+            bValue = b.sl || 0
+            break
+          case 'name':
+            aValue = (a.restaurantName || a.restaurant?.name || "").toLowerCase()
+            bValue = (b.restaurantName || b.restaurant?.name || "").toLowerCase()
+            break
+          case 'restaurantId':
+            aValue = (a.restaurantId || "").toLowerCase()
+            bValue = (b.restaurantId || "").toLowerCase()
+            break
+          case 'commission':
+            aValue = parseFloat(a.defaultCommission?.value) || 0
+            bValue = parseFloat(b.defaultCommission?.value) || 0
+            break
+          case 'status':
+            aValue = a.status ? 1 : 0
+            bValue = b.status ? 1 : 0
+            break
+          default:
+            return 0
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
+        return 0
+      })
     }
     
-    const query = searchQuery.toLowerCase().trim()
-    return commissions.filter(commission =>
-      commission.restaurantName?.toLowerCase().includes(query) ||
-      commission.restaurantId?.toLowerCase().includes(query) ||
-      commission.restaurant?.name?.toLowerCase().includes(query)
-    )
-  }, [commissions, searchQuery])
+    return filtered
+  }, [commissions, searchQuery, sortConfig])
+
+  const handleSort = (key) => {
+    let direction = "asc"
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc"
+    }
+    setSortConfig({ key, direction })
+  }
 
   const filteredRestaurants = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -386,31 +429,58 @@ export default function DiningRestaurantCommission() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     {visibleColumns.si && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('sl')}
+                      >
                         <div className="flex items-center gap-2">
                           <span>S.No</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'sl' ? 'text-blue-600' : 'text-slate-400'}`} />
                         </div>
                       </th>
                     )}
                     {visibleColumns.restaurant && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Restaurant Name
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('name')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Restaurant Name</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'name' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
                       </th>
                     )}
                     {visibleColumns.restaurantId && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Restaurant ID
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('restaurantId')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Restaurant ID</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'restaurantId' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
                       </th>
                     )}
                     {visibleColumns.defaultCommission && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Default Commission
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('commission')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Default Commission</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'commission' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
                       </th>
                     )}
                     {visibleColumns.status && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        Status
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('status')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Status</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'status' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
                       </th>
                     )}
                     {visibleColumns.actions && (

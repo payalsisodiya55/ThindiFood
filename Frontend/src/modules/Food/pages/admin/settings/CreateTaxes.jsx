@@ -24,12 +24,52 @@ export default function CreateTaxes() {
     status: true,
     actions: true,
   });
+  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" });
 
   const filtered = useMemo(() => {
-    return taxes.filter((tax) =>
+    let filteredData = taxes.filter((tax) =>
       tax.name.toLowerCase().includes(search.toLowerCase().trim())
     );
-  }, [taxes, search]);
+
+    if (sortConfig.key) {
+      filteredData = [...filteredData].sort((a, b) => {
+        let aValue, bValue;
+        switch (sortConfig.key) {
+          case 'si':
+            aValue = a.id || 0;
+            bValue = b.id || 0;
+            break;
+          case 'name':
+            aValue = (a.name || "").toLowerCase();
+            bValue = (b.name || "").toLowerCase();
+            break;
+          case 'rate':
+            aValue = parseFloat(a.rate) || 0;
+            bValue = parseFloat(b.rate) || 0;
+            break;
+          case 'status':
+            aValue = a.active ? 1 : 0;
+            bValue = b.active ? 1 : 0;
+            break;
+          default:
+            return 0;
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
+    }
+
+    return filteredData;
+  }, [taxes, search, sortConfig]);
+
+  const handleSort = (key) => {
+    let direction = "asc";
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc";
+    }
+    setSortConfig({ key, direction });
+  };
 
   const handleExport = (format) => {
     if (filtered.length === 0) {
@@ -147,34 +187,46 @@ export default function CreateTaxes() {
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
                 {visibleColumns.si && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th 
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('si')}
+                  >
                     <div className="flex items-center gap-2">
                       <span>SI</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'si' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
                 )}
                 {visibleColumns.name && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th 
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
                     <div className="flex items-center gap-2">
                       <span>Tax Name</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'name' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
                 )}
                 {visibleColumns.rate && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th 
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('rate')}
+                  >
                     <div className="flex items-center gap-2">
                       <span>Tax Rate</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'rate' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
                 )}
                 {visibleColumns.status && (
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th 
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
                     <div className="flex items-center gap-2">
                       <span>Status</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'status' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
                 )}

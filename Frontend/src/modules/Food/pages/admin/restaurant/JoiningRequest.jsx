@@ -182,6 +182,7 @@ export default function JoiningRequest() {
     dateFrom: "",
     dateTo: ""
   })
+  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" })
 
   // Track first render to avoid duplicate fetch in React StrictMode
   const hasFetchedOnceRef = useRef(false)
@@ -277,8 +278,54 @@ export default function JoiningRequest() {
       })
     }
 
+    // Apply sorting
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue, bValue
+        switch (sortConfig.key) {
+          case 'sl':
+            aValue = a.sl || 0
+            bValue = b.sl || 0
+            break
+          case 'name':
+            aValue = (a.restaurantName || "").toLowerCase()
+            bValue = (b.restaurantName || "").toLowerCase()
+            break
+          case 'owner':
+            aValue = (a.ownerName || "").toLowerCase()
+            bValue = (b.ownerName || "").toLowerCase()
+            break
+          case 'zone':
+            aValue = (a.zone || "").toLowerCase()
+            bValue = (b.zone || "").toLowerCase()
+            break
+          case 'businessModel':
+            aValue = (a.businessModel || "").toLowerCase()
+            bValue = (b.businessModel || "").toLowerCase()
+            break
+          case 'status':
+            aValue = (a.status || "").toLowerCase()
+            bValue = (b.status || "").toLowerCase()
+            break
+          default:
+            return 0
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
+        return 0
+      })
+    }
+
     return filtered
-  }, [currentRequests, searchQuery, filters])
+  }, [currentRequests, searchQuery, filters, sortConfig])
+
+  const handleSort = (key) => {
+    let direction = "asc"
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc"
+    }
+    setSortConfig({ key, direction })
+  }
 
   const clearFilters = () => {
     setFilters({
@@ -344,7 +391,14 @@ export default function JoiningRequest() {
 
   const formatPhone = (phone) => {
     if (!phone) return "N/A"
-    return phone
+    const str = String(phone).trim()
+    if (str.startsWith("91") && str.length > 10) {
+      return str.substring(2)
+    }
+    if (str.startsWith("+91") && str.length > 10) {
+      return str.substring(3).trim()
+    }
+    return str
   }
 
   // Handle view restaurant details
@@ -462,7 +516,7 @@ export default function JoiningRequest() {
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
                   type="text"
-                  placeholder="Ex: Search by restaurant na"
+                  placeholder="Search by restaurant name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -496,40 +550,58 @@ export default function JoiningRequest() {
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('sl')}
+                  >
                     <div className="flex items-center gap-1">
                       <span>SL</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'sl' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('name')}
+                  >
                     <div className="flex items-center gap-1">
                       <span>Restaurant Info</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'name' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('owner')}
+                  >
                     <div className="flex items-center gap-1">
                       <span>Owner Info</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'owner' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('zone')}
+                  >
                     <div className="flex items-center gap-1">
                       <span>Zone</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'zone' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('businessModel')}
+                  >
                     <div className="flex items-center gap-1">
                       <span>Business Model</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'businessModel' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                  <th
+                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
                     <div className="flex items-center gap-1">
                       <span>Status</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'status' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
                   <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
@@ -568,8 +640,8 @@ export default function JoiningRequest() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-700">{request.sl ?? index + 1}</span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-6 py-4 min-w-[200px]">
+                        <div className="flex items-center gap-3 min-w-0">
                           <div 
                             className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center shrink-0 cursor-pointer hover:opacity-80 transition-all"
                             onClick={() => handleViewDetails(request)}
@@ -590,7 +662,7 @@ export default function JoiningRequest() {
                             />
                           </div>
                           <span 
-                            className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors"
+                            className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors break-words whitespace-normal"
                             onClick={() => handleViewDetails(request)}
                           >
                             {request.restaurantName}
@@ -934,26 +1006,26 @@ export default function JoiningRequest() {
                     <div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Owner Information</h4>
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <User className="w-5 h-5 text-slate-400" />
-                          <div>
+                        <div className="flex items-start gap-3">
+                          <User className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
                             <p className="text-xs text-slate-500">Owner Name</p>
-                            <p className="text-sm font-medium text-slate-900">{r?.ownerName || "N/A"}</p>
+                            <p className="text-sm font-medium text-slate-900 break-words">{r?.ownerName || "N/A"}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Phone className="w-5 h-5 text-slate-400" />
-                          <div>
+                        <div className="flex items-start gap-3">
+                          <Phone className="w-5 h-5 text-emerald-500 mt-0.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
                             <p className="text-xs text-slate-500">Phone</p>
-                            <p className="text-sm font-medium text-slate-900">{r?.ownerPhone || r?.phone || "N/A"}</p>
+                            <p className="text-sm font-medium text-slate-900 break-words">{formatPhone(r?.ownerPhone || r?.phone)}</p>
                           </div>
                         </div>
                         {(r?.ownerEmail || r?.email) && (
-                          <div className="flex items-center gap-3">
-                            <Mail className="w-5 h-5 text-slate-400" />
-                            <div>
+                          <div className="flex items-start gap-3">
+                            <Mail className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Email</p>
-                              <p className="text-sm font-medium text-slate-900">{r.ownerEmail || r.email}</p>
+                              <p className="text-sm font-medium text-slate-900 break-words">{r.ownerEmail || r.email}</p>
                             </div>
                           </div>
                         )}
@@ -966,10 +1038,10 @@ export default function JoiningRequest() {
                       <div className="space-y-3">
                         {(hasAddress || r?.zone) && (
                           <div className="flex items-start gap-3">
-                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />
-                            <div>
+                            <MapPin className="w-5 h-5 text-rose-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Address</p>
-                              <p className="text-sm font-medium text-slate-900">
+                              <p className="text-sm font-medium text-slate-900 break-words">
                                 {addressParts.length > 0
                                   ? [r.addressLine1, r.addressLine2, r.area, r.city, r.landmark].filter(Boolean).join(", ")
                                   : r?.location?.addressLine1
@@ -1002,11 +1074,11 @@ export default function JoiningRequest() {
                           </div>
                         )}
                         {(r?.primaryContactNumber || r?.phone) && (
-                          <div className="flex items-center gap-3">
-                            <Phone className="w-5 h-5 text-slate-400" />
-                            <div>
+                          <div className="flex items-start gap-3">
+                            <Phone className="w-5 h-5 text-teal-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Primary Contact</p>
-                              <p className="text-sm font-medium text-slate-900">{r.primaryContactNumber || r.phone}</p>
+                              <p className="text-sm font-medium text-slate-900 break-words">{formatPhone(r.primaryContactNumber || r.phone)}</p>
                             </div>
                           </div>
                         )}
@@ -1019,7 +1091,7 @@ export default function JoiningRequest() {
                     <div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Cuisine & Details</h4>
                       <div className="space-y-3">
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs text-slate-500 mb-1">Cuisines</p>
                           <div className="flex flex-wrap gap-2">
                             {r?.cuisines && Array.isArray(r.cuisines) && r.cuisines.length > 0 ? (
@@ -1034,7 +1106,7 @@ export default function JoiningRequest() {
                           </div>
                         </div>
                         {typeof r?.pureVegRestaurant === "boolean" && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Food Type</p>
                             <p className="text-sm font-medium text-slate-900">
                               {r.pureVegRestaurant ? "Pure Veg" : "Mixed"}
@@ -1042,13 +1114,13 @@ export default function JoiningRequest() {
                           </div>
                         )}
                         {r?.offer && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Current Offer</p>
                             <p className="text-sm font-medium text-green-600">{r.offer}</p>
                           </div>
                         )}
                         {r?.featuredDish && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Featured Dish</p>
                             <p className="text-sm font-medium text-slate-900">{r.featuredDish}</p>
                             {r.featuredPrice != null && <p className="text-xs text-green-600 mt-1">₹{r.featuredPrice}</p>}
@@ -1061,24 +1133,24 @@ export default function JoiningRequest() {
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Timings & Status</h4>
                       <div className="space-y-3">
                         {(openingTime || closingTime) && (
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-slate-400" />
-                            <div>
+                          <div className="flex items-start gap-3">
+                            <Clock className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Opening / Closing</p>
-                              <p className="text-sm font-medium text-slate-900">
+                              <p className="text-sm font-medium text-slate-900 break-words">
                                 {formatTime12Hour(openingTime)} – {formatTime12Hour(closingTime)}
                               </p>
                             </div>
                           </div>
                         )}
                         {r?.estimatedDeliveryTime && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time</p>
                             <p className="text-sm font-medium text-slate-900">{r.estimatedDeliveryTime}</p>
                           </div>
                         )}
                         {r?.openDays && Array.isArray(r.openDays) && r.openDays.length > 0 && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Open Days</p>
                             <div className="flex flex-wrap gap-2">
                               {r.openDays.map((day, idx) => (
@@ -1089,7 +1161,7 @@ export default function JoiningRequest() {
                             </div>
                           </div>
                         )}
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs text-slate-500 mb-1">Approval Status</p>
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                             approvalStatus === "approved" ? "bg-green-100 text-green-700" : approvalStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
@@ -1144,15 +1216,15 @@ export default function JoiningRequest() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.panNumber || r?.onboarding?.step3?.pan?.panNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">PAN Number</p>
-                                  <p className="font-medium text-slate-900">{r.panNumber || r.onboarding?.step3?.pan?.panNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.panNumber || r.onboarding?.step3?.pan?.panNumber}</p>
                                 </div>
                               )}
                               {(r.nameOnPan || r?.onboarding?.step3?.pan?.nameOnPan) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Name on PAN</p>
-                                  <p className="font-medium text-slate-900">{r.nameOnPan || r.onboarding?.step3?.pan?.nameOnPan}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.nameOnPan || r.onboarding?.step3?.pan?.nameOnPan}</p>
                                 </div>
                               )}
                               {(typeof r.panImage === "string" ? r.panImage : r?.panImage?.url || r?.onboarding?.step3?.pan?.image?.url) && (
@@ -1182,28 +1254,28 @@ export default function JoiningRequest() {
                               GST Details
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              <div>
+                              <div className="min-w-0 flex-1">
                                 <p className="text-xs text-slate-500 mb-1">GST Registered</p>
-                                <p className="font-medium text-slate-900">
+                                <p className="font-medium text-slate-900 break-words whitespace-normal">
                                   {r.gstRegistered != null ? (r.gstRegistered ? "Yes" : "No") : (r?.onboarding?.step3?.gst?.isRegistered ? "Yes" : "No")}
                                 </p>
-                              </div>
+                                </div>
                               {(r.gstNumber || r?.onboarding?.step3?.gst?.gstNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">GST Number</p>
-                                  <p className="font-medium text-slate-900">{r.gstNumber || r.onboarding?.step3?.gst?.gstNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.gstNumber || r.onboarding?.step3?.gst?.gstNumber}</p>
                                 </div>
                               )}
                               {(r.gstLegalName || r?.onboarding?.step3?.gst?.legalName) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Legal Name</p>
-                                  <p className="font-medium text-slate-900">{r.gstLegalName || r.onboarding?.step3?.gst?.legalName}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.gstLegalName || r.onboarding?.step3?.gst?.legalName}</p>
                                 </div>
                               )}
                               {(r.gstAddress || r?.onboarding?.step3?.gst?.address) && (
                                 <div className="md:col-span-2">
                                   <p className="text-xs text-slate-500 mb-1">GST Address</p>
-                                  <p className="font-medium text-slate-900">{r.gstAddress || r.onboarding?.step3?.gst?.address}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.gstAddress || r.onboarding?.step3?.gst?.address}</p>
                                 </div>
                               )}
                               {(typeof r.gstImage === "string" ? r.gstImage : r?.gstImage?.url || r?.onboarding?.step3?.gst?.image?.url) && (
@@ -1234,15 +1306,15 @@ export default function JoiningRequest() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.fssaiNumber || r?.onboarding?.step3?.fssai?.registrationNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Registration Number</p>
-                                  <p className="font-medium text-slate-900">{r.fssaiNumber || r.onboarding?.step3?.fssai?.registrationNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.fssaiNumber || r.onboarding?.step3?.fssai?.registrationNumber}</p>
                                 </div>
                               )}
                               {(r.fssaiExpiry || r?.onboarding?.step3?.fssai?.expiryDate) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Expiry Date</p>
-                                  <p className="font-medium text-slate-900">
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">
                                     {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString('en-IN', {
                                       year: 'numeric',
                                       month: 'long',
@@ -1279,27 +1351,27 @@ export default function JoiningRequest() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.accountNumber || r?.onboarding?.step3?.bank?.accountNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Account Number</p>
-                                  <p className="font-medium text-slate-900">{r.accountNumber || r.onboarding?.step3?.bank?.accountNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.accountNumber || r.onboarding?.step3?.bank?.accountNumber}</p>
                                 </div>
                               )}
                               {(r.ifscCode || r?.onboarding?.step3?.bank?.ifscCode) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">IFSC Code</p>
-                                  <p className="font-medium text-slate-900">{r.ifscCode || r.onboarding?.step3?.bank?.ifscCode}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.ifscCode || r.onboarding?.step3?.bank?.ifscCode}</p>
                                 </div>
                               )}
                               {(r.accountHolderName || r?.onboarding?.step3?.bank?.accountHolderName) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Account Holder Name</p>
-                                  <p className="font-medium text-slate-900">{r.accountHolderName || r.onboarding?.step3?.bank?.accountHolderName}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.accountHolderName || r.onboarding?.step3?.bank?.accountHolderName}</p>
                                 </div>
                               )}
                               {(r.accountType || r?.onboarding?.step3?.bank?.accountType) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Account Type</p>
-                                  <p className="font-medium text-slate-900 capitalize">{r.accountType || r.onboarding?.step3?.bank?.accountType}</p>
+                                  <p className="font-medium text-slate-900 capitalize break-words whitespace-normal">{r.accountType || r.onboarding?.step3?.bank?.accountType}</p>
                                 </div>
                               )}
                             </div>
@@ -1347,9 +1419,9 @@ export default function JoiningRequest() {
                         {r.createdAt && (
                           <div className="flex items-center gap-3">
                             <Calendar className="w-5 h-5 text-slate-400" />
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs text-slate-500 mb-1">Registration Date & Time</p>
-                              <p className="font-medium text-slate-900">
+                              <p className="font-medium text-slate-900 break-words whitespace-normal">
                                 {new Date(r.createdAt).toLocaleString('en-IN', {
                                   year: 'numeric',
                                   month: 'long',
@@ -1358,44 +1430,44 @@ export default function JoiningRequest() {
                                   minute: '2-digit'
                                 })}
                               </p>
-                            </div>
+                                </div>
                           </div>
                         )}
                         {r.restaurantId && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Restaurant ID</p>
-                            <p className="font-medium text-slate-900">{r.restaurantId}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.restaurantId}</p>
+                                </div>
                         )}
                         {r.approvedAt != null && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Approved At</p>
-                            <p className="font-medium text-slate-900">{new Date(r.approvedAt).toLocaleString('en-IN')}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{new Date(r.approvedAt).toLocaleString('en-IN')}</p>
+                                </div>
                         )}
                         {r.businessModel && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Business Model</p>
-                            <p className="font-medium text-slate-900">{r.businessModel}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.businessModel}</p>
+                                </div>
                         )}
                         {r.phoneVerified !== undefined && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Phone Verified</p>
-                            <p className="font-medium text-slate-900">{r.phoneVerified ? "Yes" : "No"}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.phoneVerified ? "Yes" : "No"}</p>
+                                </div>
                         )}
                         {r.signupMethod && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Signup Method</p>
-                            <p className="font-medium text-slate-900 capitalize">{r.signupMethod}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 capitalize break-words whitespace-normal">{r.signupMethod}</p>
+                                </div>
                         )}
                         {r?.onboarding?.completedSteps != null && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Onboarding Steps Completed</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.completedSteps} / 4</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.completedSteps} / 4</p>
+                                </div>
                         )}
                       </div>
                     </div>

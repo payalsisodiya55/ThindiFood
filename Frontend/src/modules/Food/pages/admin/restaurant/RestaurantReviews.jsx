@@ -26,20 +26,67 @@ export default function RestaurantReviews() {
     rating: true,
     date: true,
   })
+  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" })
 
   const filteredReviews = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return reviews
+    let filtered = reviews
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = filtered.filter(review =>
+        review.restaurant.toLowerCase().includes(query) ||
+        review.customer.toLowerCase().includes(query) ||
+        review.review.toLowerCase().includes(query) ||
+        (review.orderId && review.orderId.toLowerCase().includes(query))
+      )
+    }
+
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue, bValue
+        switch (sortConfig.key) {
+          case 'si':
+            aValue = a.sl || 0
+            bValue = b.sl || 0
+            break
+          case 'orderId':
+            aValue = (a.orderId || "").toLowerCase()
+            bValue = (b.orderId || "").toLowerCase()
+            break
+          case 'restaurant':
+            aValue = (a.restaurant || "").toLowerCase()
+            bValue = (b.restaurant || "").toLowerCase()
+            break
+          case 'customer':
+            aValue = (a.customer || "").toLowerCase()
+            bValue = (b.customer || "").toLowerCase()
+            break
+          case 'rating':
+            aValue = a.rating || 0
+            bValue = b.rating || 0
+            break
+          case 'date':
+            aValue = new Date(a.submittedAt).getTime() || 0
+            bValue = new Date(b.submittedAt).getTime() || 0
+            break
+          default:
+            return 0
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
+        return 0
+      })
     }
     
-    const query = searchQuery.toLowerCase().trim()
-    return reviews.filter(review =>
-      review.restaurant.toLowerCase().includes(query) ||
-      review.customer.toLowerCase().includes(query) ||
-      review.review.toLowerCase().includes(query) ||
-      (review.orderId && review.orderId.toLowerCase().includes(query))
-    )
-  }, [reviews, searchQuery])
+    return filtered
+  }, [reviews, searchQuery, sortConfig])
+
+  const handleSort = (key) => {
+    let direction = "asc"
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc"
+    }
+    setSortConfig({ key, direction })
+  }
 
   const handleExport = (format) => {
     if (filteredReviews.length === 0) {
@@ -104,6 +151,24 @@ export default function RestaurantReviews() {
       stars.push(<Star key={i} className="w-5 h-5 fill-amber-500 text-amber-500" />)
     }
     return stars
+  }
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "N/A"
+    try {
+      const date = new Date(dateStr)
+      if (isNaN(date.getTime())) return dateStr
+      return date.toLocaleString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      })
+    } catch (e) {
+      return dateStr
+    }
   }
 
   useEffect(() => {
@@ -208,25 +273,73 @@ export default function RestaurantReviews() {
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     {visibleColumns.si && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">SI</th>
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('si')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>SI</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'si' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
+                      </th>
                     )}
                     {visibleColumns.orderId && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Order ID</th>
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('orderId')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Order ID</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'orderId' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
+                      </th>
                     )}
                     {visibleColumns.restaurant && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Restaurant</th>
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('restaurant')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Restaurant</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'restaurant' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
+                      </th>
                     )}
                     {visibleColumns.customer && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Customer</th>
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('customer')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Customer</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'customer' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
+                      </th>
                     )}
                     {visibleColumns.review && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Review</th>
                     )}
                     {visibleColumns.rating && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Rating</th>
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('rating')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Rating</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'rating' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
+                      </th>
                     )}
                     {visibleColumns.date && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Date & Time</th>
+                      <th 
+                        className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                        onClick={() => handleSort('date')}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span>Date & Time</span>
+                          <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'date' ? 'text-blue-600' : 'text-slate-400'}`} />
+                        </div>
+                      </th>
                     )}
                   </tr>
                 </thead>

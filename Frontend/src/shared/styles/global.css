@@ -133,6 +133,15 @@
   body {
     @apply bg-background text-foreground m-0 min-h-screen;
   }
+  
+  /* Ensure action icons and sorting icons in admin tables have pointer cursors */
+  table td button, 
+  table td a, 
+  table td svg,
+  table th,
+  table th svg {
+    cursor: pointer !important;
+  }
 }
 
 @layer utilities {

@@ -45,6 +45,7 @@ export default function OfflinePaymentSetup() {
     status: true,
     actions: true,
   })
+  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" })
 
   const filteredMethods = useMemo(() => {
     let filtered = methods.filter(method => {
@@ -62,8 +63,49 @@ export default function OfflinePaymentSetup() {
       )
     }
     
+    if (sortConfig.key) {
+      filtered = [...filtered].sort((a, b) => {
+        let aValue, bValue
+        switch (sortConfig.key) {
+          case 'sl':
+            aValue = a.id || 0
+            bValue = b.id || 0
+            break
+          case 'name':
+            aValue = (a.name || "").toLowerCase()
+            bValue = (b.name || "").toLowerCase()
+            break
+          case 'paymentInfo':
+            aValue = (a.paymentInfo || "").toLowerCase()
+            bValue = (b.paymentInfo || "").toLowerCase()
+            break
+          case 'requiredInfo':
+            aValue = (a.requiredInfo || "").toLowerCase()
+            bValue = (b.requiredInfo || "").toLowerCase()
+            break
+          case 'status':
+            aValue = a.status ? 1 : 0
+            bValue = b.status ? 1 : 0
+            break
+          default:
+            return 0
+        }
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
+        return 0
+      })
+    }
+    
     return filtered
-  }, [methods, activeTab, searchQuery])
+  }, [methods, activeTab, searchQuery, sortConfig])
+
+  const handleSort = (key) => {
+    let direction = "asc"
+    if (sortConfig.key === key && sortConfig.direction === "asc") {
+      direction = "desc"
+    }
+    setSortConfig({ key, direction })
+  }
 
   const handleStatusToggle = (id) => {
     setMethods(prev => prev.map(method => 
@@ -224,42 +266,57 @@ export default function OfflinePaymentSetup() {
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   {visibleColumns.sl && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <th 
+                      className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('sl')}
+                    >
                       <div className="flex items-center gap-2">
                         <span>SL</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                        <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'sl' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
                   )}
                   {visibleColumns.name && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <th 
+                      className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
                       <div className="flex items-center gap-2">
                         <span>Payment Method Name</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                        <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'name' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
                   )}
                   {visibleColumns.paymentInfo && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <th 
+                      className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('paymentInfo')}
+                    >
                       <div className="flex items-center gap-2">
                         <span>Payment Info</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                        <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'paymentInfo' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
                   )}
                   {visibleColumns.requiredInfo && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <th 
+                      className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('requiredInfo')}
+                    >
                       <div className="flex items-center gap-2">
                         <span>Required Info From Customer</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                        <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'requiredInfo' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
                   )}
                   {visibleColumns.status && (
-                    <th className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <th 
+                      className="px-3 py-2 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
                       <div className="flex items-center gap-2">
                         <span>Status</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
+                        <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'status' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
                   )}

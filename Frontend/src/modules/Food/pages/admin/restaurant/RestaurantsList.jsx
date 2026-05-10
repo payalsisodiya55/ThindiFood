@@ -386,7 +386,14 @@ export default function RestaurantsList() {
   // Show full phone number without masking
   const formatPhone = (phone) => {
     if (!phone) return ""
-    return phone
+    const str = String(phone).trim()
+    if (str.startsWith("91") && str.length > 10) {
+      return str.substring(2)
+    }
+    if (str.startsWith("+91") && str.length > 10) {
+      return str.substring(3).trim()
+    }
+    return str
   }
 
   const renderStars = (rating) => {
@@ -1212,9 +1219,9 @@ export default function RestaurantsList() {
                                 }}
                               />
                             </div>
-                            <div className="flex flex-col">
+                            <div className="flex flex-col min-w-0">
                               <span 
-                                className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors"
+                                className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] xl:max-w-[300px] break-words whitespace-normal"
                                 onClick={() => handleViewDetails(restaurant)}
                               >
                                 {restaurant.name}
@@ -1225,9 +1232,9 @@ export default function RestaurantsList() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-slate-900">{restaurant.ownerName}</span>
-                            <span className="text-xs text-slate-500">{formatPhone(restaurant.ownerPhone)}</span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-medium text-slate-900 max-w-[150px] xl:max-w-[250px] break-words whitespace-normal">{restaurant.ownerName}</span>
+                            <span className="text-xs text-slate-500 max-w-[150px] xl:max-w-[250px] break-words whitespace-normal">{formatPhone(restaurant.ownerPhone)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1530,9 +1537,9 @@ export default function RestaurantsList() {
                         }}
                       />
                     </div>
-                    <div className="flex-1 text-center md:text-left pt-2">
+                    <div className="flex-1 min-w-0 text-center md:text-left pt-2">
                       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">
+                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight break-words">
                           {r?.restaurantName || r?.name || "N/A"}
                         </h3>
                         <div className="flex items-center justify-center md:justify-start gap-2">
@@ -1573,9 +1580,9 @@ export default function RestaurantsList() {
                           <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
                             <User className="w-5 h-5 text-blue-600" />
                           </div>
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-0.5">Full Name</p>
-                            <p className="text-base font-bold text-slate-800">
+                            <p className="text-base font-bold text-slate-800 break-words">
                               {r?.ownerName || "N/A"}
                             </p>
                           </div>
@@ -1584,10 +1591,10 @@ export default function RestaurantsList() {
                           <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                             <Phone className="w-5 h-5 text-emerald-600" />
                           </div>
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-0.5">Contact Number</p>
-                            <p className="text-base font-bold text-slate-800">
-                              {r?.ownerPhone || r?.phone || "N/A"}
+                            <p className="text-base font-bold text-slate-800 break-words">
+                              {formatPhone(r?.ownerPhone || r?.phone) || "N/A"}
                             </p>
                           </div>
                         </div>
@@ -1596,9 +1603,9 @@ export default function RestaurantsList() {
                             <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
                               <Mail className="w-5 h-5 text-indigo-600" />
                             </div>
-                            <div>
+                            <div className="flex-1 min-w-0">
                               <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-0.5">Email Address</p>
-                              <p className="text-base font-bold text-slate-800">{r.ownerEmail || r.email}</p>
+                              <p className="text-base font-bold text-slate-800 break-words">{r.ownerEmail || r.email}</p>
                             </div>
                           </div>
                         )}
@@ -1619,10 +1626,10 @@ export default function RestaurantsList() {
                       <div className="space-y-3">
                         {!isEditingLocation && (r?.location || hasFlatAddress) && (
                           <div className="flex items-start gap-3">
-                            <MapPin className="w-5 h-5 text-slate-400 mt-0.5" />
-                            <div>
+                            <MapPin className="w-5 h-5 text-rose-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Address</p>
-                              <p className="text-sm font-medium text-slate-900">
+                              <p className="text-sm font-medium text-slate-900 break-words">
                                 {r?.location ? formatLocationAddress(r.location, selectedRestaurant?.zone) : flatAddress}
                               </p>
                             </div>
@@ -1634,20 +1641,20 @@ export default function RestaurantsList() {
                           </p>
                         )}
                         {(r?.primaryContactNumber || r?.phone) && (
-                          <div className="flex items-center gap-3">
-                            <Phone className="w-5 h-5 text-slate-400" />
-                            <div>
+                          <div className="flex items-start gap-3">
+                            <Phone className="w-5 h-5 text-teal-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Primary Contact</p>
-                              <p className="text-sm font-medium text-slate-900">{r.primaryContactNumber || r.phone}</p>
+                              <p className="text-sm font-medium text-slate-900 break-words">{formatPhone(r.primaryContactNumber || r.phone) || "N/A"}</p>
                             </div>
                           </div>
                         )}
                         {(r?.email && !r?.ownerEmail) && (
-                          <div className="flex items-center gap-3">
-                            <Mail className="w-5 h-5 text-slate-400" />
-                            <div>
+                          <div className="flex items-start gap-3">
+                            <Mail className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Restaurant Email</p>
-                              <p className="text-sm font-medium text-slate-900">{r.email}</p>
+                              <p className="text-sm font-medium text-slate-900 break-words">{r.email}</p>
                             </div>
                           </div>
                         )}
@@ -1662,24 +1669,24 @@ export default function RestaurantsList() {
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Timings & Status</h4>
                       <div className="space-y-3">
                         {(openingTimeVal || closingTimeVal) && (
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-5 h-5 text-slate-400" />
-                            <div>
+                          <div className="flex items-start gap-3">
+                            <Clock className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+                            <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Opening / Closing</p>
-                              <p className="text-sm font-medium text-slate-900">
+                              <p className="text-sm font-medium text-slate-900 break-words">
                                 {formatTime12Hour(openingTimeVal)} – {formatTime12Hour(closingTimeVal)}
                               </p>
                             </div>
                           </div>
                         )}
                         {estimatedDeliveryTimeVal && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time</p>
                             <p className="text-sm font-medium text-slate-900">{estimatedDeliveryTimeVal}</p>
                           </div>
                         )}
                         {openDaysVal && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Open Days</p>
                             <div className="flex flex-wrap gap-2">
                               {openDaysVal.map((day, idx) => (
@@ -1723,7 +1730,7 @@ export default function RestaurantsList() {
                             </div>
                           </div>
                         )}
-                        <div>
+                        <div className="min-w-0 flex-1">
                           <p className="text-xs text-slate-500 mb-1">Status</p>
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${approvalStatusBadgeClass(detailsApprovalStatus)}`}>
                             {approvalStatusLabel(detailsApprovalStatus)}
@@ -1822,9 +1829,9 @@ export default function RestaurantsList() {
                         {r.createdAt && (
                           <div className="flex items-center gap-3">
                             <Calendar className="w-5 h-5 text-slate-400" />
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs text-slate-500 mb-1">Registration Date & Time</p>
-                              <p className="font-medium text-slate-900">
+                              <p className="font-medium text-slate-900 break-words whitespace-normal">
                                 {new Date(r.createdAt).toLocaleString('en-IN', {
                                   year: 'numeric',
                                   month: 'long',
@@ -1833,15 +1840,15 @@ export default function RestaurantsList() {
                                   minute: '2-digit'
                                 })}
                               </p>
-                            </div>
+                                </div>
                           </div>
                         )}
                         {r.updatedAt && (
                           <div className="flex items-center gap-3">
                             <Calendar className="w-5 h-5 text-slate-400" />
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs text-slate-500 mb-1">Last Updated</p>
-                              <p className="font-medium text-slate-900">
+                              <p className="font-medium text-slate-900 break-words whitespace-normal">
                                 {new Date(r.updatedAt).toLocaleString('en-IN', {
                                   year: 'numeric',
                                   month: 'long',
@@ -1850,32 +1857,32 @@ export default function RestaurantsList() {
                                   minute: '2-digit'
                                 })}
                               </p>
-                            </div>
+                                </div>
                           </div>
                         )}
                         {r.restaurantId && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Restaurant ID</p>
-                            <p className="font-medium text-slate-900">{formatRestaurantId(r.restaurantId)}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{formatRestaurantId(r.restaurantId)}</p>
+                                </div>
                         )}
                         {r.slug && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Slug</p>
-                            <p className="font-medium text-slate-900">{r.slug}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.slug}</p>
+                                </div>
                         )}
                         {r.phoneVerified !== undefined && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Phone Verified</p>
-                            <p className="font-medium text-slate-900">{r.phoneVerified ? "Yes" : "No"}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.phoneVerified ? "Yes" : "No"}</p>
+                                </div>
                         )}
                         {r.signupMethod && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Signup Method</p>
-                            <p className="font-medium text-slate-900 capitalize">{r.signupMethod}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 capitalize break-words whitespace-normal">{r.signupMethod}</p>
+                                </div>
                         )}
                       </div>
                     </div>
@@ -1895,15 +1902,15 @@ export default function RestaurantsList() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.panNumber || r?.onboarding?.step3?.pan?.panNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">PAN Number</p>
-                                  <p className="font-medium text-slate-900">{r.panNumber || r.onboarding?.step3?.pan?.panNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.panNumber || r.onboarding?.step3?.pan?.panNumber}</p>
                                 </div>
                               )}
                               {(r.nameOnPan || r?.onboarding?.step3?.pan?.nameOnPan) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Name on PAN</p>
-                                  <p className="font-medium text-slate-900">{r.nameOnPan || r.onboarding?.step3?.pan?.nameOnPan}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.nameOnPan || r.onboarding?.step3?.pan?.nameOnPan}</p>
                                 </div>
                               )}
                               {panDocumentUrl && (
@@ -1929,29 +1936,29 @@ export default function RestaurantsList() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.gstRegistered != null || r?.onboarding?.step3?.gst?.isRegistered != null) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">GST Registered</p>
-                                  <p className="font-medium text-slate-900">
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">
                                     {r.gstRegistered != null ? (r.gstRegistered ? "Yes" : "No") : (r?.onboarding?.step3?.gst?.isRegistered ? "Yes" : "No")}
                                   </p>
                                 </div>
                               )}
                               {(r.gstNumber || r?.onboarding?.step3?.gst?.gstNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">GST Number</p>
-                                  <p className="font-medium text-slate-900">{r.gstNumber || r.onboarding?.step3?.gst?.gstNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.gstNumber || r.onboarding?.step3?.gst?.gstNumber}</p>
                                 </div>
                               )}
                               {(r.gstLegalName || r?.onboarding?.step3?.gst?.legalName) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Legal Name</p>
-                                  <p className="font-medium text-slate-900">{r.gstLegalName || r.onboarding?.step3?.gst?.legalName}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.gstLegalName || r.onboarding?.step3?.gst?.legalName}</p>
                                 </div>
                               )}
                               {(r.gstAddress || r?.onboarding?.step3?.gst?.address) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">GST Address</p>
-                                  <p className="font-medium text-slate-900">{r.gstAddress || r.onboarding?.step3?.gst?.address}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.gstAddress || r.onboarding?.step3?.gst?.address}</p>
                                 </div>
                               )}
                               {gstDocumentUrl && (
@@ -1977,15 +1984,15 @@ export default function RestaurantsList() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.fssaiNumber || r?.onboarding?.step3?.fssai?.registrationNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Registration Number</p>
-                                  <p className="font-medium text-slate-900">{r.fssaiNumber || r.onboarding?.step3?.fssai?.registrationNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.fssaiNumber || r.onboarding?.step3?.fssai?.registrationNumber}</p>
                                 </div>
                               )}
                               {(r.fssaiExpiry || r?.onboarding?.step3?.fssai?.expiryDate) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">FSSAI Expiry Date</p>
-                                  <p className="font-medium text-slate-900">
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">
                                     {new Date(r.fssaiExpiry || r.onboarding?.step3?.fssai?.expiryDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })}
                                   </p>
                                 </div>
@@ -2013,27 +2020,27 @@ export default function RestaurantsList() {
                             </h5>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                               {(r.accountNumber || r?.onboarding?.step3?.bank?.accountNumber) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Account Number</p>
-                                  <p className="font-medium text-slate-900">{r.accountNumber || r.onboarding?.step3?.bank?.accountNumber}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.accountNumber || r.onboarding?.step3?.bank?.accountNumber}</p>
                                 </div>
                               )}
                               {(r.ifscCode || r?.onboarding?.step3?.bank?.ifscCode) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">IFSC Code</p>
-                                  <p className="font-medium text-slate-900">{r.ifscCode || r.onboarding?.step3?.bank?.ifscCode}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.ifscCode || r.onboarding?.step3?.bank?.ifscCode}</p>
                                 </div>
                               )}
                               {(r.accountHolderName || r?.onboarding?.step3?.bank?.accountHolderName) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Account Holder Name</p>
-                                  <p className="font-medium text-slate-900">{r.accountHolderName || r.onboarding?.step3?.bank?.accountHolderName}</p>
+                                  <p className="font-medium text-slate-900 break-words whitespace-normal">{r.accountHolderName || r.onboarding?.step3?.bank?.accountHolderName}</p>
                                 </div>
                               )}
                               {(r.accountType || r?.onboarding?.step3?.bank?.accountType) && (
-                                <div>
+                                <div className="min-w-0 flex-1">
                                   <p className="text-xs text-slate-500 mb-1">Account Type</p>
-                                  <p className="font-medium text-slate-900 capitalize">{r.accountType || r.onboarding?.step3?.bank?.accountType}</p>
+                                  <p className="font-medium text-slate-900 capitalize break-words whitespace-normal">{r.accountType || r.onboarding?.step3?.bank?.accountType}</p>
                                 </div>
                               )}
                             </div>
@@ -2057,39 +2064,39 @@ export default function RestaurantsList() {
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Registration Step 1 Details</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         {r.onboarding.step1.restaurantName && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Restaurant Name (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step1.restaurantName}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.step1.restaurantName}</p>
+                                </div>
                         )}
                         {r.onboarding.step1.ownerName && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Owner Name (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step1.ownerName}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.step1.ownerName}</p>
+                                </div>
                         )}
                         {r.onboarding.step1.ownerEmail && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Owner Email (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step1.ownerEmail}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.step1.ownerEmail}</p>
+                                </div>
                         )}
                         {r.onboarding.step1.ownerPhone && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Owner Phone (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step1.ownerPhone}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{formatPhone(r.onboarding.step1.ownerPhone) || "N/A"}</p>
+                                </div>
                         )}
                         {r.onboarding.step1.primaryContactNumber && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Primary Contact (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step1.primaryContactNumber}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{formatPhone(r.onboarding.step1.primaryContactNumber) || "N/A"}</p>
+                                </div>
                         )}
                         {r.onboarding.step1.location && (
                           <div className="md:col-span-2">
                             <p className="text-xs text-slate-500 mb-1">Location (at registration)</p>
-                            <p className="font-medium text-slate-900">
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">
                               {r.onboarding.step1.location.addressLine1 || ""}
                               {r.onboarding.step1.location.addressLine2 && `, ${r.onboarding.step1.location.addressLine2}`}
                               {r.onboarding.step1.location.area && `, ${r.onboarding.step1.location.area}`}
@@ -2121,14 +2128,14 @@ export default function RestaurantsList() {
                         )}
                         {r.onboarding.step2.deliveryTimings && (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs text-slate-500 mb-1">Opening Time (at registration)</p>
-                              <p className="font-medium text-slate-900">{formatTime12Hour(r.onboarding.step2.deliveryTimings.openingTime)}</p>
-                            </div>
-                            <div>
+                              <p className="font-medium text-slate-900 break-words whitespace-normal">{formatTime12Hour(r.onboarding.step2.deliveryTimings.openingTime)}</p>
+                                </div>
+                            <div className="min-w-0 flex-1">
                               <p className="text-xs text-slate-500 mb-1">Closing Time (at registration)</p>
-                              <p className="font-medium text-slate-900">{formatTime12Hour(r.onboarding.step2.deliveryTimings.closingTime)}</p>
-                            </div>
+                              <p className="font-medium text-slate-900 break-words whitespace-normal">{formatTime12Hour(r.onboarding.step2.deliveryTimings.closingTime)}</p>
+                                </div>
                           </div>
                         )}
                         {r.onboarding.step2.openDays && Array.isArray(r.onboarding.step2.openDays) && r.onboarding.step2.openDays.length > 0 && (
@@ -2173,25 +2180,25 @@ export default function RestaurantsList() {
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Registration Step 4 Details</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         {r.onboarding.step4.estimatedDeliveryTime && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step4.estimatedDeliveryTime}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.step4.estimatedDeliveryTime}</p>
+                                </div>
                         )}
                         {r.onboarding.step4.distance && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Distance (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step4.distance}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.step4.distance}</p>
+                                </div>
                         )}
                         {r.onboarding.step4.featuredDish && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Featured Dish (at registration)</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.step4.featuredDish}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.step4.featuredDish}</p>
+                                </div>
                         )}
                         {r.onboarding.step4.offer && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Offer (at registration)</p>
                             <p className="font-medium text-green-600">{r.onboarding.step4.offer}</p>
                           </div>
@@ -2206,34 +2213,34 @@ export default function RestaurantsList() {
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Additional Information</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                         {r?.slug && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Slug</p>
-                            <p className="font-medium text-slate-900">{r.slug}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.slug}</p>
+                                </div>
                         )}
                         {r?.restaurantId && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Restaurant ID</p>
-                            <p className="font-medium text-slate-900">{formatRestaurantId(r.restaurantId)}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{formatRestaurantId(r.restaurantId)}</p>
+                                </div>
                         )}
                         {r?.phoneVerified !== undefined && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Phone Verified</p>
-                            <p className="font-medium text-slate-900">{r.phoneVerified ? "Yes" : "No"}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.phoneVerified ? "Yes" : "No"}</p>
+                                </div>
                         )}
                         {r?.signupMethod && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Signup Method</p>
-                            <p className="font-medium text-slate-900 capitalize">{r.signupMethod}</p>
-                          </div>
+                            <p className="font-medium text-slate-900 capitalize break-words whitespace-normal">{r.signupMethod}</p>
+                                </div>
                         )}
                         {r?.onboarding?.completedSteps !== undefined && (
-                          <div>
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Onboarding Steps Completed</p>
-                            <p className="font-medium text-slate-900">{r.onboarding.completedSteps} / 4</p>
-                          </div>
+                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.onboarding.completedSteps} / 4</p>
+                                </div>
                         )}
                       </div>
                     </div>
