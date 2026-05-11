@@ -3769,7 +3769,7 @@ export default function OrdersMain() {
                         </span>
                         <span
                           className={`text-sm font-semibold ${isCod ? "text-amber-600" : "text-green-600"}`}>
-                          {isCod ? "Cash on Delivery" : "Online"}
+                          {isCod ? ((popupOrder || newOrder)?.fulfillmentType === 'takeaway' ? "Pay At Restaurant" : "Cash on Delivery") : "Online"}
                         </span>
                       </div>
                     );
@@ -4397,7 +4397,11 @@ export default function OrdersMain() {
                       Payment:{" "}
                       <span
                         className={`font-medium ${isCod ? "text-amber-700" : "text-black"}`}>
-                        {isCod ? "Cash on Delivery" : "Paid online"}
+                        {isCod ? (
+                          (selectedOrder?.fulfillmentType === 'takeaway' || selectedOrder?.type === 'Takeaway') 
+                            ? "Pay At Restaurant" 
+                            : "Cash on Delivery"
+                        ) : "Paid online"}
                       </span>
                     </span>
                   );

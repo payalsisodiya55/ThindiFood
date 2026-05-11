@@ -301,7 +301,7 @@ export default function OrdersTable({
                       if (!paymentTypeDisplay) {
                         const paymentMethod = order.payment?.method || order.paymentMethod;
                         if (paymentMethod === 'cash' || paymentMethod === 'cod') {
-                          paymentTypeDisplay = 'Cash on Delivery';
+                          paymentTypeDisplay = (order.fulfillmentType === 'takeaway' || order.deliveryType === 'Takeaway') ? 'Pay At Restaurant' : 'Cash on Delivery';
                         } else if (paymentMethod === 'wallet') {
                           paymentTypeDisplay = 'Wallet';
                         } else {
@@ -315,7 +315,7 @@ export default function OrdersTable({
                         paymentTypeDisplay = 'Wallet';
                       }
                       
-                      const isCod = paymentTypeDisplay === 'Cash on Delivery';
+                      const isCod = paymentTypeDisplay === 'Cash on Delivery' || paymentTypeDisplay === 'Pay At Restaurant';
                       const isWallet = paymentTypeDisplay === 'Wallet';
                       
                       return (
@@ -443,7 +443,7 @@ export default function OrdersTable({
                         // Check if payment type is Online or Wallet (not Cash on Delivery)
                         const paymentMethod = order.payment?.method || order.paymentMethod;
                         const isOnlinePayment = order.paymentType === "Online" ||
-                                              (order.paymentType !== "Cash on Delivery" && 
+                                              ((order.paymentType !== "Cash on Delivery" && order.paymentType !== "Pay At Restaurant") && 
                                                order.payment?.method !== "cash" && 
                                                order.payment?.method !== "cod" &&
                                                (order.paymentMethod === "razorpay" || 
