@@ -222,7 +222,7 @@ export default function TableBookingSuccess() {
                     </p>
                     <div className="mt-5 space-y-3">
                         <Button
-                            onClick={() => navigate("/food/user/bookings")}
+                            onClick={() => navigate("/dining/my-bookings")}
                             className="w-full h-11 text-white font-semibold rounded-xl"
                             style={{ backgroundColor: RED }}
                         >
@@ -363,7 +363,7 @@ export default function TableBookingSuccess() {
                     </Button>
                 )}
                 <Button
-                    onClick={() => navigate("/food/user/bookings")}
+                    onClick={() => navigate("/dining/my-bookings")}
                     className="w-full h-14 text-white font-bold text-lg rounded-2xl shadow-xl shadow-red-100 flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                     style={{ backgroundColor: RED }}
                 >

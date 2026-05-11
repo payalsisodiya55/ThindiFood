@@ -9,9 +9,12 @@ import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useLocation as useLocationHook } from "@food/hooks/useLocation"
 import { useProfile } from "@food/context/ProfileContext"
 import { FaLocationDot } from "react-icons/fa6"
-import { diningAPI } from "@food/api"
+import { diningAPI, dineInAPI } from "@food/api"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import { RED } from "../../constants/color"
+import { Calendar, Users, X, AlertTriangle } from "lucide-react"
+import { toast } from "sonner"
+import { Badge } from "@food/components/ui/badge"
 
 const slugifyRestaurant = (value) =>
   String(value || "")
@@ -22,9 +25,15 @@ const slugifyRestaurant = (value) =>
 
 const formatAddress = (restaurant) =>
   restaurant?.location?.addressLine1 ||
+  restaurant?.addressLine1 ||
   restaurant?.location?.formattedAddress ||
+  restaurant?.formattedAddress ||
   restaurant?.location?.address ||
-  [restaurant?.location?.area || restaurant?.area, restaurant?.location?.city || restaurant?.city]
+  restaurant?.address ||
+  [
+    restaurant?.location?.area || restaurant?.area,
+    restaurant?.location?.city || restaurant?.city
+  ]
     .filter(Boolean)
     .join(", ") ||
   "Address unavailable"
@@ -49,6 +58,151 @@ const formatCategoryHeading = (category) =>
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ")
 
+const getStatusLabel = (status) => {
+  const key = String(status || "").toUpperCase()
+  if (key === "PENDING") return "Pending"
+  if (key === "CONFIRMED" || key === "ACCEPTED") return "Confirmed"
+  if (key === "CHECKED_IN") return "Table Ready"
+  if (key === "COMPLETED") return "Completed"
+  if (key === "CANCELLED") return "Cancelled"
+  if (key === "LATE_CANCELLED") return "Late Cancelled"
+  if (key === "NO_SHOW") return "No-show"
+  if (key === "DECLINED") return "Declined"
+  return String(status || "Unknown")
+}
+
+const getStatusBadgeClass = (status) => {
+  const key = String(status || "").toUpperCase()
+  if (key === "PENDING") return "bg-amber-100 text-amber-700"
+  if (key === "CONFIRMED" || key === "ACCEPTED") return "bg-green-100 text-green-700"
+  if (key === "CHECKED_IN") return "bg-orange-100 text-orange-700"
+  if (key === "COMPLETED") return "bg-blue-100 text-blue-700"
+  if (key === "CANCELLED") return "bg-slate-200 text-slate-700"
+  if (key === "LATE_CANCELLED") return "bg-orange-100 text-orange-700"
+  if (key === "NO_SHOW") return "bg-rose-100 text-rose-700"
+  if (key === "DECLINED") return "bg-red-100 text-red-700"
+  return "bg-slate-100 text-slate-700"
+}
+
+function BookingDetailsModal({ booking, onClose, onCancel }) {
+  const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(String(booking?.status || "").toUpperCase())
+  const rawRest = booking.restaurantId && typeof booking.restaurantId === 'object' ? booking.restaurantId : (booking.restaurantRef || booking.restaurant || {})
+  const restaurantName = rawRest.restaurantName || rawRest.name || "Restaurant"
+  const restaurantAddress = formatAddress(rawRest)
+
+  return (
+    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center">
+      <div className="w-full max-w-lg rounded-[28px] bg-white shadow-2xl overflow-hidden dark:bg-[#1a1a1a]">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between dark:border-gray-800">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Reservation Details</p>
+            <h3 className="text-xl font-black text-slate-900 mt-1 dark:text-white">{restaurantName}</h3>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors dark:hover:bg-gray-800">
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-500 mb-1">Status</p>
+              <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-slate-500">Booking ID</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{booking.bookingId || "--"}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Date</p>
+              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Time</p>
+              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{booking.timeSlot}</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Guests</p>
+              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{booking.guests} Guests</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Special Request</p>
+              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white truncate">{booking.specialRequest || "No special request"}</p>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 p-4 dark:border-gray-800">
+            <p className="text-sm font-semibold text-slate-500">Restaurant address</p>
+            <p className="mt-2 text-sm text-slate-700 dark:text-gray-300">{restaurantAddress}</p>
+          </div>
+
+          {canCancel && (
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-gray-800 dark:bg-gray-800/30">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 mt-0.5 text-slate-400" />
+                <div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">Cancellation</p>
+                  <p className="mt-1 text-xs text-slate-600 dark:text-gray-400">Are you sure you want to cancel this reservation?</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-5 pt-0 space-y-3">
+          {canCancel && (
+            <Button
+              onClick={() => onCancel(booking)}
+              className="w-full h-12 rounded-2xl text-white font-bold"
+              style={{ backgroundColor: RED }}
+            >
+              Cancel Reservation
+            </Button>
+          )}
+          <Button onClick={onClose} variant="outline" className="w-full h-12 rounded-2xl border-slate-200 text-slate-700 dark:border-gray-800 dark:text-gray-300">
+            Close
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CancelConfirmationModal({ booking, onClose, onConfirm, loading }) {
+  return (
+    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-[#1a1a1a]">
+        <div className="flex items-start gap-3">
+          <div className="rounded-2xl p-3 bg-red-50 dark:bg-red-950/20">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white">Cancel reservation?</h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">Are you sure you want to cancel this booking? This action cannot be undone.</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <Button onClick={onClose} variant="outline" className="h-12 rounded-2xl border-slate-200 text-slate-700 dark:border-gray-800 dark:text-gray-300">
+            No, Keep it
+          </Button>
+          <Button
+            onClick={() => onConfirm(booking)}
+            disabled={loading}
+            className="h-12 rounded-2xl text-white font-bold"
+            style={{ backgroundColor: RED }}
+          >
+            {loading ? "Cancelling..." : "Yes, Cancel"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function DiningCategory() {
   const { category } = useParams()
   const navigate = useNavigate()
@@ -60,11 +214,54 @@ export default function DiningCategory() {
   const [restaurants, setRestaurants] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [bookingDetails, setBookingDetails] = useState(null)
+  const [bookingToCancel, setBookingToCancel] = useState(null)
+  const [isCancelling, setIsCancelling] = useState(false)
+  
+  const isBookings = category === "my-bookings"
 
   useEffect(() => {
     const fetchRestaurants = async () => {
       try {
         setIsLoading(true)
+        if (isBookings) {
+          const response = await dineInAPI.getUserBookings()
+          if (response?.data?.success) {
+            const mapped = (Array.isArray(response.data.data) ? response.data.data : []).map((booking) => {
+              const rawRest = booking.restaurantId && typeof booking.restaurantId === 'object' ? booking.restaurantId : (booking.restaurantRef || booking.restaurant || {})
+              const restaurant = rawRest || {}
+              return {
+                id: booking._id,
+                bookingId: booking.bookingId,
+                slug: restaurant.restaurantNameNormalized || restaurant.slug || "",
+                name: restaurant.name || restaurant.restaurantName || "Restaurant",
+                image: (Array.isArray(restaurant.coverImages) ? restaurant.coverImages[0] : restaurant.coverImages) || 
+                       restaurant.coverImage || 
+                       (Array.isArray(restaurant.menuImages) ? restaurant.menuImages[0] : restaurant.menuImages?.[0]) || 
+                       restaurant.profileImage?.url || 
+                       restaurant.profileImage || 
+                       restaurant.image || 
+                       null,
+                address: formatAddress(restaurant),
+                cuisine: `${booking.guests} Guests`,
+                status: booking.status,
+                date: new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+                time: booking.timeSlot,
+                price: `Booking ID: ${booking.bookingId || "N/A"}`,
+                offer: `${booking.timeSlot} • ${new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`,
+                rating: booking.status,
+                isBooking: true,
+                originalData: booking
+              }
+            })
+            setRestaurants(mapped)
+            setError(null)
+          } else {
+            setRestaurants([])
+          }
+          return
+        }
+
         const response = await diningAPI.getRestaurants(
           category
             ? (location?.city ? { category, city: location.city } : { category })
@@ -78,12 +275,12 @@ export default function DiningCategory() {
               id: restaurant._id || restaurant.id,
               slug: restaurant.restaurantNameNormalized || slugifyRestaurant(restaurant.restaurantName || restaurant.name),
               name: restaurant.restaurantName || restaurant.name || "Restaurant",
-              image:
-                restaurant.coverImage ||
-                restaurant.menuImages?.[0] ||
-                restaurant.profileImage?.url ||
-                restaurant.profileImage ||
-                "",
+                image:
+                  restaurant.coverImage ||
+                  restaurant.menuImages?.[0] ||
+                  restaurant.profileImage?.url ||
+                  restaurant.profileImage ||
+                  null,
               address: formatAddress(restaurant),
               cuisine:
                 Array.isArray(restaurant.cuisines) && restaurant.cuisines.length > 0
@@ -95,6 +292,7 @@ export default function DiningCategory() {
               featuredDish: restaurant.featuredDish || "Chef's special",
               featuredPrice: restaurant.featuredPrice || null,
               availability,
+              isBooking: false
             }
           })
           setRestaurants(mapped)
@@ -103,7 +301,7 @@ export default function DiningCategory() {
           setRestaurants([])
         }
       } catch (fetchError) {
-        setError("Failed to load dining restaurants")
+        setError(isBookings ? "Failed to load your bookings" : "Failed to load dining restaurants")
         setRestaurants([])
       } finally {
         setIsLoading(false)
@@ -119,6 +317,37 @@ export default function DiningCategory() {
   const handleLocationClick = useCallback(() => {
     openLocationSelector()
   }, [openLocationSelector])
+
+  const handleCancelBooking = async (booking) => {
+    try {
+      setIsCancelling(true)
+      const response = await dineInAPI.cancelBooking(booking._id)
+      if (response?.data?.success) {
+        toast.success("Reservation cancelled successfully.")
+        // Update local state
+        setRestaurants(prev => prev.map(item => 
+          item.id === booking._id ? { ...item, status: "CANCELLED", rating: "CANCELLED" } : item
+        ))
+        setBookingToCancel(null)
+        setBookingDetails(null)
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to cancel reservation")
+    } finally {
+      setIsCancelling(false)
+    }
+  }
+
+  const handleViewDetails = (event, restaurant) => {
+    event.preventDefault()
+    event.stopPropagation()
+    // Find the original booking data from the mapping
+    const originalBooking = restaurant.originalData
+    setBookingDetails({
+      ...originalBooking,
+      restaurantId: originalBooking.restaurantId || originalBooking.restaurantRef // Ensure address logic works
+    })
+  }
 
   return (
     <AnimatedPage className="min-h-screen bg-[#fffaf4] pb-24 dark:bg-[#0a0a0a]">
@@ -153,15 +382,18 @@ export default function DiningCategory() {
         <div className="mb-6 rounded-[28px] border border-[#f0dfca] bg-gradient-to-br from-[#fff4e7] via-white to-[#fff9f3] p-6 shadow-[0_18px_60px_rgba(90,55,20,0.08)] dark:border-gray-800 dark:bg-gradient-to-br dark:from-[#161616] dark:via-[#101010] dark:to-[#1a1a1a] dark:shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.34em]" style={{ color: RED }}>Dining Category</p>
-              <h1 className="text-3xl font-black tracking-tight text-[#23180f] sm:text-4xl dark:text-white">{heading}</h1>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.34em]" style={{ color: RED }}>{isBookings ? "Your Reservation" : "Dining Category"}</p>
+              <h1 className="text-3xl font-black tracking-tight text-[#23180f] sm:text-4xl dark:text-white">{isBookings ? "My Bookings" : heading}</h1>
               <p className="mt-2 max-w-2xl text-sm text-[#6b5641] dark:text-gray-300">
-                Explore all restaurants linked to this dining category, check their timings, preview the menu, and jump straight into table booking.
+                {isBookings 
+                  ? "Explore your past and upcoming table reservations. Check status, view details, or manage your bookings."
+                  : "Explore all restaurants linked to this dining category, check their timings, preview the menu, and jump straight into table booking."
+                }
               </p>
             </div>
             <div className="inline-flex items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#6b5641] shadow-sm dark:border dark:border-gray-700 dark:bg-[#1a1a1a] dark:text-gray-300">
               <MapPin className="h-4 w-4" style={{ color: RED }} />
-              <span>{restaurants.length} places found</span>
+              <span>{restaurants.length} {isBookings ? "bookings" : "places"} found</span>
             </div>
           </div>
         </div>
@@ -172,7 +404,7 @@ export default function DiningCategory() {
           <div className="py-20 text-center text-red-600">{error}</div>
         ) : restaurants.length === 0 ? (
           <div className="rounded-[24px] border border-dashed border-[#e8d9c5] bg-white px-6 py-16 text-center text-[#7f6850] dark:border-gray-800 dark:bg-[#141414] dark:text-gray-400">
-            No restaurants are linked to this dining category yet.
+            {isBookings ? "You have no table bookings yet." : "No restaurants are linked to this dining category yet."}
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -197,11 +429,15 @@ export default function DiningCategory() {
                 })
               }
 
+              const CardWrapper = isBookings ? "div" : Link
+              const wrapperProps = isBookings 
+                ? { onClick: (e) => handleViewDetails(e, restaurant), className: "cursor-pointer block" }
+                : { to: `/food/user/dining/${category}/${restaurant.slug}`, state: { restaurant } }
+
               return (
-                <Link
+                <CardWrapper
                   key={restaurant.id}
-                  to={`/food/user/dining/${category}/${restaurant.slug}`}
-                  state={{ restaurant }}
+                  {...wrapperProps}
                 >
                   <Card className="group overflow-hidden rounded-[30px] border border-[#f0dfca] bg-white py-0 shadow-[0_18px_60px_rgba(17,24,39,0.08)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_24px_80px_rgba(17,24,39,0.14)] dark:border-gray-800 dark:bg-[#141414] dark:shadow-[0_18px_60px_rgba(0,0,0,0.35)] dark:hover:shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
                     <div className="relative h-64 overflow-hidden">
@@ -217,21 +453,23 @@ export default function DiningCategory() {
 
                       <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
                         <div className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
-                          {restaurant.featuredDish}
-                          {restaurant.featuredPrice ? ` • ${"\u20B9"}${restaurant.featuredPrice}` : ""}
+                          {isBookings ? `Guests: ${restaurant.cuisine.split(" ")[0]}` : restaurant.featuredDish}
+                          {!isBookings && restaurant.featuredPrice ? ` • ${"\u20B9"}${restaurant.featuredPrice}` : ""}
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={toggleFavorite}
-                          className="h-10 w-10 rounded-full bg-white/90 text-[#2f2215] backdrop-blur-sm hover:bg-white dark:bg-[#1f1f1f]/90 dark:text-white dark:hover:bg-[#2b2b2b]"
-                        >
-                          <Bookmark className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} />
-                        </Button>
+                        {!isBookings && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleFavorite}
+                            className="h-10 w-10 rounded-full bg-white/90 text-[#2f2215] backdrop-blur-sm hover:bg-white dark:bg-[#1f1f1f]/90 dark:text-white dark:hover:bg-[#2b2b2b]"
+                          >
+                            <Bookmark className={`h-5 w-5 ${favorite ? "fill-current" : ""}`} />
+                          </Button>
+                        )}
                       </div>
 
                       <div className="absolute bottom-4 left-4 right-4">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">Reserve Your Table</p>
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">{isBookings ? "Reserved For" : "Reserve Your Table"}</p>
                         <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
                       </div>
                     </div>
@@ -242,42 +480,84 @@ export default function DiningCategory() {
                           <h2 className="truncate text-[22px] font-black leading-tight text-[#23180f] dark:text-white">{restaurant.name}</h2>
                           <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b5641] dark:text-gray-300">{restaurant.address}</p>
                         </div>
-                        <div className="inline-flex items-center gap-1 rounded-2xl bg-emerald-600 px-2.5 py-1.5 text-sm font-bold text-white">
-                          <span>{restaurant.rating}</span>
-                          <Star className="h-3.5 w-3.5 fill-current" />
+                        <div className={`inline-flex items-center gap-1 rounded-2xl px-2.5 py-1.5 text-sm font-bold text-white ${
+                          !isBookings ? "bg-emerald-600" :
+                          restaurant.status === "PENDING" ? "bg-amber-500" :
+                          restaurant.status === "CONFIRMED" || restaurant.status === "ACCEPTED" ? "bg-emerald-600" :
+                          restaurant.status === "DECLINED" || restaurant.status === "CANCELLED" || restaurant.status === "LATE_CANCELLED" ? "bg-rose-600" :
+                          "bg-blue-600"
+                        }`}>
+                          <span>{isBookings ? restaurant.status : restaurant.rating}</span>
+                          {!isBookings && <Star className="h-3.5 w-3.5 fill-current" />}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 text-sm text-[#5f4c39] dark:text-gray-300">
-                        <UtensilsCrossed className="h-4 w-4" style={{ color: RED }} />
-                        <span className="line-clamp-1">{restaurant.cuisine}</span>
-                      </div>
+                      {isBookings ? (
+                        <div className="flex flex-wrap gap-3">
+                           <div className="flex items-center gap-2 text-sm text-[#5f4c39] dark:text-gray-300 bg-slate-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl">
+                            <Calendar className="h-4 w-4" style={{ color: RED }} />
+                            <span className="font-bold">{restaurant.date}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-[#5f4c39] dark:text-gray-300 bg-slate-50 dark:bg-gray-800 px-3 py-1.5 rounded-xl">
+                            <Clock className="h-4 w-4" style={{ color: RED }} />
+                            <span className="font-bold">{restaurant.time}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-[#5f4c39] dark:text-gray-300">
+                          <UtensilsCrossed className="h-4 w-4" style={{ color: RED }} />
+                          <span className="line-clamp-1">{restaurant.cuisine}</span>
+                        </div>
+                      )}
 
-                      <div className="flex flex-wrap gap-2">
-                        <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${restaurant.availability?.isOpen ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"}`}>
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>{restaurant.availability?.isOpen ? "Open now" : "Closed now"}</span>
+                      {!isBookings && (
+                        <div className="flex flex-wrap gap-2">
+                          <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${restaurant.availability?.isOpen ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"}`}>
+                            <Clock className="h-3.5 w-3.5" />
+                            <span>{restaurant.availability?.isOpen ? "Open now" : "Closed now"}</span>
+                          </div>
+                          <div className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                            {formatTimingLabel(restaurant.availability)}
+                          </div>
                         </div>
-                        <div className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                          {formatTimingLabel(restaurant.availability)}
-                        </div>
-                      </div>
+                      )}
 
                       <div className="flex items-center justify-between border-t border-dashed border-[#ead7c0] pt-4 dark:border-gray-700">
                         <div className="text-sm font-semibold text-[#4c3b2c] dark:text-gray-200">{restaurant.price}</div>
-                        <div className="inline-flex items-center gap-2 text-sm font-bold" style={{ color: RED }}>
-                          <BadgePercent className="h-4 w-4" />
-                          <span>Menu & booking</span>
+                        <div 
+                          className="inline-flex items-center gap-2 text-sm font-bold cursor-pointer hover:opacity-80" 
+                          style={{ color: RED }}
+                          onClick={isBookings ? (e) => handleViewDetails(e, restaurant) : undefined}
+                        >
+                          {isBookings ? <Bookmark className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
+                          <span>{isBookings ? "View details" : "Menu & booking"}</span>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                </Link>
+                </CardWrapper>
               )
             })}
           </div>
         )}
       </div>
+      
+      {bookingDetails && (
+        <BookingDetailsModal
+          booking={bookingDetails}
+          onClose={() => setBookingDetails(null)}
+          onCancel={(booking) => setBookingToCancel(booking)}
+        />
+      )}
+
+      {bookingToCancel && (
+        <CancelConfirmationModal
+          booking={bookingToCancel}
+          loading={isCancelling}
+          onClose={() => setBookingToCancel(null)}
+          onConfirm={handleCancelBooking}
+        />
+      )}
     </AnimatedPage>
   )
 }

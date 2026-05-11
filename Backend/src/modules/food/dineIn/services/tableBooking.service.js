@@ -362,6 +362,7 @@ export async function getUserBookings(userId) {
     await sweepNoShowReservations({ userId });
     const bookings = await FoodTableBooking.find({ userId })
         .populate({ path: 'userId', select: 'name phone email' })
+        .populate({ path: 'restaurantId' })
         .sort({ createdAt: -1 })
         .lean();
     return bookings.map(hydrateBookingGuest);
