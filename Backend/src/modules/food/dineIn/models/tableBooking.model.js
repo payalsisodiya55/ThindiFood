@@ -11,6 +11,12 @@ import mongoose from 'mongoose';
  *   CHECKED_IN → Restaurant notified user table is ready (no session created here)
  *   CANCELLED → User cancelled the booking
  *
+ * Current reservation statuses:
+ *   PENDING, CONFIRMED, CANCELLED, LATE_CANCELLED, NO_SHOW, COMPLETED
+ *
+ * Legacy statuses like ACCEPTED / DECLINED / CHECKED_IN remain supported for
+ * backward compatibility with older booking flows.
+ *
  * NOTE: This booking NEVER creates a session.
  * Session is only created when the user scans the QR code at the table.
  *
@@ -75,7 +81,7 @@ const tableBookingSchema = new mongoose.Schema(
 
         status: {
             type: String,
-            enum: ['PENDING', 'ACCEPTED', 'DECLINED', 'CHECKED_IN', 'CANCELLED', 'COMPLETED'],
+            enum: ['PENDING', 'CONFIRMED', 'CANCELLED', 'LATE_CANCELLED', 'NO_SHOW', 'COMPLETED', 'ACCEPTED', 'DECLINED', 'CHECKED_IN'],
             default: 'PENDING',
             index: true,
         },
@@ -89,9 +95,11 @@ const tableBookingSchema = new mongoose.Schema(
 
         // Timestamps for each status transition
         acceptedAt: { type: Date, default: null },
+        confirmedAt: { type: Date, default: null },
         declinedAt: { type: Date, default: null },
         checkedInAt: { type: Date, default: null },
         cancelledAt: { type: Date, default: null },
+        noShowAt: { type: Date, default: null },
 
         // If a session was eventually created via QR and linked to this booking
         sessionId: {

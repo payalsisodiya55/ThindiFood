@@ -76,6 +76,62 @@ const normalizeDateOnly = (value) => {
     return normalized;
 };
 
+const ACTIVE_BOOKING_STATUSES = ['PENDING', 'CONFIRMED', 'ACCEPTED', 'CHECKED_IN'];
+const CONFIRMED_BOOKING_STATUSES = ['CONFIRMED', 'ACCEPTED'];
+
+const getReservationDateTime = (booking) => {
+    const bookingDate = normalizeDateOnly(booking?.date);
+    const slotMinutes = parseTimeToMinutes(booking?.timeSlot);
+    if (!bookingDate || slotMinutes === null) return null;
+
+    const reservationDateTime = new Date(bookingDate);
+    reservationDateTime.setMinutes(slotMinutes, 0, 0);
+    return reservationDateTime;
+};
+
+async function sweepNoShowReservations(filters = {}) {
+    const candidateBookings = await FoodTableBooking.find({
+        ...filters,
+        status: { $in: CONFIRMED_BOOKING_STATUSES },
+    });
+
+    if (!candidateBookings.length) return [];
+
+    const now = new Date();
+    const updatedBookings = [];
+
+    for (const booking of candidateBookings) {
+        const reservationDateTime = getReservationDateTime(booking);
+        if (!reservationDateTime) continue;
+
+        const noShowCutoff = new Date(reservationDateTime.getTime() + 30 * 60 * 1000);
+        if (now < noShowCutoff) continue;
+
+        booking.status = 'NO_SHOW';
+        booking.noShowAt = now;
+        await booking.save();
+        updatedBookings.push(booking);
+
+        try {
+            const io = getIO();
+            if (io) {
+                const payload = {
+                    bookingId: booking.bookingId,
+                    _id: String(booking._id),
+                    status: 'NO_SHOW',
+                    message: 'Reservation marked as no-show after the grace period.',
+                };
+                io.to(rooms.user(booking.userId)).emit('booking_status_update', payload);
+                io.to(rooms.restaurant(booking.restaurantId)).emit('booking_status_update', payload);
+            }
+        } catch (e) {
+            logger.warn(`Socket emit booking_status_update failed: ${e.message}`);
+        }
+    }
+
+    return updatedBookings;
+}
+
 const getMealTypeForMinutes = (minutes) => {
     if (!Number.isFinite(minutes)) return null;
     if (minutes >= MEAL_WINDOWS.lunch.start && minutes <= MEAL_WINDOWS.lunch.end) return 'lunch';
@@ -172,6 +228,11 @@ export async function getPublicBookingAvailability(restaurantId, query = {}) {
     const dateEnd = new Date(targetDate);
     dateEnd.setDate(dateEnd.getDate() + 1);
 
+    await sweepNoShowReservations({
+        restaurantId: restaurantIdStr,
+        date: { $gte: dateStart, $lt: dateEnd },
+    });
+
     const [matchingTablesCount, bookings] = await Promise.all([
         FoodRestaurantTable.countDocuments({
             restaurantId: restaurantIdStr,
@@ -181,7 +242,7 @@ export async function getPublicBookingAvailability(restaurantId, query = {}) {
         FoodTableBooking.find({
             restaurantId: restaurantIdStr,
             date: { $gte: dateStart, $lt: dateEnd },
-            status: { $in: ['PENDING', 'ACCEPTED', 'CHECKED_IN'] },
+            status: { $in: ACTIVE_BOOKING_STATUSES },
         })
             .select('timeSlot mealType guests status')
             .lean(),
@@ -298,6 +359,7 @@ export async function createTableBooking(userId, body = {}) {
 }
 
 export async function getUserBookings(userId) {
+    await sweepNoShowReservations({ userId });
     const bookings = await FoodTableBooking.find({ userId })
         .populate({ path: 'userId', select: 'name phone email' })
         .sort({ createdAt: -1 })
@@ -306,6 +368,7 @@ export async function getUserBookings(userId) {
 }
 
 export async function getRestaurantBookings(restaurantId) {
+    await sweepNoShowReservations({ restaurantId });
     const bookings = await FoodTableBooking.find({ restaurantId })
         .populate({ path: 'userId', select: 'name phone email' })
         .sort({ createdAt: -1 })
@@ -319,6 +382,7 @@ export async function getBookingById(bookingId) {
 }
 
 export async function acceptBooking(bookingId, restaurantId) {
+    await sweepNoShowReservations({ restaurantId, _id: bookingId });
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
         restaurantId,
@@ -326,8 +390,9 @@ export async function acceptBooking(bookingId, restaurantId) {
     });
     if (!booking) throw new Error('Booking not found or already processed');
 
-    booking.status = 'ACCEPTED';
+    booking.status = 'CONFIRMED';
     booking.acceptedAt = new Date();
+    booking.confirmedAt = booking.acceptedAt;
     await booking.save();
 
     try {
@@ -336,8 +401,8 @@ export async function acceptBooking(bookingId, restaurantId) {
             io.to(rooms.user(booking.userId)).emit('booking_status_update', {
                 bookingId: booking.bookingId,
                 _id: String(booking._id),
-                status: 'ACCEPTED',
-                message: 'Your table booking has been accepted! We look forward to seeing you.',
+                status: 'CONFIRMED',
+                message: 'Your table booking has been confirmed! We look forward to seeing you.',
             });
         }
     } catch (e) {
@@ -377,12 +442,13 @@ export async function declineBooking(bookingId, restaurantId) {
 }
 
 export async function checkInBooking(bookingId, restaurantId) {
+    await sweepNoShowReservations({ restaurantId, _id: bookingId });
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
         restaurantId,
-        status: 'ACCEPTED',
+        status: { $in: CONFIRMED_BOOKING_STATUSES },
     });
-    if (!booking) throw new Error('Booking not found or not in ACCEPTED state');
+    if (!booking) throw new Error('Booking not found or not in confirmed state');
 
     booking.status = 'CHECKED_IN';
     booking.checkedInAt = new Date();
@@ -406,38 +472,55 @@ export async function checkInBooking(bookingId, restaurantId) {
 }
 
 export async function cancelBooking(bookingId, userId) {
+    await sweepNoShowReservations({ userId, _id: bookingId });
     const booking = await FoodTableBooking.findOne({
         _id: bookingId,
         userId,
-        status: { $in: ['PENDING', 'ACCEPTED'] },
+        status: { $in: ['PENDING', ...CONFIRMED_BOOKING_STATUSES] },
     });
     if (!booking) throw new Error('Booking not found or cannot be cancelled');
 
-    booking.status = 'CANCELLED';
-    booking.cancelledAt = new Date();
+    const cancellationTime = new Date();
+    const reservationDateTime = getReservationDateTime(booking);
+    const millisecondsUntilReservation = reservationDateTime
+        ? reservationDateTime.getTime() - cancellationTime.getTime()
+        : Number.POSITIVE_INFINITY;
+    const isLateCancellation = millisecondsUntilReservation < 60 * 60 * 1000;
+
+    booking.status = isLateCancellation ? 'LATE_CANCELLED' : 'CANCELLED';
+    booking.cancelledAt = cancellationTime;
     await booking.save();
 
     try {
         const io = getIO();
         if (io) {
-            io.to(rooms.restaurant(booking.restaurantId)).emit('booking_cancelled', {
+            const payload = {
                 bookingId: booking.bookingId,
                 _id: String(booking._id),
                 userId: String(userId),
-            });
+                status: booking.status,
+                message: isLateCancellation
+                    ? 'Late cancellations may affect future reservations.'
+                    : 'Reservation cancelled successfully.',
+            };
+            io.to(rooms.restaurant(booking.restaurantId)).emit('booking_cancelled', payload);
+            io.to(rooms.user(booking.userId)).emit('booking_status_update', payload);
         }
     } catch (e) {
         logger.warn(`Socket emit booking_cancelled failed: ${e.message}`);
     }
 
-    return booking;
+    return {
+        booking,
+        warning: isLateCancellation ? 'Late cancellations may affect future reservations.' : '',
+    };
 }
 
 export async function findAcceptedBooking(userId, restaurantId) {
     return FoodTableBooking.findOne({
         userId,
         restaurantId,
-        status: { $in: ['ACCEPTED', 'CHECKED_IN'] },
+        status: { $in: ['CONFIRMED', 'ACCEPTED', 'CHECKED_IN'] },
     })
         .sort({ createdAt: -1 })
         .lean();

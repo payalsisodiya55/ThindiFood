@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { ArrowLeft, Calendar, Users, MapPin, Ticket, ChevronRight, Edit2, ShieldCheck, Info } from "lucide-react"
+import { ArrowLeft, Calendar, Users, MapPin, ChevronRight, ShieldCheck, Info } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { diningAPI, authAPI, dineInAPI } from "@food/api"
@@ -64,7 +64,7 @@ export default function TableBookingConfirmation() {
         }
     }, [])
     const resolvedState = location.state || fallbackDraft || {}
-    const { restaurant, guests, date, timeSlot, mealType, discount } = resolvedState
+    const { restaurant, guests, date, timeSlot, mealType } = resolvedState
 
     const [specialRequest, setSpecialRequest] = useState(() => String(resolvedState?.specialRequest || "").trim())
     const [specialRequestDraft, setSpecialRequestDraft] = useState("")
@@ -282,10 +282,6 @@ export default function TableBookingConfirmation() {
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2 pt-4 border-t border-dashed border-slate-100 text-purple-600">
-                                <Ticket className="w-5 h-5" />
-                                <span className="font-bold text-sm">10% cashback</span>
-                            </div>
                         </div>
                     </div>
 
@@ -321,28 +317,14 @@ export default function TableBookingConfirmation() {
                         <div className="space-y-2">
                             <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
                                 <div className="flex items-start gap-3">
-                                    <div className="mt-1" style={{ color: RED }}>
-                                        <Edit2 className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-gray-800 text-sm">Modification available</p>
-                                        <p className="text-xs text-slate-400">Valid till {timeSlot}, today</p>
-                                    </div>
-                                </div>
-                                <ChevronRight className="w-4 h-4 text-slate-300" />
-                            </div>
-
-                            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center justify-between">
-                                <div className="flex items-start gap-3">
                                     <div className="text-red-400 mt-1">
                                         <ShieldCheck className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <p className="font-bold text-gray-800 text-sm">Cancellation available</p>
-                                        <p className="text-xs text-slate-400">Valid till {timeSlot}, today</p>
+                                        <p className="font-bold text-gray-800 text-sm">Cancellation policy</p>
+                                        <p className="text-xs text-slate-400">Cancel anytime. Within 1 hour, it will be marked as late cancelled.</p>
                                     </div>
                                 </div>
-                                <ChevronRight className="w-4 h-4 text-slate-300" />
                             </div>
                         </div>
                     </div>
@@ -377,11 +359,11 @@ export default function TableBookingConfirmation() {
                                 {[
                                     "Please arrive 15 minutes prior to your reservation time.",
                                     "Booking valid for the specified number of guests entered during reservation",
-                                    "Cover charges upon entry are subject to the discretion of the restaurant",
+                                    "You can cancel anytime before the reservation.",
                                     "House rules are to be observed at all times",
                                     "Special requests will be accommodated at the restaurant's discretion",
-                                    "Offers can be availed only by paying via Tastizo",
-                                    "Cover charges cannot be refunded if slot is cancelled within 30 minutes of slot start time",
+                                    "Cancellations within 1 hour of reservation time will be marked as late cancelled.",
+                                    "If the guest does not arrive within 30 minutes after reservation time, the booking may be marked as no-show.",
                                     "Additional service charges on the bill are at the restaurant's discretion"
                                 ].map((term, i) => (
                                     <li key={i} className="flex gap-3">

@@ -170,14 +170,24 @@ export const useUserNotifications = () => {
     socketRef.current.on('booking_status_update', (payload) => {
       debugLog('📋 Booking status update:', payload);
       const status = payload?.status;
-      if (status === 'ACCEPTED') {
+      if (status === 'CONFIRMED' || status === 'ACCEPTED') {
         toast.success('🎉 Booking Confirmed!', {
-          description: payload?.message || 'Your table booking has been accepted.',
+          description: payload?.message || 'Your table booking has been confirmed.',
           duration: 12000,
         });
       } else if (status === 'DECLINED') {
         toast.error('Booking Declined', {
           description: payload?.message || 'Your booking was declined by the restaurant.',
+          duration: 10000,
+        });
+      } else if (status === 'LATE_CANCELLED') {
+        toast.message('Reservation cancelled', {
+          description: payload?.message || 'Late cancellations may affect future reservations.',
+          duration: 10000,
+        });
+      } else if (status === 'NO_SHOW') {
+        toast.error('Reservation marked as no-show', {
+          description: payload?.message || 'You did not arrive within the grace period.',
           duration: 10000,
         });
       }

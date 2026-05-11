@@ -46,8 +46,15 @@ export async function cancelBookingController(req, res) {
     try {
         const userId = req.user?.userId;
         const { id } = req.params;
-        const booking = await cancelBooking(id, userId);
-        res.json({ success: true, data: booking });
+        const result = await cancelBooking(id, userId);
+        res.json({
+            success: true,
+            data: result?.booking || null,
+            message: result?.warning || 'Reservation cancelled successfully.',
+            meta: {
+                warning: result?.warning || '',
+            },
+        });
     } catch (err) {
         res.status(400).json({ success: false, message: err.message });
     }

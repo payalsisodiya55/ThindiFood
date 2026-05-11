@@ -3093,6 +3093,8 @@ export const dineInAPI = {
     apiClient.patch(`/food/dine-in/bookings/${bookingId}/check-in`, {}, { contextModule: 'restaurant' }),
 
   // ─── Table Booking Management (User side) ──────────────────────────────────
+  getUserBookings: () =>
+    apiClient.get('/food/dine-in/bookings/my', { contextModule: 'user' }),
   createBooking: (body) =>
     apiClient.post('/food/dine-in/bookings', body, { contextModule: 'user' }),
   cancelBooking: (bookingId) =>

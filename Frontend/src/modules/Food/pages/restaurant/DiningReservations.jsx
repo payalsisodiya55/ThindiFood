@@ -69,6 +69,40 @@ const getBookerPhone = (booking) =>
         ""
     ).trim()
 
+const normalizeBookingStatus = (status) => String(status || "").trim().toUpperCase()
+
+const isPendingReservationStatus = (status) => normalizeBookingStatus(status) === "PENDING"
+
+const isConfirmedReservationStatus = (status) => ["CONFIRMED", "ACCEPTED"].includes(normalizeBookingStatus(status))
+
+const isActiveReservationStatus = (status) => ["PENDING", "CONFIRMED", "ACCEPTED", "CHECKED_IN"].includes(normalizeBookingStatus(status))
+
+const getStatusBadgeClass = (status) => {
+    const normalized = normalizeBookingStatus(status)
+    if (normalized === "PENDING") return "bg-amber-100 text-amber-700"
+    if (["CONFIRMED", "ACCEPTED"].includes(normalized)) return "bg-emerald-100 text-emerald-700"
+    if (normalized === "CHECKED_IN") return "bg-orange-100 text-orange-700"
+    if (normalized === "COMPLETED") return "bg-blue-100 text-blue-700"
+    if (normalized === "LATE_CANCELLED") return "bg-orange-100 text-orange-700"
+    if (normalized === "NO_SHOW") return "bg-rose-100 text-rose-700"
+    if (normalized === "CANCELLED") return "bg-slate-200 text-slate-700"
+    if (normalized === "DECLINED") return "bg-red-100 text-red-700"
+    return "bg-slate-100 text-slate-700"
+}
+
+const getDisplayStatus = (status) => {
+    const normalized = normalizeBookingStatus(status)
+    if (normalized === "CONFIRMED" || normalized === "ACCEPTED") return "Confirmed"
+    if (normalized === "CHECKED_IN") return "Table Ready"
+    if (normalized === "LATE_CANCELLED") return "Late Cancelled"
+    if (normalized === "NO_SHOW") return "No-show"
+    if (normalized === "CANCELLED") return "Cancelled"
+    if (normalized === "COMPLETED") return "Completed"
+    if (normalized === "DECLINED") return "Declined"
+    if (normalized === "PENDING") return "Pending"
+    return normalized.replaceAll("_", " ")
+}
+
 
 export default function DiningReservations() {
     const [bookings, setBookings] = useState([])
@@ -314,7 +348,7 @@ export default function DiningReservations() {
     const handleStatusUpdate = async (bookingId, newStatus) => {
         try {
             let res
-            if (newStatus === 'ACCEPTED') res = await dineInAPI.acceptBooking(bookingId)
+            if (newStatus === 'CONFIRMED') res = await dineInAPI.acceptBooking(bookingId)
             else if (newStatus === 'DECLINED') res = await dineInAPI.declineBooking(bookingId)
             else if (newStatus === 'CHECKED_IN') res = await dineInAPI.checkInBooking(bookingId)
 
@@ -336,14 +370,14 @@ export default function DiningReservations() {
     }
 
     const getStatusPriority = (status) => {
-        const key = String(status || "").toLowerCase()
-        // PENDING = new booking needing action (highest priority)
-        if (key === "pending") return 0
-        if (key === "confirmed") return 0  // legacy
-        if (key === "accepted") return 1
-        if (key === "checked_in" || key === "checked-in") return 2
-        if (key === "completed") return 3
-        if (key === "cancelled" || key === "declined") return 4
+        const key = normalizeBookingStatus(status)
+        if (key === "PENDING") return 0
+        if (key === "CONFIRMED" || key === "ACCEPTED") return 1
+        if (key === "CHECKED_IN") return 2
+        if (key === "COMPLETED") return 3
+        if (key === "LATE_CANCELLED") return 4
+        if (key === "NO_SHOW") return 5
+        if (key === "CANCELLED" || key === "DECLINED") return 6
         return 5
     }
 
@@ -362,9 +396,7 @@ export default function DiningReservations() {
     }
 
     const isNewRequest = (booking) => {
-        // Support both new uppercase (PENDING) and old lowercase (confirmed)
-        const status = String(booking?.status || "").toLowerCase()
-        if (status !== "pending" && status !== "confirmed") return false
+        if (!isPendingReservationStatus(booking?.status)) return false
         const createdAt = new Date(booking?.createdAt || booking?.date || "").getTime()
         if (Number.isNaN(createdAt)) return true
         return Date.now() - createdAt <= 2 * 60 * 60 * 1000
@@ -485,7 +517,7 @@ export default function DiningReservations() {
                             <div>
                                 <p className="text-slate-500 text-sm font-semibold uppercase tracking-wider">Active</p>
                                 <p className="text-3xl font-black text-slate-900 leading-none mt-1">
-                                    {bookings.filter(b => ['pending', 'confirmed', 'accepted', 'checked-in', 'checked_in'].includes(String(b.status || '').toLowerCase())).length}
+                                    {bookings.filter(b => isActiveReservationStatus(b.status)).length}
                                 </p>
                             </div>
                         </div>
@@ -837,28 +869,22 @@ export default function DiningReservations() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex items-center gap-2">
-                                                            <Badge className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${
-                                                                ['PENDING','confirmed'].includes(booking.status) ? 'bg-amber-100 text-amber-700' :
-                                                                ['ACCEPTED','accepted'].includes(booking.status) ? 'bg-emerald-100 text-emerald-700' :
-                                                                ['CHECKED_IN','checked-in'].includes(booking.status) ? 'bg-orange-100 text-orange-700' :
-                                                                ['completed','COMPLETED'].includes(booking.status) ? 'bg-blue-100 text-blue-700' :
-                                                                'bg-rose-100 text-rose-700'
-                                                            }`}>
-                                                                {booking.status === 'COMPLETED' ? 'Checked Out' : booking.status}
+                                                            <Badge className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider ${getStatusBadgeClass(booking.status)}`}>
+                                                                {getDisplayStatus(booking.status)}
                                                             </Badge>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex items-center justify-end gap-2">
-                                                            {['PENDING','confirmed'].includes(booking.status) && (
+                                                            {isPendingReservationStatus(booking.status) && (
                                                                 <button
-                                                                    onClick={() => handleStatusUpdate(booking._id, 'ACCEPTED')}
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'CONFIRMED')}
                                                                     className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 transition-colors shadow-sm"
                                                                 >
                                                                     Accept
                                                                 </button>
                                                             )}
-                                                            {['PENDING','confirmed'].includes(booking.status) && (
+                                                            {isPendingReservationStatus(booking.status) && (
                                                                 <button
                                                                     onClick={() => handleStatusUpdate(booking._id, 'DECLINED')}
                                                                     className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors"
@@ -866,7 +892,7 @@ export default function DiningReservations() {
                                                                     Decline
                                                                 </button>
                                                             )}
-                                                            {['ACCEPTED','accepted'].includes(booking.status) && (
+                                                            {isConfirmedReservationStatus(booking.status) && (
                                                                 <button
                                                                     onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')}
                                                                     className="px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-colors shadow-sm"
@@ -913,14 +939,8 @@ export default function DiningReservations() {
                                                         <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#{booking.bookingId}</p>
                                                     </div>
                                                 </div>
-                                                <Badge className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${
-                                                    ['pending','confirmed'].includes(String(booking.status||'').toLowerCase()) ? 'bg-amber-100 text-amber-700' :
-                                                    ['accepted','ACCEPTED'].includes(booking.status) ? 'bg-emerald-100 text-emerald-700' :
-                                                    ['checked_in','checked-in','CHECKED_IN'].includes(booking.status) ? 'bg-orange-100 text-orange-700' :
-                                                    ['completed','COMPLETED'].includes(booking.status) ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-rose-100 text-rose-700'
-                                                }`}>
-                                                    {booking.status === 'COMPLETED' ? 'Checked Out' : booking.status}
+                                                <Badge className={`rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider ${getStatusBadgeClass(booking.status)}`}>
+                                                    {getDisplayStatus(booking.status)}
                                                 </Badge>
                                             </div>
 
@@ -954,15 +974,15 @@ export default function DiningReservations() {
 
                                             <div className="flex items-center gap-2">
                                                 {/* PENDING → Accept + Decline */}
-                                                {['PENDING','confirmed'].includes(booking.status) && (
+                                                {isPendingReservationStatus(booking.status) && (
                                                     <button
-                                                        onClick={() => handleStatusUpdate(booking._id, 'ACCEPTED')}
+                                                        onClick={() => handleStatusUpdate(booking._id, 'CONFIRMED')}
                                                         className="flex-1 py-2.5 bg-emerald-600 text-white text-xs font-black rounded-xl hover:bg-emerald-700 transition-colors uppercase tracking-widest"
                                                     >
                                                         Accept
                                                     </button>
                                                 )}
-                                                {['PENDING','confirmed'].includes(booking.status) && (
+                                                {isPendingReservationStatus(booking.status) && (
                                                     <button
                                                         onClick={() => handleStatusUpdate(booking._id, 'DECLINED')}
                                                         className="flex-1 py-2.5 bg-slate-100 text-slate-600 text-xs font-black rounded-xl hover:bg-slate-200 transition-colors uppercase tracking-widest"
@@ -971,7 +991,7 @@ export default function DiningReservations() {
                                                     </button>
                                                 )}
                                                 {/* ACCEPTED → Check-in (sends table_ready to user) */}
-                                                {['ACCEPTED','accepted'].includes(booking.status) && (
+                                                {isConfirmedReservationStatus(booking.status) && (
                                                     <button
                                                         onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')}
                                                         className="flex-1 py-2.5 bg-orange-600 text-white text-xs font-black rounded-xl hover:bg-orange-700 transition-colors uppercase tracking-widest"
