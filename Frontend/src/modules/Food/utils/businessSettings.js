@@ -9,8 +9,8 @@ import { publicGetOnce } from "@food/api";
 
 const SETTINGS_KEY = 'food_business_settings';
 const DEFAULT_CUSTOMER_TITLE = 'Thindi Food';
-const DEFAULT_RESTAURANT_TITLE = 'Thindi Restaurant';
-const DEFAULT_ADMIN_TITLE = 'Thindi Admin';
+const DEFAULT_RESTAURANT_TITLE = 'Taamio Restaurant';
+const DEFAULT_ADMIN_TITLE = 'Taamio Admin';
 
 const getCurrentPathname = (pathname) => {
   if (typeof pathname === "string" && pathname.trim()) {
