@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, HelpCircle, Menu, Search, SlidersHorizontal, Calendar, ChevronLeft, X, Loader2, ChevronRight, Star } from "lucide-react"
+import { Bell, HelpCircle, Menu, Search, SlidersHorizontal, Calendar, ChevronLeft, ChevronDown, X, Loader2, ChevronRight, Star } from "lucide-react"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { restaurantAPI } from "@food/api"
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
+import BottomPopup from "@food/components/BottomPopup"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -17,6 +18,18 @@ const tabs = [
   { id: "complaints", label: "Complaints" },
   { id: "reviews", label: "Reviews" },
 ]
+
+const dateRangeLabels = {
+  all: "All Time",
+  today: "Today",
+  yesterday: "Yesterday",
+  thisWeek: "This Week",
+  lastWeek: "Last Week",
+  thisMonth: "This Month",
+  lastMonth: "Last Month",
+  last5days: "Last 5 Days",
+  custom: "Custom Range"
+}
 
 const normalizeOrderStatus = (order) =>
   String(order?.status || order?.orderStatus || "").toLowerCase()
@@ -93,9 +106,10 @@ export default function Feedback() {
     reasons: []
   })
   const [complaintsSearchQuery, setComplaintsSearchQuery] = useState("")
+  const [reviewsSearchQuery, setReviewsSearchQuery] = useState("")
   
   const [isDateSelectorOpen, setIsDateSelectorOpen] = useState(false)
-  const [selectedDateRange, setSelectedDateRange] = useState("last5days") 
+  const [selectedDateRange, setSelectedDateRange] = useState("all") 
   const [customDateRange, setCustomDateRange] = useState({ start: null, end: null })
   const [isCustomDateOpen, setIsCustomDateOpen] = useState(false)
   const [isComplaintsLoading, setIsComplaintsLoading] = useState(false)
@@ -149,7 +163,8 @@ export default function Feedback() {
             break
           case 'thisWeek':
             fromDate = dateRanges.thisWeekStart
-            toDate = dateRanges.thisWeekEnd
+            toDate = new Date()
+            toDate.setHours(23, 59, 59, 999)
             break
           case 'lastWeek':
             fromDate = dateRanges.lastWeekStart
@@ -157,7 +172,8 @@ export default function Feedback() {
             break
           case 'thisMonth':
             fromDate = dateRanges.thisMonthStart
-            toDate = dateRanges.thisMonthEnd
+            toDate = new Date()
+            toDate.setHours(23, 59, 59, 999)
             break
           case 'lastMonth':
             fromDate = dateRanges.lastMonthStart
@@ -165,13 +181,20 @@ export default function Feedback() {
             break
           case 'last5days':
             fromDate = dateRanges.last5DaysStart
-            toDate = dateRanges.last5DaysEnd
+            toDate = new Date()
+            toDate.setHours(23, 59, 59, 999)
             break
           case 'custom':
             if (customDateRange.start && customDateRange.end) {
-              fromDate = customDateRange.start
-              toDate = customDateRange.end
+              fromDate = new Date(customDateRange.start)
+              fromDate.setHours(0, 0, 0, 0)
+              toDate = new Date(customDateRange.end)
+              toDate.setHours(23, 59, 59, 999)
             }
+            break;
+          case 'all':
+            fromDate = null
+            toDate = null
             break
         }
 
@@ -262,6 +285,7 @@ export default function Feedback() {
               ordersCount: userOrdersCount,
               rating: rating,
               date: formattedDate,
+              rawDate: orderDate,
               reviewText: reviewText,
               orderData: order
             }
@@ -289,9 +313,55 @@ export default function Feedback() {
 
   useEffect(() => {
     let filtered = [...reviews]
+    
+    // Date Filtering
+    const dateRanges = getDateRanges()
+    let fromDate = null
+    let toDate = null
+
+    const endOfToday = new Date()
+    endOfToday.setHours(23, 59, 59, 999)
+
+    switch (selectedDateRange) {
+      case 'today': fromDate = dateRanges.today; toDate = endOfToday; break
+      case 'yesterday': fromDate = dateRanges.yesterday; toDate = new Date(dateRanges.yesterday); toDate.setHours(23, 59, 59, 999); break
+      case 'thisWeek': fromDate = dateRanges.thisWeekStart; toDate = endOfToday; break
+      case 'lastWeek': fromDate = dateRanges.lastWeekStart; toDate = dateRanges.lastWeekEnd; break
+      case 'thisMonth': fromDate = dateRanges.thisMonthStart; toDate = endOfToday; break
+      case 'lastMonth': fromDate = dateRanges.lastMonthStart; toDate = dateRanges.lastMonthEnd; break
+      case 'last5days': fromDate = dateRanges.last5DaysStart; toDate = endOfToday; break
+      case 'custom': 
+        if (customDateRange.start && customDateRange.end) { 
+          fromDate = new Date(customDateRange.start)
+          fromDate.setHours(0, 0, 0, 0)
+          toDate = new Date(customDateRange.end)
+          toDate.setHours(23, 59, 59, 999)
+        }; 
+        break;
+      case 'all': fromDate = null; toDate = null; break
+    }
+
+    if (fromDate && toDate) {
+      filtered = filtered.filter(review => {
+        if (!review.rawDate) return true
+        const d = new Date(review.rawDate)
+        if (isNaN(d.getTime())) return true
+        return d >= fromDate && d <= toDate
+      })
+    }
+
+    if (reviewsSearchQuery) {
+      const query = reviewsSearchQuery.toLowerCase()
+      filtered = filtered.filter(review => 
+        review.userName.toLowerCase().includes(query) || 
+        review.reviewText.toLowerCase().includes(query) ||
+        review.orderNumber.toLowerCase().includes(query)
+      )
+    }
+
     if (filterValues.sortBy) {
       filtered.sort((a, b) => {
-        const dateA = new Date(a.date); const dateB = new Date(b.date)
+        const dateA = new Date(a.rawDate); const dateB = new Date(b.rawDate)
         if (filterValues.sortBy === "newest") return dateB - dateA
         if (filterValues.sortBy === "oldest") return dateA - dateB
         if (filterValues.sortBy === "bestRated") return (b.rating ?? 0) - (a.rating ?? 0)
@@ -300,10 +370,10 @@ export default function Feedback() {
       })
     }
     setDisplayedReviews(filtered)
-  }, [reviews, filterValues])
+  }, [reviews, filterValues, reviewsSearchQuery, selectedDateRange, customDateRange])
 
-  const handleFilterReset = () => { setFilterValues({ duration: null, sortBy: "newest", reviewType: [] }); setIsFilterApply() }
-  const handleFilterApply = () => { setIsFilterLoading(true); setIsFilterOpen(false); setTimeout(() => setIsFilterLoading(false), 200) }
+  const handleFilterReset = () => { setFilterValues({ duration: null, sortBy: "newest", reviewType: [] }); setIsFilterOpen(false) }
+  const handleFilterApply = () => { setIsFilterOpen(false) }
 
   const formatDate = (date) => {
     const day = date.getDate()
@@ -360,16 +430,21 @@ export default function Feedback() {
     }
   }
 
-  const handleComplaintsFilterApply = () => { setIsComplaintsLoading(true); setIsComplaintsFilterOpen(false); setTimeout(() => setIsComplaintsLoading(false), 200) }
-  const handleComplaintsFilterReset = () => { setComplaintsFilterValues({ issueType: [], reasons: [] }); setComplaintsSearchQuery(""); setIsComplaintsLoading(true); setTimeout(() => setIsComplaintsLoading(false), 200) }
+  const handleComplaintsFilterApply = () => { setIsComplaintsFilterOpen(false) }
+  const handleComplaintsFilterReset = () => { setComplaintsFilterValues({ issueType: [], reasons: [] }); setComplaintsSearchQuery("") }
 
   const handleDateRangeSelect = (range) => {
     setSelectedDateRange(range)
     if (range === "custom") setIsCustomDateOpen(true)
-    else { setIsDateSelectorOpen(false); setIsComplaintsLoading(true); setTimeout(() => setIsComplaintsLoading(false), 200) }
+    else { 
+      setIsDateSelectorOpen(false); 
+    }
   }
 
-  const handleCustomDateApply = () => { setIsCustomDateOpen(false); setIsDateSelectorOpen(false); setIsComplaintsLoading(true); setTimeout(() => setIsComplaintsLoading(false), 200) }
+  const handleCustomDateApply = () => { 
+    setIsCustomDateOpen(false); 
+    setIsDateSelectorOpen(false); 
+  }
 
   const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; touchStartY.current = e.touches[0].clientY; isSwiping.current = false }
   const handleTouchMove = (e) => {
@@ -391,34 +466,43 @@ export default function Feedback() {
     <div className="min-h-screen bg-gray-100 flex flex-col" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
       <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] tracking-wider text-gray-500 uppercase">Showing data for</p>
-            <p className="text-md font-bold text-gray-900">{restaurantData?.name || "Restaurant"}</p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate("/food/restaurant/explore")}
+              className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all cursor-pointer border border-gray-100 shadow-sm"
+              aria-label="Back to explore"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700" />
+            </button>
+            <div>
+              <p className="text-[10px] tracking-wider text-gray-500 uppercase">Showing data for</p>
+              <p className="text-md font-bold text-gray-900">{restaurantData?.name || "Restaurant"}</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/notifications")}
-              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all"
+              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer"
               aria-label="Open notifications"
             >
-              <Bell className="w-6 h-6 text-gray-700" />
+              <Bell className="w-6 h-6 text-gray-700 cursor-pointer" />
             </button>
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/help-centre/support")}
-              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all"
+              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer"
               aria-label="Open support"
             >
-              <HelpCircle className="w-6 h-6 text-gray-700" />
+              <HelpCircle className="w-6 h-6 text-gray-700 cursor-pointer" />
             </button>
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/explore")}
-              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all"
+              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer"
               aria-label="Open explore"
             >
-              <Menu className="w-6 h-6 text-gray-700" />
+              <Menu className="w-6 h-6 text-gray-700 cursor-pointer" />
             </button>
           </div>
         </div>
@@ -428,7 +512,7 @@ export default function Feedback() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-6 py-2 rounded-full text-sm font-bold transition-all ${
+              className={`px-6 py-2 rounded-full text-sm font-bold transition-all cursor-pointer ${
                 activeTab === tab.id ? "text-white" : "bg-white text-gray-600 border border-gray-200"
               }`}
               style={activeTab === tab.id ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}
@@ -442,17 +526,42 @@ export default function Feedback() {
       <div className="flex-1 p-4">
         {activeTab === "complaints" ? (
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <button onClick={() => setIsDateSelectorOpen(true)} className="flex-1 bg-white p-3 rounded-xl border border-gray-200 flex justify-between items-center">
-                <div className="text-left">
-                  <p className="text-xs font-bold text-gray-900">{selectedDateRange}</p>
-                  <p className="text-[10px] text-gray-500">Select date range</p>
-                </div>
-                <Calendar className="w-4 h-4 text-gray-400" />
-              </button>
-              <button onClick={() => setIsComplaintsFilterOpen(true)} className="bg-white p-3 rounded-xl border border-gray-200">
-                <SlidersHorizontal className="w-4 h-4 text-gray-900" />
-              </button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+              {/* Search Bar */}
+              <div className="flex-1 bg-white h-20 sm:h-12 px-6 sm:px-4 rounded-full border border-gray-200 flex items-center gap-4 sm:gap-2 shadow-md sm:shadow-sm transition-all focus-within:border-[#00c87e] focus-within:ring-4 focus-within:ring-[#00c87e]/10">
+                <Search className="w-6 h-6 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
+                <input 
+                  type="text" 
+                  value={complaintsSearchQuery}
+                  onChange={(e) => setComplaintsSearchQuery(e.target.value)}
+                  placeholder="Search complaints..." 
+                  className="flex-1 text-lg sm:text-xs bg-transparent focus:outline-none placeholder:text-gray-400 min-w-0 font-medium sm:font-normal" 
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                {/* Date Selector */}
+                <button 
+                  onClick={() => setIsDateSelectorOpen(true)} 
+                  className="flex-1 sm:flex-none sm:w-56 bg-white h-12 px-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <Calendar className="w-4 h-4 text-gray-500 shrink-0" />
+                    <span className="text-[10px] font-black text-gray-900 truncate uppercase tracking-tight">
+                      {dateRangeLabels[selectedDateRange] || selectedDateRange}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" />
+                </button>
+
+                {/* Filter Button */}
+                <button 
+                  onClick={() => setIsComplaintsFilterOpen(true)} 
+                  className="bg-white w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center shadow-sm shrink-0 cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <SlidersHorizontal className="w-5 h-5 text-gray-900" />
+                </button>
+              </div>
             </div>
 
             <AnimatePresence mode="wait">
@@ -460,7 +569,7 @@ export default function Feedback() {
                 <div className="flex justify-center p-10"><Loader2 className="animate-spin text-gray-400" /></div>
               ) : complaints.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <p className="text-sm text-gray-500 font-medium">No complaints found</p>
+                  <p className="text-sm text-gray-500 font-medium">No recent complaints</p>
                 </div>
               ) : (
                 <div className="space-y-4 pb-20">
@@ -478,20 +587,20 @@ export default function Feedback() {
                           {complaint.userId?.name?.[0] || 'U'}
                         </div>
                         <div>
-                          <p className="font-bold text-gray-900 text-sm">{complaint.userId?.name || 'Customer'}</p>
+                          <p className="font-bold text-gray-900 text-sm break-all whitespace-normal">{complaint.userId?.name || 'Customer'}</p>
                           <p className="text-[10px] text-gray-500 font-bold uppercase">Order #{complaint.orderId?.orderId || 'N/A'}</p>
                         </div>
                       </div>
 
                       <div className="bg-gray-50 rounded-xl p-3 relative">
                         <p className="text-[10px] font-black text-red-500 uppercase mb-1">{complaint.issueType}</p>
-                        <p className="text-sm text-gray-800 font-semibold leading-relaxed">{complaint.description}</p>
+                        <p className="text-sm text-gray-800 font-semibold leading-relaxed break-all whitespace-normal">{complaint.description}</p>
                       </div>
 
                       {complaint.adminResponse && (
                         <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
                           <p className="text-[9px] font-black text-blue-600 uppercase mb-1">Admin Response</p>
-                          <p className="text-sm text-blue-900 font-medium">{complaint.adminResponse}</p>
+                          <p className="text-sm text-blue-900 font-medium break-all whitespace-normal">{complaint.adminResponse}</p>
                         </div>
                       )}
                     </div>
@@ -502,43 +611,199 @@ export default function Feedback() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="flex gap-2">
-              <div className="flex-1 bg-white p-3 rounded-xl border border-gray-200 flex items-center gap-2">
-                <Search className="w-4 h-4 text-gray-400" />
-                <input type="text" placeholder="Search reviews" className="flex-1 text-sm bg-transparent focus:outline-none" />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+              {/* Search Bar */}
+              <div className="flex-1 bg-white h-20 sm:h-12 px-6 sm:px-4 rounded-full border border-gray-200 flex items-center gap-4 sm:gap-2 shadow-md sm:shadow-sm transition-all focus-within:border-[#00c87e] focus-within:ring-4 focus-within:ring-[#00c87e]/10">
+                <Search className="w-6 h-6 sm:w-4 sm:h-4 text-gray-400 shrink-0" />
+                <input 
+                  type="text" 
+                  value={reviewsSearchQuery}
+                  onChange={(e) => setReviewsSearchQuery(e.target.value)}
+                  placeholder="Search reviews..." 
+                  className="flex-1 text-lg sm:text-xs bg-transparent focus:outline-none placeholder:text-gray-400 min-w-0 font-medium sm:font-normal" 
+                />
               </div>
-              <button onClick={() => setIsFilterOpen(true)} className="bg-white p-3 rounded-xl border border-gray-200">
-                <SlidersHorizontal className="w-4 h-4 text-gray-900" />
-              </button>
+
+              <div className="flex items-center gap-2">
+                {/* Date Selector */}
+                <button 
+                  onClick={() => setIsDateSelectorOpen(true)} 
+                  className="flex-1 sm:flex-none sm:w-56 bg-white h-12 px-3 rounded-xl border border-gray-200 flex items-center justify-between gap-2 shadow-sm cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <Calendar className="w-4 h-4 text-gray-500 shrink-0" />
+                    <span className="text-[10px] font-black text-gray-900 truncate uppercase tracking-tight">
+                      {dateRangeLabels[selectedDateRange] || selectedDateRange}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-3 h-3 text-gray-400 shrink-0" />
+                </button>
+
+                {/* Filter Button */}
+                <button 
+                  onClick={() => setIsFilterOpen(true)} 
+                  className="bg-white w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center shadow-sm shrink-0 cursor-pointer hover:bg-gray-50 transition-colors"
+                >
+                  <SlidersHorizontal className="w-5 h-5 text-gray-900" />
+                </button>
+              </div>
             </div>
 
-            <div className="space-y-4 pb-20">
-              {displayedReviews.map((review) => (
-                <div key={review.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase">
-                    <span>Order #{review.orderNumber}</span>
-                    <span>{review.date}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <img src={review.userImage} className="w-8 h-8 rounded-full border border-gray-100" />
-                    <p className="font-bold text-gray-900 text-sm">{review.userName}</p>
-                    <div
-                      className="ml-auto flex items-center gap-1 text-white px-1.5 py-0.5 rounded text-[10px] font-bold"
-                      style={{ backgroundColor: RESTAURANT_THEME.brand }}
-                    >
-                      {review.rating} <Star className="w-2 h-2 fill-current" />
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 rounded-xl p-3">
-                    <p className="text-sm text-gray-800 font-medium italic">"{review.reviewText}"</p>
-                  </div>
+            <AnimatePresence mode="wait">
+              {isLoadingReviews ? (
+                <div className="flex justify-center p-10"><Loader2 className="animate-spin text-gray-400" /></div>
+              ) : displayedReviews.length === 0 ? (
+                <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                  <p className="text-sm text-gray-500 font-medium">No recent reviews</p>
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="space-y-4 pb-20">
+                  {displayedReviews.map((review) => (
+                    <div key={review.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm space-y-3">
+                      <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase">
+                        <span>Order #{review.orderNumber}</span>
+                        <span>{review.date}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <img src={review.userImage} className="w-8 h-8 rounded-full border border-gray-100" />
+                        <p className="font-bold text-gray-900 text-sm break-all whitespace-normal">{review.userName}</p>
+                        <div
+                          className="ml-auto flex items-center gap-1 text-white px-1.5 py-0.5 rounded text-[10px] font-bold"
+                          style={{ backgroundColor: RESTAURANT_THEME.brand }}
+                        >
+                          {review.rating} <Star className="w-2 h-2 fill-current" />
+                        </div>
+                      </div>
+                      <div className="bg-gray-50 rounded-xl p-3">
+                        <p className="text-sm text-gray-800 font-medium italic break-all whitespace-normal">"{review.reviewText}"</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </div>
       <BottomNavOrders />
+
+      {/* Date Range Selector Popup */}
+      <BottomPopup isOpen={isDateSelectorOpen} onClose={() => setIsDateSelectorOpen(false)} title="Select date range">
+        <div className="p-4 space-y-1">
+          {Object.entries(dateRangeLabels).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => handleDateRangeSelect(key)}
+              className={`w-full text-left p-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                selectedDateRange === key ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </BottomPopup>
+
+      {/* Custom Date Selector */}
+      <BottomPopup isOpen={isCustomDateOpen} onClose={() => setIsCustomDateOpen(false)} title="Select custom range">
+        <div className="p-4 flex flex-col gap-4">
+          <DateRangeCalendar
+            startDate={customDateRange.start}
+            endDate={customDateRange.end}
+            onDateRangeChange={(start, end) => setCustomDateRange({ start, end })}
+          />
+          <button
+            onClick={handleCustomDateApply}
+            className="w-full bg-black text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
+          >
+            Apply Range
+          </button>
+        </div>
+      </BottomPopup>
+
+      {/* Complaints Filter Popup */}
+      <BottomPopup isOpen={isComplaintsFilterOpen} onClose={() => setIsComplaintsFilterOpen(false)} title="Filter complaints">
+        <div className="p-4 space-y-6">
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase mb-3">Issue Type</p>
+            <div className="flex flex-wrap gap-2">
+              {['Late Delivery', 'Quality Issue', 'Missing Item', 'Wrong Item', 'Packaging'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setComplaintsFilterValues(prev => ({
+                    ...prev,
+                    issueType: prev.issueType.includes(type) ? [] : [type]
+                  }))}
+                  className={`px-4 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                    complaintsFilterValues.issueType.includes(type)
+                      ? "bg-black text-white border-black"
+                      : "bg-white text-gray-600 border-gray-200"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleComplaintsFilterReset}
+              className="flex-1 py-4 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 cursor-pointer"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleComplaintsFilterApply}
+              className="flex-1 bg-black text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
+            >
+              Apply Filter
+            </button>
+          </div>
+        </div>
+      </BottomPopup>
+
+      {/* Reviews Filter Popup */}
+      <BottomPopup isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} title="Filter reviews">
+        <div className="p-4 space-y-6">
+          <div>
+            <p className="text-xs font-black text-gray-400 uppercase mb-3">Sort By</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { id: 'newest', label: 'Newest first' },
+                { id: 'oldest', label: 'Oldest first' },
+                { id: 'bestRated', label: 'Best rated' },
+                { id: 'worstRated', label: 'Worst rated' }
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setFilterValues(prev => ({ ...prev, sortBy: option.id }))}
+                  className={`p-3 rounded-xl text-xs font-bold border text-center transition-all cursor-pointer ${
+                    filterValues.sortBy === option.id
+                      ? "bg-black text-white border-black"
+                      : "bg-white text-gray-600 border-gray-200"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={handleFilterReset}
+              className="flex-1 py-4 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 cursor-pointer"
+            >
+              Reset
+            </button>
+            <button
+              onClick={handleFilterApply}
+              className="flex-1 bg-black text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </BottomPopup>
     </div>
   )
 }

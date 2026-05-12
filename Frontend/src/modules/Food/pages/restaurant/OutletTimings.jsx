@@ -15,13 +15,14 @@ const debugError = (...args) => {}
 
 // Helper function to convert "HH:mm" string to Date object
 const stringToTime = (timeString) => {
-  if (!timeString || !timeString.includes(":")) {
+  if (!timeString || typeof timeString !== 'string' || !timeString.includes(":")) {
     return new Date(2000, 0, 1, 9, 0) // Default to 9:00 AM
   }
-  const [hours, minutes] = timeString.split(":").map(Number)
+  const [h, m] = timeString.split(":").map(Number)
   // Ensure valid hours (0-23) and minutes (0-59)
-  const validHours = Math.max(0, Math.min(23, hours || 9))
-  const validMinutes = Math.max(0, Math.min(59, minutes || 0))
+  // Only default to 9 if the value is truly NaN (empty), not 0.
+  const validHours = isNaN(h) ? 9 : Math.max(0, Math.min(23, h))
+  const validMinutes = isNaN(m) ? 0 : Math.max(0, Math.min(59, m))
   return new Date(2000, 0, 1, validHours, validMinutes)
 }
 
@@ -180,14 +181,21 @@ export default function OutletTimings() {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
+    <LocalizationProvider 
+      dateAdapter={AdapterDateFns}
+      localeText={{
+        fieldMeridiemPlaceholder: () => "AM/PM",
+        fieldHoursPlaceholder: () => "HH",
+        fieldMinutesPlaceholder: () => "MM",
+      }}
+    >
       <div className="min-h-screen bg-white overflow-x-hidden">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/food/restaurant/explore")}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Go back"
             >
               <ArrowLeft className="w-6 h-6 text-gray-900" />
@@ -226,7 +234,7 @@ export default function OutletTimings() {
                   >
                     <button
                       onClick={() => toggleDay(day)}
-                      className="flex items-center gap-3 flex-1 text-left"
+                      className="flex items-center gap-3 flex-1 text-left cursor-pointer"
                     >
                       {isExpanded ? (
                         <ChevronUp className="w-5 h-5 text-gray-700" />
@@ -241,7 +249,7 @@ export default function OutletTimings() {
                         <Switch
                           checked={dayData.isOpen}
                           onCheckedChange={() => toggleDayOpen(day)}
-                          className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
+                          className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300 cursor-pointer"
                         />
                       </div>
                     </div>
@@ -285,12 +293,15 @@ export default function OutletTimings() {
                                       textField: {
                                         variant: "outlined",
                                         size: "small",
-                                        placeholder: "Select opening time",
+                                        inputProps: {
+                                          placeholder: "Select time",
+                                        },
                                         sx: {
                                           "& .MuiOutlinedInput-root": {
                                             height: "36px",
                                             fontSize: "12px",
                                             backgroundColor: "white",
+                                            cursor: "pointer",
                                             "& fieldset": {
                                               borderColor: "#e5e7eb",
                                             },
@@ -299,6 +310,9 @@ export default function OutletTimings() {
                                             },
                                             "&.Mui-focused fieldset": {
                                               borderColor: "#000",
+                                            },
+                                            "& input": {
+                                              cursor: "pointer",
                                             },
                                           },
                                           "& .MuiInputBase-input": {
@@ -341,7 +355,9 @@ export default function OutletTimings() {
                                       textField: {
                                         variant: "outlined",
                                         size: "small",
-                                        placeholder: "Select closing time",
+                                        inputProps: {
+                                          placeholder: "Select time",
+                                        },
                                         sx: {
                                           "& .MuiOutlinedInput-root": {
                                             height: "36px",
@@ -388,4 +404,3 @@ export default function OutletTimings() {
     </LocalizationProvider>
   )
 }
-

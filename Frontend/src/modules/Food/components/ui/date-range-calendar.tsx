@@ -20,6 +20,12 @@ export function DateRangeCalendar({ startDate, endDate, onDateRangeChange, onClo
       setCurrentMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1))
     }
   }, [startDate])
+
+  // Sync internal state with props
+  useEffect(() => {
+    setTempStartDate(startDate)
+    setTempEndDate(endDate)
+  }, [startDate, endDate])
   
   // Generate calendar days for current month
   const calendarDays = useMemo(() => {

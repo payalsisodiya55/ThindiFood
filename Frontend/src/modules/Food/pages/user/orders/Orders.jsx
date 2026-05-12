@@ -1066,7 +1066,7 @@ Order again from this restaurant in the ${companyName} app.`
           <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header with gradient */}
             <div 
-              style={{ background: `linear-gradient(to right, ${RED}, #C41E15)` }}
+              style={{ background: `linear-gradient(to right, ${RED}, #00b06f)` }}
               className="px-6 py-5"
             >
               <div className="flex items-center justify-between mb-2">
@@ -1115,7 +1115,7 @@ Order again from this restaurant in the ${companyName} app.`
                   value={restaurantFeedbackText}
                   onChange={(e) => setRestaurantFeedbackText(e.target.value)}
                   style={{ '--tw-ring-color': RED }}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-red-500 resize-none transition-all"
+                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-[#00c87e] resize-none transition-all"
                   placeholder="Restaurant feedback (optional)"
                 />
               </div>
@@ -1125,7 +1125,7 @@ Order again from this restaurant in the ${companyName} app.`
                 type="button"
                 disabled={ratingSubmitDisabled}
                 onClick={handleSubmitRating}
-                style={{ background: `linear-gradient(to right, ${RED}, #C41E15)`, boxShadow: `0 10px 15px -3px ${RED}30` }}
+                style={{ background: `linear-gradient(to right, ${RED}, #00b06f)`, boxShadow: `0 10px 15px -3px ${RED}30` }}
                 className="w-full rounded-xl text-white text-base font-bold py-3.5 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
               >
                 {submittingRating ? (
@@ -1142,7 +1142,7 @@ Order again from this restaurant in the ${companyName} app.`
               </button>
 
               {ratingSubmitDisabled && (
-                <p className="text-xs text-center text-red-500 mt-2">Please select required rating to continue</p>
+                <p className="text-xs text-center text-[#00c87e] mt-2 font-medium">Please select required rating to continue</p>
               )}
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
+import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X } from "lucide-react"
+import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X, ChevronLeft } from "lucide-react"
 import { diningAPI, restaurantAPI, dineInAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
@@ -128,6 +129,7 @@ export default function DiningReservations() {
     const [diningSettingsError, setDiningSettingsError] = useState("")
 
     const { newBooking, clearNewBooking } = useRestaurantNotifications()
+    const navigate = useNavigate()
 
     const syncRestaurantMediaState = (restaurantData) => {
         setRestaurant(restaurantData || null)
@@ -443,12 +445,22 @@ export default function DiningReservations() {
                     <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
+                        className="flex items-center gap-4"
                     >
+                        <button
+                            onClick={() => navigate("/food/restaurant/explore")}
+                            className="p-2 rounded-xl hover:bg-slate-100 active:scale-95 transition-all cursor-pointer border border-slate-200"
+                            aria-label="Back to explore"
+                        >
+                            <ChevronLeft className="w-6 h-6 text-slate-700" />
+                        </button>
+                        <div>
                         <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                             Table Reservations
                             <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                         </h1>
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Live Queue Management</p>
+                        </div>
                     </motion.div>
 
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

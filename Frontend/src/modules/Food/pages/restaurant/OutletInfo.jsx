@@ -344,7 +344,7 @@ export default function OutletInfo() {
         <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3 flex-1">
-              <button onClick={goBack} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
+              <button onClick={goBack} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
                 <ArrowLeft className="w-6 h-6 text-gray-900" />
               </button>
               <h1 className="text-lg font-bold text-gray-900">Outlet info</h1>
@@ -364,7 +364,7 @@ export default function OutletInfo() {
           <button
             onClick={() => handleImageClick('cover', menuImageInputRef, "Add Cover Image", true)}
             disabled={uploadingImage}
-            className="absolute bottom-4 right-4 bg-black/90 hover:bg-black px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium text-white transition-colors shadow-lg z-20 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute bottom-4 right-4 bg-black/90 hover:bg-black px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium text-white transition-colors shadow-lg z-20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>{uploadingImage && imageType === 'menu' ? `Uploading ${uploadingCount}...` : 'Add image'}</span>
@@ -391,14 +391,14 @@ export default function OutletInfo() {
                   <button
                     type="button"
                     onClick={() => setMainImage(img.url)}
-                    className="w-full h-full"
+                    className="w-full h-full cursor-pointer"
                   >
                     <img src={img.url} alt={`Cover ${index + 1}`} className="w-full h-full object-cover" />
                   </button>
                   <button
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCoverImageDelete(index); }}
                     disabled={uploadingImage}
-                    className="absolute top-1 right-1 bg-red-500/95 hover:bg-red-600 p-1 rounded-full transition-colors z-10"
+                    className="absolute top-1 right-1 bg-red-500/95 hover:bg-red-600 p-1 rounded-full transition-colors z-10 cursor-pointer disabled:cursor-not-allowed"
                   >
                     <Trash2 className="w-3 h-3 text-white" />
                   </button>
@@ -420,9 +420,9 @@ export default function OutletInfo() {
             <button
               onClick={() => handleImageClick('profile', profileImageInputRef, "Update Profile Photo")}
               disabled={uploadingImage}
-              className="text-blue-600 text-sm font-semibold hover:text-blue-700 transition-colors text-left"
+              className="text-blue-600 text-sm font-semibold hover:text-blue-700 transition-colors text-left cursor-pointer disabled:cursor-not-allowed"
             >
-              {uploadingImage && imageType === 'profile' ? 'Uploading...' : 'Edit photo'}
+              {uploadingImage && imageType === 'profile' ? 'Uploading...' : 'Edit Logo'}
             </button>
             <input
               ref={profileImageInputRef}
@@ -438,7 +438,7 @@ export default function OutletInfo() {
         <div className="px-4 pt-[50px] pb-4 bg-white">
           <div className="flex items-start gap-4">
             <div className="flex flex-col gap-2">
-              <button onClick={() => navigate("/restaurant/ratings-reviews")} className="flex items-center gap-2 text-left w-full">
+              <button onClick={() => navigate("/restaurant/ratings-reviews")} className="flex items-center gap-2 text-left w-full cursor-pointer">
                 <div className="bg-green-700 px-2.5 py-1.5 rounded flex items-center gap-1 shrink-0">
                   <span className="text-white text-sm font-bold">{restaurantData?.rating?.toFixed(1) || "0.0"}</span>
                   <Star className="w-3.5 h-3.5 text-white fill-white" />
@@ -457,9 +457,9 @@ export default function OutletInfo() {
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-gray-500 font-normal mb-1">Restaurant's name</p>
-                <p className="text-base font-semibold text-gray-900">{loading ? "Loading..." : (restaurantName || "N/A")}</p>
+                <p className="text-base font-semibold text-gray-900 break-words whitespace-normal">{loading ? "Loading..." : (restaurantName || "N/A")}</p>
               </div>
-              <button onClick={handleOpenEditDialog} className="text-blue-600 text-sm font-normal">Edit</button>
+              <button onClick={handleOpenEditDialog} className="text-blue-600 text-sm font-normal cursor-pointer">Edit</button>
             </div>
           </div>
           {/* ... other info cards ... */}
@@ -469,10 +469,10 @@ export default function OutletInfo() {
       <Dialog open={showEditNameDialog} onOpenChange={setShowEditNameDialog}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%]">
           <DialogHeader className="p-4 border-b border-gray-100"><DialogTitle className="text-lg font-bold">Edit restaurant name</DialogTitle></DialogHeader>
-          <div className="p-4"><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Enter restaurant name" className="w-full" /></div>
+          <div className="p-4"><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Enter restaurant name" className="w-full" maxLength={100} /></div>
           <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3">
-            <Button variant="outline" onClick={() => setShowEditNameDialog(false)}>Cancel</Button>
-            <Button onClick={handleSaveName} disabled={!editNameValue.trim()} className="bg-blue-600 text-white">Save</Button>
+            <Button variant="outline" onClick={() => setShowEditNameDialog(false)} className="cursor-pointer">Cancel</Button>
+            <Button onClick={handleSaveName} disabled={!editNameValue.trim()} className="bg-blue-600 text-white cursor-pointer disabled:cursor-not-allowed">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -367,7 +367,16 @@ function TimeSelector({ label, value, onChange }) {
     <div className="border border-gray-200 rounded-md px-3 py-2 bg-gray-50/60">
       <div className="flex items-center gap-2 mb-2">
         <Clock className="w-4 h-4 text-gray-800" />
-        <span className="text-xs font-medium text-gray-900">{label}</span>
+        <span className="text-xs font-medium text-gray-900">
+          {typeof label === "string" && label.endsWith("*") ? (
+            <>
+              {label.slice(0, -1)}
+              <span className="text-rose-500 ml-0.5">*</span>
+            </>
+          ) : (
+            label
+          )}
+        </span>
       </div>
       <MobileTimePicker
         value={timeValue}
@@ -377,7 +386,9 @@ function TimeSelector({ label, value, onChange }) {
           textField: {
             variant: "outlined",
             size: "small",
-            placeholder: "Select time",
+            inputProps: {
+              placeholder: "Select time",
+            },
             sx: {
               "& .MuiOutlinedInput-root": {
                 height: "36px",
@@ -397,6 +408,7 @@ function TimeSelector({ label, value, onChange }) {
               "& .MuiInputBase-input": {
                 padding: "8px 12px",
                 fontSize: "12px",
+                cursor: "pointer",
               },
             },
             onBlur: (event) => {
@@ -975,12 +987,12 @@ export default function RestaurantOnboarding() {
     }
     const normalizedOpeningTime = normalizeTimeValue(step2.openingTime)
     const normalizedClosingTime = normalizeTimeValue(step2.closingTime)
-    if (
-      normalizedOpeningTime &&
-      normalizedClosingTime &&
-      normalizedOpeningTime === normalizedClosingTime
-    ) {
-      errors.push("Opening time and closing time cannot be the same")
+    if (normalizedOpeningTime && normalizedClosingTime) {
+      if (normalizedOpeningTime === normalizedClosingTime) {
+        errors.push("Opening time and closing time cannot be the same")
+      } else if (normalizedClosingTime < normalizedOpeningTime) {
+        errors.push("Closing time cannot be less than opening time")
+      }
     }
     if (!step2.openDays || step2.openDays.length === 0) {
       errors.push("Please select at least one open day")
@@ -999,6 +1011,19 @@ export default function RestaurantOnboarding() {
     } else if (!FEATURED_DISH_NAME_REGEX.test(step4.featuredDish.trim())) {
       errors.push("Featured dish name must contain only letters")
     }
+
+    if (step4.selfDeliveryEnabled) {
+      const start = normalizeTimeValue(step4.selfDeliveryStart)
+      const end = normalizeTimeValue(step4.selfDeliveryEnd)
+      if (start && end) {
+        if (start === end) {
+          errors.push("Self delivery start and end time cannot be the same")
+        } else if (end < start) {
+          errors.push("Closing time cannot be less than opening time")
+        }
+      }
+    }
+
     return errors
   }
 
@@ -1275,7 +1300,7 @@ export default function RestaurantOnboarding() {
         err?.response?.data?.error ||
         err?.message ||
         "Failed to save onboarding data"
-      setError(msg)
+      toast.error(msg)
     } finally {
       setSaving(false)
     }
@@ -1299,17 +1324,18 @@ export default function RestaurantOnboarding() {
         <h2 className="text-lg font-semibold text-black mb-4">Restaurant information</h2>
         <div className="space-y-3">
           <div>
-            <Label className="text-xs text-gray-700">Restaurant name*</Label>
+            <Label className="text-xs text-gray-700">Restaurant name<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step1.restaurantName || ""}
               onChange={(e) => setStep1({ ...step1, restaurantName: e.target.value })}
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="Customers will see this name"
+              maxLength={100}
               disabled={!isEditing}
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Pure veg restaurant?*</Label>
+            <Label className="text-xs text-gray-700">Pure veg restaurant?<span className="text-rose-500 ml-0.5">*</span></Label>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -1348,17 +1374,18 @@ export default function RestaurantOnboarding() {
         </p>
         <div className="space-y-4">
           <div>
-            <Label className="text-xs text-gray-700">Full name*</Label>
+            <Label className="text-xs text-gray-700">Full name<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step1.ownerName || ""}
               onChange={(e) => setStep1({ ...step1, ownerName: e.target.value })}
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="Owner full name"
+              maxLength={50}
               disabled={!isEditing}
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Email address*</Label>
+            <Label className="text-xs text-gray-700">Email address<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               type="email"
               value={step1.ownerEmail || ""}
@@ -1369,7 +1396,7 @@ export default function RestaurantOnboarding() {
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Phone number*</Label>
+            <Label className="text-xs text-gray-700">Phone number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step1.ownerPhone || ""}
               onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
@@ -1385,7 +1412,7 @@ export default function RestaurantOnboarding() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">Restaurant contact & location</h2>
         <div>
-          <Label className="text-xs text-gray-700">Primary contact number*</Label>
+          <Label className="text-xs text-gray-700">Primary contact number<span className="text-rose-500 ml-0.5">*</span></Label>
           <Input
             value={step1.primaryContactNumber || ""}
             onChange={(e) => {
@@ -1403,7 +1430,7 @@ export default function RestaurantOnboarding() {
               setStep1({ ...step1, primaryContactNumber: pasted })
             }}
             inputMode="numeric"
-            className="mt-1 bg-white text-sm text-black placeholder-black"
+            className="mt-1 bg-white text-sm text-black placeholder:text-gray-400"
             placeholder="Restaurant's primary contact number"
             disabled={!isEditing}
           />
@@ -1417,7 +1444,7 @@ export default function RestaurantOnboarding() {
             Add your restaurant's location for order pick-up.
           </p>
           <div>
-            <Label className="text-xs text-gray-700">Service zone*</Label>
+            <Label className="text-xs text-gray-700">Service zone<span className="text-rose-500 ml-0.5">*</span></Label>
             <select
               value={step1.zoneId || ""}
               onChange={(e) => {
@@ -1507,7 +1534,7 @@ export default function RestaurantOnboarding() {
               })
             }
             readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-            className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="Area / Sector / Locality*"
           />
           <Input
@@ -1520,7 +1547,7 @@ export default function RestaurantOnboarding() {
               })
             }}
             readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-            className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="City"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1534,7 +1561,7 @@ export default function RestaurantOnboarding() {
                 })
               }}
               readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-              className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="State"
             />
             <Input
@@ -1547,7 +1574,7 @@ export default function RestaurantOnboarding() {
                 })
               }}
               readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-              className={`bg-white text-sm ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="Pincode"
             />
           </div>
@@ -1722,36 +1749,37 @@ export default function RestaurantOnboarding() {
 
         {/* Menu images */}
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-gray-700">Menu images</Label>
-          <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/70 px-4 py-3 flex items-center justify-between flex-col gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-md bg-white flex items-center justify-center">
-                <ImageIcon className="w-5 h-5 text-gray-700" />
+          <Label className="text-xs font-medium text-gray-700">Menu images<span className="text-rose-500 ml-0.5">*</span></Label>
+          <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                <ImageIcon className="w-6 h-6 text-gray-600" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-gray-900">Upload menu images</span>
+                <span className="text-sm font-semibold text-gray-900">Upload menu images</span>
                 <span className="text-[11px] text-gray-500">
-                  JPG, PNG, WebP ? You can select multiple files
+                  JPG, PNG, WebP. You can select multiple files (Max {MAX_MENU_IMAGES_COUNT})
                 </span>
               </div>
             </div>
             <Button
               type="button"
               variant="outline"
-              className="w-full text-xs"
+              className="w-full text-xs h-9 cursor-pointer"
               onClick={() => menuImagesInputRef.current?.click()}
             >
               <Upload className="w-4 h-4 mr-1.5" />
               Upload
             </Button>
-            <input
-              id="menuImagesInput"
-              type="file"
-              multiple
-              accept={LOCAL_IMAGE_FILE_ACCEPT}
-              className="hidden"
-              ref={menuImagesInputRef}
-              onChange={(e) => {
+          </div>
+          <input
+            id="menuImagesInput"
+            type="file"
+            multiple
+            accept={LOCAL_IMAGE_FILE_ACCEPT}
+            className="hidden"
+            ref={menuImagesInputRef}
+            onChange={(e) => {
                 const files = Array.from(e.target.files || [])
                 if (!files.length) return
                 
@@ -1785,8 +1813,7 @@ export default function RestaurantOnboarding() {
                 e.target.value = ''
               }}
             />
-          </div>
-
+          
           {/* Menu image previews */}
           {!!step2.menuImages.length && (
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -1810,7 +1837,7 @@ export default function RestaurantOnboarding() {
                 return (
                   <div
                     key={idx}
-                    className="relative aspect-4/5 rounded-md overflow-hidden bg-gray-100"
+                    className="relative w-full h-32 sm:h-48 rounded-md overflow-hidden bg-gray-100 border border-gray-200"
                   >
                     <div className="absolute top-1 right-1 z-30">
                       <button
@@ -1823,7 +1850,7 @@ export default function RestaurantOnboarding() {
                             menuImages: prev.menuImages.filter((_, i) => i !== idx),
                           }));
                         }}
-                        className="bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                        className="bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors cursor-pointer"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1832,7 +1859,7 @@ export default function RestaurantOnboarding() {
                       <img
                         src={imageUrl}
                         alt={`Menu ${idx + 1}`}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain bg-gray-50"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-500 px-2 text-center">
@@ -1853,65 +1880,63 @@ export default function RestaurantOnboarding() {
 
         {/* Profile image */}
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-gray-700">Restaurant profile image</Label>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200">
-                {step2.profileImage ? (
-                  (() => {
-                    const imageSrc = getPreviewImageUrl(step2.profileImage)
+          <Label className="text-xs font-medium text-gray-700">Restaurant profile image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="relative flex-shrink-0">
+                <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm">
+                  {step2.profileImage ? (
+                    (() => {
+                      const imageSrc = getPreviewImageUrl(step2.profileImage)
 
-                    return imageSrc ? (
-                      <img
-                        src={imageSrc}
-                        alt="Restaurant profile"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <ImageIcon className="w-6 h-6 text-gray-500" />
-                    );
-                  })()
-                ) : (
-                  <ImageIcon className="w-6 h-6 text-gray-500" />
+                      return imageSrc ? (
+                        <img
+                          src={imageSrc}
+                          alt="Restaurant profile"
+                          className="w-full h-full object-contain bg-gray-50"
+                        />
+                      ) : (
+                        <ImageIcon className="w-5 h-5 text-gray-500" />
+                      );
+                    })()
+                  ) : (
+                    <ImageIcon className="w-5 h-5 text-gray-500" />
+                  )}
+                </div>
+                {step2.profileImage && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setStep2((prev) => ({
+                        ...prev,
+                        profileImage: null,
+                      }));
+                    }}
+                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors z-10 cursor-pointer"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
                 )}
               </div>
-              {step2.profileImage && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setStep2((prev) => ({
-                      ...prev,
-                      profileImage: null,
-                    }));
-                  }}
-                  className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors z-10"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-            <div className="flex-1 flex-col flex items-center justify-between gap-3">
               <div className="flex flex-col">
-                <span className="text-xs font-medium text-gray-900">Upload profile image</span>
+                <span className="text-sm font-semibold text-gray-900">Upload profile image</span>
                 <span className="text-[11px] text-gray-500">
                   This will be shown on your listing card and restaurant page.
                 </span>
               </div>
-
             </div>
-
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full text-xs h-9 cursor-pointer"
+              onClick={() => profileImageInputRef.current?.click()}
+            >
+              <Upload className="w-4 h-4 mr-1.5" />
+              Upload
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full text-xs"
-            onClick={() => profileImageInputRef.current?.click()}
-          >
-            <Upload className="w-4 h-4 mr-1.5" />
-            Upload
-          </Button>
           <input
             id="profileImageInput"
             type="file"
@@ -1938,17 +1963,17 @@ export default function RestaurantOnboarding() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
         {/* Timings with popover time selectors */}
         <div className="space-y-3">
-          <Label className="text-xs text-gray-700">Delivery timings</Label>
+          <Label className="text-xs text-gray-700">Delivery timings<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TimeSelector
-              label="Opening time"
+              label="Opening time*"
               value={step2.openingTime || ""}
               onChange={(val) =>
                 setStep2((prev) => ({ ...prev, openingTime: normalizeTimeValue(val) || "" }))
               }
             />
             <TimeSelector
-              label="Closing time"
+              label="Closing time*"
               value={step2.closingTime || ""}
               onChange={(val) =>
                 setStep2((prev) => ({ ...prev, closingTime: normalizeTimeValue(val) || "" }))
@@ -1961,7 +1986,7 @@ export default function RestaurantOnboarding() {
         <div className="space-y-2">
           <Label className="text-xs text-gray-700 flex items-center gap-1.5">
             <CalendarIcon className="w-3.5 h-3.5 text-gray-800" />
-            <span>Open days</span>
+            <span>Open days<span className="text-rose-500 ml-0.5">*</span></span>
           </Label>
           <p className="text-[11px] text-gray-500">
             Select the days your restaurant accepts orders.
@@ -1974,7 +1999,7 @@ export default function RestaurantOnboarding() {
                   key={day}
                   type="button"
                   onClick={() => toggleDay(day)}
-                  className={`flex h-10 items-center justify-center rounded-md px-1 text-[10px] font-medium leading-none sm:h-11 sm:text-xs ${active ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
+                  className={`flex h-10 items-center justify-center rounded-md px-1 text-[10px] font-medium leading-none sm:h-11 sm:text-xs cursor-pointer ${active ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
                     }`}
 
                 >
@@ -1994,7 +2019,7 @@ export default function RestaurantOnboarding() {
         <h2 className="text-lg font-semibold text-black">PAN details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">PAN number*</Label>
+            <Label className="text-xs text-gray-700">PAN number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.panNumber || ""}
               onChange={(e) => {
@@ -2009,7 +2034,7 @@ export default function RestaurantOnboarding() {
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">PAN Card Holder Name*</Label>
+            <Label className="text-xs text-gray-700">PAN Card Holder Name<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.nameOnPan || ""}
               onChange={(e) =>
@@ -2019,15 +2044,16 @@ export default function RestaurantOnboarding() {
                 })
               }
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              maxLength={50}
             />
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">PAN image*</Label>
+          <Label className="text-xs text-gray-700">PAN image<span className="text-rose-500 ml-0.5">*</span></Label>
           <Button
             type="button"
             variant="outline"
-            className="mt-2 w-full text-xs"
+            className="mt-2 w-full text-xs cursor-pointer"
             onClick={() => panImageInputRef.current?.click()}
           >
             <Upload className="w-4 h-4 mr-1.5" />
@@ -2047,12 +2073,12 @@ export default function RestaurantOnboarding() {
             }}
           />
           {step3.panImage && (
-            <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
+            <div className="mt-3 relative w-full max-w-sm h-32 sm:h-40 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
               {getPreviewImageUrl(step3.panImage) ? (
                 <img
                   src={getPreviewImageUrl(step3.panImage)}
                   alt="PAN document"
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-contain bg-gray-50"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
@@ -2066,7 +2092,7 @@ export default function RestaurantOnboarding() {
                   e.stopPropagation()
                   setStep3((prev) => ({ ...prev, panImage: null }))
                 }}
-                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors cursor-pointer"
               >
                 <X className="w-3 h-3" />
               </button>
@@ -2082,7 +2108,7 @@ export default function RestaurantOnboarding() {
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: true })}
-            className={`px-3 py-1.5 text-xs rounded-full ${step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
+            className={`px-3 py-1.5 text-xs rounded-full cursor-pointer ${step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
               }`}
           >
 
@@ -2091,7 +2117,7 @@ export default function RestaurantOnboarding() {
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: false })}
-            className={`px-3 py-1.5 text-xs rounded-full ${!step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
+            className={`px-3 py-1.5 text-xs rounded-full cursor-pointer ${!step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
               }`}
           >
 
@@ -2101,7 +2127,7 @@ export default function RestaurantOnboarding() {
         {step3.gstRegistered && (
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-gray-700">GST number*</Label>
+              <Label className="text-xs text-gray-700">GST number<span className="text-rose-500 ml-0.5">*</span></Label>
               <Input
                 value={step3.gstNumber || ""}
                 onChange={(e) =>
@@ -2115,7 +2141,7 @@ export default function RestaurantOnboarding() {
               />
             </div>
             <div>
-              <Label className="text-xs text-gray-700">GST legal name*</Label>
+              <Label className="text-xs text-gray-700">GST legal name<span className="text-rose-500 ml-0.5">*</span></Label>
               <Input
                 value={step3.gstLegalName || ""}
                 onChange={(e) =>
@@ -2129,7 +2155,7 @@ export default function RestaurantOnboarding() {
               />
             </div>
             <div>
-              <Label className="text-xs text-gray-700">GST registered address*</Label>
+              <Label className="text-xs text-gray-700">GST registered address<span className="text-rose-500 ml-0.5">*</span></Label>
               <Input
                 value={step3.gstAddress || ""}
                 onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })}
@@ -2138,11 +2164,11 @@ export default function RestaurantOnboarding() {
               />
             </div>
             <div>
-              <Label className="text-xs text-gray-700">GST image*</Label>
+              <Label className="text-xs text-gray-700">GST image<span className="text-rose-500 ml-0.5">*</span></Label>
               <Button
                 type="button"
                 variant="outline"
-                className="mt-2 w-full text-xs"
+                className="mt-2 w-full text-xs cursor-pointer"
                 onClick={() => gstImageInputRef.current?.click()}
               >
                 <Upload className="w-4 h-4 mr-1.5" />
@@ -2163,12 +2189,12 @@ export default function RestaurantOnboarding() {
               }}
             />
             {step3.gstImage && (
-              <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
+              <div className="mt-3 relative w-full max-w-sm h-32 sm:h-40 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
                 {getPreviewImageUrl(step3.gstImage) ? (
                   <img
                     src={getPreviewImageUrl(step3.gstImage)}
                     alt="GST document"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-gray-50"
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
@@ -2182,7 +2208,7 @@ export default function RestaurantOnboarding() {
                     e.stopPropagation()
                     setStep3((prev) => ({ ...prev, gstImage: null }))
                   }}
-                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                  className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors cursor-pointer"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -2196,7 +2222,7 @@ export default function RestaurantOnboarding() {
         <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">FSSAI number*</Label>
+            <Label className="text-xs text-gray-700">FSSAI number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.fssaiNumber || ""}
               onChange={(e) =>
@@ -2207,13 +2233,13 @@ export default function RestaurantOnboarding() {
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date*</Label>
+            <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date<span className="text-rose-500 ml-0.5">*</span></Label>
             <Popover open={isFssaiCalendarOpen} onOpenChange={setIsFssaiCalendarOpen}>
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   onClick={() => setIsFssaiCalendarOpen(true)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50 cursor-pointer"
                 >
                   <span className={step3.fssaiExpiry ? "text-gray-900" : "text-gray-500"}>
                     {step3.fssaiExpiry
@@ -2235,6 +2261,7 @@ export default function RestaurantOnboarding() {
                     fromYear={new Date().getFullYear()}
                     toYear={getLocalDateYearsFromToday(FSSAI_VALIDITY_YEARS).getFullYear()}
                     selected={parseLocalYMDDate(step3.fssaiExpiry)}
+                    defaultMonth={parseLocalYMDDate(step3.fssaiExpiry)}
                     disabled={(date) => {
                       const formattedDate = formatDateToLocalYMD(date)
                       return isFssaiExpiryOutsideAllowedRange(formattedDate)
@@ -2264,11 +2291,11 @@ export default function RestaurantOnboarding() {
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">FSSAI image*</Label>
+          <Label className="text-xs text-gray-700">FSSAI image<span className="text-rose-500 ml-0.5">*</span></Label>
           <Button
             type="button"
             variant="outline"
-            className="mt-2 w-full text-xs"
+            className="mt-2 w-full text-xs cursor-pointer"
             onClick={() => fssaiImageInputRef.current?.click()}
           >
             <Upload className="w-4 h-4 mr-1.5" />
@@ -2289,12 +2316,12 @@ export default function RestaurantOnboarding() {
           }}
         />
         {step3.fssaiImage && (
-          <div className="mt-3 relative aspect-4/3 rounded-md overflow-hidden bg-gray-100">
+          <div className="mt-3 relative w-full max-w-sm h-32 sm:h-40 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
             {getPreviewImageUrl(step3.fssaiImage) ? (
               <img
                 src={getPreviewImageUrl(step3.fssaiImage)}
                 alt="FSSAI document"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain bg-gray-50"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">
@@ -2308,7 +2335,7 @@ export default function RestaurantOnboarding() {
                 e.stopPropagation()
                 setStep3((prev) => ({ ...prev, fssaiImage: null }))
               }}
-              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+              className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors cursor-pointer"
             >
               <X className="w-3 h-3" />
             </button>
@@ -2320,7 +2347,7 @@ export default function RestaurantOnboarding() {
         <h2 className="text-lg font-semibold text-black">Bank account details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">Account number*</Label>
+            <Label className="text-xs text-gray-700">Account number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.accountNumber || ""}
               onChange={(e) => {
@@ -2338,7 +2365,7 @@ export default function RestaurantOnboarding() {
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Confirm account number*</Label>
+            <Label className="text-xs text-gray-700">Confirm account number<span className="text-rose-500 ml-0.5">*</span></Label>
             <div className="relative mt-1">
               <Input
                 type={showConfirmAccountNumber ? "text" : "password"}
@@ -2359,7 +2386,7 @@ export default function RestaurantOnboarding() {
               <button
                 type="button"
                 onClick={() => setShowConfirmAccountNumber(!showConfirmAccountNumber)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors cursor-pointer"
                 aria-label={showConfirmAccountNumber ? "Hide account number" : "Show account number"}
               >
                 {showConfirmAccountNumber ? (
@@ -2378,7 +2405,7 @@ export default function RestaurantOnboarding() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">IFSC code*</Label>
+            <Label className="text-xs text-gray-700">IFSC code<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.ifscCode || ""}
               onChange={(e) =>
@@ -2392,13 +2419,13 @@ export default function RestaurantOnboarding() {
             />
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Account type*</Label>
+            <Label className="text-xs text-gray-700">Account type<span className="text-rose-500 ml-0.5">*</span></Label>
             <Select
               value={step3.accountType || ""}
               onValueChange={(value) => setStep3({ ...step3, accountType: value })}
             >
-              <SelectTrigger className="mt-1 bg-white text-sm text-gray-900">
-                <SelectValue placeholder="Select account type" className="placeholder:text-gray-400" />
+              <SelectTrigger className="mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-gray-400 cursor-pointer">
+                <SelectValue placeholder="Select account type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="Saving">Saving</SelectItem>
@@ -2408,7 +2435,7 @@ export default function RestaurantOnboarding() {
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">Account holder name*</Label>
+          <Label className="text-xs text-gray-700">Account holder name<span className="text-rose-500 ml-0.5">*</span></Label>
           <Input
             value={step3.accountHolderName || ""}
             onChange={(e) =>
@@ -2417,7 +2444,7 @@ export default function RestaurantOnboarding() {
                 accountHolderName: e.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 50),
               })
             }
-            className="mt-1 bg-white text-sm"
+            className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Account holder name"
           />
         </div>
@@ -2434,12 +2461,12 @@ export default function RestaurantOnboarding() {
         </p>
 
         <div>
-          <Label className="text-xs text-gray-700">Estimated Delivery Time*</Label>
+          <Label className="text-xs text-gray-700">Estimated Delivery Time<span className="text-rose-500 ml-0.5">*</span></Label>
           <Select
             value={step4.estimatedDeliveryTime || ""}
             onValueChange={(value) => setStep4({ ...step4, estimatedDeliveryTime: value })}
           >
-            <SelectTrigger className="mt-1 bg-white text-sm text-gray-900">
+            <SelectTrigger className="mt-1 bg-white text-sm text-gray-900 cursor-pointer">
               <SelectValue placeholder="Select estimated timing" className="placeholder:text-gray-400" />
             </SelectTrigger>
             <SelectContent>
@@ -2459,7 +2486,7 @@ export default function RestaurantOnboarding() {
         </div>
 
         <div>
-          <Label className="text-xs text-gray-700">Featured Dish Name*</Label>
+          <Label className="text-xs text-gray-700">Featured Dish Name<span className="text-rose-500 ml-0.5">*</span></Label>
           <Input
             value={step4.featuredDish || ""}
             onChange={(e) =>
@@ -2487,7 +2514,7 @@ export default function RestaurantOnboarding() {
         </div>
 
         <div className="border-t border-gray-200 pt-4 space-y-4">
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between sm:justify-start sm:gap-16 gap-3">
             <div>
               <Label className="text-sm font-medium text-gray-800">Enable Self Delivery</Label>
               <p className="text-[11px] text-gray-500 mt-1">
@@ -2502,7 +2529,7 @@ export default function RestaurantOnboarding() {
                   selfDeliveryEnabled: checked,
                 })
               }
-              className="mt-1 data-[state=checked]:bg-[#00c87e]"
+              className="mt-1 data-[state=checked]:bg-[#00c87e] cursor-pointer"
             />
           </div>
 
@@ -2562,36 +2589,20 @@ export default function RestaurantOnboarding() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs text-gray-700">Start Time</Label>
-                <Input
-                  type="time"
-                  value={step4.selfDeliveryStart || "10:00"}
-                  onChange={(e) =>
-                    setStep4({
-                      ...step4,
-                      selfDeliveryStart: e.target.value,
-                    })
-                  }
-                  disabled={!step4.selfDeliveryEnabled}
-                  className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                />
-              </div>
-              <div>
-                <Label className="text-xs text-gray-700">End Time</Label>
-                <Input
-                  type="time"
-                  value={step4.selfDeliveryEnd || "22:00"}
-                  onChange={(e) =>
-                    setStep4({
-                      ...step4,
-                      selfDeliveryEnd: e.target.value,
-                    })
-                  }
-                  disabled={!step4.selfDeliveryEnabled}
-                  className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                />
-              </div>
+              <TimeSelector
+                label="Start Time*"
+                value={step4.selfDeliveryStart || "10:00"}
+                onChange={(val) =>
+                  setStep4((prev) => ({ ...prev, selfDeliveryStart: normalizeTimeValue(val) || "10:00" }))
+                }
+              />
+              <TimeSelector
+                label="End Time*"
+                value={step4.selfDeliveryEnd || "22:00"}
+                onChange={(val) =>
+                  setStep4((prev) => ({ ...prev, selfDeliveryEnd: normalizeTimeValue(val) || "22:00" }))
+                }
+              />
             </div>
           </div>
         </div>
@@ -2607,13 +2618,20 @@ export default function RestaurantOnboarding() {
   }
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
+    <LocalizationProvider 
+      dateAdapter={AdapterDateFns}
+      localeText={{
+        fieldMeridiemPlaceholder: () => "AM/PM",
+        fieldHoursPlaceholder: () => "HH",
+        fieldMinutesPlaceholder: () => "MM",
+      }}
+    >
       <div className="min-h-screen bg-gray-100 flex flex-col">
         <header className="px-4 py-4 sm:px-6 sm:py-5 bg-white flex items-center justify-between border-b">
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/food/restaurant/explore")}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
               aria-label="Close onboarding"
             >
               <X className="w-5 h-5 text-gray-600" />
@@ -2626,7 +2644,7 @@ export default function RestaurantOnboarding() {
                 onClick={() => setIsEditing(true)}
                 variant="outline"
                 size="sm"
-                className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5"
+                className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5 cursor-pointer"
                 title="Edit Details"
 
               >
@@ -2643,7 +2661,7 @@ export default function RestaurantOnboarding() {
                 disabled={isLoggingOut}
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -2683,26 +2701,22 @@ export default function RestaurantOnboarding() {
           galleryInputRef={sourcePicker.fallbackInputRef}
         />
 
-        {error && (
-          <div className="px-4 sm:px-6 pb-2 text-xs text-red-600">
-            {error}
-          </div>
-        )}
+
 
         <footer className={`px-4 sm:px-6 py-3 bg-white ${keyboardInset ? "hidden" : ""}`}>
           <div className="flex justify-between items-center">
             <Button
-              variant="ghost"
+              variant="outline"
               disabled={step === 1 || saving}
               onClick={() => { setStep((s) => Math.max(1, s - 1)); window.scrollTo({ top: 0, behavior: "instant" }) }}
-              className="text-sm text-gray-700 bg-transparent"
+              className="text-sm border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Back
             </Button>
             <Button
               onClick={handleNext}
               disabled={saving || (step === 4 && !isEditing)}
-              className={`text-sm bg-[#00c87e] hover:bg-[#00b06f] text-white px-6 ${(step === 4 && !isEditing) ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`text-sm bg-[#00c87e] hover:bg-[#00b06f] text-white px-6 cursor-pointer ${(step === 4 && !isEditing) ? "opacity-50 cursor-not-allowed" : ""}`}
             >
 
               {step === 4 ? (saving ? "Saving..." : "Finish") : saving ? "Saving..." : "Continue"}

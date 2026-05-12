@@ -157,6 +157,8 @@ const normalizeOrderForPopup = (orderLike) => {
         : Number(orderLike.pricing?.total) > 0
           ? Number(orderLike.pricing.total)
           : 0,
+    customerName: orderLike.customerName || orderLike.userId?.name || orderLike.user?.name || "Customer",
+    customerPhone: getOrderCustomerPhone(orderLike),
     customerAddress:
       orderLike.customerAddress || orderLike.address || orderLike.deliveryAddress,
     status: orderLike.status || orderLike.orderStatus,
@@ -4551,6 +4553,7 @@ function OrderCard({
             eta,
             itemsSummary,
             paymentMethod,
+            customerPhone,
           })
         }
         className="w-full text-left flex gap-3 items-stretch cursor-pointer">
@@ -4587,7 +4590,7 @@ function OrderCard({
                     </p>
                   )}
                   {(customerPhone || phoneForCall) && (
-                    <div className="mt-1.5 flex items-center flex-wrap gap-2">
+                    <div className="mt-1.5 flex items-center justify-center gap-3">
                       {customerPhone && (
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500 leading-none">
                           {customerPhone}
@@ -4597,7 +4600,7 @@ function OrderCard({
                         <a
                           href={`tel:${phoneForCall}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 rounded-full bg-[#00c87e] px-2 py-0.5 text-[10px] font-bold leading-none text-white shadow-sm transition-all hover:bg-[#00b874]"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-[#00c87e] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm transition-all hover:bg-[#00b874] active:scale-95"
                         >
                           <Phone className="h-2.5 w-2.5" />
                           Call
@@ -4661,42 +4664,44 @@ function OrderCard({
             </div>
 
             {/* Timing Grid - Clean & Compact */}
-            <div className="bg-gray-50/80 rounded-xl p-2 border border-gray-100">
-              <div className="grid grid-cols-2 gap-y-1.5 gap-x-4">
-                {scheduledFulfillmentTime && (
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
-                      {String(fulfillmentType || "").toLowerCase() === "takeaway" ? "Pickup At" : "Delivery At"}
-                    </span>
-                    <span className="text-xs font-bold text-[#00c87e]">
-                      {formatClockTime(scheduledFulfillmentTime)}
-                    </span>
-                  </div>
-                )}
-                {prepStartTime && (
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">Prep Starts</span>
-                    <span className="text-xs font-bold text-amber-600">
-                      {formatClockTime(prepStartTime)}
-                    </span>
-                  </div>
-                )}
-                {Number(prepTimeMinutes) > 0 && (
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
-                      {String(fulfillmentType || "").toLowerCase() === "delivery" ? "Prep + Delivery" : "Prep Time"}
-                    </span>
-                    <span className="text-[11px] font-semibold text-gray-700">{Math.round(Number(prepTimeMinutes))} mins</span>
-                  </div>
-                )}
-                {!isReady && eta && (
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">Current ETA</span>
-                    <span className="text-[11px] font-semibold text-black">{eta.replace(/^(Pickup|Delivery)\s+/i, "")}</span>
-                  </div>
-                )}
+            {(scheduledFulfillmentTime || prepStartTime || Number(prepTimeMinutes) > 0 || (!isReady && eta)) && (
+              <div className="bg-gray-50/80 rounded-xl p-2 border border-gray-100">
+                <div className="grid grid-cols-2 gap-y-1.5 gap-x-4">
+                  {scheduledFulfillmentTime && (
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
+                        {String(fulfillmentType || "").toLowerCase() === "takeaway" ? "Pickup At" : "Delivery At"}
+                      </span>
+                      <span className="text-xs font-bold text-[#00c87e]">
+                        {formatClockTime(scheduledFulfillmentTime)}
+                      </span>
+                    </div>
+                  )}
+                  {prepStartTime && (
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">Prep Starts</span>
+                      <span className="text-xs font-bold text-amber-600">
+                        {formatClockTime(prepStartTime)}
+                      </span>
+                    </div>
+                  )}
+                  {Number(prepTimeMinutes) > 0 && (
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">
+                        {String(fulfillmentType || "").toLowerCase() === "delivery" ? "Prep + Delivery" : "Prep Time"}
+                      </span>
+                      <span className="text-[11px] font-semibold text-gray-700">{Math.round(Number(prepTimeMinutes))} mins</span>
+                    </div>
+                  )}
+                  {!isReady && eta && (
+                    <div className="flex flex-col">
+                      <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">Current ETA</span>
+                      <span className="text-[11px] font-semibold text-black">{eta.replace(/^(Pickup|Delivery)\s+/i, "")}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 mt-2">
               {canAssignBoy && (
@@ -4706,7 +4711,7 @@ function OrderCard({
                     e.stopPropagation();
                     onAssignBoy({ orderId, mongoId, customerName });
                   }}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors"
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all shadow-sm"
                 >
                   Assign Boy
                 </button>
@@ -4719,7 +4724,7 @@ function OrderCard({
                     onMarkReady({ orderId, mongoId, customerName, isDineIn });
                   }}
                   disabled={isMarkingReady}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-green-600 text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-green-600 text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-60 disabled:cursor-not-allowed active:scale-95 transition-all shadow-sm">
                   {isMarkingReady ? "Marking..." : "Mark Ready"}
                 </button>
               )}
@@ -4731,7 +4736,7 @@ function OrderCard({
                     onVerifyOtp({ orderId, mongoId, customerName });
                   }}
                   disabled={isVerifyingOtp}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors">
+                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-60 disabled:cursor-not-allowed active:scale-95 transition-all shadow-sm">
                   {isVerifyingOtp ? "Verifying..." : "Verify OTP"}
                 </button>
               )}
@@ -4802,6 +4807,7 @@ function PreparingOrders({
                   .join(", ") || "No items",
               photoUrl: order.items?.[0]?.image || null,
               photoAlt: order.items?.[0]?.name || "Order",
+              customerPhone: getOrderCustomerPhone(order),
               deliveryPartnerId: order.deliveryPartnerId || null,
               dispatchStatus: order.dispatch?.status || null,
               paymentMethod:
@@ -5112,6 +5118,7 @@ function PreparingOrders({
                 photoUrl={order.photoUrl}
                 photoAlt={order.photoAlt}
                 paymentMethod={order.paymentMethod}
+                customerPhone={order.customerPhone}
                 deliveryPartnerId={order.deliveryPartnerId}
                 dispatchStatus={order.dispatchStatus}
                 onSelect={onSelectOrder}
@@ -5185,6 +5192,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                 .join(", ") || "No items",
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
+            customerPhone: getOrderCustomerPhone(order),
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
