@@ -119,7 +119,7 @@ export async function listRestaurantCategories(restaurantId, query = {}) {
     }
     filter.$and.push(buildRestaurantZoneVisibilityFilter(context, zoneIdRaw));
 
-    if (compact && context.pureVegRestaurant) {
+    if (context.pureVegRestaurant) {
         filter.$and.push({ foodTypeScope: 'Veg' });
     }
 
@@ -236,7 +236,7 @@ export async function createRestaurantCategory(restaurantId, body = {}) {
         throw new ValidationError('Invalid category diet type');
     }
     if (context.pureVegRestaurant && foodTypeScope !== 'Veg') {
-        throw new ValidationError('Pure veg restaurants can only create veg categories');
+        throw new ValidationError('Your restaurant is marked as pure veg, so you can only create veg categories');
     }
 
     const doc = new FoodCategory({
@@ -279,17 +279,34 @@ export async function updateRestaurantCategory(restaurantId, id, body = {}) {
         throw new ValidationError('Invalid category diet type');
     }
     if (context.pureVegRestaurant && nextFoodTypeScope !== 'Veg') {
-        throw new ValidationError('Pure veg restaurants can only keep veg categories');
+        throw new ValidationError('Your restaurant is marked as pure veg, so category diet scope must stay veg');
     }
+
+    let requiresApproval = false;
 
     if (body.name !== undefined) {
         const name = String(body.name || '').trim();
         if (!name) throw new ValidationError('Category name is required');
         if (name.length > 200) throw new ValidationError('Category name is too long');
+        if (name !== String(doc.name || '').trim()) {
+            requiresApproval = true;
+        }
         doc.name = name;
     }
-    if (body.image !== undefined) doc.image = String(body.image || '').trim();
-    if (body.type !== undefined) doc.type = String(body.type || '').trim();
+    if (body.image !== undefined) {
+        const image = String(body.image || '').trim();
+        if (image !== String(doc.image || '').trim()) {
+            requiresApproval = true;
+        }
+        doc.image = image;
+    }
+    if (body.type !== undefined) {
+        const type = String(body.type || '').trim();
+        if (type !== String(doc.type || '').trim()) {
+            requiresApproval = true;
+        }
+        doc.type = type;
+    }
     if (body.isActive !== undefined) doc.isActive = body.isActive !== false;
     if (body.sortOrder !== undefined) doc.sortOrder = Number(body.sortOrder) || 0;
     if (body.foodTypeScope !== undefined) {
@@ -302,16 +319,21 @@ export async function updateRestaurantCategory(restaurantId, id, body = {}) {
         if (incompatibleFoods > 0) {
             throw new ValidationError(`This category already has ${incompatibleFoods} food item(s) outside the selected diet type`);
         }
+        if (nextFoodTypeScope !== normalizeCategoryFoodTypeScope(doc.foodTypeScope, 'Both')) {
+            requiresApproval = true;
+        }
         doc.foodTypeScope = nextFoodTypeScope;
     }
 
     doc.createdByRestaurantId = doc.createdByRestaurantId || context.restaurantId;
-    doc.approvalStatus = 'pending';
-    doc.isApproved = false;
-    doc.rejectionReason = '';
-    doc.requestedAt = new Date();
-    doc.approvedAt = undefined;
-    doc.rejectedAt = undefined;
+    if (requiresApproval) {
+        doc.approvalStatus = 'pending';
+        doc.isApproved = false;
+        doc.rejectionReason = '';
+        doc.requestedAt = new Date();
+        doc.approvedAt = undefined;
+        doc.rejectedAt = undefined;
+    }
 
     await doc.save();
     return doc.toObject();

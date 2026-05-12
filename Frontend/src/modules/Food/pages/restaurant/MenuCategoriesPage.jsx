@@ -43,6 +43,14 @@ const scopePillClass = (scope) => {
   return "bg-slate-100 text-slate-700 border-slate-200"
 }
 
+const extractRestaurantPayload = (response) =>
+  response?.data?.data?.restaurant ||
+  response?.data?.restaurant ||
+  response?.data?.data?.user ||
+  response?.data?.user ||
+  response?.data?.data ||
+  null
+
 export default function MenuCategoriesPage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -56,22 +64,32 @@ export default function MenuCategoriesPage() {
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false)
+  const [restaurantInfo, setRestaurantInfo] = useState(null)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
     fetchCategories()
+    fetchRestaurantInfo()
   }, [])
+
+  const isPureVegRestaurant = restaurantInfo?.pureVegRestaurant === true
+  const dietScopeOptions = isPureVegRestaurant ? ["Veg"] : ["Veg", "Non-Veg", "Both"]
 
   useEffect(() => {
     const draftCategoryName = String(location.state?.draftCategoryName || "").trim()
     if (!draftCategoryName) return
     setEditingCategory(null)
-    setFormData((prev) => ({ ...prev, ...defaultFormData, name: draftCategoryName }))
+    setFormData((prev) => ({
+      ...prev,
+      ...defaultFormData,
+      name: draftCategoryName,
+      foodTypeScope: isPureVegRestaurant ? "Veg" : defaultFormData.foodTypeScope,
+    }))
     setSelectedImageFile(null)
     setImagePreview(null)
     setShowModal(true)
     navigate(location.pathname, { replace: true, state: null })
-  }, [location.pathname, location.state, navigate])
+  }, [isPureVegRestaurant, location.pathname, location.state, navigate])
 
   const restaurantCategories = useMemo(
     () => categories.filter((category) => !category?.isGlobal),
@@ -82,6 +100,15 @@ export default function MenuCategoriesPage() {
     () => categories.filter((category) => category?.isGlobal),
     [categories],
   )
+
+  const fetchRestaurantInfo = async () => {
+    try {
+      const response = await restaurantAPI.getCurrentRestaurant()
+      setRestaurantInfo(extractRestaurantPayload(response))
+    } catch {
+      setRestaurantInfo(null)
+    }
+  }
 
   const fetchCategories = async () => {
     try {
@@ -100,7 +127,10 @@ export default function MenuCategoriesPage() {
   const resetModal = () => {
     setShowModal(false)
     setEditingCategory(null)
-    setFormData(defaultFormData)
+    setFormData({
+      ...defaultFormData,
+      foodTypeScope: isPureVegRestaurant ? "Veg" : defaultFormData.foodTypeScope,
+    })
     setSelectedImageFile(null)
     setImagePreview(null)
     setUploadingImage(false)
@@ -109,7 +139,10 @@ export default function MenuCategoriesPage() {
 
   const openCreateModal = () => {
     setEditingCategory(null)
-    setFormData(defaultFormData)
+    setFormData({
+      ...defaultFormData,
+      foodTypeScope: isPureVegRestaurant ? "Veg" : defaultFormData.foodTypeScope,
+    })
     setSelectedImageFile(null)
     setImagePreview(null)
     setShowModal(true)
@@ -127,7 +160,7 @@ export default function MenuCategoriesPage() {
       image: category?.image || "",
       isActive: category?.isActive !== false,
       sortOrder: Number.isFinite(Number(category?.sortOrder)) ? Number(category.sortOrder) : 0,
-      foodTypeScope: category?.foodTypeScope || "Veg",
+      foodTypeScope: isPureVegRestaurant ? "Veg" : (category?.foodTypeScope || "Veg"),
     })
     setSelectedImageFile(null)
     setImagePreview(category?.image || null)
@@ -159,6 +192,10 @@ export default function MenuCategoriesPage() {
   const handleSaveCategory = async () => {
     if (!String(formData.name || "").trim()) {
       toast.error("Category name is required")
+      return
+    }
+    if (isPureVegRestaurant && formData.foodTypeScope !== "Veg") {
+      toast.error("Your restaurant is pure veg, so you can only create veg categories")
       return
     }
 
@@ -223,7 +260,7 @@ export default function MenuCategoriesPage() {
       await restaurantAPI.updateCategory(category._id || category.id, {
         isActive: !(category?.isActive !== false),
       })
-      toast.success("Category updated and sent for admin approval")
+      toast.success(category?.isActive !== false ? "Category disabled successfully" : "Category enabled successfully")
       fetchCategories()
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to update category")
@@ -477,7 +514,9 @@ export default function MenuCategoriesPage() {
                   <p className="text-xs text-slate-500">
                     {editingCategory
                       ? "Any edit sends this category back for admin approval."
-                      : "Choose the diet scope carefully before sending it for approval."}
+                      : isPureVegRestaurant
+                        ? "Your restaurant is marked as pure veg, so only veg categories can be created."
+                        : "Choose the diet scope carefully before sending it for approval."}
                   </p>
                 </div>
                 <button onClick={resetModal}>
@@ -504,10 +543,17 @@ export default function MenuCategoriesPage() {
                     onChange={(e) => setFormData((prev) => ({ ...prev, foodTypeScope: e.target.value }))}
                     className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900"
                   >
-                    <option value="Veg">Veg</option>
-                    <option value="Non-Veg">Non-Veg</option>
-                    <option value="Both">Both</option>
+                    {dietScopeOptions.map((scope) => (
+                      <option key={scope} value={scope}>
+                        {scope}
+                      </option>
+                    ))}
                   </select>
+                  {isPureVegRestaurant && (
+                    <p className="mt-2 text-xs text-amber-700">
+                      This is a pure veg restaurant, so Non-Veg and Both categories are hidden.
+                    </p>
+                  )}
                 </div>
 
                 <div>

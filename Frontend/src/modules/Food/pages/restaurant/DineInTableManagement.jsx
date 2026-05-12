@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import QRCode from "qrcode";
+import { useNavigate } from "react-router-dom";
 import { 
     Plus, QrCode, Users, Trash2, Download, Pencil,
     Loader2, AlertCircle, CheckCircle2, MoreVertical, 
-    Printer, Info, Search, Utensils
+    Printer, Info, Search, Utensils, ChevronLeft
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
 import { Card, CardContent } from "@food/components/ui/card";
@@ -13,6 +14,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 
 const DineInTableManagement = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState([]);
     const [restaurantId, setRestaurantId] = useState(null);
@@ -27,12 +29,12 @@ const DineInTableManagement = () => {
     const [newTable, setNewTable] = useState({
         tableNumber: "",
         tableLabel: "",
-        capacity: 4
+        capacity: "4"
     });
     const [editTableForm, setEditTableForm] = useState({
         tableNumber: "",
         tableLabel: "",
-        capacity: 4
+        capacity: "4"
     });
 
     useEffect(() => {
@@ -86,6 +88,7 @@ const DineInTableManagement = () => {
                 restaurantId,
                 ...newTable,
                 tableNumber: normalizedTableNumber,
+                capacity: Number(newTable.capacity || 1),
             });
 
             if (res.data?.success) {
@@ -108,14 +111,14 @@ const DineInTableManagement = () => {
         setEditTableForm({
             tableNumber: String(table?.tableNumber || ""),
             tableLabel: String(table?.tableLabel || ""),
-            capacity: Number(table?.capacity || 4),
+            capacity: String(table?.capacity || "4"),
         });
     };
 
     const closeEditModal = () => {
         if (savingEdit) return;
         setEditingTable(null);
-        setEditTableForm({ tableNumber: "", tableLabel: "", capacity: 4 });
+        setEditTableForm({ tableNumber: "", tableLabel: "", capacity: "4" });
     };
 
     const handleEditTable = async (e) => {
@@ -139,7 +142,7 @@ const DineInTableManagement = () => {
             if (res.data?.success) {
                 toast.success("Table updated successfully!");
                 setEditingTable(null);
-                setEditTableForm({ tableNumber: "", tableLabel: "", capacity: 4 });
+                setEditTableForm({ tableNumber: "", tableLabel: "", capacity: "4" });
                 fetchInitialData();
             } else {
                 toast.error(res.data?.message || "Failed to update table");
@@ -311,9 +314,18 @@ const DineInTableManagement = () => {
             
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900">Table Management</h1>
-                    <p className="text-gray-500 font-medium">Create and manage QR codes for your restaurant tables.</p>
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => navigate(-1)}
+                        className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-gray-900 hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                        title="Go back"
+                    >
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <div>
+                        <h1 className="text-3xl font-black text-gray-900">Table Management</h1>
+                        <p className="text-gray-500 font-medium">Create and manage QR codes for your restaurant tables.</p>
+                    </div>
                 </div>
                 <Button 
                     onClick={() => setShowAddModal(true)}
@@ -364,7 +376,7 @@ const DineInTableManagement = () => {
             </div>
 
             {/* Table Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-8">
                 {tables.map((table) => (
                     <motion.div
                         layout
@@ -429,7 +441,7 @@ const DineInTableManagement = () => {
                                     <button
                                         type="button"
                                         onClick={() => openEditModal(table)}
-                                        className="p-2 text-gray-300 hover:text-emerald-600 hover:bg-emerald-50 rounded-xl transition-colors"
+                                        className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors cursor-pointer"
                                         title="Edit table"
                                     >
                                         <Pencil className="w-4 h-4" />
@@ -438,7 +450,7 @@ const DineInTableManagement = () => {
                                         type="button"
                                         onClick={() => openDeleteModal(table)}
                                         disabled={deletingTableId === table._id}
-                                        className="p-2 text-red-100 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors disabled:opacity-60"
+                                        className="p-2 text-rose-500 hover:bg-rose-50 rounded-xl transition-colors disabled:opacity-60 cursor-pointer"
                                         title="Delete table"
                                     >
                                         {deletingTableId === table._id ? (
@@ -507,6 +519,7 @@ const DineInTableManagement = () => {
                                             value={newTable.tableNumber}
                                             onChange={(e) => setNewTable({...newTable, tableNumber: e.target.value})}
                                             placeholder="e.g. 1, A1, VIP-2"
+                                            maxLength={10}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
@@ -517,6 +530,7 @@ const DineInTableManagement = () => {
                                             value={newTable.tableLabel}
                                             onChange={(e) => setNewTable({...newTable, tableLabel: e.target.value})}
                                             placeholder="e.g. Window Side, Rooftop"
+                                            maxLength={25}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
@@ -525,9 +539,18 @@ const DineInTableManagement = () => {
                                         <input 
                                             required
                                             min="1"
+                                            max="99"
                                             type="number" 
                                             value={newTable.capacity}
-                                            onChange={(e) => setNewTable({...newTable, capacity: Number(e.target.value)})}
+                                            onChange={(e) => {
+                                                let val = e.target.value.replace(/\D/g, "");
+                                                if (val.length > 1 && val.startsWith("0")) val = val.replace(/^0+/, "");
+                                                if (val.length > 2) val = val.slice(0, 2);
+                                                setNewTable({...newTable, capacity: val});
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+                                            }}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
@@ -586,6 +609,7 @@ const DineInTableManagement = () => {
                                             value={editTableForm.tableNumber}
                                             onChange={(e) => setEditTableForm({ ...editTableForm, tableNumber: e.target.value })}
                                             placeholder="e.g. 1, A1, VIP-2"
+                                            maxLength={10}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
@@ -596,6 +620,7 @@ const DineInTableManagement = () => {
                                             value={editTableForm.tableLabel}
                                             onChange={(e) => setEditTableForm({ ...editTableForm, tableLabel: e.target.value })}
                                             placeholder="e.g. Window Side, Rooftop"
+                                            maxLength={25}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
@@ -604,9 +629,18 @@ const DineInTableManagement = () => {
                                         <input
                                             required
                                             min="1"
+                                            max="99"
                                             type="number"
                                             value={editTableForm.capacity}
-                                            onChange={(e) => setEditTableForm({ ...editTableForm, capacity: Number(e.target.value) })}
+                                            onChange={(e) => {
+                                                let val = e.target.value.replace(/\D/g, "");
+                                                if (val.length > 1 && val.startsWith("0")) val = val.replace(/^0+/, "");
+                                                if (val.length > 2) val = val.slice(0, 2);
+                                                setEditTableForm({ ...editTableForm, capacity: val });
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+                                            }}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>

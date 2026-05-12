@@ -478,7 +478,7 @@ export default function Category() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-lg font-semibold leading-6 text-slate-900">{category?.name || "-"}</p>
+                            <p className="break-all whitespace-normal text-lg font-semibold leading-6 text-slate-900">{category?.name || "-"}</p>
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                               <span>{category?.type || "No type"}</span>
                               <span className="text-slate-300">•</span>
@@ -489,7 +489,7 @@ export default function Category() {
                       </td>
                       <td className="px-4 py-5 text-sm text-slate-600">
                         <div className="space-y-1">
-                          <p className="font-medium leading-6 text-slate-800">{creatorName}</p>
+                          <p className="break-all whitespace-normal font-medium leading-6 text-slate-800">{creatorName}</p>
                           <p className="text-xs text-slate-400">
                             {category?.isGlobal ? "Global category" : "Private to creator"}
                           </p>
@@ -502,8 +502,8 @@ export default function Category() {
                         </div>
                       </td>
                       <td className="px-4 py-5">
-                        <div className="max-w-[180px]">
-                          <p className="truncate text-sm font-medium text-slate-700" title={zoneText}>
+                        <div className="max-w-[180px] min-w-0">
+                          <p className="break-all whitespace-normal text-sm font-medium text-slate-700" title={zoneText}>
                             {zoneText}
                           </p>
                         </div>
@@ -529,7 +529,7 @@ export default function Category() {
                             {approvalStatus.charAt(0).toUpperCase() + approvalStatus.slice(1)}
                           </span>
                           {category?.rejectionReason && (
-                            <p className="max-w-[180px] text-xs leading-5 text-rose-600">{category.rejectionReason}</p>
+                            <p className="max-w-[180px] break-all whitespace-normal text-xs leading-5 text-rose-600">{category.rejectionReason}</p>
                           )}
                         </div>
                       </td>
