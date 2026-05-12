@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@food/components/ui/button"
 import { deliveryBoyAPI, restaurantAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
-import thindiLogo from "@/assets/rest-removebg-preview.png"
+import thindiLogo from "@/assets/taamioRestLogo.png"
 
 
 
@@ -191,7 +191,7 @@ export default function RestaurantLogin() {
 
         <div className="text-center space-y-1.5 sm:space-y-2 mb-6 sm:mb-10">
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Thindi
+            Taamio
           </h1>
           <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">
             {selectedRole === "delivery" ? "Delivery Login" : "Restaurant Login"}
@@ -344,7 +344,7 @@ export default function RestaurantLogin() {
 
       <div className={`pb-8 text-center ${keyboardInset ? "hidden" : ""}`}>
           <p className="text-[10px] font-black text-slate-300 tracking-[0.2em] uppercase">
-            &copy; {new Date().getFullYear()} THINDI PARTNER
+            &copy; {new Date().getFullYear()} TAAMIO PARTNER
           </p>
       </div>
     </div>

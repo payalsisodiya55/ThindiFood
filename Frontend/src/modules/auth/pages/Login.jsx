@@ -5,7 +5,7 @@ import { Phone, ShieldCheck, Loader2, User, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import { authAPI, userAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
-import logo from "@/assets/user_app-removebg-preview.png"
+import logo from "@/assets/taamioLogo.png"
 
 
 
@@ -339,7 +339,7 @@ export default function UnifiedOTPFastLogin() {
             animate={{ opacity: 1, y: 0 }}
             className="text-2xl md:text-5xl font-black tracking-tight mb-1"
           >
-            Thindi
+            Taamio
           </motion.h1>
           <p className="text-xs md:text-base font-bold text-white/90 tracking-[0.2em] uppercase">
             Taste the best, forget the rest
