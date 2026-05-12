@@ -32,8 +32,8 @@ const parseOriginList = (...values) => {
 };
 
 const defaultCorsOrigins = [
-    'https://thindi.in',
-    'https://www.thindi.in',
+    'https://taamio.com',
+    'https://www.taamio.com',
     'http://localhost:5173',
 ];
 
