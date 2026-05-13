@@ -7,6 +7,7 @@ import { ArrowLeft, Truck, Users, X, CheckCircle, AlertCircle } from "lucide-rea
 import { Switch } from "@food/components/ui/switch"
 import { Card, CardContent } from "@food/components/ui/card"
 import { restaurantAPI } from "@food/api"
+import { ModernTimePicker } from "@food/components/ui/modern-time-picker"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -33,6 +34,7 @@ export default function DeliverySettings() {
     timings: { start: "10:00", end: "22:00" },
   })
   const [savingSelfDelivery, setSavingSelfDelivery] = useState(false)
+  const [timeError, setTimeError] = useState("")
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -229,9 +231,29 @@ export default function DeliverySettings() {
       ...prev,
       timings: { ...(prev.timings || {}), [field]: value },
     }))
+    if (timeError) setTimeError("")
+  }
+
+  const validateTimings = () => {
+    const start = selfDelivery.timings?.start || "10:00"
+    const end = selfDelivery.timings?.end || "22:00"
+    
+    const [startH, startM] = start.split(':').map(Number)
+    const [endH, endM] = end.split(':').map(Number)
+    
+    const startVal = startH * 60 + startM
+    const endVal = endH * 60 + endM
+    
+    if (endVal <= startVal) {
+      setTimeError("End time must be after start time")
+      return false
+    }
+    setTimeError("")
+    return true
   }
 
   const saveSelfDeliveryConfig = async () => {
+    if (!validateTimings()) return
     try {
       setSavingSelfDelivery(true)
       await restaurantAPI.updateSelfDeliveryConfig(selfDelivery)
@@ -398,25 +420,18 @@ export default function DeliverySettings() {
                     className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
                   />
                 </label>
-                <div className="grid grid-cols-2 gap-3">
-                  <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Start</span>
-                    <input
-                      type="time"
-                      value={selfDelivery.timings?.start || "10:00"}
-                      onChange={(e) => handleSelfDeliveryTimings("start", e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="text-sm font-medium text-gray-700">End</span>
-                    <input
-                      type="time"
-                      value={selfDelivery.timings?.end || "22:00"}
-                      onChange={(e) => handleSelfDeliveryTimings("end", e.target.value)}
-                      className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
-                    />
-                  </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ModernTimePicker
+                    label="Start Time"
+                    value={selfDelivery.timings?.start || "10:00"}
+                    onChange={(val) => handleSelfDeliveryTimings("start", val)}
+                  />
+                  <ModernTimePicker
+                    label="End Time"
+                    value={selfDelivery.timings?.end || "22:00"}
+                    onChange={(val) => handleSelfDeliveryTimings("end", val)}
+                    error={timeError}
+                  />
                 </div>
               </div>
 

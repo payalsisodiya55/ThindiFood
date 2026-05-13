@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { Store, Truck, MapPin, IndianRupee, Clock, Save, RefreshCw, ExternalLink } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+import { ModernTimePicker } from "@food/components/ui/modern-time-picker"
 
 function ToggleSwitch({ enabled, onToggle, disabled = false }) {
   return (
@@ -59,6 +60,7 @@ export default function SelfDeliverySettings() {
     start: "10:00",
     end: "22:00",
   })
+  const [timeError, setTimeError] = useState("")
 
   const loadData = async ({ silent = false } = {}) => {
     try {
@@ -144,8 +146,27 @@ export default function SelfDeliverySettings() {
     }
   }
 
+  const validateTimings = () => {
+    const start = form.start || "10:00"
+    const end = form.end || "22:00"
+    
+    const [startH, startM] = start.split(':').map(Number)
+    const [endH, endM] = end.split(':').map(Number)
+    
+    const startVal = startH * 60 + startM
+    const endVal = endH * 60 + endM
+    
+    if (endVal <= startVal) {
+      setTimeError("End time must be after start time")
+      return false
+    }
+    setTimeError("")
+    return true
+  }
+
   const handleSaveRestaurant = async () => {
     if (!selectedRestaurant?.id) return
+    if (!validateTimings()) return
 
     try {
       setSavingRestaurantId(selectedRestaurant.id)
@@ -412,29 +433,24 @@ export default function SelfDeliverySettings() {
                     />
                   </label>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="block">
-                      <span className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                        <Clock className="h-3.5 w-3.5" />
-                        Start
-                      </span>
-                      <input
-                        type="time"
-                        value={form.start}
-                        onChange={(event) => setForm((current) => ({ ...current, start: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
-
-                    <label className="block">
-                      <span className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500">End</span>
-                      <input
-                        type="time"
-                        value={form.end}
-                        onChange={(event) => setForm((current) => ({ ...current, end: event.target.value }))}
-                        className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      />
-                    </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <ModernTimePicker
+                      label="Start Time"
+                      value={form.start}
+                      onChange={(val) => {
+                        setForm((current) => ({ ...current, start: val }))
+                        if (timeError) setTimeError("")
+                      }}
+                    />
+                    <ModernTimePicker
+                      label="End Time"
+                      value={form.end}
+                      onChange={(val) => {
+                        setForm((current) => ({ ...current, end: val }))
+                        if (timeError) setTimeError("")
+                      }}
+                      error={timeError}
+                    />
                   </div>
                 </div>
 

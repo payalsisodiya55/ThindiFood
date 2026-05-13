@@ -276,6 +276,52 @@ const formatScheduleTimeMessage = (date) =>
     hour12: true,
   })
 
+const getSelfDeliveryTimingStatus = (restaurant, now = new Date()) => {
+  const selfDelivery = restaurant?.selfDelivery
+  if (!selfDelivery || selfDelivery.enabled !== true) {
+    return { isConfigured: false, isWithinWindow: true, message: "" }
+  }
+
+  const startMinutes = parseTimeValueToMinutes(selfDelivery?.timings?.start || "10:00")
+  const endMinutes = parseTimeValueToMinutes(selfDelivery?.timings?.end || "22:00")
+
+  if (startMinutes === null || endMinutes === null) {
+    return {
+      isConfigured: false,
+      isWithinWindow: true,
+      message: "",
+    }
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+  const isWithinWindow =
+    endMinutes > startMinutes
+      ? currentMinutes >= startMinutes && currentMinutes <= endMinutes
+      : currentMinutes >= startMinutes || currentMinutes <= endMinutes
+
+  if (isWithinWindow) {
+    return { isConfigured: true, isWithinWindow: true, message: "" }
+  }
+
+  const nextAvailableDate = new Date(now)
+  nextAvailableDate.setHours(
+    Math.floor(startMinutes / 60),
+    startMinutes % 60,
+    0,
+    0,
+  )
+
+  if (nextAvailableDate.getTime() <= now.getTime()) {
+    nextAvailableDate.setDate(nextAvailableDate.getDate() + 1)
+  }
+
+  return {
+    isConfigured: true,
+    isWithinWindow: false,
+    message: `Delivery is not available at this time for this restaurant. Try again after ${formatScheduleTimeMessage(nextAvailableDate)}.`,
+  }
+}
+
 const TAKEAWAY_ADVANCE_BOOKING_LIMIT_MINUTES = 180
 
 const enrichRestaurantWithOutletTimings = async (restaurant) => {
@@ -395,6 +441,7 @@ export default function Cart() {
 
   const [sendCutlery, setSendCutlery] = useState(true)
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
+  const [placeOrderErrorMessage, setPlaceOrderErrorMessage] = useState("")
   const [showBillDetails, setShowBillDetails] = useState(true)
   const [showPlacingOrder, setShowPlacingOrder] = useState(false)
   const [isScheduled, setIsScheduled] = useState(false)
@@ -549,6 +596,20 @@ export default function Cart() {
   }, [isScheduled, scheduledDate, restaurantData])
 
   const takeawayPrepTimeMinutes = useMemo(() => getCartPrepTimeMinutes(cart), [cart])
+  const [deliveryTimingNow, setDeliveryTimingNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setDeliveryTimingNow(Date.now())
+    }, 60000)
+
+    return () => window.clearInterval(intervalId)
+  }, [])
+
+  const selfDeliveryTimingStatus = useMemo(
+    () => getSelfDeliveryTimingStatus(restaurantData, new Date(deliveryTimingNow)),
+    [restaurantData, deliveryTimingNow],
+  )
 
   const takeawayScheduleWindow = useMemo(() => {
     if (!isPickupScheduled || !restaurantData) return null
@@ -2032,6 +2093,8 @@ export default function Cart() {
 
 
   const handlePlaceOrder = async () => {
+    setPlaceOrderErrorMessage("")
+
     if (fulfillmentMode === "delivery" && !hasSavedAddress) {
       toast.error("Please choose a delivery location to continue")
       openLocationSelector()
@@ -2510,6 +2573,11 @@ export default function Cart() {
       debugError("? Order creation error:", error)
 
       let errorMessage = "Failed to create order. Please try again."
+      const backendError =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        ""
 
       // Handle network errors
       if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
@@ -2545,11 +2613,20 @@ export default function Cart() {
       // Handle other axios errors
       else if (error.response) {
         // Server responded with error status
-        errorMessage = error.response.data?.message || `Server error: ${error.response.status}`
+        errorMessage = backendError || `Server error: ${error.response.status}`
       }
       // Handle other errors
       else if (error.message) {
         errorMessage = error.message
+      }
+
+      if (String(backendError).toLowerCase().includes("outside self-delivery timings")) {
+        setPlaceOrderErrorMessage(
+          selfDeliveryTimingStatus?.message ||
+          "Delivery is not available at this time for this restaurant. Please try again during delivery hours.",
+        )
+        setIsPlacingOrder(false)
+        return
       }
 
       alert(errorMessage)
@@ -3113,7 +3190,10 @@ export default function Cart() {
                 <div className="flex items-center gap-2 mb-4">
                   <button
                     type="button"
-                    onClick={() => setFulfillmentMode("takeaway")}
+                    onClick={() => {
+                      setFulfillmentMode("takeaway")
+                      setPlaceOrderErrorMessage("")
+                    }}
                     className={`px-4 py-2 rounded-full text-sm font-semibold border ${
                       fulfillmentMode === "takeaway"
                         ? "bg-gray-900 text-white border-gray-900"
@@ -3126,6 +3206,7 @@ export default function Cart() {
                     type="button"
                     onClick={() => {
                       if (restaurantData?.selfDelivery?.enabled) {
+                        setPlaceOrderErrorMessage("")
                         setFulfillmentMode("delivery")
                       }
                     }}
@@ -3340,6 +3421,17 @@ export default function Cart() {
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="w-full max-w-lg mx-auto space-y-3">
+            {fulfillmentMode === "delivery" && ((selfDeliveryTimingStatus?.isWithinWindow === false) || placeOrderErrorMessage) ? (
+              <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800 shadow-sm">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p className="text-xs font-medium leading-5">
+                  {fulfillmentMode === "delivery" && selfDeliveryTimingStatus?.isWithinWindow === false
+                    ? selfDeliveryTimingStatus.message
+                    : placeOrderErrorMessage}
+                </p>
+              </div>
+            ) : null}
+
             {/* Pay Using - Slim Pro UI */}
             <div
               className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#222222] rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#282828] active:scale-[0.98] transition-all duration-200 shadow-sm"
