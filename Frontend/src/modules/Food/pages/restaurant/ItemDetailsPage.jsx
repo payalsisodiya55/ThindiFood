@@ -69,6 +69,7 @@ export default function ItemDetailsPage() {
   const [itemSizeUnit, setItemSizeUnit] = useState("piece")
   const [itemDescription, setItemDescription] = useState("")
   const [foodType, setFoodType] = useState("Non-Veg")
+  const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
   const [basePrice, setBasePrice] = useState("")
   const [variants, setVariants] = useState([])
   const [preparationTime, setPreparationTime] = useState("")
@@ -122,7 +123,7 @@ export default function ItemDetailsPage() {
     setItemSizeQuantity(item.itemSizeQuantity || "")
     setItemSizeUnit(item.itemSizeUnit || "piece")
     setItemDescription(item.description || "")
-    setFoodType(item.foodType === "Veg" ? "Veg" : "Non-Veg")
+    setFoodType(isPureVegRestaurant ? "Veg" : (item.foodType === "Veg" ? "Veg" : "Non-Veg"))
     const itemVariants = getFoodVariants(item)
     setVariants(itemVariants.map(createVariantDraft))
     setBasePrice(itemVariants.length === 0 ? item.price?.toString() || "" : "")
@@ -235,6 +236,34 @@ export default function ItemDetailsPage() {
 
     fetchItemData()
   }, [id, isNewItem, location.state, defaultCategory])
+
+  useEffect(() => {
+    const fetchRestaurantProfile = async () => {
+      try {
+        const response = await restaurantAPI.getCurrentRestaurant()
+        const restaurant =
+          response?.data?.data?.restaurant ||
+          response?.data?.restaurant ||
+          response?.data?.data ||
+          null
+        const pureVeg = restaurant?.pureVegRestaurant === true
+        setIsPureVegRestaurant(pureVeg)
+        if (pureVeg) {
+          setFoodType("Veg")
+        }
+      } catch (error) {
+        debugWarn("Failed to load restaurant profile for food type defaults:", error)
+      }
+    }
+
+    fetchRestaurantProfile()
+  }, [])
+
+  useEffect(() => {
+    if (isPureVegRestaurant && foodType !== "Veg") {
+      setFoodType("Veg")
+    }
+  }, [foodType, isPureVegRestaurant])
 
   // Fetch categories from restaurant-specific API
   useEffect(() => {
@@ -630,6 +659,15 @@ export default function ItemDetailsPage() {
         return
       }
 
+      const normalizedVariantNames = normalizedVariants.map((variant) =>
+        variant.name.trim().toLowerCase(),
+      )
+      if (new Set(normalizedVariantNames).size !== normalizedVariantNames.length) {
+        toast.error("Duplicate variant names are not allowed")
+        setUploadingImages(false)
+        return
+      }
+
       const hasVariants = normalizedVariants.length > 0
       const parsedBasePrice = Number(basePrice)
       if (!hasVariants && (!Number.isFinite(parsedBasePrice) || parsedBasePrice < 0)) {
@@ -989,10 +1027,18 @@ export default function ItemDetailsPage() {
                 <span>Veg</span>
               </button>
               <button
-                onClick={() => setFoodType("Non-Veg")}
+                type="button"
+                disabled={isPureVegRestaurant}
+                onClick={() => {
+                  if (!isPureVegRestaurant) {
+                    setFoodType("Non-Veg")
+                  }
+                }}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${foodType === "Non-Veg"
                   ? "border-red-600 border-2 text-red-600"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : isPureVegRestaurant
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
               >
                 {foodType === "Non-Veg" && <Check className="w-4 h-4" />}
@@ -1028,6 +1074,7 @@ export default function ItemDetailsPage() {
                         }
                       }}
                       placeholder="Enter price"
+                      maxLength={10}
                       className="w-full pl-8 pr-12 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
@@ -1070,6 +1117,7 @@ export default function ItemDetailsPage() {
                               value={variant.name}
                               onChange={(e) => handleVariantChange(variant.localId, "name", e.target.value)}
                               placeholder={index === 0 ? "Full" : "Half"}
+                              maxLength={100}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                           </div>
@@ -1088,6 +1136,7 @@ export default function ItemDetailsPage() {
                                   handleVariantChange(variant.localId, "price", cleanedValue)
                                 }}
                                 placeholder="Enter price"
+                                maxLength={10}
                                 className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                               />
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
@@ -1097,7 +1146,7 @@ export default function ItemDetailsPage() {
                         <button
                           type="button"
                           onClick={() => handleRemoveVariant(variant.localId)}
-                          className="self-start rounded-full p-2 text-gray-500 hover:bg-white hover:text-red-500"
+                          className="mt-6 rounded-full p-2 text-red-500 hover:bg-white hover:text-red-600 transition-colors"
                           aria-label="Remove variant"
                         >
                           <Trash2 className="w-4 h-4" />

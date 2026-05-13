@@ -34,6 +34,9 @@ const ADDON_FORM_STORAGE_KEY = "restaurant_addon_form_data"
 const INVENTORY_ACTIVE_TAB_KEY = "restaurant_inventory_active_tab"
 const INVENTORY_ADDON_FORM_KEY = "restaurant_inventory_addon_form"
 const INVENTORY_STOCK_RULES_KEY = "restaurant_inventory_stock_rules_v1"
+const MIN_SPECIFIC_TIME_HOURS = 1
+const MAX_SPECIFIC_TIME_HOURS = 24
+const MAX_CUSTOM_SCHEDULE_DAYS = 7
 
 const MENU_FILTER_OPTIONS = [
   { value: "all", label: "All" },
@@ -111,10 +114,36 @@ const parseRestaurantTimeToParts = (value) => {
 }
 
 const buildSpecificTimeResumeAt = (hours) => {
-  const totalHours = Math.max(1, Number(hours) || 1)
+  const totalHours = Math.min(
+    MAX_SPECIFIC_TIME_HOURS,
+    Math.max(MIN_SPECIFIC_TIME_HOURS, Number(hours) || MIN_SPECIFIC_TIME_HOURS),
+  )
   const date = new Date()
   date.setHours(date.getHours() + totalHours)
   return date.toISOString()
+}
+
+const getMaxCustomResumeAtMs = () =>
+  Date.now() + MAX_CUSTOM_SCHEDULE_DAYS * 24 * 60 * 60 * 1000
+
+const isDateWithinCustomScheduleRange = (value) => {
+  const date = value instanceof Date ? new Date(value) : new Date(value)
+  if (Number.isNaN(date.getTime())) return false
+
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
+  const maxDate = new Date(getMaxCustomResumeAtMs())
+  maxDate.setHours(23, 59, 59, 999)
+
+  return date.getTime() >= todayStart.getTime() && date.getTime() <= maxDate.getTime()
+}
+
+const isCustomResumeAtAllowed = (resumeAt) => {
+  const resumeAtMs = new Date(resumeAt || "").getTime()
+  if (!Number.isFinite(resumeAtMs)) return false
+  if (resumeAtMs <= Date.now()) return false
+  return resumeAtMs <= getMaxCustomResumeAtMs()
 }
 
 const buildCustomResumeAt = (selectedDate, selectedTime) => {
@@ -195,7 +224,10 @@ const buildStockRule = ({
   return {
     mode: "specific-time",
     createdAt,
-    durationHours: Math.max(1, Number(hours) || 1),
+    durationHours: Math.min(
+      MAX_SPECIFIC_TIME_HOURS,
+      Math.max(MIN_SPECIFIC_TIME_HOURS, Number(hours) || MIN_SPECIFIC_TIME_HOURS),
+    ),
     resumeAt: buildSpecificTimeResumeAt(hours),
   }
 }
@@ -640,6 +672,8 @@ function SimpleCalendar({ selectedDate, onDateSelect, isOpen, onClose }) {
     return date.toDateString() === new Date().toDateString()
   }
 
+  const isDisabledDate = (date) => !isDateWithinCustomScheduleRange(date)
+
   const monthNames = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"]
   const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
@@ -708,11 +742,14 @@ function SimpleCalendar({ selectedDate, onDateSelect, isOpen, onClose }) {
                 return (
                   <button
                     key={index}
+                    disabled={isDisabledDate(date)}
                     onClick={() => {
                       onDateSelect(new Date(date))
                       onClose()
                     }}
-                    className={`h-10 text-sm rounded transition-colors ${!isCurrent
+                    className={`h-10 text-sm rounded transition-colors ${isDisabledDate(date)
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : !isCurrent
                         ? 'text-gray-300'
                         : isSelectedDate
                           ? 'text-white'
@@ -778,6 +815,14 @@ export default function Inventory() {
   const [selectedTime, setSelectedTime] = useState({ hour: "2", minute: "30", period: "pm" })
   const [showCalendar, setShowCalendar] = useState(false)
   const [showTimePicker, setShowTimePicker] = useState(false)
+  const customResumeAt = useMemo(
+    () => buildCustomResumeAt(selectedDate, selectedTime),
+    [selectedDate, selectedTime],
+  )
+  const isCustomSelectionValid = useMemo(() => {
+    if (selectedOption !== "custom-date-time") return true
+    return isCustomResumeAtAllowed(customResumeAt)
+  }, [customResumeAt, selectedOption])
   const [restaurantProfile, setRestaurantProfile] = useState(null)
   const [stockRules, setStockRules] = useState(() => {
     try {
@@ -1576,8 +1621,8 @@ export default function Inventory() {
 
     // Turning OFF - open popup and wait for confirmation
     setToggleTarget({ type, categoryId, itemId })
-    setSelectedOption("specific-time")
-    setHours(3)
+      setSelectedOption("specific-time")
+      setHours(3)
     setSelectedDate(null)
     setSelectedTime({ hour: "2", minute: "30", period: "pm" })
     setShowCalendar(false)
@@ -1610,6 +1655,11 @@ export default function Inventory() {
 
       if (new Date(nextRule.resumeAt).getTime() <= Date.now()) {
         toast.error("Custom date & time must be in the future")
+        return
+      }
+
+      if (!isCustomResumeAtAllowed(nextRule.resumeAt)) {
+        toast.error(`Custom date & time must be within ${MAX_CUSTOM_SCHEDULE_DAYS} days`)
         return
       }
     }
@@ -2337,9 +2387,9 @@ export default function Inventory() {
                           return (
                           <div key={item.id}>
                             <div className="flex items-center justify-between gap-3 rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-3">
-                              <div className="flex flex-1 items-center gap-3 min-w-0">
+                              <div className="flex flex-1 items-start gap-3 min-w-0">
                                 {/* Veg/Non-veg Icon */}
-                                <div className={`h-4 w-4 rounded-sm border-2 flex items-center justify-center ${item.isVeg ? 'border-green-600' : 'border-red-500'
+                                <div className={`mt-0.5 h-4 w-4 rounded-sm border-2 flex items-center justify-center shrink-0 ${item.isVeg ? 'border-green-600' : 'border-red-500'
                                   }`}>
                                   <div className={`h-2 w-2 rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-500'
                                     }`} />
@@ -2568,7 +2618,7 @@ export default function Inventory() {
                       {selectedOption === "specific-time" && (
                         <div className="ml-auto py-3 flex items-center justify-center gap-4">
                           <button
-                            onClick={() => setHours(Math.max(1, hours - 1))}
+                            onClick={() => setHours(Math.max(MIN_SPECIFIC_TIME_HOURS, hours - 1))}
                             className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                           >
                             <Minus className="w-4 h-4 text-gray-700" />
@@ -2577,7 +2627,7 @@ export default function Inventory() {
                             {hours} hour{hours !== 1 ? 's' : ''}
                           </span>
                           <button
-                            onClick={() => setHours(hours + 1)}
+                            onClick={() => setHours(Math.min(MAX_SPECIFIC_TIME_HOURS, hours + 1))}
                             className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                           >
                             <Plus className="w-4 h-4 text-gray-700" />
@@ -2627,21 +2677,31 @@ export default function Inventory() {
                     </div>
                   </label>
                   {selectedOption === "custom-date-time" && (
-                    <div className="ml-auto py-3 flex items-center justify-center gap-4">
-                      <button
-                        onClick={() => setShowCalendar(true)}
-                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:bg-gray-50 transition-colors flex items-center justify-between"
-                      >
-                        <span>{selectedDate ? formatDate(selectedDate) : "15 Dec 2025"}</span>
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                      </button>
-                      <button
-                        onClick={() => setShowTimePicker(true)}
-                        className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:bg-gray-50 transition-colors flex items-center justify-between"
-                      >
-                        <span>{formatTime(selectedTime)}</span>
-                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                      </button>
+                    <div className="ml-auto py-3">
+                      <div className="flex items-center justify-center gap-4">
+                        <button
+                          onClick={() => setShowCalendar(true)}
+                          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:bg-gray-50 transition-colors flex items-center justify-between"
+                        >
+                          <span>{selectedDate ? formatDate(selectedDate) : "Select date"}</span>
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        </button>
+                        <button
+                          onClick={() => setShowTimePicker(true)}
+                          className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white hover:bg-gray-50 transition-colors flex items-center justify-between"
+                        >
+                          <span>{formatTime(selectedTime)}</span>
+                          <ChevronDown className="w-4 h-4 text-gray-500" />
+                        </button>
+                      </div>
+                      <p className="mt-2 text-xs text-gray-500">
+                        Select a time within {MAX_CUSTOM_SCHEDULE_DAYS} days from now.
+                      </p>
+                      {!isCustomSelectionValid && (
+                        <p className="mt-1 text-xs text-red-500">
+                          Custom date & time must be in the future and within {MAX_CUSTOM_SCHEDULE_DAYS} days.
+                        </p>
+                      )}
                     </div>
                   )}
 
@@ -2677,7 +2737,8 @@ export default function Inventory() {
                   </button>
                   <button
                     onClick={handleToggleConfirm}
-                    className="flex-1 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-colors"
+                    disabled={selectedOption === "custom-date-time" && !isCustomSelectionValid}
+                    className="flex-1 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                     style={{ backgroundColor: RESTAURANT_THEME.brand }}
                   >
                     Confirm
