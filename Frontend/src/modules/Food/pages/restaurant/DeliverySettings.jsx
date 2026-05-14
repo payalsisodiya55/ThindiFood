@@ -20,6 +20,10 @@ const normalizeSelfDeliveryApprovalStatus = (restaurant) => {
   const selfDelivery = restaurant?.selfDelivery || {}
   const rawStatus = String(selfDelivery?.approvalStatus || "none").toLowerCase()
 
+  if (rawStatus === "disabled") {
+    return "pending"
+  }
+
   if (
     selfDelivery?.enabled === true &&
     !["pending", "rejected", "approved"].includes(rawStatus)
@@ -335,7 +339,7 @@ export default function DeliverySettings() {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-amber-900">Delivery Approval Pending</h3>
-                  <p className="text-xs text-amber-700">Admin is reviewing your request. You'll be able to receive delivery orders once approved.</p>
+                  <p className="text-xs text-amber-700">Admin is reviewing your request. Legacy self-delivery setups also need approval again before delivery orders can start.</p>
                 </div>
               </div>
             </motion.div>

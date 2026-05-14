@@ -308,7 +308,11 @@ async function resolveSelfDeliveryContext(dto, restaurant, subtotal) {
     throw new ValidationError("Restaurant self-delivery is not enabled");
   }
 
-  const approvalStatus = String(config.approvalStatus || "none").toLowerCase();
+  const rawApprovalStatus = String(config.approvalStatus || "none").toLowerCase();
+  const approvalStatus =
+    config.enabled === true && !["pending", "rejected", "approved"].includes(rawApprovalStatus)
+      ? "approved"
+      : rawApprovalStatus;
   if (approvalStatus !== "approved") {
     if (approvalStatus === "pending") {
       throw new ValidationError("Restaurant self-delivery approval is pending");

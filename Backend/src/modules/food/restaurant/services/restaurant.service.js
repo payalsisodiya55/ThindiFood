@@ -104,11 +104,36 @@ const parseEstimatedDeliveryMinutes = (value) => {
     return Math.round(numbers[numbers.length - 1]);
 };
 
+const VALID_SELF_DELIVERY_APPROVAL_STATUSES = ['none', 'pending', 'approved', 'rejected'];
+
+const queueLegacySelfDeliveryForReapproval = async (restaurantId) => {
+    if (!restaurantId) return;
+    await FoodRestaurant.updateOne(
+        {
+            _id: restaurantId,
+            'selfDelivery.enabled': true,
+            'selfDelivery.approvalStatus': { $nin: VALID_SELF_DELIVERY_APPROVAL_STATUSES }
+        },
+        {
+            $set: {
+                'selfDelivery.approvalStatus': 'pending',
+                'selfDelivery.rejectionReason': ''
+            },
+            $unset: {
+                'selfDelivery.approvedAt': 1,
+                'selfDelivery.rejectedAt': 1
+            }
+        }
+    );
+};
+
 const serializeSelfDeliveryForPublic = (doc) => {
     const enabled = doc?.selfDelivery?.enabled === true;
     const rawApprovalStatus = String(doc?.selfDelivery?.approvalStatus || 'none').trim().toLowerCase();
     const normalizedApprovalStatus =
-        enabled && !['pending', 'rejected', 'approved'].includes(rawApprovalStatus)
+        rawApprovalStatus === 'disabled'
+            ? 'pending'
+            : enabled && !['pending', 'rejected', 'approved'].includes(rawApprovalStatus)
             ? 'approved'
             : rawApprovalStatus;
 
@@ -602,6 +627,7 @@ export const registerRestaurant = async (payload, files) => {
 
 export const getCurrentRestaurantProfile = async (restaurantId) => {
     if (!restaurantId) return null;
+    await queueLegacySelfDeliveryForReapproval(restaurantId);
     const doc = await FoodRestaurant.findById(restaurantId)
         .select(
             [
@@ -661,6 +687,7 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
     if (!restaurantId) {
         throw new ValidationError('Invalid restaurant id');
     }
+    await queueLegacySelfDeliveryForReapproval(restaurantId);
     const value = Boolean(isAcceptingOrders);
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,

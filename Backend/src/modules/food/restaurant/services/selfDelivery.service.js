@@ -6,6 +6,29 @@ import { FoodOrder } from "../../orders/models/order.model.js";
 import { FoodBusinessSettings } from "../../admin/models/businessSettings.model.js";
 import * as foodTransactionService from "../../orders/services/foodTransaction.service.js";
 
+const VALID_SELF_DELIVERY_APPROVAL_STATUSES = ["none", "pending", "approved", "rejected"];
+
+async function queueLegacyRestaurantSelfDeliveryForReapproval(restaurantId) {
+  if (!restaurantId) return;
+  await FoodRestaurant.updateOne(
+    {
+      _id: restaurantId,
+      "selfDelivery.enabled": true,
+      "selfDelivery.approvalStatus": { $nin: VALID_SELF_DELIVERY_APPROVAL_STATUSES },
+    },
+    {
+      $set: {
+        "selfDelivery.approvalStatus": "pending",
+        "selfDelivery.rejectionReason": "",
+      },
+      $unset: {
+        "selfDelivery.approvedAt": 1,
+        "selfDelivery.rejectedAt": 1,
+      },
+    },
+  );
+}
+
 const FINAL_SELF_DELIVERY_STATUSES = new Set([
   "delivered_self",
   "cancelled_by_user",
@@ -73,6 +96,7 @@ export async function updateSelfDeliveryGlobalSettings(payload = {}) {
 }
 
 export async function getRestaurantSelfDeliveryConfigAdmin(restaurantId) {
+  await queueLegacyRestaurantSelfDeliveryForReapproval(restaurantId);
   const restaurant = await FoodRestaurant.findById(restaurantId)
     .select("restaurantName selfDelivery")
     .lean();
@@ -112,6 +136,7 @@ async function ensureRestaurantSelfDeliveryApprovedForManagement(restaurantId) {
 }
 
 export async function updateRestaurantSelfDeliveryConfigById(restaurantId, payload = {}) {
+  await queueLegacyRestaurantSelfDeliveryForReapproval(restaurantId);
   const restaurant = await FoodRestaurant.findById(restaurantId).select("selfDelivery").lean();
   if (!restaurant) throw new NotFoundError("Restaurant not found");
 

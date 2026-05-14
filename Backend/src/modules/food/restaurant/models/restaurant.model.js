@@ -6,6 +6,14 @@ const normalizeRatingValue = (value) => {
   return Math.max(0, Math.min(5, Number(numeric.toFixed(1))));
 };
 
+const normalizeSelfDeliveryApprovalStatus = (value) => {
+  const normalized = String(value || "none").trim().toLowerCase();
+  if (normalized === "disabled") return "none";
+  return ["none", "pending", "approved", "rejected"].includes(normalized)
+    ? normalized
+    : "none";
+};
+
 const geoPointSchema = new mongoose.Schema(
   {
     type: { type: String, enum: ["Point"], default: "Point" },
@@ -268,6 +276,7 @@ const restaurantSchema = new mongoose.Schema(
         type: String,
         enum: ["none", "pending", "approved", "rejected"],
         default: "none",
+        set: normalizeSelfDeliveryApprovalStatus,
       },
       rejectionReason: {
         type: String,
