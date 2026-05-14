@@ -169,6 +169,9 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
 
   const dayName = DAY_NAMES[now.getDay()]
   const todayTiming = getTodayTiming(restaurant, dayName)
+  const preferSelfDeliveryTimings = options?.preferSelfDeliveryTimings === true
+  const selfDeliveryStartTime = restaurant?.selfDelivery?.timings?.start || null
+  const selfDeliveryEndTime = restaurant?.selfDelivery?.timings?.end || null
 
   // Legacy openDays can get stale; enforce only when no explicit outlet timing exists for today.
   const openDays = Array.isArray(restaurant.openDays) ? restaurant.openDays : []
@@ -196,11 +199,13 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
   }
 
   const openingTime =
+    (preferSelfDeliveryTimings ? selfDeliveryStartTime : null) ||
     todayTiming?.openingTime ||
     restaurant?.deliveryTimings?.openingTime ||
     restaurant?.openingTime ||
     null
   const closingTime =
+    (preferSelfDeliveryTimings ? selfDeliveryEndTime : null) ||
     todayTiming?.closingTime ||
     restaurant?.deliveryTimings?.closingTime ||
     restaurant?.closingTime ||

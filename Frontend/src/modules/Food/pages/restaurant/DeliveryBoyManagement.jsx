@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Plus } from "lucide-react";
+import { ArrowLeft, AlertCircle, Plus } from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 
@@ -10,12 +10,30 @@ const EMPTY_FORM = {
   password: "",
 };
 
+const normalizeSelfDeliveryApprovalStatus = (restaurant) => {
+  const selfDelivery = restaurant?.selfDelivery || {};
+  const rawStatus = String(selfDelivery?.approvalStatus || "none").toLowerCase();
+
+  if (
+    selfDelivery?.enabled === true &&
+    !["pending", "rejected", "approved"].includes(rawStatus)
+  ) {
+    return "approved";
+  }
+
+  return rawStatus;
+};
+
 export default function DeliveryBoyManagement() {
   const goBack = useRestaurantBackNavigation();
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [form, setForm] = useState(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [selfDeliveryApprovalStatus, setSelfDeliveryApprovalStatus] = useState("none");
+
+  const canManageDeliveryBoys =
+    selfDeliveryApprovalStatus === "approved";
 
   const loadDeliveryBoys = async () => {
     const response = await restaurantAPI.getDeliveryBoys();
@@ -26,7 +44,16 @@ export default function DeliveryBoyManagement() {
     let active = true;
     const run = async () => {
       try {
-        await loadDeliveryBoys();
+        const [deliveryBoyResponse, restaurantResponse] = await Promise.all([
+          restaurantAPI.getDeliveryBoys(),
+          restaurantAPI.getCurrentRestaurant(),
+        ]);
+        const restaurant =
+          restaurantResponse?.data?.data?.restaurant ||
+          restaurantResponse?.data?.restaurant ||
+          null;
+        setDeliveryBoys(deliveryBoyResponse?.data?.data?.deliveryBoys || []);
+        setSelfDeliveryApprovalStatus(normalizeSelfDeliveryApprovalStatus(restaurant));
       } finally {
         if (active) setLoading(false);
       }
@@ -39,6 +66,7 @@ export default function DeliveryBoyManagement() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!canManageDeliveryBoys) return;
     setSubmitting(true);
     try {
       await restaurantAPI.createDeliveryBoy(form);
@@ -50,6 +78,7 @@ export default function DeliveryBoyManagement() {
   };
 
   const handleToggle = async (deliveryBoy) => {
+    if (!canManageDeliveryBoys) return;
     await restaurantAPI.updateDeliveryBoy(deliveryBoy._id, {
       isActive: deliveryBoy.isActive !== true,
     });
@@ -70,6 +99,14 @@ export default function DeliveryBoyManagement() {
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-3xl bg-white border border-gray-200 p-5 space-y-4">
+          {!canManageDeliveryBoys ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-amber-800">
+                Delivery boys can be managed only after self-delivery is approved by admin.
+              </p>
+            </div>
+          ) : null}
           <div className="flex items-center gap-2">
             <Plus className="w-4 h-4 text-gray-600" />
             <h2 className="font-semibold text-gray-900">Add Delivery Boy</h2>
@@ -87,14 +124,15 @@ export default function DeliveryBoyManagement() {
                   type={key === "password" ? "password" : "text"}
                   value={form[key]}
                   onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                  disabled={!canManageDeliveryBoys}
+                  className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                 />
               </label>
             ))}
           </div>
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || !canManageDeliveryBoys}
             className="rounded-xl bg-gray-900 text-white px-4 py-3 font-semibold disabled:opacity-60"
           >
             {submitting ? "Creating..." : "Create Delivery Boy"}
@@ -125,11 +163,12 @@ export default function DeliveryBoyManagement() {
                 <button
                   type="button"
                   onClick={() => handleToggle(deliveryBoy)}
+                  disabled={!canManageDeliveryBoys}
                   className={`rounded-xl px-4 py-2 text-sm font-semibold ${
                     deliveryBoy.isActive
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-slate-100 text-slate-700"
-                  }`}
+                  } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {deliveryBoy.isActive ? "Active" : "Inactive"}
                 </button>

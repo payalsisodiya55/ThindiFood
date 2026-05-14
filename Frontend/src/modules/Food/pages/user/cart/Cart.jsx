@@ -278,7 +278,11 @@ const formatScheduleTimeMessage = (date) =>
 
 const getSelfDeliveryTimingStatus = (restaurant, now = new Date()) => {
   const selfDelivery = restaurant?.selfDelivery
-  if (!selfDelivery || selfDelivery.enabled !== true) {
+  if (
+    !selfDelivery ||
+    selfDelivery.enabled !== true ||
+    String(selfDelivery.approvalStatus || "none").toLowerCase() !== "approved"
+  ) {
     return { isConfigured: false, isWithinWindow: true, message: "" }
   }
 
@@ -321,6 +325,13 @@ const getSelfDeliveryTimingStatus = (restaurant, now = new Date()) => {
     message: `Delivery is not available at this time for this restaurant. Try again after ${formatScheduleTimeMessage(nextAvailableDate)}.`,
   }
 }
+
+const isApprovedSelfDeliveryRestaurant = (restaurant) =>
+  restaurant?.selfDelivery?.enabled === true &&
+  String(restaurant?.selfDelivery?.approvalStatus || "none").toLowerCase() === "approved"
+
+const canRestaurantAcceptDeliveryOrders = (restaurant) =>
+  isApprovedSelfDeliveryRestaurant(restaurant)
 
 const TAKEAWAY_ADVANCE_BOOKING_LIMIT_MINUTES = 180
 
@@ -508,6 +519,14 @@ export default function Cart() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(false)
   const [pricing, setPricing] = useState(null)
   const [loadingPricing, setLoadingPricing] = useState(false)
+
+  useEffect(() => {
+    if (!restaurantData) return
+    if (fulfillmentMode === "delivery" && !canRestaurantAcceptDeliveryOrders(restaurantData)) {
+      setFulfillmentMode("takeaway")
+      setPlaceOrderErrorMessage("")
+    }
+  }, [restaurantData, fulfillmentMode])
 
   // Addons state
   const [addons, setAddons] = useState([])
@@ -1711,7 +1730,7 @@ export default function Cart() {
     }
 
     if (fulfillmentMode === "delivery") {
-      payload.deliveryType = "self"
+      payload.deliveryType = isApprovedSelfDeliveryRestaurant(restaurantData) ? "self" : "partner"
     }
 
     const normalizedCouponCode = typeof couponCode === "string" ? couponCode.trim().toUpperCase() : ""
@@ -2394,7 +2413,9 @@ export default function Cart() {
             ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
             : undefined,
         fulfillmentType,
-        ...(fulfillmentType === "delivery" ? { deliveryType: "self" } : {}),
+        ...(fulfillmentType === "delivery"
+          ? { deliveryType: isApprovedSelfDeliveryRestaurant(restaurantData) ? "self" : "partner" }
+          : {}),
         // Send order_type for BOTH takeaway and delivery
         order_type: orderTypeValue,
         // pickupAt only for takeaway (pickup window)
@@ -3205,12 +3226,12 @@ export default function Cart() {
                   <button
                     type="button"
                     onClick={() => {
-                      if (restaurantData?.selfDelivery?.enabled) {
+                      if (canRestaurantAcceptDeliveryOrders(restaurantData)) {
                         setPlaceOrderErrorMessage("")
                         setFulfillmentMode("delivery")
                       }
                     }}
-                    disabled={!restaurantData?.selfDelivery?.enabled}
+                    disabled={!canRestaurantAcceptDeliveryOrders(restaurantData)}
                     className={`px-4 py-2 rounded-full text-sm font-semibold border ${
                       fulfillmentMode === "delivery"
                         ? "bg-[#00c87e] text-white border-[#00c87e]"

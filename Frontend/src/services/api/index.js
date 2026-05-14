@@ -226,6 +226,24 @@ export const adminAPI = {
     apiClient.get("/food/admin/restaurants/pending", {
       contextModule: "admin",
     }),
+  getPendingDeliveryApprovals: () =>
+    apiClient.get("/food/admin/restaurants/delivery/pending", {
+      contextModule: "admin",
+    }),
+  approveDeliveryConfig: (id) =>
+    apiClient.patch(
+      `/food/admin/restaurants/${id}/delivery/approve`,
+      {},
+      {
+        contextModule: "admin",
+      },
+    ),
+  rejectDeliveryConfig: (id, reason) =>
+    apiClient.patch(
+      `/food/admin/restaurants/${id}/delivery/reject`,
+      { reason },
+      { contextModule: "admin" },
+    ),
   /** List restaurant complaints (admin). */
   getRestaurantComplaints: (params = {}) =>
     apiClient.get("/food/admin/restaurants/complaints", {
@@ -1139,9 +1157,17 @@ export const restaurantAPI = {
       contextModule: "restaurant",
     }),
   updateSelfDeliveryConfig: (body = {}) =>
-    apiClient.patch("/food/restaurant/self-delivery", body ?? {}, {
-      contextModule: "restaurant",
-    }),
+    apiClient
+      .patch("/food/restaurant/self-delivery", body ?? {}, {
+        contextModule: "restaurant",
+      })
+      .then((res) => {
+        // Invalidate cache to force a fresh fetch of the profile.
+        restaurantCurrentInFlight = null;
+        restaurantCurrentCached = null;
+        restaurantCurrentCacheTime = 0;
+        return res;
+      }),
   getDeliveryBoys: () =>
     apiClient.get("/food/restaurant/delivery-boys", {
       contextModule: "restaurant",

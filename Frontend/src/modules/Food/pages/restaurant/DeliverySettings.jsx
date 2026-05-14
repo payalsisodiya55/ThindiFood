@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
 import Lenis from "lenis"
-import { ArrowLeft, Truck, Users, X, CheckCircle, AlertCircle } from "lucide-react"
+import { ArrowLeft, Truck, Users, X, CheckCircle, AlertCircle, Clock, Pencil } from "lucide-react"
 import { Switch } from "@food/components/ui/switch"
 import { Card, CardContent } from "@food/components/ui/card"
 import { restaurantAPI } from "@food/api"
@@ -15,6 +15,20 @@ const debugError = (...args) => {}
 
 const DELIVERY_STATUS_KEY = "restaurant_delivery_status"
 const RESTAURANT_ONLINE_STATUS_KEY = "restaurant_online_status"
+
+const normalizeSelfDeliveryApprovalStatus = (restaurant) => {
+  const selfDelivery = restaurant?.selfDelivery || {}
+  const rawStatus = String(selfDelivery?.approvalStatus || "none").toLowerCase()
+
+  if (
+    selfDelivery?.enabled === true &&
+    !["pending", "rejected", "approved"].includes(rawStatus)
+  ) {
+    return "approved"
+  }
+
+  return rawStatus
+}
 
 export default function DeliverySettings() {
   const navigate = useNavigate()
@@ -35,6 +49,11 @@ export default function DeliverySettings() {
   })
   const [savingSelfDelivery, setSavingSelfDelivery] = useState(false)
   const [timeError, setTimeError] = useState("")
+  const [isEditingPendingSelfDelivery, setIsEditingPendingSelfDelivery] = useState(false)
+  const isSelfDeliveryApproved = selfDelivery.approvalStatus === "approved" && selfDelivery.enabled === true
+  const isPendingApproval = selfDelivery.approvalStatus === "pending"
+  const selfDeliveryFieldsDisabled =
+    savingSelfDelivery || (isPendingApproval && !isEditingPendingSelfDelivery)
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -83,10 +102,12 @@ export default function DeliverySettings() {
           null
         const nextStatus = restaurant?.isAcceptingOrders === true
         const nextSelfDelivery = restaurant?.selfDelivery || {}
+        const normalizedApprovalStatus = normalizeSelfDeliveryApprovalStatus(restaurant)
         if (!cancelled) {
           setDeliveryStatus(nextStatus)
           setSelfDelivery({
             enabled: nextSelfDelivery?.enabled === true,
+            approvalStatus: normalizedApprovalStatus,
             radius: Number(nextSelfDelivery?.radius ?? 3) || 3,
             fee: Number(nextSelfDelivery?.fee ?? 0) || 0,
             minOrderAmount: Number(nextSelfDelivery?.minOrderAmount ?? 0) || 0,
@@ -256,8 +277,22 @@ export default function DeliverySettings() {
     if (!validateTimings()) return
     try {
       setSavingSelfDelivery(true)
-      await restaurantAPI.updateSelfDeliveryConfig(selfDelivery)
-      showToast("Self-delivery settings saved")
+      const response = await restaurantAPI.updateSelfDeliveryConfig(selfDelivery)
+      const updatedConfig = response?.data?.data?.selfDelivery || response?.data?.selfDelivery || {}
+      
+      setSelfDelivery(prev => ({
+        ...prev,
+        ...updatedConfig,
+        enabled: updatedConfig.enabled === true,
+        approvalStatus: updatedConfig.approvalStatus || "none"
+      }))
+      setIsEditingPendingSelfDelivery(false)
+
+      if (updatedConfig.approvalStatus === "pending") {
+        showToast("Settings saved and sent for admin approval")
+      } else {
+        showToast("Self-delivery settings saved")
+      }
     } catch (error) {
       showToast(error?.response?.data?.message || "Failed to save self-delivery settings")
     } finally {
@@ -286,6 +321,46 @@ export default function DeliverySettings() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto px-4 py-6">
+        <AnimatePresence>
+          {selfDelivery.approvalStatus === "pending" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4"
+            >
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <Clock className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-amber-900">Delivery Approval Pending</h3>
+                  <p className="text-xs text-amber-700">Admin is reviewing your request. You'll be able to receive delivery orders once approved.</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {selfDelivery.approvalStatus === "rejected" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4"
+            >
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                  <X className="w-5 h-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-red-900">Delivery Request Rejected</h3>
+                  <p className="text-xs text-red-700">Your delivery request was not approved. Please update your settings and try again.</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -345,7 +420,7 @@ export default function DeliverySettings() {
                 <Switch
                   checked={deliveryStatus}
                   onCheckedChange={handleDeliveryStatusChange}
-                  disabled={savingStatus}
+                  disabled={savingStatus || selfDelivery.approvalStatus === "pending"}
                   className="ml-4 data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
                 />
               </div>
@@ -379,14 +454,43 @@ export default function DeliverySettings() {
             <CardContent className="p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-gray-900">Self Delivery</h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-bold text-gray-900">Self Delivery</h2>
+                    {selfDelivery.approvalStatus === "pending" && (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-amber-200">
+                        Pending
+                      </span>
+                    )}
+                    {selfDelivery.approvalStatus === "approved" && (
+                      <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-green-200">
+                        Approved
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-gray-500">Enable your own delivery boys for nearby orders</p>
                 </div>
-                <Switch
-                  checked={selfDelivery.enabled}
-                  onCheckedChange={(checked) => handleSelfDeliveryField("enabled", checked)}
-                  disabled={savingSelfDelivery}
-                />
+                <div className="flex items-center gap-2">
+                  {isPendingApproval && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPendingSelfDelivery((prev) => !prev)}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${
+                        isEditingPendingSelfDelivery
+                          ? "border-amber-300 bg-amber-50 text-amber-700"
+                          : "border-gray-200 bg-white text-gray-500"
+                      }`}
+                      aria-label={isEditingPendingSelfDelivery ? "Cancel editing" : "Edit self delivery"}
+                      title={isEditingPendingSelfDelivery ? "Cancel editing" : "Edit self delivery"}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                  <Switch
+                    checked={selfDelivery.enabled}
+                    onCheckedChange={(checked) => handleSelfDeliveryField("enabled", checked)}
+                    disabled={selfDeliveryFieldsDisabled}
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -397,7 +501,8 @@ export default function DeliverySettings() {
                     min="0"
                     value={selfDelivery.radius}
                     onChange={(e) => handleSelfDeliveryField("radius", Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                    disabled={selfDeliveryFieldsDisabled}
+                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </label>
                 <label className="block">
@@ -407,7 +512,8 @@ export default function DeliverySettings() {
                     min="0"
                     value={selfDelivery.fee}
                     onChange={(e) => handleSelfDeliveryField("fee", Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                    disabled={selfDeliveryFieldsDisabled}
+                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </label>
                 <label className="block">
@@ -417,7 +523,8 @@ export default function DeliverySettings() {
                     min="0"
                     value={selfDelivery.minOrderAmount}
                     onChange={(e) => handleSelfDeliveryField("minOrderAmount", Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2"
+                    disabled={selfDeliveryFieldsDisabled}
+                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -425,12 +532,14 @@ export default function DeliverySettings() {
                     label="Start Time"
                     value={selfDelivery.timings?.start || "10:00"}
                     onChange={(val) => handleSelfDeliveryTimings("start", val)}
+                    disabled={selfDeliveryFieldsDisabled}
                   />
                   <ModernTimePicker
                     label="End Time"
                     value={selfDelivery.timings?.end || "22:00"}
                     onChange={(val) => handleSelfDeliveryTimings("end", val)}
                     error={timeError}
+                    disabled={selfDeliveryFieldsDisabled}
                   />
                 </div>
               </div>
@@ -439,15 +548,25 @@ export default function DeliverySettings() {
                 <button
                   type="button"
                   onClick={saveSelfDeliveryConfig}
-                  disabled={savingSelfDelivery}
-                  className="flex-1 rounded-xl bg-gray-900 text-white px-4 py-3 font-semibold disabled:opacity-60"
+                  disabled={savingSelfDelivery || (isPendingApproval && !isEditingPendingSelfDelivery)}
+                  className={`flex-1 rounded-xl px-4 py-3 font-semibold transition-all duration-300 ${
+                    selfDelivery.approvalStatus === "pending"
+                      ? "bg-amber-500 text-white active:scale-95 disabled:opacity-60"
+                      : "bg-gray-900 text-white active:scale-95 disabled:opacity-60"
+                  }`}
                 >
-                  {savingSelfDelivery ? "Saving..." : "Save Self Delivery"}
+                  {savingSelfDelivery 
+                    ? "Saving..." 
+                    : selfDelivery.approvalStatus === "pending" 
+                      ? "Request Pending Approval" 
+                      : "Save Self Delivery"
+                  }
                 </button>
                 <button
                   type="button"
                   onClick={() => navigate("/food/restaurant/delivery-boys")}
-                  className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-900 flex items-center justify-center gap-2"
+                  disabled={!isSelfDeliveryApproved}
+                  className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-900 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Users className="w-4 h-4" />
                   Manage Delivery Boys

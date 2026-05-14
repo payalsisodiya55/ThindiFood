@@ -68,6 +68,7 @@ export const adminSidebarMenu = [
         subItems: [
           { label: "Restaurants List", path: "/admin/food/restaurants", permissionKey: "restaurants" },
           { label: "New Joining Request", path: "/admin/food/restaurants/joining-request", permissionKey: "restaurants" },
+          { label: "Delivery Approval", path: "/admin/food/restaurants/delivery-approval", permissionKey: "restaurants" },
           { label: "Restaurant Commission", path: "/admin/food/restaurants/commission", permissionKey: "transactions" },
           { label: "Restaurant Reviews", path: "/admin/food/restaurants/reviews", permissionKey: "restaurants" },
           { label: "Restaurant Complaints", path: "/admin/food/restaurants/complaints", permissionKey: "support" },

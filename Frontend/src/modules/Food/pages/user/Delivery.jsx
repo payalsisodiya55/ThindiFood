@@ -186,7 +186,6 @@ export default function Delivery() {
         const userLat = location?.latitude, userLng = location?.longitude;
 
         const mapped = list
-          .filter(r => r?.selfDelivery?.enabled === true)
           .map(r => {
             const loc = r.location;
             const rLat = loc?.latitude || loc?.coordinates?.[1];
@@ -220,11 +219,22 @@ export default function Delivery() {
               openingTime: r.openingTime || null,
               closingTime: r.closingTime || null,
             };
+          })
+          .filter((restaurant) => {
+            const selfDelivery = restaurant?.selfDelivery || {}
+            return (
+              selfDelivery.enabled === true &&
+              String(selfDelivery.approvalStatus || "none").toLowerCase() === "approved"
+            )
           });
 
         mapped.sort((a, b) => {
-          const aOpen = getRestaurantAvailabilityStatus(a)?.isOpen !== false;
-          const bOpen = getRestaurantAvailabilityStatus(b)?.isOpen !== false;
+          const aOpen = getRestaurantAvailabilityStatus(a, new Date(), {
+            preferSelfDeliveryTimings: true,
+          })?.isOpen !== false;
+          const bOpen = getRestaurantAvailabilityStatus(b, new Date(), {
+            preferSelfDeliveryTimings: true,
+          })?.isOpen !== false;
           if (aOpen !== bOpen) return aOpen ? -1 : 1;
           if (a.distanceInKm != null && b.distanceInKm != null) return a.distanceInKm - b.distanceInKm;
           return 0;
@@ -348,7 +358,14 @@ export default function Delivery() {
               const restaurantSlug = (typeof restaurant?.slug === "string" && restaurant.slug.trim()
                 ? restaurant.slug.trim()
                 : (restaurant.name || "restaurant")).toLowerCase().replace(/\s+/g, "-");
-              const availability = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick), { ignoreOperationalStatus: true });
+              const availability = getRestaurantAvailabilityStatus(
+                restaurant,
+                new Date(availabilityTick),
+                {
+                  ignoreOperationalStatus: true,
+                  preferSelfDeliveryTimings: true,
+                },
+              );
 
               return (
                 <div key={restaurant.id || restaurantSlug || index}

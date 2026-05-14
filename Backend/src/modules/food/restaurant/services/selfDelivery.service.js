@@ -84,9 +84,52 @@ export async function getRestaurantSelfDeliveryConfigAdmin(restaurantId) {
   };
 }
 
+async function ensureRestaurantSelfDeliveryApprovedForManagement(restaurantId) {
+  const restaurant = await FoodRestaurant.findById(restaurantId)
+    .select("selfDelivery status")
+    .lean();
+
+  if (!restaurant) throw new NotFoundError("Restaurant not found");
+
+  const config = restaurant.selfDelivery || {};
+  const rawApprovalStatus = String(config.approvalStatus || "none").toLowerCase();
+  const approvalStatus =
+    config.enabled === true && !["pending", "rejected", "approved"].includes(rawApprovalStatus)
+      ? "approved"
+      : rawApprovalStatus;
+
+  if (config.enabled !== true || approvalStatus !== "approved") {
+    if (approvalStatus === "pending") {
+      throw new ForbiddenError("Self-delivery request is pending admin approval");
+    }
+    if (approvalStatus === "rejected") {
+      throw new ForbiddenError("Self-delivery request was rejected by admin");
+    }
+    throw new ForbiddenError("Self-delivery is not approved for this restaurant");
+  }
+
+  return config;
+}
+
 export async function updateRestaurantSelfDeliveryConfigById(restaurantId, payload = {}) {
+  const restaurant = await FoodRestaurant.findById(restaurantId).select("selfDelivery").lean();
+  if (!restaurant) throw new NotFoundError("Restaurant not found");
+
+  const currentConfig = restaurant.selfDelivery || {};
+  const nextEnabled = payload?.enabled === true;
+  
+  let nextApprovalStatus = currentConfig.approvalStatus || "none";
+
+  // If enabling from none/rejected, set to pending
+  if (nextEnabled && (nextApprovalStatus === "rejected" || nextApprovalStatus === "none")) {
+    nextApprovalStatus = "pending";
+  } else if (!nextEnabled) {
+    // If disabling, we can reset status or keep it
+    nextApprovalStatus = "none";
+  }
+
   const update = {
-    "selfDelivery.enabled": payload?.enabled === true,
+    "selfDelivery.enabled": nextEnabled,
     "selfDelivery.radius": Math.max(0, Number(payload?.radius ?? 3) || 0),
     "selfDelivery.fee": Math.max(0, Number(payload?.fee ?? 0) || 0),
     "selfDelivery.minOrderAmount": Math.max(
@@ -99,9 +142,16 @@ export async function updateRestaurantSelfDeliveryConfigById(restaurantId, paylo
     "selfDelivery.timings.end": String(
       payload?.timings?.end || payload?.end || "22:00",
     ).trim(),
+    "selfDelivery.approvalStatus": nextApprovalStatus,
   };
 
-  const restaurant = await FoodRestaurant.findByIdAndUpdate(
+  // If pending, we might want to prevent actual enablement in some global sense, 
+  // but for now we follow the user's logic: "admin approve karega tabhi start hogi".
+  // So maybe "selfDelivery.enabled" stays false until approved?
+  // User said: "agar wo request approve karta hai to uski delivery start ho jayegi"
+  // This implies even if the restaurant toggles it on, it's not "active" until admin approves.
+  
+  const updatedRestaurant = await FoodRestaurant.findByIdAndUpdate(
     restaurantId,
     { $set: update },
     { new: true },
@@ -109,15 +159,66 @@ export async function updateRestaurantSelfDeliveryConfigById(restaurantId, paylo
     .select("restaurantName selfDelivery")
     .lean();
 
-  if (!restaurant) throw new NotFoundError("Restaurant not found");
   return {
-    restaurantId: restaurant._id,
-    restaurantName: restaurant.restaurantName,
-    selfDelivery: restaurant.selfDelivery || {},
+    restaurantId: updatedRestaurant._id,
+    restaurantName: updatedRestaurant.restaurantName,
+    selfDelivery: updatedRestaurant.selfDelivery || {},
   };
 }
 
+export async function listPendingDeliveryApprovals() {
+  return FoodRestaurant.find({
+    "selfDelivery.approvalStatus": { $in: ["pending", "rejected"] },
+  })
+  .select("restaurantName ownerName ownerPhone ownerEmail selfDelivery createdAt")
+    .sort({ createdAt: -1 })
+    .lean();
+}
+
+export async function approveDeliveryConfig(restaurantId) {
+  const restaurant = await FoodRestaurant.findByIdAndUpdate(
+    toObjectId(restaurantId),
+    { 
+      $set: { 
+        "selfDelivery.approvalStatus": "approved",
+        "selfDelivery.enabled": true,
+        "selfDelivery.rejectionReason": "",
+        "selfDelivery.approvedAt": new Date(),
+      },
+      $unset: {
+        "selfDelivery.rejectedAt": 1,
+      },
+    },
+    { new: true }
+  ).select("restaurantName selfDelivery").lean();
+  
+  if (!restaurant) throw new NotFoundError("Restaurant not found");
+  return restaurant;
+}
+
+export async function rejectDeliveryConfig(restaurantId, reason) {
+  const restaurant = await FoodRestaurant.findByIdAndUpdate(
+    toObjectId(restaurantId),
+    { 
+      $set: { 
+        "selfDelivery.approvalStatus": "rejected",
+        "selfDelivery.enabled": false,
+        "selfDelivery.rejectionReason": reason,
+        "selfDelivery.rejectedAt": new Date(),
+      },
+      $unset: {
+        "selfDelivery.approvedAt": 1,
+      },
+    },
+    { new: true }
+  ).select("restaurantName selfDelivery").lean();
+  
+  if (!restaurant) throw new NotFoundError("Restaurant not found");
+  return restaurant;
+}
+
 export async function createDeliveryBoy(restaurantId, payload = {}) {
+  await ensureRestaurantSelfDeliveryApprovedForManagement(restaurantId);
   const restaurantObjectId = toObjectId(restaurantId, "Restaurant id");
   const name = String(payload?.name || "").trim();
   const phone = String(payload?.phone || "").trim();
@@ -154,6 +255,7 @@ export async function listDeliveryBoys(restaurantId) {
 }
 
 export async function updateDeliveryBoy(restaurantId, deliveryBoyId, payload = {}) {
+  await ensureRestaurantSelfDeliveryApprovedForManagement(restaurantId);
   const restaurantObjectId = toObjectId(restaurantId, "Restaurant id");
   const deliveryBoy = await FoodDeliveryBoy.findOne({
     _id: toObjectId(deliveryBoyId, "Delivery boy id"),
@@ -171,6 +273,7 @@ export async function updateDeliveryBoy(restaurantId, deliveryBoyId, payload = {
 }
 
 export async function deactivateDeliveryBoy(restaurantId, deliveryBoyId) {
+  await ensureRestaurantSelfDeliveryApprovedForManagement(restaurantId);
   return updateDeliveryBoy(restaurantId, deliveryBoyId, { isActive: false });
 }
 

@@ -104,6 +104,28 @@ const parseEstimatedDeliveryMinutes = (value) => {
     return Math.round(numbers[numbers.length - 1]);
 };
 
+const serializeSelfDeliveryForPublic = (doc) => {
+    const enabled = doc?.selfDelivery?.enabled === true;
+    const rawApprovalStatus = String(doc?.selfDelivery?.approvalStatus || 'none').trim().toLowerCase();
+    const normalizedApprovalStatus =
+        enabled && !['pending', 'rejected', 'approved'].includes(rawApprovalStatus)
+            ? 'approved'
+            : rawApprovalStatus;
+
+    return {
+        enabled,
+        radius: Math.max(0, Number(doc?.selfDelivery?.radius ?? 3) || 0),
+        fee: Math.max(0, Number(doc?.selfDelivery?.fee ?? 0) || 0),
+        minOrderAmount: Math.max(0, Number(doc?.selfDelivery?.minOrderAmount ?? 0) || 0),
+        timings: {
+            start: String(doc?.selfDelivery?.timings?.start || '10:00').trim() || '10:00',
+            end: String(doc?.selfDelivery?.timings?.end || '22:00').trim() || '22:00'
+        },
+        approvalStatus: normalizedApprovalStatus,
+        rejectionReason: doc?.selfDelivery?.rejectionReason || ''
+    };
+};
+
 const toRestaurantProfile = (doc) => {
     if (!doc) return null;
     const loc = doc.location && typeof doc.location === 'object' ? doc.location : null;
@@ -200,16 +222,7 @@ const toRestaurantProfile = (doc) => {
             maxGuests: Math.max(1, parseInt(doc.diningSettings?.maxGuests, 10) || 6),
             diningType: String(doc.diningSettings?.diningType || 'family-dining').trim() || 'family-dining'
         },
-        selfDelivery: {
-            enabled: doc.selfDelivery?.enabled === true,
-            radius: Math.max(0, Number(doc.selfDelivery?.radius ?? 3) || 0),
-            fee: Math.max(0, Number(doc.selfDelivery?.fee ?? 0) || 0),
-            minOrderAmount: Math.max(0, Number(doc.selfDelivery?.minOrderAmount ?? 0) || 0),
-            timings: {
-                start: String(doc.selfDelivery?.timings?.start || '10:00').trim() || '10:00',
-                end: String(doc.selfDelivery?.timings?.end || '22:00').trim() || '22:00'
-            }
-        },
+        selfDelivery: serializeSelfDeliveryForPublic(doc),
         isAcceptingOrders: doc.isAcceptingOrders !== false,
         status: doc.status || null,
         approvedAt: doc.approvedAt || null,
@@ -549,6 +562,7 @@ export const registerRestaurant = async (payload, files) => {
             offer: offer || '',
             selfDelivery: {
                 enabled: selfDeliveryEnabled === true,
+                approvalStatus: selfDeliveryEnabled === true ? 'pending' : 'none',
                 radius: selfDeliveryRadiusValue,
                 fee: selfDeliveryFeeValue,
                 minOrderAmount: selfDeliveryMinOrderAmountValue,
@@ -1576,16 +1590,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         openingTime: r.openingTime || null,
         closingTime: r.closingTime || null,
         openDays: Array.isArray(r.openDays) ? r.openDays : [],
-        selfDelivery: {
-            enabled: r?.selfDelivery?.enabled === true,
-            radius: Math.max(0, Number(r?.selfDelivery?.radius ?? 3) || 0),
-            fee: Math.max(0, Number(r?.selfDelivery?.fee ?? 0) || 0),
-            minOrderAmount: Math.max(0, Number(r?.selfDelivery?.minOrderAmount ?? 0) || 0),
-            timings: {
-                start: String(r?.selfDelivery?.timings?.start || '10:00').trim() || '10:00',
-                end: String(r?.selfDelivery?.timings?.end || '22:00').trim() || '22:00'
-            }
-        },
+        selfDelivery: serializeSelfDeliveryForPublic(r),
         // Keep menuImages as an array for fallbacks; allow both string and {url} on client.
         menuImages: Array.isArray(r.menuImages) ? r.menuImages : []
     }));
@@ -1609,6 +1614,7 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
         if (!doc) return null;
         return {
             ...doc,
+            selfDelivery: serializeSelfDeliveryForPublic(doc),
             rating: normalizeRatingValue(doc.rating),
             totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
         };
@@ -1636,6 +1642,7 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     if (!doc) return null;
     return {
         ...doc,
+        selfDelivery: serializeSelfDeliveryForPublic(doc),
         rating: normalizeRatingValue(doc.rating),
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
     };

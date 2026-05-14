@@ -4454,19 +4454,34 @@ export async function createRestaurantByAdmin(body) {
 
 export async function approveRestaurant(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    // Find the restaurant first to check self-delivery status
+    const existing = await FoodRestaurant.findById(id).select('selfDelivery').lean();
+
+    const update = {
+        $set: {
+            status: 'approved',
+            approvedAt: new Date(),
+            rejectedAt: undefined,
+            rejectionReason: undefined
+        },
+        $unset: {
+            locationChangeRequest: 1
+        },
+    };
+
+    // If delivery is pending, approve it automatically when restaurant is approved
+    if (existing?.selfDelivery?.approvalStatus === 'pending') {
+        update.$set['selfDelivery.approvalStatus'] = 'approved';
+        update.$set['selfDelivery.enabled'] = true;
+        update.$set['selfDelivery.rejectionReason'] = '';
+        update.$set['selfDelivery.approvedAt'] = new Date();
+        update.$unset['selfDelivery.rejectedAt'] = 1;
+    }
+
     const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
-        {
-            $set: {
-                status: 'approved',
-                approvedAt: new Date(),
-                rejectedAt: undefined,
-                rejectionReason: undefined
-            },
-            $unset: {
-                locationChangeRequest: 1
-            },
-        },
+        update,
         { new: true, runValidators: false }
     ).lean();
 

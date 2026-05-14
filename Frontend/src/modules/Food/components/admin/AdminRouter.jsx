@@ -29,6 +29,7 @@ const RestaurantComplaints = lazy(() => import("@food/pages/admin/restaurant/Res
 const RestaurantReviews = lazy(() => import("@food/pages/admin/restaurant/RestaurantReviews"));
 const RestaurantsBulkImport = lazy(() => import("@food/pages/admin/restaurant/RestaurantsBulkImport"));
 const RestaurantsBulkExport = lazy(() => import("@food/pages/admin/restaurant/RestaurantsBulkExport"));
+const DeliveryApproval = lazy(() => import("@food/pages/admin/restaurant/DeliveryApproval"));
 // Food Management
 const FoodsList = lazy(() => import("@food/pages/admin/foods/FoodsList"));
 const AddonsList = lazy(() => import("@food/pages/admin/addons/AddonsList"));
@@ -186,6 +187,7 @@ export default function AdminRouter() {
             <Route path="restaurants/add" element={<AddRestaurant />} />
             <Route path="restaurants/edit/:id" element={<EditRestaurant />} />
             <Route path="restaurants/joining-request" element={<JoiningRequest />} />
+            <Route path="restaurants/delivery-approval" element={<DeliveryApproval />} />
             <Route path="restaurants/commission" element={<RestaurantCommission />} />
             <Route path="dining/restaurants/commission" element={<DiningRestaurantCommission />} />
             <Route path="restaurants/complaints" element={<RestaurantComplaints />} />

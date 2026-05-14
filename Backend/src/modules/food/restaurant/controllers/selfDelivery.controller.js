@@ -188,3 +188,33 @@ export async function updateSelfDeliveryGlobalSettingsController(req, res, next)
     next(error);
   }
 }
+
+export async function listPendingDeliveryApprovalsController(req, res, next) {
+  try {
+    const data = await selfDeliveryService.listPendingDeliveryApprovals();
+    return sendResponse(res, 200, "Pending delivery approvals retrieved", data);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function approveDeliveryConfigController(req, res, next) {
+  try {
+    const data = await selfDeliveryService.approveDeliveryConfig(req.params.id);
+    return sendResponse(res, 200, "Delivery configuration approved", data);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectDeliveryConfigController(req, res, next) {
+  try {
+    const data = await selfDeliveryService.rejectDeliveryConfig(
+      req.params.id,
+      req.body?.reason,
+    );
+    return sendResponse(res, 200, "Delivery configuration rejected", data);
+  } catch (error) {
+    next(error);
+  }
+}

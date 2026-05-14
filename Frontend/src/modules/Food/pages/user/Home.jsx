@@ -2116,20 +2116,10 @@ export default function Home() {
     if (fulfillmentMode === "delivery") {
       filtered = filtered.filter((restaurant) => {
         const selfDelivery = restaurant?.selfDelivery || {};
-        if (selfDelivery.enabled !== true) return false;
-
-        const radiusKm = Math.max(0, Number(selfDelivery.radius ?? 0) || 0);
-        if (radiusKm <= 0) return false;
-
-        if (
-          restaurant?.distanceInKm === null ||
-          restaurant?.distanceInKm === undefined ||
-          !Number.isFinite(Number(restaurant.distanceInKm))
-        ) {
-          return false;
-        }
-
-        return Number(restaurant.distanceInKm) <= radiusKm;
+        return (
+          selfDelivery.enabled === true &&
+          String(selfDelivery.approvalStatus || "none").toLowerCase() === "approved"
+        );
       });
     }
 
@@ -2216,15 +2206,19 @@ export default function Home() {
       // This ensures all restaurants in zone are shown, but nearby ones appear first
       filtered.sort((a, b) => {
         // Available restaurants first, then unavailable
+        const availabilityOptions =
+          fulfillmentMode === "delivery"
+            ? { ignoreOperationalStatus: true, preferSelfDeliveryTimings: true }
+            : { ignoreOperationalStatus: true };
         const aAvailable = getRestaurantAvailabilityStatus(
           a,
           new Date(availabilityTick),
-          { ignoreOperationalStatus: true },
+          availabilityOptions,
         ).isOpen;
         const bAvailable = getRestaurantAvailabilityStatus(
           b,
           new Date(availabilityTick),
-          { ignoreOperationalStatus: true },
+          availabilityOptions,
         ).isOpen;
 
         if (aAvailable !== bAvailable) {
@@ -2909,7 +2903,9 @@ export default function Home() {
                   const availability = getRestaurantAvailabilityStatus(
                     restaurant,
                     new Date(availabilityTick),
-                    { ignoreOperationalStatus: true },
+                    fulfillmentMode === "delivery"
+                      ? { ignoreOperationalStatus: true, preferSelfDeliveryTimings: true }
+                      : { ignoreOperationalStatus: true },
                   );
                   // Direct favorite check - isFavorite is already memoized in context
                   const favorite = isFavorite(restaurantSlug);

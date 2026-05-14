@@ -308,6 +308,17 @@ async function resolveSelfDeliveryContext(dto, restaurant, subtotal) {
     throw new ValidationError("Restaurant self-delivery is not enabled");
   }
 
+  const approvalStatus = String(config.approvalStatus || "none").toLowerCase();
+  if (approvalStatus !== "approved") {
+    if (approvalStatus === "pending") {
+      throw new ValidationError("Restaurant self-delivery approval is pending");
+    }
+    if (approvalStatus === "rejected") {
+      throw new ValidationError("Restaurant self-delivery request was rejected");
+    }
+    throw new ValidationError("Restaurant self-delivery is not approved");
+  }
+
   const minimumOrder = Math.max(0, Number(config.minOrderAmount || 0) || 0);
   if (subtotal < minimumOrder) {
     throw new ValidationError(

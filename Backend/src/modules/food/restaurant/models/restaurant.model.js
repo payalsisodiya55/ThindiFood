@@ -264,6 +264,22 @@ const restaurantSchema = new mongoose.Schema(
         start: { type: String, default: "10:00" },
         end: { type: String, default: "22:00" },
       },
+      approvalStatus: {
+        type: String,
+        enum: ["none", "pending", "approved", "rejected"],
+        default: "none",
+      },
+      rejectionReason: {
+        type: String,
+        trim: true,
+        default: "",
+      },
+      approvedAt: {
+        type: Date,
+      },
+      rejectedAt: {
+        type: Date,
+      },
     },
     menu: {
       sections: { type: Array, default: [] },

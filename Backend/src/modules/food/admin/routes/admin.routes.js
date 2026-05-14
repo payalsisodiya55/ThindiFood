@@ -29,7 +29,10 @@ import {
     getRestaurantSelfDeliveryConfigAdminController,
     updateRestaurantSelfDeliveryConfigAdminController,
     getSelfDeliveryGlobalSettingsController,
-    updateSelfDeliveryGlobalSettingsController
+    updateSelfDeliveryGlobalSettingsController,
+    listPendingDeliveryApprovalsController,
+    approveDeliveryConfigController,
+    rejectDeliveryConfigController
 } from '../../restaurant/controllers/selfDelivery.controller.js';
 
 const router = express.Router();
@@ -98,6 +101,9 @@ router.patch('/restaurants/:id/approve', adminController.approveRestaurant);
 router.patch('/restaurants/:id/reject', adminController.rejectRestaurant);
 router.get('/restaurants/:id/self-delivery', getRestaurantSelfDeliveryConfigAdminController);
 router.patch('/restaurants/:id/self-delivery', updateRestaurantSelfDeliveryConfigAdminController);
+router.get('/restaurants/delivery/pending', listPendingDeliveryApprovalsController);
+router.patch('/restaurants/:id/delivery/approve', approveDeliveryConfigController);
+router.patch('/restaurants/:id/delivery/reject', rejectDeliveryConfigController);
 
 // ----- Restaurant Commission -----
 router.get('/restaurant-commissions/bootstrap', adminController.getRestaurantCommissionBootstrap);

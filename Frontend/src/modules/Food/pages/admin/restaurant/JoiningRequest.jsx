@@ -1087,7 +1087,7 @@ export default function JoiningRequest() {
                   </div>
 
                   {/* Cuisine & Timings */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
                     <div>
                       <h4 className="text-lg font-semibold text-slate-900 mb-4">Cuisine & Details</h4>
                       <div className="space-y-3">
@@ -1138,7 +1138,7 @@ export default function JoiningRequest() {
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Opening / Closing</p>
                               <p className="text-sm font-medium text-slate-900 break-words">
-                                {formatTime12Hour(openingTime)} – {formatTime12Hour(closingTime)}
+                                {formatTime12Hour(openingTime)} - {formatTime12Hour(closingTime)}
                               </p>
                             </div>
                           </div>
@@ -1172,6 +1172,79 @@ export default function JoiningRequest() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Self Delivery Settings */}
+                  {r?.selfDelivery?.enabled && (
+                    <div className="pb-6 border-b border-slate-200">
+                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Self Delivery Settings</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Radius */}
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-4 hover:shadow-sm transition-all">
+                          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
+                            <MapPin className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Radius</p>
+                            <p className="text-base font-bold text-slate-900">{r.selfDelivery.radius} km</p>
+                          </div>
+                        </div>
+
+                        {/* Delivery Fee */}
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-4 hover:shadow-sm transition-all">
+                          <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                            <CreditCard className="w-5 h-5 text-emerald-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Delivery Fee</p>
+                            <p className="text-base font-bold text-slate-900">₹{r.selfDelivery.fee}</p>
+                          </div>
+                        </div>
+
+                        {/* Min Order */}
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-4 hover:shadow-sm transition-all">
+                          <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                            <UtensilsCrossed className="w-5 h-5 text-amber-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Min Order</p>
+                            <p className="text-base font-bold text-slate-900">₹{r.selfDelivery.minOrderAmount}</p>
+                          </div>
+                        </div>
+
+                        {/* Timings */}
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-4 hover:shadow-sm transition-all sm:col-span-2">
+                          <div className="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
+                            <Clock className="w-5 h-5 text-indigo-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Delivery Timings</p>
+                            <p className="text-base font-bold text-slate-900">
+                              {formatTime12Hour(r.selfDelivery.timings?.start)} - {formatTime12Hour(r.selfDelivery.timings?.end)}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Approval Status */}
+                        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-4 hover:shadow-sm transition-all">
+                          <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center shrink-0">
+                            <Check className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Delivery Approval</p>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider mt-1 ${
+                              r.selfDelivery.approvalStatus === 'approved' 
+                                ? 'bg-green-100 text-green-700' 
+                                : r.selfDelivery.approvalStatus === 'rejected'
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {r.selfDelivery.approvalStatus || 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Registration Documents – flat schema (PAN, GST, FSSAI, Bank) */}
                   {restaurantPhotoList.length > 0 && (
