@@ -7,7 +7,6 @@ import {
   Trash2,
   Check,
   ChevronDown,
-  Edit as EditIcon,
   Plus,
   X,
   Camera,
@@ -976,9 +975,6 @@ export default function ItemDetailsPage() {
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter item name"
               />
-              <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100">
-                <EditIcon className="w-4 h-4 text-gray-500" />
-              </button>
             </div>
             <div className="text-right mt-1">
               <span className="text-xs text-gray-500">
@@ -1002,9 +998,6 @@ export default function ItemDetailsPage() {
                 placeholder="Eg: Yummy veg paneer burger with a soft patty, veggies, cheese, and special sauce"
                 className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
-              <button className="absolute right-3 top-3 p-1 rounded-full hover:bg-gray-100">
-                <EditIcon className="w-4 h-4 text-gray-500" />
-              </button>
             </div>
             <div className="flex items-center justify-between mt-1">
               <span className={`text-xs ${descriptionLength < minDescriptionLength ? "text-red-500" : "text-gray-500"}`}>
@@ -1078,9 +1071,6 @@ export default function ItemDetailsPage() {
                       className="w-full pl-8 pr-12 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
-                    <button className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-gray-100">
-                      <EditIcon className="w-4 h-4 text-gray-500" />
-                    </button>
                   </div>
                 </div>
               ) : (

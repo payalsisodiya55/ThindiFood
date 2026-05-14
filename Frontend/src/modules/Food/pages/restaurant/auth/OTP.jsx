@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, ShieldCheck, Timer, RefreshCw } from "lucide-react"
+import { ArrowLeft, ShieldCheck, Timer, RefreshCw, PencilLine } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { restaurantAPI } from "@food/api"
 import {
@@ -375,8 +375,15 @@ export default function RestaurantOTP() {
           <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
             Verify OTP
           </h2>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-relaxed">
-            Sent to <span className="text-[#00c87e] font-black">{contactInfo}</span>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-relaxed flex items-center justify-center flex-wrap gap-2">
+            <span>Sent to <span className="text-[#00c87e] font-black">{contactInfo}</span></span>
+            <button 
+              onClick={() => navigate("/food/restaurant/login")}
+              className="text-[#00c87e] hover:bg-[#00c87e]/10 px-2.5 py-1 rounded-full border border-[#00c87e]/20 transition-all duration-300 normal-case font-bold flex items-center gap-1.5 bg-white shadow-sm hover:shadow-md active:scale-95"
+            >
+              <PencilLine className="w-3 h-3" />
+              Edit Number
+            </button>
           </p>
         </div>
 

@@ -58,6 +58,7 @@ const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024 // 5MB
 const MAX_MENU_IMAGES_COUNT = 10
 const VALID_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
 const INDIAN_PRIMARY_CONTACT_REGEX = /^(?:[6-9]\d{9}|0\d{10}|\d{10,11})$/
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,6}$/
 let onboardingFileCache = {
   step2: {
     menuImages: [],
@@ -895,7 +896,7 @@ export default function RestaurantOnboarding() {
     }
     if (!step1.ownerEmail?.trim()) {
       errors.push("Owner email is required")
-    } else if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(step1.ownerEmail.trim())) {
+    } else if (!EMAIL_REGEX.test(step1.ownerEmail.trim())) {
       errors.push("Please enter a valid email address")
     }
     if (!step1.ownerPhone?.trim()) {
@@ -1963,7 +1964,7 @@ export default function RestaurantOnboarding() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
         {/* Timings with popover time selectors */}
         <div className="space-y-3">
-          <Label className="text-xs text-gray-700">Delivery timings<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs text-gray-700">Restaurant timings<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TimeSelector
               label="Opening time*"

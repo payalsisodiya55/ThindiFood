@@ -4525,7 +4525,7 @@ function OrderCard({
         .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className="w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative">
+    <div className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${isPreparing && onCancel ? "pr-14" : ""}`}>
       {/* Cancel button - only show for preparing orders */}
       {isPreparing && onCancel && (
         <button

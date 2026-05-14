@@ -267,7 +267,19 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         update.categoryName = categoryName || '';
     }
 
-    const shouldResubmitForApproval = Object.keys(update).length > 0;
+    const hasAnyChanges = Object.keys(update).length > 0;
+    const approvalSensitiveFields = [
+        'name',
+        'description',
+        'image',
+        'price',
+        'variants',
+        'preparationTime',
+        'foodType',
+        'categoryId',
+        'categoryName'
+    ];
+    const shouldResubmitForApproval = approvalSensitiveFields.some((field) => update[field] !== undefined);
 
     if (shouldResubmitForApproval) {
         update.approvalStatus = 'pending';
@@ -298,6 +310,10 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         } catch (e) {
             console.error('Failed to notify admins of resubmitted food approval request:', e);
         }
+    }
+
+    if (!hasAnyChanges) {
+        return existing;
     }
 
     return updated;
