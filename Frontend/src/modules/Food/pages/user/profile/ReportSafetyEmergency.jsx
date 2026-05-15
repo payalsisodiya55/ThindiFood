@@ -88,14 +88,20 @@ export default function ReportSafetyEmergency() {
   }
 
   const handleSubmit = async () => {
-    if (!report.trim()) {
+    const trimmedReport = report.trim()
+    if (!trimmedReport) {
       toast.error('Please describe the safety concern or emergency')
+      return
+    }
+
+    if (trimmedReport.length < 10) {
+      toast.error('Please provide a more detailed description (at least 10 characters)')
       return
     }
 
     try {
       setIsSubmitting(true)
-      const response = await userAPI.createSafetyEmergencyReport(report.trim())
+      const response = await userAPI.createSafetyEmergencyReport(trimmedReport)
       
       if (response.data.success) {
         setIsSubmitted(true)
@@ -108,7 +114,8 @@ export default function ReportSafetyEmergency() {
       }
     } catch (error) {
       debugError('Error submitting safety emergency report:', error)
-      toast.error(error.response?.data?.message || 'Failed to submit safety emergency report. Please try again.')
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to submit safety emergency report. Please try again.'
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -198,8 +205,8 @@ export default function ReportSafetyEmergency() {
                     maxWidth: '100%'
                   }}
                 />
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-2">
-                  {report.length} characters
+                <p className={`text-xs md:text-sm mt-2 ${report.length > 0 && report.length < 10 ? 'text-red-500 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {report.length} characters {report.length > 0 && report.length < 10 && "(minimum 10 required)"}
                 </p>
               </CardContent>
             </Card>

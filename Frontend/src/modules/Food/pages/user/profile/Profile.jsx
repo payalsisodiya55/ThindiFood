@@ -87,7 +87,9 @@ export default function Profile() {
 
   // Popup states
   const [vegModeOpen, setVegModeOpen] = useState(false);
+  const [tempVegMode, setTempVegMode] = useState(vegMode);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [tempAppearance, setTempAppearance] = useState(localStorage.getItem("appTheme") || "light");
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deleteAccountConfirmOpen, setDeleteAccountConfirmOpen] = useState(false);
@@ -728,7 +730,10 @@ export default function Profile() {
             transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
             <Card
               className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
-              onClick={() => setVegModeOpen(true)}>
+              onClick={() => {
+                setTempVegMode(vegMode);
+                setVegModeOpen(true);
+              }}>
               <CardContent className="p-4  flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div
@@ -763,7 +768,10 @@ export default function Profile() {
             transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
             <Card
               className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
-              onClick={() => setAppearanceOpen(true)}>
+              onClick={() => {
+                setTempAppearance(appearance);
+                setAppearanceOpen(true);
+              }}>
               <CardContent className="p-4  flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div
@@ -1050,7 +1058,12 @@ export default function Profile() {
       </div>
 
       {/* Veg Mode Dialog */}
-      <Dialog open={vegModeOpen} onOpenChange={setVegModeOpen}>
+      <Dialog
+        open={vegModeOpen}
+        onOpenChange={(open) => {
+          setVegModeOpen(open);
+          if (open) setTempVegMode(vegMode);
+        }}>
         <DialogContent className="sm:max-w-[425px] rounded-t-[2rem] sm:rounded-2xl p-0 overflow-hidden border-0 dark:bg-[#1a1a1a] bottom-0 sm:bottom-auto translate-y-0 sm:-translate-y-1/2">
           <DialogHeader className="p-6 pb-2 text-left">
             <DialogTitle className="text-xl font-bold dark:text-white">Veg Mode</DialogTitle>
@@ -1062,38 +1075,41 @@ export default function Profile() {
             <div className="space-y-2">
               <button
                 className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                  vegMode
+                  tempVegMode
                     ? "border-green-600 bg-green-50 dark:bg-green-950/20"
                     : "border-gray-200 dark:border-gray-800"
                 }`}
-                onClick={() => handleVegModeUpdate(true)}>
+                onClick={() => setTempVegMode(true)}>
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 border border-green-600 flex items-center justify-center p-1">
                     <div className="w-full h-full bg-green-600 rounded-full" />
                   </div>
                   <span className="font-semibold text-gray-900 dark:text-white">Pure Veg</span>
                 </div>
-                {vegMode && <Check className="h-5 w-5 text-green-600" />}
+                {tempVegMode && <Check className="h-5 w-5 text-green-600" />}
               </button>
               <button
                 className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all ${
-                  !vegMode
+                  !tempVegMode
                     ? "border-gray-400 bg-gray-50 dark:bg-gray-800/20"
                     : "border-gray-200 dark:border-gray-800"
                 }`}
-                onClick={() => handleVegModeUpdate(false)}>
+                onClick={() => setTempVegMode(false)}>
                 <div className="flex items-center gap-3">
                   <div className="w-5 h-5 border border-red-600 flex items-center justify-center p-1">
                     <div className="w-full h-full bg-red-600 rounded-full" />
                   </div>
                   <span className="font-semibold text-gray-900 dark:text-white">Show everything</span>
                 </div>
-                {!vegMode && <Check className="h-5 w-5 text-gray-600" />}
+                {!tempVegMode && <Check className="h-5 w-5 text-gray-600" />}
               </button>
             </div>
             <Button
               className="w-full mt-6 h-12 rounded-xl text-base font-bold bg-black text-white dark:bg-white dark:text-black hover:opacity-90"
-              onClick={() => setVegModeOpen(false)}>
+              onClick={() => {
+                handleVegModeUpdate(tempVegMode);
+                setVegModeOpen(false);
+              }}>
               Done
             </Button>
           </div>
@@ -1101,7 +1117,12 @@ export default function Profile() {
       </Dialog>
 
       {/* Appearance Dialog */}
-      <Dialog open={appearanceOpen} onOpenChange={setAppearanceOpen}>
+      <Dialog
+        open={appearanceOpen}
+        onOpenChange={(open) => {
+          setAppearanceOpen(open);
+          if (open) setTempAppearance(appearance);
+        }}>
         <DialogContent className="sm:max-w-[425px] rounded-t-[2rem] sm:rounded-2xl p-0 overflow-hidden border-0 dark:bg-[#1a1a1a] bottom-0 sm:bottom-auto translate-y-0 sm:-translate-y-1/2">
           <DialogHeader className="p-6 pb-2 text-left">
             <DialogTitle className="text-xl font-bold dark:text-white">Appearance</DialogTitle>
@@ -1113,11 +1134,11 @@ export default function Profile() {
             <div className="grid grid-cols-2 gap-3">
               <button
                 className={`flex flex-col items-center gap-3 p-4 rounded-xl border transition-all ${
-                  appearance === "light"
+                  tempAppearance === "light"
                     ? "border-black dark:border-white bg-gray-50 dark:bg-gray-800/20"
                     : "border-gray-200 dark:border-gray-800"
                 }`}
-                onClick={() => setAppearance("light")}>
+                onClick={() => setTempAppearance("light")}>
                 <div className="w-10 h-10 bg-white shadow-sm border rounded-full flex items-center justify-center">
                   <Sun className="h-6 w-6 text-orange-500" />
                 </div>
@@ -1125,11 +1146,11 @@ export default function Profile() {
               </button>
               <button
                 className={`flex flex-col items-center gap-3 p-4 rounded-xl border transition-all ${
-                  appearance === "dark"
+                  tempAppearance === "dark"
                     ? "border-white dark:border-white bg-gray-900"
                     : "border-gray-200 dark:border-gray-800"
                 }`}
-                onClick={() => setAppearance("dark")}>
+                onClick={() => setTempAppearance("dark")}>
                 <div className="w-10 h-10 bg-gray-800 shadow-sm border border-gray-700 rounded-full flex items-center justify-center">
                   <Moon className="h-6 w-6 text-blue-400" />
                 </div>
@@ -1138,7 +1159,10 @@ export default function Profile() {
             </div>
             <Button
               className="w-full mt-6 h-12 rounded-xl text-base font-bold bg-black text-white dark:bg-white dark:text-black hover:opacity-90"
-              onClick={() => setAppearanceOpen(false)}>
+              onClick={() => {
+                setAppearance(tempAppearance);
+                setAppearanceOpen(false);
+              }}>
               Apply changes
             </Button>
           </div>

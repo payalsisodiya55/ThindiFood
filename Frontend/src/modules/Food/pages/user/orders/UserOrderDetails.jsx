@@ -13,6 +13,7 @@ import {
   MapPin,
   RotateCcw,
   FileText,
+  ChevronRight,
 } from "lucide-react"
 import { orderAPI, restaurantAPI } from "@food/api"
 import { useCart } from "@food/context/CartContext"
@@ -27,6 +28,42 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const firstNonEmptyText = (...values) => {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) return value.trim()
+  }
+  return ""
+}
+
+const formatOrderStatusLabel = (status, isTakeawayOrder = false) => {
+  const normalized = String(status || "").trim().toLowerCase()
+  if (!normalized) return "Processing"
+  if (normalized.includes("cancel")) return "Cancelled"
+  if (normalized === "delivered" || normalized === "completed") {
+    return isTakeawayOrder ? "Picked up" : "Delivered"
+  }
+  if (normalized === "out_for_delivery" || normalized === "outfordelivery") {
+    return isTakeawayOrder ? "Ready for pickup" : "Out for delivery"
+  }
+  if (normalized === "ready_for_pickup" || normalized === "ready") return "Ready for pickup"
+  if (normalized === "preparing") return "Preparing"
+  if (normalized === "confirmed" || normalized === "accepted") return "Confirmed"
+  if (normalized === "created" || normalized === "placed" || normalized === "pending") return "Order placed"
+  return normalized.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+const formatHistoryTimestamp = (value) => {
+  if (!value) return ""
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ""
+  return date.toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+}
 
 export default function UserOrderDetails() {
   const navigate = useNavigate()
@@ -125,8 +162,16 @@ export default function UserOrderDetails() {
   const orderIdDisplay = order.orderId || order._id || orderId
   // Use fetched restaurant data if available, otherwise use order.restaurantId or order.restaurant
   const restaurantObj = restaurant || order.restaurantId || order.restaurant || {}
-  const restaurantName =
-    order.restaurantName || restaurantObj.name || "Restaurant"
+  const restaurantName = firstNonEmptyText(
+    restaurantObj.restaurantName,
+    restaurantObj.name,
+    typeof order.restaurant === "string" ? order.restaurant : "",
+    order.restaurant?.restaurantName,
+    order.restaurant?.name,
+    order.restaurantId?.restaurantName,
+    order.restaurantId?.name,
+    order.restaurantName,
+  ) || "Restaurant"
 
   // Build restaurant address (try restaurant fields first, then fall back)
   const restaurantLocation = (() => {
@@ -174,9 +219,20 @@ export default function UserOrderDetails() {
   const pricing = order.pricing || {}
   const sendsCutlery = order.sendCutlery !== false
 
-  const userName = order.userName || ""
-  const userPhone = order.userPhone || ""
+  const userName = firstNonEmptyText(
+    order.customerName,
+    order.user?.name,
+    order.user?.fullName,
+    order.userId?.name,
+    order.userId?.fullName,
+    order.userName,
+    order.deliveryAddress?.fullName,
+    order.address?.fullName,
+  ) || "Customer"
+  const userPhone = order.user?.phone || order.userPhone || ""
   const paymentMethod = order.payment?.method || "Online"
+  const isTakeawayOrder = String(order.fulfillmentType || "").toLowerCase() === "takeaway"
+  const orderStatusLabel = formatOrderStatusLabel(order.status, isTakeawayOrder)
   const paymentDate = order.createdAt
     ? new Date(order.createdAt).toLocaleString("en-IN", {
       month: "long",
@@ -223,7 +279,7 @@ export default function UserOrderDetails() {
       // Title
       doc.setFontSize(16)
       doc.setFont('helvetica', 'bold')
-      doc.text(`${companyName} Order: Summary and Receipt`, 105, 20, { align: 'center' })
+      doc.text(`${companyName} Order Summary and Receipt`, 105, 20, { align: 'center' })
 
       // Order details section
       let yPos = 35
@@ -279,9 +335,59 @@ export default function UserOrderDetails() {
       const tableData = items.map(item => [
         item.variantName ? `${item.name || 'Item'} (${item.variantName})` : (item.name || 'Item'),
         String(item.quantity || item.qty || 1),
-        `?${Number(item.price || 0).toFixed(2)}`,
-        `?${Number((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}`
+        `Rs. ${Number(item.price || 0).toFixed(2)}`,
+        `Rs. ${Number((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}`
       ])
+
+      // Add Subtotal/Item Total row for clarity
+      tableData.push([
+        '',
+        '',
+        { content: 'Item Total', styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: `Rs. ${Number(pricing.subtotal || pricing.itemTotal || 0).toFixed(2)}`, styles: { halign: 'right', fontStyle: 'bold' } }
+      ]);
+
+      // Add tax and other fees
+      if (pricing.tax > 0) {
+        tableData.push([
+          '',
+          '',
+          { content: 'GST (govt. taxes)', styles: { halign: 'right' } },
+          { content: `Rs. ${Number(pricing.tax).toFixed(2)}`, styles: { halign: 'right' } }
+        ])
+      }
+      if (pricing.deliveryFee > 0) {
+        tableData.push([
+          '',
+          '',
+          { content: 'Delivery Fee', styles: { halign: 'right' } },
+          { content: `Rs. ${Number(pricing.deliveryFee).toFixed(2)}`, styles: { halign: 'right' } }
+        ])
+      }
+      if (pricing.platformFee > 0) {
+        tableData.push([
+          '',
+          '',
+          { content: 'Platform Fee', styles: { halign: 'right' } },
+          { content: `Rs. ${Number(pricing.platformFee).toFixed(2)}`, styles: { halign: 'right' } }
+        ])
+      }
+      if (pricing.subscriptionFee > 0) {
+        tableData.push([
+          '',
+          '',
+          { content: 'Subscription / Other Fees', styles: { halign: 'right' } },
+          { content: `Rs. ${Number(pricing.subscriptionFee).toFixed(2)}`, styles: { halign: 'right' } }
+        ])
+      }
+      if (pricing.discount > 0) {
+        tableData.push([
+          '',
+          '',
+          { content: 'Discount', styles: { halign: 'right', textColor: [0, 150, 0] } },
+          { content: `-Rs. ${Number(pricing.discount).toFixed(2)}`, styles: { halign: 'right', textColor: [0, 150, 0] } }
+        ])
+      }
 
       autoTable(doc, {
         startY: yPos,
@@ -289,13 +395,26 @@ export default function UserOrderDetails() {
         body: tableData,
         theme: 'striped',
         headStyles: { fillColor: [0, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 10 },
-        styles: { fontSize: 9 },
+        styles: { fontSize: 9, cellPadding: { top: 4, right: 4, bottom: 4, left: 4 }, valign: 'middle', overflow: 'linebreak' },
+        margin: { left: 20, right: 20 },
+        tableWidth: 170,
         columnStyles: {
-          0: { cellWidth: 80 },
-          1: { cellWidth: 30, halign: 'center' },
-          2: { cellWidth: 35, halign: 'right' },
-          3: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }
-        }
+          0: { cellWidth: 72, halign: 'left' },
+          1: { cellWidth: 24, halign: 'center' },
+          2: { cellWidth: 34, halign: 'right' },
+          3: { cellWidth: 40, halign: 'right', fontStyle: 'bold' }
+        },
+        bodyStyles: { textColor: [55, 65, 81] },
+        didParseCell: (data) => {
+          if (data.section === 'head') {
+            if (data.column.index === 1) {
+              data.cell.styles.halign = 'center'
+            }
+            if (data.column.index === 2 || data.column.index === 3) {
+              data.cell.styles.halign = 'right'
+            }
+          }
+        },
       })
 
       // Get final Y position after table (autoTable adds lastAutoTable property)
@@ -304,8 +423,8 @@ export default function UserOrderDetails() {
       // Total
       doc.setFontSize(12)
       doc.setFont('helvetica', 'bold')
-      doc.text('Total:', 145, finalY + 10, { align: 'right' })
-      doc.text(`?${Number(pricing.total || 0).toFixed(2)}`, 195, finalY + 10, { align: 'right' })
+      doc.text('Total Amount Paid:', 145, finalY + 10, { align: 'right' })
+      doc.text(`Rs. ${Number(pricing.total || 0).toFixed(2)}`, 195, finalY + 10, { align: 'right' })
 
       // Save PDF instantly
       const fileName = `Order_Summary_${orderIdDisplay}_${Date.now()}.pdf`
@@ -317,6 +436,62 @@ export default function UserOrderDetails() {
       toast.error("Failed to download summary")
     }
   }
+
+  const handleTrackOrder = () => {
+    navigate(`/user/orders/${orderIdDisplay}`)
+  }
+
+  const orderHistory = [
+    order.createdAt
+      ? {
+          id: "placed",
+          title: "Order placed",
+          timestamp: formatHistoryTimestamp(order.createdAt),
+        }
+      : null,
+    order.tracking?.confirmed?.timestamp || order.tracking?.confirmed?.status
+      ? {
+          id: "confirmed",
+          title: "Confirmed",
+          timestamp: formatHistoryTimestamp(order.tracking?.confirmed?.timestamp),
+        }
+      : null,
+    order.tracking?.preparing?.timestamp || order.tracking?.preparing?.status
+      ? {
+          id: "preparing",
+          title: "Preparing",
+          timestamp: formatHistoryTimestamp(order.tracking?.preparing?.timestamp),
+        }
+      : null,
+    order.tracking?.ready?.timestamp || order.tracking?.ready?.status || order.tracking?.ready_for_pickup?.timestamp
+      ? {
+          id: "ready",
+          title: "Ready for pickup",
+          timestamp: formatHistoryTimestamp(order.tracking?.ready?.timestamp || order.tracking?.ready_for_pickup?.timestamp),
+        }
+      : null,
+    order.tracking?.outForDelivery?.timestamp || order.tracking?.outForDelivery?.status
+      ? {
+          id: "out-for-delivery",
+          title: isTakeawayOrder ? "Ready for pickup" : "Out for delivery",
+          timestamp: formatHistoryTimestamp(order.tracking?.outForDelivery?.timestamp),
+        }
+      : null,
+    order.deliveredAt || order.tracking?.delivered?.timestamp || order.tracking?.delivered?.status
+      ? {
+          id: "delivered",
+          title: isTakeawayOrder ? "Picked up" : "Delivered",
+          timestamp: formatHistoryTimestamp(order.deliveredAt || order.tracking?.delivered?.timestamp),
+        }
+      : null,
+    String(order.status || "").toLowerCase().includes("cancel")
+      ? {
+          id: "cancelled",
+          title: "Cancelled",
+          timestamp: formatHistoryTimestamp(order.updatedAt || order.cancelledAt),
+        }
+      : null,
+  ].filter((entry, index, list) => entry && list.findIndex((item) => item?.id === entry.id) === index)
 
   const handleReorder = async (currentOrder) => {
     const restaurantTarget =
@@ -375,13 +550,22 @@ export default function UserOrderDetails() {
           <div className="bg-gray-100 p-2 rounded-lg">
             <ShoppingBag className="w-6 h-6 text-gray-600" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="font-semibold text-gray-800">
               {order.status === "delivered"
                 ? "Order was delivered"
-                : "Order status: " + (order.status || "Processing")}
+                : "Order status: " + orderStatusLabel}
             </h2>
           </div>
+          <button
+            type="button"
+            onClick={handleTrackOrder}
+            className="flex items-center gap-1 text-sm font-semibold whitespace-nowrap"
+            style={{ color: RED }}
+          >
+            Track Order
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
 
         {/* Restaurant Info Card */}
@@ -499,17 +683,20 @@ export default function UserOrderDetails() {
                 ₹{Number(pricing.tax || 0).toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400 font-medium">Delivery fee</span>
-              {pricing.deliveryFee === 0 && (
-                <span className="text-[10px] font-bold border px-1 rounded ml-1" style={{ color: RED, borderColor: RED }}>
-                  FREE
-                </span>
-              )}
+            <div className="flex justify-between items-center">
+              <div className="flex items-center">
+                <span className="text-gray-500">Delivery fee</span>
+                {pricing.deliveryFee === 0 && (
+                  <span className="text-[10px] font-bold border px-1 rounded ml-1.5" style={{ color: RED, borderColor: RED }}>
+                    FREE
+                  </span>
+                )}
+              </div>
               <span className="font-medium uppercase" style={{ color: RED }}>
                 {pricing.deliveryFee ? `₹${Number(pricing.deliveryFee).toFixed(2)}` : "Free"}
               </span>
             </div>
+
             <div className="flex justify-between">
               <span className="text-gray-500">Platform fee</span>
               <span className="text-gray-800">
@@ -584,7 +771,7 @@ export default function UserOrderDetails() {
                 Payment method
               </h4>
               <p className="text-gray-500 text-xs mt-0.5">
-                Paid via: {paymentMethod.toUpperCase()}
+                Paid via: {paymentMethod.toLowerCase() === 'cash' || paymentMethod.toLowerCase() === 'cod' ? 'COD' : paymentMethod.toUpperCase()}
               </p>
             </div>
           </div>
@@ -602,19 +789,45 @@ export default function UserOrderDetails() {
             </div>
           </div>
 
-          {/* Address */}
-          <div className="flex gap-3">
-            <div className="mt-0.5">
-              <MapPin className="w-5 h-5 text-gray-500" />
+          {!isTakeawayOrder && (
+            <div className="flex gap-3">
+              <div className="mt-0.5">
+                <MapPin className="w-5 h-5 text-gray-500" />
+              </div>
+              <div>
+                <h4 className="font-semibold text-gray-800 text-sm">
+                  Delivery address
+                </h4>
+                <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
+                  {addressText || "Address not available"}
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-800 text-sm">
-                Delivery address
-              </h4>
-              <p className="text-gray-500 text-xs mt-0.5 leading-relaxed">
-                {addressText || "Address not available"}
-              </p>
-            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-800">Order status & history</h3>
+            <span
+              className="text-xs font-semibold px-2.5 py-1 rounded-full"
+              style={{ backgroundColor: `${RED}12`, color: RED }}
+            >
+              {orderStatusLabel}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {orderHistory.map((entry) => (
+              <div key={entry.id} className="flex items-start gap-3">
+                <div className="mt-1 w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: RED }} />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800">{entry.title}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {entry.timestamp || "Status updated"}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

@@ -26,6 +26,14 @@ export default function Orders() {
   const [restaurantFeedbackText, setRestaurantFeedbackText] = useState("")
   const [submittingRating, setSubmittingRating] = useState(false)
   const [countdowns, setCountdowns] = useState({})
+  
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!activeMenuOrderId) return;
+    const handleClickOutside = () => setActiveMenuOrderId(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [activeMenuOrderId]);
   // Track orders that have shown rating popup - persist in localStorage
   const [shownRatingForOrders, setShownRatingForOrders] = useState(() => {
     try {
@@ -737,7 +745,7 @@ Order again from this restaurant in the ${companyName} app.`
               }
               // Active COD order → show clean label instead of raw 'cod_pending'
               if (isCodOrder && (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")) {
-                return "cod"
+                return "COD"
               }
               return rawPaymentStatus
             })()
@@ -799,7 +807,7 @@ Order again from this restaurant in the ${companyName} app.`
 
                   <button
                     type="button"
-                    onClick={() => toggleMenuForOrder(order.id)}
+                    onClick={(e) => { e.stopPropagation(); toggleMenuForOrder(order.id); }}
                     className="p-1 rounded-full hover:bg-gray-100 transition-colors"
                   >
                     <MoreVertical className="w-5 h-5 text-gray-400" />
@@ -942,8 +950,8 @@ Order again from this restaurant in the ${companyName} app.`
                     )}
                     {order.payment && (
                       <p className="text-xs text-gray-500 mt-1">
-                        Payment: <span className="font-medium capitalize">
-                          {order.payment.method === 'cash' || order.payment.method === 'cod' ? 'Cash on Delivery' :
+                        Payment: <span className="font-medium uppercase">
+                          {order.payment.method === 'cash' || order.payment.method === 'cod' ? 'COD' :
                             order.payment.method === 'wallet' ? 'Wallet' :
                               order.payment.method === 'razorpay' ? 'Online' :
                                 order.payment.method || 'N/A'}
@@ -969,7 +977,7 @@ Order again from this restaurant in the ${companyName} app.`
                     )}
                   </div>
                   <div className="flex items-center ml-4">
-                    <Link to={`/user/orders/${order.id}`}>
+                    <Link to={`/user/orders/${order.id}/details`}>
                       <button className="text-xs font-medium flex items-center gap-1" style={{ color: RED }}>
                         View Details
                         <ChevronRight className="w-4 h-4" />

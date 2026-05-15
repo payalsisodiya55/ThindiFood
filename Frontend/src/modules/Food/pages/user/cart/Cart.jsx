@@ -1129,7 +1129,12 @@ export default function Cart() {
     }
 
     return null
-  }, [restaurantData?._id, cart])
+  }, [restaurantData?._id, cart[0]?.restaurantId])
+
+  // Stable dependency for cart items (excluding quantities) to prevent unnecessary coupon re-fetches
+  const cartItemIdsKey = useMemo(() => {
+    return cart.map(item => `${item.itemId || item.id}`).sort().join(",")
+  }, [cart.length, cart.map((item) => item.itemId || item.id).join(",")])
 
   // Stable restaurant ID for addons fetch (memoized to prevent dependency array issues)
   // Prefer restaurantData IDs (more reliable) over slug from cart
@@ -1503,7 +1508,7 @@ export default function Cart() {
     }
 
     fetchCouponsForCartItems()
-  }, [cart, restaurantId])
+  }, [cartItemIdsKey, restaurantId])
 
   // Calculate pricing from backend whenever cart, address, or coupon changes
   useEffect(() => {

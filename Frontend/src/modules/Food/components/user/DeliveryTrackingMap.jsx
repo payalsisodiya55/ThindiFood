@@ -423,6 +423,21 @@ const DeliveryTrackingMap = ({
     window.open(mapsUrl, '_blank', 'noopener,noreferrer');
   }, [browserUserCoords, restaurantCoords, customerCoords]);
 
+  const mapOptions = useMemo(() => ({
+    disableDefaultUI: true,
+    zoomControl: true,
+    mapTypeControl: false,
+    scaleControl: true,
+    streetViewControl: false,
+    rotateControl: false,
+    fullscreenControl: false,
+    gestureHandling: 'greedy',
+    styles: [
+      { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+      { featureType: 'transit', stylers: [{ visibility: 'off' }] }
+    ]
+  }), []);
+
   if (!isLoaded) return <div className="w-full h-full bg-gray-100 animate-pulse" />;
 
   return (
@@ -432,20 +447,7 @@ const DeliveryTrackingMap = ({
         center={center}
         zoom={zoom}
         onLoad={setMap}
-        options={{
-          disableDefaultUI: false,
-          zoomControl: true,
-          mapTypeControl: false,
-          scaleControl: true,
-          streetViewControl: false,
-          rotateControl: false,
-          fullscreenControl: false,
-          gestureHandling: 'greedy',
-          styles: [
-            { featureType: 'poi', stylers: [{ visibility: 'off' }] },
-            { featureType: 'transit', stylers: [{ visibility: 'off' }] }
-          ]
-        }}
+        options={mapOptions}
       >
         {/* 1. PERSISTENT BASELINE (Full journey: Restaurant -> Customer) */}
         {!baselineDirections && baselineDirectionsServiceOptions && (
