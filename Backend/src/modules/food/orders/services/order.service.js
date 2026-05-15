@@ -4,6 +4,7 @@ import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
@@ -97,6 +98,97 @@ function emitDeliveryDropOtpToUser(order, plainOtp) {
   } catch (e) {
     logger.warn(`emitDeliveryDropOtpToUser failed: ${e?.message || e}`);
   }
+}
+
+async function ensureRestaurantIsOrderable(restaurantId, select = "") {
+  const defaultSelect =
+    "status restaurantName zoneId location selfDelivery isActive isAcceptingOrders";
+  const restaurant = await FoodRestaurant.findById(restaurantId)
+    .select(select || defaultSelect)
+    .lean();
+
+  if (!restaurant) {
+    throw new ValidationError("Restaurant not found");
+  }
+
+  if (
+    restaurant.status !== "approved" ||
+    restaurant.isActive === false ||
+    restaurant.isAcceptingOrders === false
+  ) {
+    throw new ValidationError("Restaurant not accepting orders");
+  }
+
+  return restaurant;
+}
+
+async function ensureFoodItemsAreOrderable(restaurantId, items = []) {
+  const normalizedItems = Array.isArray(items) ? items : [];
+  const invalidItemNames = [];
+  const validItemIds = [];
+
+  normalizedItems.forEach((item) => {
+    const itemId = String(item?.itemId || "").trim();
+    if (!itemId) return;
+
+    if (!mongoose.isValidObjectId(itemId)) {
+      invalidItemNames.push(String(item?.name || "This item").trim() || "This item");
+      return;
+    }
+
+    validItemIds.push(itemId);
+  });
+
+  const itemIds = [...new Set(validItemIds)];
+
+  if (itemIds.length === 0 && invalidItemNames.length === 0) {
+    return;
+  }
+
+  const foodDocs = await FoodItem.find({
+    _id: { $in: itemIds },
+    restaurantId,
+  })
+    .select("_id name isAvailable approvalStatus")
+    .lean();
+
+  const foodsById = new Map(foodDocs.map((doc) => [String(doc._id), doc]));
+  const unavailableNames = [...invalidItemNames];
+
+  normalizedItems.forEach((item) => {
+    const itemId = String(item?.itemId || "").trim();
+    if (!itemId) return;
+
+    const foodDoc = foodsById.get(itemId);
+    const fallbackName = String(item?.name || "This item").trim() || "This item";
+
+    if (!foodDoc) {
+      unavailableNames.push(fallbackName);
+      return;
+    }
+
+    if (foodDoc.isAvailable === false || foodDoc.approvalStatus !== "approved") {
+      unavailableNames.push(String(foodDoc.name || fallbackName).trim() || fallbackName);
+    }
+  });
+
+  if (unavailableNames.length === 0) {
+    return;
+  }
+
+  const uniqueNames = [...new Set(unavailableNames)];
+  if (uniqueNames.length === 1) {
+    throw new ValidationError(
+      `${uniqueNames[0]} is currently unavailable. Please remove it from your cart to continue.`,
+    );
+  }
+
+  const previewNames = uniqueNames.slice(0, 3).join(", ");
+  const suffix =
+    uniqueNames.length > 3 ? ` and ${uniqueNames.length - 3} more items` : "";
+  throw new ValidationError(
+    `${previewNames}${suffix} are currently unavailable. Please update your cart to continue.`,
+  );
 }
 
 async function notifyOwnersSafely(targets, payload) {
@@ -1208,13 +1300,13 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
     .lean();
   const feeSettings = feeDoc || { platformFee: 5, gstRate: 5 };
 
-  const restaurant = await FoodRestaurant.findById(dto.restaurantId)
-    .select("status location selfDelivery")
-    .lean();
-  if (!restaurant) throw new ValidationError("Restaurant not found");
-  if (restaurant.status !== "approved") {
-    throw new ValidationError("Restaurant not available");
-  }
+  const restaurant =
+    context.restaurant ||
+    (await ensureRestaurantIsOrderable(
+      dto.restaurantId,
+      "status location selfDelivery isActive isAcceptingOrders",
+    ));
+  await ensureFoodItemsAreOrderable(dto.restaurantId, items);
 
   const packagingFee = 0;
   const platformFee = Number(feeSettings.platformFee || 0);
@@ -1409,14 +1501,13 @@ export async function calculateOrder(userId, dto) {
     };
   }
 
-  const restaurant = await FoodRestaurant.findById(dto.restaurantId)
-    .select("status")
-    .lean();
-  if (!restaurant) throw new ValidationError("Restaurant not found");
-  if (restaurant.status !== "approved")
-    throw new ValidationError("Restaurant not available");
+  const restaurant = await ensureRestaurantIsOrderable(
+    dto.restaurantId,
+    "status location selfDelivery isActive isAcceptingOrders",
+  );
+  await ensureFoodItemsAreOrderable(dto.restaurantId, items);
 
-  return buildFoodPricingBreakdown(userId, dto, { now, validationErrors });
+  return buildFoodPricingBreakdown(userId, dto, { now, validationErrors, restaurant });
 }
 
 // ----- Create order -----
@@ -1430,12 +1521,11 @@ export async function createOrder(userId, dto) {
   const orderType = dto.orderType === "quick" ? "quick" : "food";
   let restaurant = null;
   if (orderType === "food") {
-    restaurant = await FoodRestaurant.findById(dto.restaurantId)
-      .select("status restaurantName zoneId location selfDelivery")
-      .lean();
-    if (!restaurant) throw new ValidationError("Restaurant not found");
-    if (restaurant.status !== "approved")
-      throw new ValidationError("Restaurant not accepting orders");
+    restaurant = await ensureRestaurantIsOrderable(
+      dto.restaurantId,
+      "status restaurantName zoneId location selfDelivery isActive isAcceptingOrders",
+    );
+    await ensureFoodItemsAreOrderable(dto.restaurantId, dto.items);
   }
 
   const orderId = await ensureUniqueOrderId();

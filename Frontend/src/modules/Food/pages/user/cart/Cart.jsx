@@ -22,6 +22,7 @@ import { toast } from "sonner"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import zoopSound from "@food/assets/audio/zomato_sms.mp3"
 const debugLog = (...args) => { }
@@ -1180,6 +1181,43 @@ export default function Cart() {
     return cart.map(item => `${item.itemId || item.id}`).sort().join(",")
   }, [cart.length, cart.map((item) => item.itemId || item.id).join(",")])
 
+  const syncCartWithLiveMenu = async (options = {}) => {
+    const { removeUnavailable = false } = options
+    const lookupId = restaurantData?._id || restaurantData?.restaurantId
+    if (!lookupId || cart.length === 0) {
+      return { valid: true, unavailableItems: [] }
+    }
+
+    const menuResponse = await restaurantAPI.getMenuByRestaurantId(lookupId, { noCache: true })
+    const menu = getMenuFromResponse(menuResponse)
+    const liveMenuItems = flattenMenuItems(menu)
+    if (liveMenuItems.length === 0) {
+      return { valid: true, unavailableItems: [] }
+    }
+    const availableItemIds = new Set(
+      liveMenuItems
+        .filter((item) => item?.isAvailable !== false)
+        .map((item) => String(item?.id || item?._id || "").trim())
+        .filter(Boolean),
+    )
+
+    const unavailableItems = cart.filter((item) => {
+      const itemId = String(item?.itemId || item?.id || "").trim()
+      return itemId && !availableItemIds.has(itemId)
+    })
+
+    if (removeUnavailable && unavailableItems.length > 0) {
+      unavailableItems.forEach((item) => {
+        updateQuantity(item.id || item.itemId, 0)
+      })
+    }
+
+    return {
+      valid: unavailableItems.length === 0,
+      unavailableItems,
+    }
+  }
+
   // Stable restaurant ID for addons fetch (memoized to prevent dependency array issues)
   // Prefer restaurantData IDs (more reliable) over slug from cart
   const restaurantIdForAddons = useMemo(() => {
@@ -1190,6 +1228,35 @@ export default function Cart() {
     // If restaurantData is not loaded yet, return null to wait
     return null
   }, [restaurantData])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const syncUnavailableCartItems = async () => {
+      if (!restaurantData || cart.length === 0) return
+
+      try {
+        const result = await syncCartWithLiveMenu({ removeUnavailable: true })
+        if (cancelled || result.valid || result.unavailableItems.length === 0) return
+
+        const names = [...new Set(result.unavailableItems.map((item) => item?.name).filter(Boolean))]
+        if (names.length === 1) {
+          toast.error(`${names[0]} was removed from your cart because it is unavailable.`)
+          return
+        }
+
+        toast.error("Unavailable items were removed from your cart.")
+      } catch (error) {
+        debugWarn("Unable to sync cart item availability", error)
+      }
+    }
+
+    syncUnavailableCartItems()
+
+    return () => {
+      cancelled = true
+    }
+  }, [restaurantData?._id, restaurantData?.restaurantId, cartItemIdsKey])
 
 
 
@@ -1242,7 +1309,7 @@ export default function Cart() {
           const cartRestaurantName = cart[0].restaurant;
 
           debugLog("?? Fetching restaurant data by restaurantId from cart:", cartRestaurantId)
-          const response = await restaurantAPI.getRestaurantById(cartRestaurantId)
+          const response = await restaurantAPI.getRestaurantById(cartRestaurantId, { noCache: true })
           const rawData = response?.data?.data?.restaurant || response?.data?.restaurant
           const data = await enrichRestaurantWithOutletTimings(rawData)
 
@@ -1304,7 +1371,7 @@ export default function Cart() {
       if (cart[0]?.restaurant && !restaurantData) {
         try {
           debugLog("?? Searching restaurant by name:", cart[0].restaurant)
-          const searchResponse = await restaurantAPI.getRestaurants({ limit: 100 })
+          const searchResponse = await restaurantAPI.getRestaurants({ limit: 100 }, { noCache: true })
           const restaurants = searchResponse?.data?.data?.restaurants || searchResponse?.data?.data || []
           debugLog("?? Fetched", restaurants.length, "restaurants for name search")
 
@@ -2213,6 +2280,21 @@ export default function Cart() {
     if (cart.length === 0) {
       alert("Your cart is empty")
       return
+    }
+
+    try {
+      const liveMenuValidation = await syncCartWithLiveMenu({ removeUnavailable: true })
+      if (!liveMenuValidation.valid) {
+        const names = [...new Set(liveMenuValidation.unavailableItems.map((item) => item?.name).filter(Boolean))]
+        const message =
+          names.length === 1
+            ? `${names[0]} is no longer available and was removed from your cart.`
+            : "Some unavailable items were removed from your cart. Please review your order and try again."
+        toast.error(message)
+        return
+      }
+    } catch (error) {
+      debugWarn("Unable to validate live cart availability before checkout", error)
     }
 
     setIsPlacingOrder(true)
