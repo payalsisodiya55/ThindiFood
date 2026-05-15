@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from "react"
-import { adminAPI } from "@food/api"
-import { 
-  Loader2, 
-  Search, 
-  Filter, 
-  Calendar, 
-  Utensils, 
-  CreditCard, 
+import { confirmApp } from "@shared/lib/appDialog";import { useEffect, useMemo, useState } from "react";
+import { adminAPI } from "@food/api";
+import {
+  Loader2,
+  Search,
+  Filter,
+  Calendar,
+  Utensils,
+  CreditCard,
   Eye,
   Package,
   Phone,
@@ -16,133 +16,133 @@ import {
   Hash,
   Store,
   AlertCircle,
-  Trash2
-} from "lucide-react"
-import { Card } from "@food/components/ui/card"
-import { Badge } from "@food/components/ui/badge"
-import { Input } from "@food/components/ui/input"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@food/components/ui/select"
+  Trash2 } from
+"lucide-react";
+import { Card } from "@food/components/ui/card";
+import { Badge } from "@food/components/ui/badge";
+import { Input } from "@food/components/ui/input";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@food/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue } from
+"@food/components/ui/select";
 
-const currency = (value) => `\u20B9 ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const currency = (value) => `\u20B9 ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function DiningOrders() {
-  const [rows, setRows] = useState([])
-  const [restaurants, setRestaurants] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false)
-  const [deletingId, setDeletingId] = useState("")
+  const [rows, setRows] = useState([]);
+  const [restaurants, setRestaurants] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
   const [filters, setFilters] = useState({
     fromDate: "",
     toDate: "",
     restaurantId: "all",
     paymentType: "all",
     orderType: "all",
-    search: "",
-  })
+    search: ""
+  });
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
         const queryFilters = {
           ...filters,
           restaurantId: filters.restaurantId === "all" ? "" : filters.restaurantId,
           paymentType: filters.paymentType === "all" ? "" : filters.paymentType,
-          orderType: filters.orderType === "all" ? "" : filters.orderType,
-        }
+          orderType: filters.orderType === "all" ? "" : filters.orderType
+        };
         const [ordersRes, restaurantsRes] = await Promise.all([
-          adminAPI.getDiningOrders(queryFilters),
-          adminAPI.getDiningRestaurants(),
-        ])
-        setRows(ordersRes?.data?.data?.orders || [])
-        setRestaurants(restaurantsRes?.data?.data?.restaurants || [])
+        adminAPI.getDiningOrders(queryFilters),
+        adminAPI.getDiningRestaurants()]
+        );
+        setRows(ordersRes?.data?.data?.orders || []);
+        setRestaurants(restaurantsRes?.data?.data?.restaurants || []);
       } catch (err) {
-        console.error("Error loading dining orders:", err)
-        setRows([])
+        console.error("Error loading dining orders:", err);
+        setRows([]);
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    load()
-  }, [filters])
+    };
+    load();
+  }, [filters]);
 
   const totals = useMemo(() => {
     return rows.reduce(
       (acc, row) => {
-        acc.orders += 1
-        acc.amount += Number(row?.amount || 0)
-        return acc
+        acc.orders += 1;
+        acc.amount += Number(row?.amount || 0);
+        return acc;
       },
       { orders: 0, amount: 0 }
-    )
-  }, [rows])
+    );
+  }, [rows]);
 
   const getStatusColor = (status) => {
-    const s = String(status || "").toLowerCase()
-    if (s.includes("complete") || s.includes("paid")) return "bg-emerald-100 text-emerald-700 border-emerald-200"
-    if (s.includes("serve")) return "bg-teal-100 text-teal-700 border-teal-200"
-    if (s.includes("prepare") || s.includes("active")) return "bg-blue-100 text-blue-700 border-blue-200"
-    if (s.includes("cancel")) return "bg-rose-100 text-rose-700 border-rose-200"
-    return "bg-slate-100 text-slate-700 border-slate-200"
-  }
+    const s = String(status || "").toLowerCase();
+    if (s.includes("complete") || s.includes("paid")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
+    if (s.includes("serve")) return "bg-teal-100 text-teal-700 border-teal-200";
+    if (s.includes("prepare") || s.includes("active")) return "bg-blue-100 text-blue-700 border-blue-200";
+    if (s.includes("cancel")) return "bg-rose-100 text-rose-700 border-rose-200";
+    return "bg-slate-100 text-slate-700 border-slate-200";
+  };
 
   const getPaymentBadge = (paymentType) => {
-    const normalized = String(paymentType || "").toLowerCase()
-    if (normalized === "online") return { label: "ONLINE", className: "bg-emerald-50 border-emerald-200 text-emerald-700" }
-    if (normalized === "cod") return { label: "COD", className: "bg-amber-50 border-amber-200 text-amber-700" }
-    return { label: "PENDING", className: "bg-slate-50 border-slate-200 text-slate-600" }
-  }
+    const normalized = String(paymentType || "").toLowerCase();
+    if (normalized === "online") return { label: "ONLINE", className: "bg-emerald-50 border-emerald-200 text-emerald-700" };
+    if (normalized === "cod") return { label: "COD", className: "bg-amber-50 border-amber-200 text-amber-700" };
+    return { label: "PENDING", className: "bg-slate-50 border-slate-200 text-slate-600" };
+  };
 
   const getPaymentLabel = (paymentType) => {
-    const normalized = String(paymentType || "").toLowerCase()
-    if (normalized === "cod") return "Cash / Counter"
-    if (normalized === "online") return "Online"
-    return "Pending"
-  }
+    const normalized = String(paymentType || "").toLowerCase();
+    if (normalized === "cod") return "Cash / Counter";
+    if (normalized === "online") return "Online";
+    return "Pending";
+  };
 
   const getPaymentStatusLabel = (paymentType) => {
-    const normalized = String(paymentType || "").toLowerCase()
-    return normalized === "pending" ? "Pending" : "Paid"
-  }
+    const normalized = String(paymentType || "").toLowerCase();
+    return normalized === "pending" ? "Pending" : "Paid";
+  };
 
   const openOrderDetails = (row) => {
-    setSelectedOrder(row)
-    setIsDetailsOpen(true)
-  }
+    setSelectedOrder(row);
+    setIsDetailsOpen(true);
+  };
 
   const handleDeleteOrder = async (row) => {
-    const targetId = String(row?.id || "")
-    if (!targetId) return
+    const targetId = String(row?.id || "");
+    if (!targetId) return;
 
-    const confirmed = window.confirm(
-      `Delete ${row?.orderId || "this dining order"}?\n\nThis will permanently remove related session/order records from database.`
-    )
-    if (!confirmed) return
+    const confirmed = await confirmApp(
+      `Delete ${row?.orderId || "this dining order"}?\n\nThis will permanently remove related session/order records from database.`);
 
-    setDeletingId(targetId)
+    if (!confirmed) return;
+
+    setDeletingId(targetId);
     try {
-      await adminAPI.deleteDiningOrder(targetId)
-      setRows((prev) => prev.filter((entry) => String(entry?.id || "") !== targetId))
+      await adminAPI.deleteDiningOrder(targetId);
+      setRows((prev) => prev.filter((entry) => String(entry?.id || "") !== targetId));
       if (String(selectedOrder?.id || "") === targetId) {
-        setSelectedOrder(null)
-        setIsDetailsOpen(false)
+        setSelectedOrder(null);
+        setIsDetailsOpen(false);
       }
     } catch (err) {
-      console.error("Error deleting dining order:", err)
-      const message = err?.response?.data?.message || "Failed to delete dining order"
-      window.alert(message)
+      console.error("Error deleting dining order:", err);
+      const message = err?.response?.data?.message || "Failed to delete dining order";
+      window.alert(message);
     } finally {
-      setDeletingId("")
+      setDeletingId("");
     }
-  }
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -188,9 +188,9 @@ export default function DiningOrders() {
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Active Today</p>
             <p className="text-2xl font-bold text-slate-900">
-              {rows.filter(r => {
-                const status = String(r?.status || "").toLowerCase()
-                return status === "active" || status === "preparing"
+              {rows.filter((r) => {
+                const status = String(r?.status || "").toLowerCase();
+                return status === "active" || status === "preparing";
               }).length}
             </p>
           </div>
@@ -203,7 +203,7 @@ export default function DiningOrders() {
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Top Restaurant</p>
             <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">
-              {rows.length > 0 ? [...new Set(rows.map(r => r.restaurant))][0] : "N/A"}
+              {rows.length > 0 ? [...new Set(rows.map((r) => r.restaurant))][0] : "N/A"}
             </p>
           </div>
         </Card>
@@ -220,12 +220,12 @@ export default function DiningOrders() {
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">From Date</label>
             <div className="relative">
               <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input 
-                className="pl-8 text-xs h-9" 
-                type="date" 
-                value={filters.fromDate} 
-                onChange={(e) => setFilters((p) => ({ ...p, fromDate: e.target.value }))} 
-              />
+              <Input
+                className="pl-8 text-xs h-9"
+                type="date"
+                value={filters.fromDate}
+                onChange={(e) => setFilters((p) => ({ ...p, fromDate: e.target.value }))} />
+              
             </div>
           </div>
 
@@ -233,33 +233,33 @@ export default function DiningOrders() {
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">To Date</label>
             <div className="relative">
               <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input 
-                className="pl-8 text-xs h-9" 
-                type="date" 
-                value={filters.toDate} 
-                onChange={(e) => setFilters((p) => ({ ...p, toDate: e.target.value }))} 
-              />
+              <Input
+                className="pl-8 text-xs h-9"
+                type="date"
+                value={filters.toDate}
+                onChange={(e) => setFilters((p) => ({ ...p, toDate: e.target.value }))} />
+              
             </div>
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Restaurant</label>
-            <Select value={filters.restaurantId} onValueChange={(v) => setFilters(p => ({ ...p, restaurantId: v }))}>
+            <Select value={filters.restaurantId} onValueChange={(v) => setFilters((p) => ({ ...p, restaurantId: v }))}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="All Restaurants" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Restaurants</SelectItem>
-                {restaurants.map((restaurant) => (
-                  <SelectItem key={restaurant._id} value={restaurant._id}>{restaurant.name || restaurant.restaurantName}</SelectItem>
-                ))}
+                {restaurants.map((restaurant) =>
+                <SelectItem key={restaurant._id} value={restaurant._id}>{restaurant.name || restaurant.restaurantName}</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Payment</label>
-            <Select value={filters.paymentType} onValueChange={(v) => setFilters(p => ({ ...p, paymentType: v }))}>
+            <Select value={filters.paymentType} onValueChange={(v) => setFilters((p) => ({ ...p, paymentType: v }))}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="All Payments" />
               </SelectTrigger>
@@ -273,7 +273,7 @@ export default function DiningOrders() {
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Order Type</label>
-            <Select value={filters.orderType} onValueChange={(v) => setFilters(p => ({ ...p, orderType: v }))}>
+            <Select value={filters.orderType} onValueChange={(v) => setFilters((p) => ({ ...p, orderType: v }))}>
               <SelectTrigger className="h-9 text-xs">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -289,12 +289,12 @@ export default function DiningOrders() {
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Search</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input 
-                className="pl-8 text-xs h-9" 
-                placeholder="ID, User..." 
-                value={filters.search} 
-                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} 
-              />
+              <Input
+                className="pl-8 text-xs h-9"
+                placeholder="ID, User..."
+                value={filters.search}
+                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} />
+              
             </div>
           </div>
         </div>
@@ -303,13 +303,13 @@ export default function DiningOrders() {
       {/* Table Section */}
       <Card className="bg-white shadow-sm border-slate-200 overflow-hidden">
         <div className="overflow-x-auto">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+          {loading ?
+          <div className="flex flex-col items-center justify-center py-20 text-slate-500">
               <Loader2 className="w-8 h-8 animate-spin mb-3 text-blue-600" />
               <p className="text-sm font-medium">Fetching dining orders...</p>
-            </div>
-          ) : (
-            <table className="w-full text-sm">
+            </div> :
+
+          <table className="w-full text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Order Details</th>
@@ -323,21 +323,21 @@ export default function DiningOrders() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.length > 0 ? (
-                  rows.map((row) => {
-                    const paymentBadge = getPaymentBadge(row.paymentType)
-                    const items = Array.isArray(row.items) ? row.items : []
-                    const visibleItems = items.slice(0, 2)
-                    const remainingItems = Math.max(items.length - visibleItems.length, 0)
-                    return (
-                    <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
+                {rows.length > 0 ?
+              rows.map((row) => {
+                const paymentBadge = getPaymentBadge(row.paymentType);
+                const items = Array.isArray(row.items) ? row.items : [];
+                const visibleItems = items.slice(0, 2);
+                const remainingItems = Math.max(items.length - visibleItems.length, 0);
+                return (
+                  <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
                           <button
-                            type="button"
-                            onClick={() => openOrderDetails(row)}
-                            className="font-bold text-slate-900 text-left hover:text-blue-600 transition-colors"
-                          >
+                          type="button"
+                          onClick={() => openOrderDetails(row)}
+                          className="font-bold text-slate-900 text-left hover:text-blue-600 transition-colors">
+                          
                             #{row.orderId}
                           </button>
                           <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
@@ -371,18 +371,18 @@ export default function DiningOrders() {
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-900">{currency(row.amount)}</span>
                           <span className="text-[10px] text-slate-400">{row.itemCount || 0} Items</span>
-                          {visibleItems.length > 0 && (
-                            <div className="mt-1.5 flex flex-col gap-0.5">
-                              {visibleItems.map((item, idx) => (
-                                <span key={`${item.name}-${idx}`} className="text-[10px] text-slate-500">
+                          {visibleItems.length > 0 &&
+                        <div className="mt-1.5 flex flex-col gap-0.5">
+                              {visibleItems.map((item, idx) =>
+                          <span key={`${item.name}-${idx}`} className="text-[10px] text-slate-500">
                                   {Number(item?.quantity || 0)}x {item?.name || "Item"}
                                 </span>
-                              ))}
-                              {remainingItems > 0 && (
-                                <span className="text-[10px] text-slate-400">+{remainingItems} more</span>
-                              )}
-                            </div>
                           )}
+                              {remainingItems > 0 &&
+                          <span className="text-[10px] text-slate-400">+{remainingItems} more</span>
+                          }
+                            </div>
+                        }
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -409,32 +409,32 @@ export default function DiningOrders() {
                       <td className="px-4 py-3">
                         <div className="flex justify-center gap-2">
                           <button
-                            type="button"
-                            onClick={() => openOrderDetails(row)}
-                            className="w-8 h-8 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-blue-600 flex items-center justify-center transition-colors"
-                            title="View Order Details"
-                          >
+                          type="button"
+                          onClick={() => openOrderDetails(row)}
+                          className="w-8 h-8 rounded-md border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-blue-600 flex items-center justify-center transition-colors"
+                          title="View Order Details">
+                          
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            type="button"
-                            onClick={() => handleDeleteOrder(row)}
-                            disabled={deletingId === String(row?.id || "")}
-                            className="w-8 h-8 rounded-md border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
-                            title="Delete Dining Order"
-                          >
-                            {deletingId === String(row?.id || "") ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="w-4 h-4" />
-                            )}
+                          type="button"
+                          onClick={() => handleDeleteOrder(row)}
+                          disabled={deletingId === String(row?.id || "")}
+                          className="w-8 h-8 rounded-md border border-rose-200 hover:bg-rose-50 text-rose-600 hover:text-rose-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-colors"
+                          title="Delete Dining Order">
+                          
+                            {deletingId === String(row?.id || "") ?
+                          <Loader2 className="w-4 h-4 animate-spin" /> :
+
+                          <Trash2 className="w-4 h-4" />
+                          }
                           </button>
                         </div>
                       </td>
-                    </tr>
-                  )})
-                ) : (
-                  <tr>
+                    </tr>);
+              }) :
+
+              <tr>
                     <td className="px-4 py-20 text-center" colSpan={8}>
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
@@ -445,10 +445,10 @@ export default function DiningOrders() {
                       </div>
                     </td>
                   </tr>
-                )}
+              }
               </tbody>
             </table>
-          )}
+          }
         </div>
       </Card>
 
@@ -464,8 +464,8 @@ export default function DiningOrders() {
             </DialogDescription>
           </DialogHeader>
 
-          {selectedOrder && (
-            <div className="px-6 py-6 space-y-6">
+          {selectedOrder &&
+          <div className="px-6 py-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div>
@@ -479,9 +479,9 @@ export default function DiningOrders() {
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Order Date</p>
                     <p className="text-sm font-medium text-slate-900">
-                      {selectedOrder.date
-                        ? `${new Date(selectedOrder.date).toLocaleDateString()}, ${new Date(selectedOrder.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                        : "-"}
+                      {selectedOrder.date ?
+                    `${new Date(selectedOrder.date).toLocaleDateString()}, ${new Date(selectedOrder.date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` :
+                    "-"}
                     </p>
                   </div>
                 </div>
@@ -558,8 +558,8 @@ export default function DiningOrders() {
                   Order Items ({Array.isArray(selectedOrder.items) ? selectedOrder.items.length : 0})
                 </h3>
                 <div className="space-y-3">
-                  {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).map((item, idx) => (
-                    <div key={`${item?.name || "item"}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  {(Array.isArray(selectedOrder.items) ? selectedOrder.items : []).map((item, idx) =>
+                <div key={`${item?.name || "item"}-${idx}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-700 bg-white px-2 py-1 rounded">
                           {Number(item?.quantity || 0)}x
@@ -570,7 +570,7 @@ export default function DiningOrders() {
                         {currency(Number(item?.price || 0) * Number(item?.quantity || 0))}
                       </p>
                     </div>
-                  ))}
+                )}
                 </div>
               </div>
 
@@ -617,9 +617,9 @@ export default function DiningOrders() {
                 </div>
               </div>
             </div>
-          )}
+          }
         </DialogContent>
       </Dialog>
-    </div>
-  )
+    </div>);
+
 }

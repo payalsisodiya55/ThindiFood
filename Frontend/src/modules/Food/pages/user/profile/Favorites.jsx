@@ -1,39 +1,39 @@
-import { Link } from "react-router-dom"
-import { useState } from "react"
+import { confirmApp } from "@shared/lib/appDialog";import { Link } from "react-router-dom";
+import { useState } from "react";
 
-import { Heart, Star, Clock, MapPin, ArrowRight, ArrowLeft, Bookmark } from "lucide-react"
-import AnimatedPage from "@food/components/user/AnimatedPage"
-import ScrollReveal from "@food/components/user/ScrollReveal"
-import { Card, CardHeader, CardTitle, CardContent } from "@food/components/ui/card"
-import { Button } from "@food/components/ui/button"
-import { useProfile } from "@food/context/ProfileContext"
-import { toast } from "sonner"
+import { Heart, Star, Clock, MapPin, ArrowRight, ArrowLeft, Bookmark } from "lucide-react";
+import AnimatedPage from "@food/components/user/AnimatedPage";
+import ScrollReveal from "@food/components/user/ScrollReveal";
+import { Card, CardHeader, CardTitle, CardContent } from "@food/components/ui/card";
+import { Button } from "@food/components/ui/button";
+import { useProfile } from "@food/context/ProfileContext";
+import { toast } from "sonner";
 
 export default function Favorites() {
-  const { getFavorites, removeFavorite, getDishFavorites, removeDishFavorite } = useProfile()
-  const restaurantFavorites = getFavorites()
-  const dishFavorites = getDishFavorites()
-  const [activeTab, setActiveTab] = useState("restaurants")
+  const { getFavorites, removeFavorite, getDishFavorites, removeDishFavorite } = useProfile();
+  const restaurantFavorites = getFavorites();
+  const dishFavorites = getDishFavorites();
+  const [activeTab, setActiveTab] = useState("restaurants");
 
-  const handleRemoveFavorite = (e, slug) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (window.confirm("Remove this restaurant from favorites?")) {
-      removeFavorite(slug)
-      toast.success("Restaurant removed from favorites")
+  const handleRemoveFavorite = async (e, slug) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (await confirmApp("Remove this restaurant from favorites?")) {
+      removeFavorite(slug);
+      toast.success("Restaurant removed from favorites");
     }
-  }
+  };
 
-  const handleRemoveDishFavorite = (e, dishId, restaurantId) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (window.confirm("Remove this dish from favorites?")) {
-      removeDishFavorite(dishId, restaurantId)
-      toast.success("Dish removed from favorites")
+  const handleRemoveDishFavorite = async (e, dishId, restaurantId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (await confirmApp("Remove this dish from favorites?")) {
+      removeDishFavorite(dishId, restaurantId);
+      toast.success("Dish removed from favorites");
     }
-  }
+  };
 
-  const totalFavorites = restaurantFavorites.length + dishFavorites.length
+  const totalFavorites = restaurantFavorites.length + dishFavorites.length;
 
   if (totalFavorites === 0) {
     return (
@@ -61,8 +61,8 @@ export default function Favorites() {
           </CardContent>
         </Card>
         </div>
-      </AnimatedPage></>
-    )
+      </AnimatedPage></>);
+
   }
 
   return (
@@ -79,7 +79,7 @@ export default function Favorites() {
               <div>
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold">My Favorites</h1>
                 <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm font-semibold">
-                  {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} • {restaurantFavorites.length || 0} {restaurantFavorites.length === 1 ? "restaurant" : "restaurants"}
+                  {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} ï¿½ {restaurantFavorites.length || 0} {restaurantFavorites.length === 1 ? "restaurant" : "restaurants"}
                 </p>
               </div>
             </div>
@@ -91,30 +91,30 @@ export default function Favorites() {
           <button
             onClick={() => setActiveTab("restaurants")}
             className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "restaurants"
-                ? "border-b-2 border-primary-orange text-primary-orange"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            }`}
-          >
+            activeTab === "restaurants" ?
+            "border-b-2 border-primary-orange text-primary-orange" :
+            "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`
+            }>
+            
             Restaurants ({restaurantFavorites.length})
           </button>
           <button
             onClick={() => setActiveTab("dishes")}
             className={`px-4 py-2 font-medium transition-colors ${
-              activeTab === "dishes"
-                ? "border-b-2 border-primary-orange text-primary-orange"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-            }`}
-          >
+            activeTab === "dishes" ?
+            "border-b-2 border-primary-orange text-primary-orange" :
+            "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`
+            }>
+            
             Dishes ({dishFavorites.length})
           </button>
         </div>
 
         {/* Restaurants Tab */}
-        {activeTab === "restaurants" && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {restaurantFavorites.length === 0 ? (
-              <div className="col-span-full text-center py-12">
+        {activeTab === "restaurants" &&
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {restaurantFavorites.length === 0 ?
+          <div className="col-span-full text-center py-12">
                 <Heart className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground text-lg mb-4">No restaurants saved yet</p>
                 <Link to="/user">
@@ -122,30 +122,30 @@ export default function Favorites() {
                     Explore Restaurants
                   </Button>
                 </Link>
-              </div>
-            ) : (
-              restaurantFavorites.map((restaurant, index) => (
-            <ScrollReveal key={restaurant.slug} delay={index * 0.1}>
+              </div> :
+
+          restaurantFavorites.map((restaurant, index) =>
+          <ScrollReveal key={restaurant.slug} delay={index * 0.1}>
               <Link to={`/user/restaurants/${restaurant.slug}`}>
                 <Card className="overflow-hidden h-full">
                   <div className="h-32 w-full relative overflow-hidden">
                     <img
-                      src={restaurant.image}
-                      alt={restaurant.name}
-                      className="w-full h-full object-cover"
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.src = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80`
-                      }}
-                    />
+                    src={restaurant.image}
+                    alt={restaurant.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80`;
+                    }} />
+                  
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                     <div className="absolute top-2 right-2">
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white text-red-500"
-                        onClick={(e) => handleRemoveFavorite(e, restaurant.slug)}
-                      >
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white text-red-500"
+                      onClick={(e) => handleRemoveFavorite(e, restaurant.slug)}>
+                      
                         <Heart className="h-4 w-4 fill-red-500" />
                       </Button>
                     </div>
@@ -183,16 +183,16 @@ export default function Favorites() {
                 </Card>
               </Link>
             </ScrollReveal>
-              ))
-            )}
+          )
+          }
           </div>
-        )}
+        }
 
         {/* Dishes Tab */}
-        {activeTab === "dishes" && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {dishFavorites.length === 0 ? (
-              <div className="col-span-full text-center py-12">
+        {activeTab === "dishes" &&
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {dishFavorites.length === 0 ?
+          <div className="col-span-full text-center py-12">
                 <Bookmark className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground text-lg mb-4">No dishes saved yet</p>
                 <Link to="/user">
@@ -200,32 +200,32 @@ export default function Favorites() {
                     Explore Dishes
                   </Button>
                 </Link>
-              </div>
-            ) : (
-              dishFavorites.map((dish, index) => {
-                const restaurantSlug = dish.restaurantSlug || ""
-                return (
-                  <ScrollReveal key={`${dish.id}-${dish.restaurantId}`} delay={index * 0.1}>
+              </div> :
+
+          dishFavorites.map((dish, index) => {
+            const restaurantSlug = dish.restaurantSlug || "";
+            return (
+              <ScrollReveal key={`${dish.id}-${dish.restaurantId}`} delay={index * 0.1}>
                     <Link to={`/food/user/restaurants/${restaurantSlug}?dish=${dish.id}`}>
                       <Card className="overflow-hidden h-full cursor-pointer hover:shadow-lg transition-shadow">
                         <div className="h-32 w-full relative overflow-hidden">
                           <img
-                            src={dish.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80"}
-                            alt={dish.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80"
-                            }}
-                          />
+                        src={dish.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80"}
+                        alt={dish.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80";
+                        }} />
+                      
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                           <div className="absolute top-2 right-2">
                             <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white text-red-500"
-                              onClick={(e) => handleRemoveDishFavorite(e, dish.id, dish.restaurantId)}
-                            >
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white text-red-500"
+                          onClick={(e) => handleRemoveDishFavorite(e, dish.id, dish.restaurantId)}>
+                          
                               <Bookmark className="h-4 w-4 fill-red-500" />
                             </Button>
                           </div>
@@ -241,15 +241,15 @@ export default function Favorites() {
                           </div>
                           <div className="flex items-center justify-between text-xs pt-2 border-t">
                             <div className="flex items-center gap-1">
-                              {dish.foodType === "Veg" ? (
-                                <div className="w-3 h-3 border-2 border-green-600 flex items-center justify-center rounded-sm">
+                              {dish.foodType === "Veg" ?
+                          <div className="w-3 h-3 border-2 border-green-600 flex items-center justify-center rounded-sm">
                                   <div className="w-1.5 h-1.5 bg-green-600 rounded-full"></div>
-                                </div>
-                              ) : (
-                                <div className="w-3 h-3 border-2 border-orange-600 flex items-center justify-center rounded-sm">
+                                </div> :
+
+                          <div className="w-3 h-3 border-2 border-orange-600 flex items-center justify-center rounded-sm">
                                   <div className="w-1.5 h-1.5 bg-orange-600 rounded-full"></div>
                                 </div>
-                              )}
+                          }
                               <span className="text-muted-foreground font-medium text-xs">{dish.foodType || "N/A"}</span>
                             </div>
                             <div className="text-sm font-bold text-primary-orange">
@@ -263,14 +263,13 @@ export default function Favorites() {
                         </CardContent>
                       </Card>
                     </Link>
-                  </ScrollReveal>
-                )
-              })
-            )}
-          </div>
-        )}
-      </div>
-    </AnimatedPage>
-  )
-}
+                  </ScrollReveal>);
 
+          })
+          }
+          </div>
+        }
+      </div>
+    </AnimatedPage>);
+
+}

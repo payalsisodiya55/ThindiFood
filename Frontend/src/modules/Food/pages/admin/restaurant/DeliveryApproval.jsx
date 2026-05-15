@@ -1,149 +1,149 @@
-import { useState, useMemo, useEffect, useRef } from "react"
-import { 
+import { confirmApp } from "@shared/lib/appDialog";import { useState, useMemo, useEffect, useRef } from "react";
+import {
   Search, Filter, Eye, Check, X, Truck, ArrowUpDown, Loader2,
-  Phone, Mail, MapPin, Clock, Info
-} from "lucide-react"
-import { adminAPI } from "@food/api"
+  Phone, Mail, MapPin, Clock, Info } from
+"lucide-react";
+import { adminAPI } from "@food/api";
 
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+const debugLog = (...args) => {};
+const debugWarn = (...args) => {};
+const debugError = (...args) => {};
 
-const normalizeApprovalStatus = (value) => String(value || "").trim().toLowerCase()
+const normalizeApprovalStatus = (value) => String(value || "").trim().toLowerCase();
 
 const getDeliveryStatusMeta = (request) => {
-  const status = normalizeApprovalStatus(request?.selfDelivery?.approvalStatus || "pending")
+  const status = normalizeApprovalStatus(request?.selfDelivery?.approvalStatus || "pending");
 
   if (status === "approved") {
-    return { label: "Approved", className: "bg-green-100 text-green-700" }
+    return { label: "Approved", className: "bg-green-100 text-green-700" };
   }
 
   if (status === "rejected") {
-    return { label: "Rejected", className: "bg-red-100 text-red-700" }
+    return { label: "Rejected", className: "bg-red-100 text-red-700" };
   }
 
   return {
     label: "Pending Approval",
-    className: "bg-amber-100 text-amber-700",
-  }
-}
+    className: "bg-amber-100 text-amber-700"
+  };
+};
 
 export default function DeliveryApproval() {
-  const [activeTab, setActiveTab] = useState("pending")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [pendingRequests, setPendingRequests] = useState([])
-  const [rejectedRequests, setRejectedRequests] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [processing, setProcessing] = useState(false)
-  const [selectedRequest, setSelectedRequest] = useState(null)
-  const [showRejectDialog, setShowRejectDialog] = useState(false)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [showDetailsModal, setShowDetailsModal] = useState(false)
-  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" })
+  const [activeTab, setActiveTab] = useState("pending");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [rejectedRequests, setRejectedRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [processing, setProcessing] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: "", direction: "" });
 
-  const hasFetchedOnceRef = useRef(false)
+  const hasFetchedOnceRef = useRef(false);
 
   useEffect(() => {
-    fetchRequests()
-  }, [])
+    fetchRequests();
+  }, []);
 
   const fetchRequests = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
-      const response = await adminAPI.getPendingDeliveryApprovals()
-      const list = (response?.data?.data || [])
-      
-      setPendingRequests(list.filter(r => (r.selfDelivery?.approvalStatus || 'pending') === 'pending'))
-      setRejectedRequests(list.filter(r => r.selfDelivery?.approvalStatus === 'rejected'))
-      
+      const response = await adminAPI.getPendingDeliveryApprovals();
+      const list = response?.data?.data || [];
+
+      setPendingRequests(list.filter((r) => (r.selfDelivery?.approvalStatus || 'pending') === 'pending'));
+      setRejectedRequests(list.filter((r) => r.selfDelivery?.approvalStatus === 'rejected'));
+
     } catch (err) {
-      debugError("Error fetching delivery requests:", err)
-      setError(err.message || "Failed to fetch delivery requests")
+      debugError("Error fetching delivery requests:", err);
+      setError(err.message || "Failed to fetch delivery requests");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const currentRequests = activeTab === "pending" ? pendingRequests : rejectedRequests
+  const currentRequests = activeTab === "pending" ? pendingRequests : rejectedRequests;
 
   const filteredRequests = useMemo(() => {
-    let filtered = currentRequests
+    let filtered = currentRequests;
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(request =>
-        request.restaurantName?.toLowerCase().includes(query) ||
-        request.ownerName?.toLowerCase().includes(query) ||
-        request.ownerPhone?.includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter((request) =>
+      request.restaurantName?.toLowerCase().includes(query) ||
+      request.ownerName?.toLowerCase().includes(query) ||
+      request.ownerPhone?.includes(query)
+      );
     }
 
     if (sortConfig.key) {
       filtered = [...filtered].sort((a, b) => {
-        let aValue = a[sortConfig.key] || ""
-        let bValue = b[sortConfig.key] || ""
-        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1
-        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1
-        return 0
-      })
+        let aValue = a[sortConfig.key] || "";
+        let bValue = b[sortConfig.key] || "";
+        if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
+        if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+        return 0;
+      });
     }
 
-    return filtered
-  }, [currentRequests, searchQuery, sortConfig])
+    return filtered;
+  }, [currentRequests, searchQuery, sortConfig]);
 
   const handleSort = (key) => {
-    let direction = "asc"
+    let direction = "asc";
     if (sortConfig.key === key && sortConfig.direction === "asc") {
-      direction = "desc"
+      direction = "desc";
     }
-    setSortConfig({ key, direction })
-  }
+    setSortConfig({ key, direction });
+  };
 
   const handleApprove = async (request) => {
-    if (window.confirm(`Are you sure you want to approve delivery for "${request.restaurantName}"?`)) {
+    if (await confirmApp(`Are you sure you want to approve delivery for "${request.restaurantName}"?`)) {
       try {
-        setProcessing(true)
-        await adminAPI.approveDeliveryConfig(request._id)
-        await fetchRequests()
-        alert(`Successfully approved ${request.restaurantName}'s delivery request!`)
+        setProcessing(true);
+        await adminAPI.approveDeliveryConfig(request._id);
+        await fetchRequests();
+        alert(`Successfully approved ${request.restaurantName}'s delivery request!`);
       } catch (err) {
-        debugError("Error approving request:", err)
-        alert(err.response?.data?.message || "Failed to approve request. Please try again.")
+        debugError("Error approving request:", err);
+        alert(err.response?.data?.message || "Failed to approve request. Please try again.");
       } finally {
-        setProcessing(false)
+        setProcessing(false);
       }
     }
-  }
+  };
 
   const handleReject = (request) => {
-    setSelectedRequest(request)
-    setRejectionReason("")
-    setShowRejectDialog(true)
-  }
+    setSelectedRequest(request);
+    setRejectionReason("");
+    setShowRejectDialog(true);
+  };
 
   const confirmReject = async () => {
     if (!selectedRequest || !rejectionReason.trim()) {
-      alert("Please provide a rejection reason")
-      return
+      alert("Please provide a rejection reason");
+      return;
     }
 
     try {
-      setProcessing(true)
-      await adminAPI.rejectDeliveryConfig(selectedRequest._id, rejectionReason)
-      await fetchRequests()
-      setShowRejectDialog(false)
-      setSelectedRequest(null)
-      alert(`Successfully rejected ${selectedRequest.restaurantName}'s delivery request!`)
+      setProcessing(true);
+      await adminAPI.rejectDeliveryConfig(selectedRequest._id, rejectionReason);
+      await fetchRequests();
+      setShowRejectDialog(false);
+      setSelectedRequest(null);
+      alert(`Successfully rejected ${selectedRequest.restaurantName}'s delivery request!`);
     } catch (err) {
-      debugError("Error rejecting request:", err)
-      alert(err.response?.data?.message || "Failed to reject request. Please try again.")
+      debugError("Error rejecting request:", err);
+      alert(err.response?.data?.message || "Failed to reject request. Please try again.");
     } finally {
-      setProcessing(false)
+      setProcessing(false);
     }
-  }
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -160,21 +160,21 @@ export default function DeliveryApproval() {
             <button
               onClick={() => setActiveTab("pending")}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "pending"
-                  ? "border-orange-600 text-orange-600"
-                  : "border-transparent text-slate-600 hover:text-slate-900"
-              }`}
-            >
+              activeTab === "pending" ?
+              "border-orange-600 text-orange-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
               Pending Approval
             </button>
             <button
               onClick={() => setActiveTab("rejected")}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "rejected"
-                  ? "border-orange-600 text-orange-600"
-                  : "border-transparent text-slate-600 hover:text-slate-900"
-              }`}
-            >
+              activeTab === "rejected" ?
+              "border-orange-600 text-orange-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
               Rejected Requests
             </button>
           </div>
@@ -186,8 +186,8 @@ export default function DeliveryApproval() {
                 placeholder="Search by restaurant name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-500 outline-none"
-              />
+                className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-orange-500 outline-none" />
+              
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
           </div>
@@ -204,24 +204,24 @@ export default function DeliveryApproval() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr>
+                {loading ?
+                <tr>
                     <td colSpan={5} className="px-6 py-20 text-center">
                       <Loader2 className="w-8 h-8 animate-spin text-orange-600 mx-auto mb-3" />
                       <p className="text-slate-600 font-medium">Loading requests...</p>
                     </td>
-                  </tr>
-                ) : filteredRequests.length === 0 ? (
-                  <tr>
+                  </tr> :
+                filteredRequests.length === 0 ?
+                <tr>
                     <td colSpan={5} className="px-6 py-20 text-center text-slate-500">
                       No delivery requests found
                     </td>
-                  </tr>
-                ) : (
-                  filteredRequests.map((request) => {
-                    const statusMeta = getDeliveryStatusMeta(request)
-                    return (
-                      <tr key={request._id} className="hover:bg-slate-50 transition-colors">
+                  </tr> :
+
+                filteredRequests.map((request) => {
+                  const statusMeta = getDeliveryStatusMeta(request);
+                  return (
+                    <tr key={request._id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4">
                           <span className="text-sm font-bold text-slate-900">{request.restaurantName}</span>
                         </td>
@@ -246,42 +246,42 @@ export default function DeliveryApproval() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            {activeTab === "pending" && (
-                              <>
+                            {activeTab === "pending" &&
+                          <>
                                 <button
-                                  onClick={() => handleApprove(request)}
-                                  disabled={processing}
-                                  className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-all"
-                                  title="Approve"
-                                >
+                              onClick={() => handleApprove(request)}
+                              disabled={processing}
+                              className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-all"
+                              title="Approve">
+                              
                                   <Check className="w-4 h-4" />
                                 </button>
                                 <button
-                                  onClick={() => handleReject(request)}
-                                  disabled={processing}
-                                  className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all"
-                                  title="Reject"
-                                >
+                              onClick={() => handleReject(request)}
+                              disabled={processing}
+                              className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                              title="Reject">
+                              
                                   <X className="w-4 h-4" />
                                 </button>
                               </>
-                            )}
+                          }
                             <button
-                              onClick={() => {
-                                setSelectedRequest(request)
-                                setShowDetailsModal(true)
-                              }}
-                              className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
-                              title="View Details"
-                            >
+                            onClick={() => {
+                              setSelectedRequest(request);
+                              setShowDetailsModal(true);
+                            }}
+                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
+                            title="View Details">
+                            
                               <Info className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
-                      </tr>
-                    )
-                  })
-                )}
+                      </tr>);
+
+                })
+                }
               </tbody>
             </table>
           </div>
@@ -289,8 +289,8 @@ export default function DeliveryApproval() {
       </div>
 
       {/* Reject Dialog */}
-      {showRejectDialog && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      {showRejectDialog &&
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
@@ -303,34 +303,34 @@ export default function DeliveryApproval() {
             </div>
 
             <textarea
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="Enter reason for rejection..."
-              className="w-full h-32 p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 outline-none resize-none text-sm mb-6"
-            />
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            placeholder="Enter reason for rejection..."
+            className="w-full h-32 p-4 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-500 outline-none resize-none text-sm mb-6" />
+          
 
             <div className="flex gap-3">
               <button
-                onClick={() => setShowRejectDialog(false)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all"
-              >
+              onClick={() => setShowRejectDialog(false)}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition-all">
+              
                 Cancel
               </button>
               <button
-                onClick={confirmReject}
-                disabled={processing || !rejectionReason.trim()}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all disabled:opacity-50"
-              >
+              onClick={confirmReject}
+              disabled={processing || !rejectionReason.trim()}
+              className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all disabled:opacity-50">
+              
                 {processing ? "Rejecting..." : "Reject Request"}
               </button>
             </div>
           </div>
         </div>
-      )}
+      }
 
       {/* Details Modal */}
-      {showDetailsModal && selectedRequest && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+      {showDetailsModal && selectedRequest &&
+      <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -393,50 +393,50 @@ export default function DeliveryApproval() {
                 </div>
               </div>
 
-              {selectedRequest.selfDelivery?.approvalStatus === 'rejected' && (
-                <div className="bg-red-50 border border-red-100 rounded-xl p-4">
+              {selectedRequest.selfDelivery?.approvalStatus === 'rejected' &&
+            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
                   <h4 className="text-xs font-bold text-red-600 uppercase tracking-wider mb-2">Rejection Reason</h4>
                   <p className="text-sm text-red-700">{selectedRequest.selfDelivery?.rejectionReason || "No reason provided"}</p>
                 </div>
-              )}
+            }
             </div>
 
             <div className="p-6 border-t border-slate-100 flex gap-3">
-              {activeTab === "pending" ? (
-                <>
+              {activeTab === "pending" ?
+            <>
                   <button
-                    onClick={() => {
-                      handleApprove(selectedRequest)
-                      setShowDetailsModal(false)
-                    }}
-                    disabled={processing}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50"
-                  >
+                onClick={() => {
+                  handleApprove(selectedRequest);
+                  setShowDetailsModal(false);
+                }}
+                disabled={processing}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50">
+                
                     Approve Delivery
                   </button>
                   <button
-                    onClick={() => {
-                      setShowDetailsModal(false)
-                      handleReject(selectedRequest)
-                    }}
-                    disabled={processing}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50"
-                  >
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  handleReject(selectedRequest);
+                }}
+                disabled={processing}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50">
+                
                     Reject Delivery
                   </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setShowDetailsModal(false)}
-                  className="flex-1 bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-all"
-                >
+                </> :
+
+            <button
+              onClick={() => setShowDetailsModal(false)}
+              className="flex-1 bg-slate-900 text-white font-bold py-3 rounded-xl hover:bg-slate-800 transition-all">
+              
                   Close
                 </button>
-              )}
+            }
             </div>
           </div>
         </div>
-      )}
-    </div>
-  )
+      }
+    </div>);
+
 }

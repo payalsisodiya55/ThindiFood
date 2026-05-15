@@ -1,33 +1,33 @@
-import { useState, useMemo } from "react"
-import { Search, Download, ChevronDown, ArrowUpDown, Plus, Edit, Trash2, Megaphone, Settings } from "lucide-react"
-import { emptyFoodCampaigns } from "@food/utils/adminFallbackData"
+import { confirmApp } from "@shared/lib/appDialog";import { useState, useMemo } from "react";
+import { Search, Download, ChevronDown, ArrowUpDown, Plus, Edit, Trash2, Megaphone, Settings } from "lucide-react";
+import { emptyFoodCampaigns } from "@food/utils/adminFallbackData";
 
 export default function FoodCampaign() {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [campaigns, setCampaigns] = useState(emptyFoodCampaigns)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [campaigns, setCampaigns] = useState(emptyFoodCampaigns);
 
   const filteredCampaigns = useMemo(() => {
     if (!searchQuery.trim()) {
-      return campaigns
+      return campaigns;
     }
-    
-    const query = searchQuery.toLowerCase().trim()
-    return campaigns.filter(campaign =>
-      campaign.title.toLowerCase().includes(query)
-    )
-  }, [campaigns, searchQuery])
+
+    const query = searchQuery.toLowerCase().trim();
+    return campaigns.filter((campaign) =>
+    campaign.title.toLowerCase().includes(query)
+    );
+  }, [campaigns, searchQuery]);
 
   const handleToggleStatus = (sl) => {
-    setCampaigns(campaigns.map(campaign =>
-      campaign.sl === sl ? { ...campaign, status: !campaign.status } : campaign
-    ))
-  }
+    setCampaigns(campaigns.map((campaign) =>
+    campaign.sl === sl ? { ...campaign, status: !campaign.status } : campaign
+    ));
+  };
 
-  const handleDelete = (sl) => {
-    if (window.confirm("Are you sure you want to delete this campaign?")) {
-      setCampaigns(campaigns.filter(campaign => campaign.sl !== sl))
+  const handleDelete = async (sl) => {
+    if (await confirmApp("Are you sure you want to delete this campaign?")) {
+      setCampaigns(campaigns.filter((campaign) => campaign.sl !== sl));
     }
-  }
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -59,8 +59,8 @@ export default function FoodCampaign() {
               placeholder="Ex : title"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-            />
+              className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
+            
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           </div>
 
@@ -124,19 +124,19 @@ export default function FoodCampaign() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-100">
-              {filteredCampaigns.length === 0 ? (
-                <tr>
+              {filteredCampaigns.length === 0 ?
+              <tr>
                   <td colSpan={7} className="px-6 py-20 text-center">
                     <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                     <p className="text-sm text-slate-500">No campaigns match your search</p>
                   </td>
-                </tr>
-              ) : (
-                filteredCampaigns.map((campaign) => (
-                  <tr
-                    key={campaign.sl}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
+                </tr> :
+
+              filteredCampaigns.map((campaign) =>
+              <tr
+                key={campaign.sl}
+                className="hover:bg-slate-50 transition-colors">
+                
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="text-sm font-medium text-slate-700">{campaign.sl}</span>
                     </td>
@@ -156,42 +156,42 @@ export default function FoodCampaign() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => handleToggleStatus(campaign.sl)}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                          campaign.status ? "bg-blue-600" : "bg-slate-300"
-                        }`}
-                      >
+                    onClick={() => handleToggleStatus(campaign.sl)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                    campaign.status ? "bg-blue-600" : "bg-slate-300"}`
+                    }>
+                    
                         <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            campaign.status ? "translate-x-6" : "translate-x-1"
-                          }`}
-                        />
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      campaign.status ? "translate-x-6" : "translate-x-1"}`
+                      } />
+                    
                       </button>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
-                          className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
-                          title="Edit"
-                        >
+                      className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
+                      title="Edit">
+                      
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(campaign.sl)}
-                          className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
-                          title="Delete"
-                        >
+                      onClick={() => handleDelete(campaign.sl)}
+                      className="p-1.5 rounded text-red-600 hover:bg-red-50 transition-colors"
+                      title="Delete">
+                      
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
+              )
+              }
             </tbody>
           </table>
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

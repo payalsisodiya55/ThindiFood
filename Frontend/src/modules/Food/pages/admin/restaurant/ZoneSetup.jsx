@@ -1,81 +1,81 @@
-import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
-import { MapPin, Plus, Search, Edit, Trash2, Eye, Map } from "lucide-react"
-import { adminAPI } from "@food/api"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+import { confirmApp } from "@shared/lib/appDialog";import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { MapPin, Plus, Search, Edit, Trash2, Eye, Map } from "lucide-react";
+import { adminAPI } from "@food/api";
+const debugLog = (...args) => {};
+const debugWarn = (...args) => {};
+const debugError = (...args) => {};
 
 
 export default function ZoneSetup() {
-  const navigate = useNavigate()
-  const [zones, setZones] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [updatingCodZoneId, setUpdatingCodZoneId] = useState(null)
+  const navigate = useNavigate();
+  const [zones, setZones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [updatingCodZoneId, setUpdatingCodZoneId] = useState(null);
 
   useEffect(() => {
-    fetchZones()
-  }, [])
+    fetchZones();
+  }, []);
 
   const fetchZones = async () => {
     try {
-      setLoading(true)
-      const response = await adminAPI.getZones()
+      setLoading(true);
+      const response = await adminAPI.getZones();
       if (response.data?.success && response.data.data?.zones) {
-        setZones(response.data.data.zones)
+        setZones(response.data.data.zones);
       }
     } catch (error) {
-      debugError("Error fetching zones:", error)
-      setZones([])
+      debugError("Error fetching zones:", error);
+      setZones([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
 
   const handleDeleteZone = async (zoneId) => {
-    if (!window.confirm("Are you sure you want to delete this zone?")) {
-      return
+    if (!(await confirmApp("Are you sure you want to delete this zone?"))) {
+      return;
     }
     try {
-      await adminAPI.deleteZone(zoneId)
-      alert("Zone deleted successfully!")
-      fetchZones()
+      await adminAPI.deleteZone(zoneId);
+      alert("Zone deleted successfully!");
+      fetchZones();
     } catch (error) {
-      debugError("Error deleting zone:", error)
-      alert(error.response?.data?.message || "Failed to delete zone")
+      debugError("Error deleting zone:", error);
+      alert(error.response?.data?.message || "Failed to delete zone");
     }
-  }
+  };
 
   const handleToggleTakeawayCod = async (zone) => {
-    const zoneId = zone._id || zone.id
-    if (!zoneId) return
+    const zoneId = zone._id || zone.id;
+    if (!zoneId) return;
 
     try {
-      setUpdatingCodZoneId(zoneId)
+      setUpdatingCodZoneId(zoneId);
       await adminAPI.updateZone(zoneId, {
-        takeawayCodEnabled: !(zone.takeawayCodEnabled !== false),
-      })
+        takeawayCodEnabled: !(zone.takeawayCodEnabled !== false)
+      });
       setZones((prevZones) =>
-        prevZones.map((currentZone) =>
-          (currentZone._id || currentZone.id) === zoneId
-            ? { ...currentZone, takeawayCodEnabled: !(zone.takeawayCodEnabled !== false) }
-            : currentZone,
-        ),
+      prevZones.map((currentZone) =>
+      (currentZone._id || currentZone.id) === zoneId ?
+      { ...currentZone, takeawayCodEnabled: !(zone.takeawayCodEnabled !== false) } :
+      currentZone
       )
+      );
     } catch (error) {
-      debugError("Error updating takeaway COD:", error)
-      alert(error.response?.data?.message || "Failed to update takeaway COD")
+      debugError("Error updating takeaway COD:", error);
+      alert(error.response?.data?.message || "Failed to update takeaway COD");
     } finally {
-      setUpdatingCodZoneId(null)
+      setUpdatingCodZoneId(null);
     }
-  }
+  };
 
-  const filteredZones = zones.filter(zone =>
-    zone.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    zone.serviceLocation?.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredZones = zones.filter((zone) =>
+  zone.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  zone.serviceLocation?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -94,15 +94,15 @@ export default function ZoneSetup() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => navigate("/admin/food/zone-setup/map")}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+              
               <Map className="w-5 h-5" />
               <span>View Map</span>
             </button>
             <button
               onClick={() => navigate("/admin/food/zone-setup/add")}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              
               <Plus className="w-5 h-5" />
               <span>Add Zone</span>
             </button>
@@ -118,41 +118,41 @@ export default function ZoneSetup() {
               placeholder="Search zones by name or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            
           </div>
         </div>
 
         {/* Zones List */}
-        {loading ? (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
+        {loading ?
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-slate-600">Loading zones...</p>
-          </div>
-        ) : filteredZones.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
+          </div> :
+        filteredZones.length === 0 ?
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-12 text-center">
             <MapPin className="w-16 h-16 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-slate-900 mb-2">No zones found</h3>
             <p className="text-slate-600 mb-6">
               {searchQuery ? "Try adjusting your search query" : "Create your first delivery zone to get started"}
             </p>
-            {!searchQuery && (
-              <button
-                onClick={() => navigate("/admin/food/zone-setup/add")}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
+            {!searchQuery &&
+          <button
+            onClick={() => navigate("/admin/food/zone-setup/add")}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            
                 <Plus className="w-5 h-5" />
                 <span>Add Zone</span>
               </button>
-            )}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredZones.map((zone) => (
-              <div
-                key={zone._id || zone.id}
-                className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow"
-              >
+          }
+          </div> :
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredZones.map((zone) =>
+          <div
+            key={zone._id || zone.id}
+            className="bg-white rounded-lg shadow-sm border border-slate-200 p-6 hover:shadow-md transition-shadow">
+            
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-slate-900 mb-1">{zone.name || "Unnamed Zone"}</h3>
@@ -160,24 +160,24 @@ export default function ZoneSetup() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => navigate(`/admin/food/zone-setup/view/${zone._id || zone.id}`)}
-                      className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      title="View"
-                    >
+                  onClick={() => navigate(`/admin/food/zone-setup/view/${zone._id || zone.id}`)}
+                  className="p-2 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                  title="View">
+                  
                       <Eye className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => navigate(`/admin/food/zone-setup/edit/${zone._id || zone.id}`)}
-                      className="p-2 text-slate-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                      title="Edit"
-                    >
+                  onClick={() => navigate(`/admin/food/zone-setup/edit/${zone._id || zone.id}`)}
+                  className="p-2 text-slate-600 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                  title="Edit">
+                  
                       <Edit className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => handleDeleteZone(zone._id || zone.id)}
-                      className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete"
-                    >
+                  onClick={() => handleDeleteZone(zone._id || zone.id)}
+                  className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Delete">
+                  
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -190,17 +190,17 @@ export default function ZoneSetup() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Status:</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
-                    }`}>
+                zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"}`
+                }>
                       {zone.isActive ? "Active" : "Inactive"}
                     </span>
                   </div>
-                  {zone.coordinates && zone.coordinates.length > 0 && (
-                    <div className="flex items-center justify-between">
+                  {zone.coordinates && zone.coordinates.length > 0 &&
+              <div className="flex items-center justify-between">
                       <span className="text-slate-600">Points:</span>
                       <span className="font-medium text-slate-900">{zone.coordinates.length}</span>
                     </div>
-                  )}
+              }
                   <div className="pt-3 mt-3 border-t border-slate-100">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -210,40 +210,39 @@ export default function ZoneSetup() {
                         </p>
                       </div>
                       <button
-                        type="button"
-                        onClick={() => handleToggleTakeawayCod(zone)}
-                        disabled={updatingCodZoneId === (zone._id || zone.id)}
-                        className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border transition-colors ${
-                          zone.takeawayCodEnabled !== false
-                            ? "border-green-500 bg-green-500"
-                            : "border-slate-300 bg-slate-200"
-                        } ${
-                          updatingCodZoneId === (zone._id || zone.id)
-                            ? "cursor-wait opacity-70"
-                            : "cursor-pointer"
-                        }`}
-                        title="Toggle takeaway COD"
-                      >
+                    type="button"
+                    onClick={() => handleToggleTakeawayCod(zone)}
+                    disabled={updatingCodZoneId === (zone._id || zone.id)}
+                    className={`relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border transition-colors ${
+                    zone.takeawayCodEnabled !== false ?
+                    "border-green-500 bg-green-500" :
+                    "border-slate-300 bg-slate-200"} ${
+
+                    updatingCodZoneId === (zone._id || zone.id) ?
+                    "cursor-wait opacity-70" :
+                    "cursor-pointer"}`
+                    }
+                    title="Toggle takeaway COD">
+                    
                         <span
-                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                            zone.takeawayCodEnabled !== false ? "translate-x-8" : "translate-x-1"
-                          }`}
-                        />
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      zone.takeawayCodEnabled !== false ? "translate-x-8" : "translate-x-1"}`
+                      } />
+                    
                       </button>
                     </div>
                     <p className={`mt-2 text-xs font-semibold ${
-                      zone.takeawayCodEnabled !== false ? "text-green-600" : "text-slate-500"
-                    }`}>
+                zone.takeawayCodEnabled !== false ? "text-green-600" : "text-slate-500"}`
+                }>
                       {zone.takeawayCodEnabled !== false ? "COD enabled for takeaway" : "COD hidden for takeaway"}
                     </p>
                   </div>
                 </div>
               </div>
-            ))}
+          )}
           </div>
-        )}
+        }
       </div>
-    </div>
-  )
-}
+    </div>);
 
+}

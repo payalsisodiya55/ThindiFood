@@ -6,6 +6,7 @@ import { store } from './store'
 
 import { AuthProvider } from '@core/context/AuthContext'
 import { SettingsProvider } from '@core/context/SettingsContext'
+import AppDialogProvider from '@shared/components/ui/AppDialogProvider'
 import { ToastProvider } from '@shared/components/ui/Toast'
 
 function shouldUseHashRouter() {
@@ -34,10 +35,12 @@ export function AppProviders({ children }) {
           <ToastProvider>
             <ReduxProvider store={store}>
               <CartProvider>
-                <Router>
-                  {children}
-                  <Toaster position="top-center" richColors offset="80px" />
-                </Router>
+                <AppDialogProvider>
+                  <Router>
+                    {children}
+                    <Toaster position="top-center" richColors offset="80px" />
+                  </Router>
+                </AppDialogProvider>
               </CartProvider>
             </ReduxProvider>
           </ToastProvider>

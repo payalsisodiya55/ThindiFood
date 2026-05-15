@@ -1,26 +1,26 @@
-import { useState, useMemo, useEffect } from "react"
-import { Search, Download, ChevronDown, Eye, Settings, Building, ArrowUpDown, FileText, FileSpreadsheet, Code, Check, Columns, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
-import { exportTransactionsToExcel, exportTransactionsToPDF } from "@food/components/admin/transactions/transactionsExportUtils"
-import { adminAPI } from "@food/api"
-import { toast } from "sonner"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+import { confirmApp } from "@shared/lib/appDialog";import { useState, useMemo, useEffect } from "react";
+import { Search, Download, ChevronDown, Eye, Settings, Building, ArrowUpDown, FileText, FileSpreadsheet, Code, Check, Columns, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog";
+import { exportTransactionsToExcel, exportTransactionsToPDF } from "@food/components/admin/transactions/transactionsExportUtils";
+import { adminAPI } from "@food/api";
+import { toast } from "sonner";
+const debugLog = (...args) => {};
+const debugWarn = (...args) => {};
+const debugError = (...args) => {};
 
 
 export default function RestaurantWithdraws() {
-  const [activeTab, setActiveTab] = useState("All")
-  const [searchQuery, setSearchQuery] = useState("")
-  const [withdraws, setWithdraws] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isViewOpen, setIsViewOpen] = useState(false)
-  const [selectedWithdraw, setSelectedWithdraw] = useState(null)
-  const [processingAction, setProcessingAction] = useState(null)
-  const [rejectionReason, setRejectionReason] = useState("")
-  const [showRejectModal, setShowRejectModal] = useState(false)
+  const [activeTab, setActiveTab] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [withdraws, setWithdraws] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [selectedWithdraw, setSelectedWithdraw] = useState(null);
+  const [processingAction, setProcessingAction] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [showRejectModal, setShowRejectModal] = useState(false);
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
     amount: true,
@@ -29,127 +29,127 @@ export default function RestaurantWithdraws() {
     restaurantAddress: false,
     requestTime: true,
     status: true,
-    actions: true,
-  })
+    actions: true
+  });
 
   // Fetch withdrawal requests
   useEffect(() => {
-    fetchWithdrawals()
-  }, [activeTab])
+    fetchWithdrawals();
+  }, [activeTab]);
 
   const fetchWithdrawals = async () => {
     try {
-      setLoading(true)
-      const status = activeTab === "All" ? undefined : activeTab
-      const response = await adminAPI.getWithdrawalRequests({ status, search: searchQuery || undefined })
+      setLoading(true);
+      const status = activeTab === "All" ? undefined : activeTab;
+      const response = await adminAPI.getWithdrawalRequests({ status, search: searchQuery || undefined });
       if (response.data?.success) {
-        setWithdraws(response.data.data?.requests || [])
+        setWithdraws(response.data.data?.requests || []);
       } else {
-        debugError('Failed to fetch withdrawals:', response.data?.message)
-        toast.error('Failed to fetch withdrawal requests')
+        debugError('Failed to fetch withdrawals:', response.data?.message);
+        toast.error('Failed to fetch withdrawal requests');
       }
     } catch (error) {
-      debugError('Error fetching withdrawals:', error)
-      toast.error('Failed to fetch withdrawal requests')
+      debugError('Error fetching withdrawals:', error);
+      toast.error('Failed to fetch withdrawal requests');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   // Refetch when search changes (with debounce)
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery !== undefined) {
-        fetchWithdrawals()
+        fetchWithdrawals();
       }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [searchQuery])
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const filteredWithdraws = useMemo(() => {
-    let result = [...withdraws]
+    let result = [...withdraws];
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      result = result.filter(w =>
-        w.restaurantName?.toLowerCase().includes(query) ||
-        w.restaurantIdString?.toLowerCase().includes(query) ||
-        w.amount?.toString().includes(query)
-      )
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter((w) =>
+      w.restaurantName?.toLowerCase().includes(query) ||
+      w.restaurantIdString?.toLowerCase().includes(query) ||
+      w.amount?.toString().includes(query)
+      );
     }
 
-    return result
-  }, [withdraws, searchQuery])
+    return result;
+  }, [withdraws, searchQuery]);
 
   const getStatusBadge = (status) => {
     if (status === "Approved") {
-      return "bg-green-100 text-green-700"
+      return "bg-green-100 text-green-700";
     }
     if (status === "Pending") {
-      return "bg-blue-100 text-blue-700"
+      return "bg-blue-100 text-blue-700";
     }
     if (status === "Rejected") {
-      return "bg-red-100 text-red-700"
+      return "bg-red-100 text-red-700";
     }
-    return "bg-slate-100 text-slate-700"
-  }
+    return "bg-slate-100 text-slate-700";
+  };
 
   const handleViewWithdraw = (withdraw) => {
-    setSelectedWithdraw(withdraw)
-    setIsViewOpen(true)
-  }
+    setSelectedWithdraw(withdraw);
+    setIsViewOpen(true);
+  };
 
   const handleApprove = async (id) => {
-    if (!confirm('Are you sure you want to approve this withdrawal request?')) {
-      return
+    if (!(await confirmApp('Are you sure you want to approve this withdrawal request?'))) {
+      return;
     }
 
     try {
-      setProcessingAction(id)
-      const response = await adminAPI.approveWithdrawalRequest(id)
+      setProcessingAction(id);
+      const response = await adminAPI.approveWithdrawalRequest(id);
       if (response.data?.success) {
-        toast.success('Withdrawal request approved successfully')
-        fetchWithdrawals()
+        toast.success('Withdrawal request approved successfully');
+        fetchWithdrawals();
       } else {
-        toast.error(response.data?.message || 'Failed to approve withdrawal request')
+        toast.error(response.data?.message || 'Failed to approve withdrawal request');
       }
     } catch (error) {
-      debugError('Error approving withdrawal:', error)
-      toast.error(error.response?.data?.message || 'Failed to approve withdrawal request')
+      debugError('Error approving withdrawal:', error);
+      toast.error(error.response?.data?.message || 'Failed to approve withdrawal request');
     } finally {
-      setProcessingAction(null)
+      setProcessingAction(null);
     }
-  }
+  };
 
   const handleReject = async (id) => {
     if (!rejectionReason.trim()) {
-      alert('Please provide a rejection reason')
-      return
+      alert('Please provide a rejection reason');
+      return;
     }
 
     try {
-      setProcessingAction(id)
-      const response = await adminAPI.rejectWithdrawalRequest(id, rejectionReason)
+      setProcessingAction(id);
+      const response = await adminAPI.rejectWithdrawalRequest(id, rejectionReason);
       if (response.data?.success) {
-        toast.success('Withdrawal request rejected successfully')
-        setShowRejectModal(false)
-        setRejectionReason("")
-        fetchWithdrawals()
+        toast.success('Withdrawal request rejected successfully');
+        setShowRejectModal(false);
+        setRejectionReason("");
+        fetchWithdrawals();
       } else {
-        toast.error(response.data?.message || 'Failed to reject withdrawal request')
+        toast.error(response.data?.message || 'Failed to reject withdrawal request');
       }
     } catch (error) {
-      debugError('Error rejecting withdrawal:', error)
-      toast.error(error.response?.data?.message || 'Failed to reject withdrawal request')
+      debugError('Error rejecting withdrawal:', error);
+      toast.error(error.response?.data?.message || 'Failed to reject withdrawal request');
     } finally {
-      setProcessingAction(null)
+      setProcessingAction(null);
     }
-  }
+  };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A'
+    if (!dateString) return 'N/A';
     try {
-      const date = new Date(dateString)
+      const date = new Date(dateString);
       return date.toLocaleString('en-IN', {
         day: '2-digit',
         month: 'short',
@@ -157,43 +157,43 @@ export default function RestaurantWithdraws() {
         hour: '2-digit',
         minute: '2-digit',
         hour12: true
-      })
+      });
     } catch (e) {
-      return dateString
+      return dateString;
     }
-  }
+  };
 
   const formatCurrency = (amount) => {
-    if (!amount) return '\u20B90.00'
+    if (!amount) return '\u20B90.00';
     return `\u20B9${parseFloat(amount).toLocaleString('en-IN', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
-    })}`
-  }
+    })}`;
+  };
 
   const getSafeQrUrl = (value) => {
-    if (!value) return ''
-    if (typeof value === 'string') return value
-    if (typeof value === 'object' && typeof value.url === 'string') return value.url
-    return ''
-  }
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && typeof value.url === 'string') return value.url;
+    return '';
+  };
 
   const handleExport = async (format) => {
     if (filteredWithdraws.length === 0) {
-      toast.error("No data to export.")
-      return
+      toast.error("No data to export.");
+      return;
     }
     const headers = [
-      { key: "sl", label: "SI" },
-      { key: "amount", label: "Amount" },
-      { key: "restaurantName", label: "Restaurant Name" },
-      { key: "restaurantIdString", label: "Restaurant ID" },
-      { key: "requestTime", label: "Request Time" },
-      { key: "processedTime", label: "Approved/Rejected Time" },
-      { key: "processedBy", label: "Processed By" },
-      { key: "status", label: "Status" },
-      { key: "rejectionReason", label: "Rejection Reason" },
-    ]
+    { key: "sl", label: "SI" },
+    { key: "amount", label: "Amount" },
+    { key: "restaurantName", label: "Restaurant Name" },
+    { key: "restaurantIdString", label: "Restaurant ID" },
+    { key: "requestTime", label: "Request Time" },
+    { key: "processedTime", label: "Approved/Rejected Time" },
+    { key: "processedBy", label: "Processed By" },
+    { key: "status", label: "Status" },
+    { key: "rejectionReason", label: "Rejection Reason" }];
+
     const exportData = filteredWithdraws.map((w, index) => ({
       sl: index + 1,
       amount: formatCurrency(w.amount),
@@ -204,21 +204,21 @@ export default function RestaurantWithdraws() {
       processedBy: w.processedBy?.name ? `${w.processedBy.name}${w.processedBy.email ? ` (${w.processedBy.email})` : ''}` : '',
       status: w.status,
       rejectionReason: w.rejectionReason || ''
-    }))
+    }));
     switch (format) {
       case "excel":
-        exportTransactionsToExcel(exportData, headers, "restaurant_withdraws_full_details")
-        break
+        exportTransactionsToExcel(exportData, headers, "restaurant_withdraws_full_details");
+        break;
       case "pdf":
-        await exportTransactionsToPDF(exportData, headers, "restaurant_withdraws_full_details", "Restaurant Withdraws Report")
-        break
-      default: break
+        await exportTransactionsToPDF(exportData, headers, "restaurant_withdraws_full_details", "Restaurant Withdraws Report");
+        break;
+      default:break;
     }
-  }
+  };
 
   const toggleColumn = (key) => {
-    setVisibleColumns(prev => ({ ...prev, [key]: !prev[key] }))
-  }
+    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const resetColumns = () => {
     setVisibleColumns({
@@ -229,9 +229,9 @@ export default function RestaurantWithdraws() {
       restaurantAddress: false,
       requestTime: true,
       status: true,
-      actions: true,
-    })
-  }
+      actions: true
+    });
+  };
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -247,18 +247,18 @@ export default function RestaurantWithdraws() {
         {/* Tabs */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
           <div className="flex gap-2 border-b border-slate-200">
-            {["All", "Pending", "Approved", "Rejected"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tab
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-slate-600 hover:text-slate-900"
-                  }`}
-              >
+            {["All", "Pending", "Approved", "Rejected"].map((tab) =>
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === tab ?
+              "border-blue-600 text-blue-600" :
+              "border-transparent text-slate-600 hover:text-slate-900"}`
+              }>
+              
                 {tab}
               </button>
-            ))}
+            )}
           </div>
         </div>
 
@@ -279,8 +279,8 @@ export default function RestaurantWithdraws() {
                   placeholder="Ex: search by Restaurant name"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-                />
+                  className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
+                
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
               <DropdownMenu>
@@ -305,21 +305,21 @@ export default function RestaurantWithdraws() {
               <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all flex items-center justify-center"
-                title="Table Settings"
-              >
+                title="Table Settings">
+                
                 <Settings className="w-4 h-4" />
               </button>
             </div>
           </div>
 
           {/* Table */}
-          {loading ? (
-            <div className="py-20 text-center">
+          {loading ?
+          <div className="py-20 text-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
               <p className="text-slate-600">Loading withdrawal requests...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> :
+
+          <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
@@ -338,8 +338,8 @@ export default function RestaurantWithdraws() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredWithdraws.length === 0 ? (
-                    <tr>
+                  {filteredWithdraws.length === 0 ?
+                <tr>
                       <td colSpan={Object.values(visibleColumns).filter(Boolean).length} className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <Building className="w-16 h-16 text-slate-400 mb-4" />
@@ -347,10 +347,10 @@ export default function RestaurantWithdraws() {
                           <p className="text-sm text-slate-500">No withdraw requests match your filters.</p>
                         </div>
                       </td>
-                    </tr>
-                  ) : (
-                    filteredWithdraws.map((withdraw, index) => (
-                      <tr key={withdraw.id} className="hover:bg-slate-50 transition-colors">
+                    </tr> :
+
+                filteredWithdraws.map((withdraw, index) =>
+                <tr key={withdraw.id} className="hover:bg-slate-50 transition-colors">
                         {visibleColumns.si && <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm font-medium text-slate-700">{index + 1}</span>
                         </td>}
@@ -376,48 +376,48 @@ export default function RestaurantWithdraws() {
                         {visibleColumns.actions && <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center justify-center gap-2">
                             <button
-                              onClick={() => handleViewWithdraw(withdraw)}
-                              className="p-2 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
-                              title="View Details"
-                            >
+                        onClick={() => handleViewWithdraw(withdraw)}
+                        className="p-2 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
+                        title="View Details">
+                        
                               <Eye className="w-4 h-4 text-orange-600" />
                             </button>
-                            {withdraw.status === 'Pending' && (
-                              <>
+                            {withdraw.status === 'Pending' &&
+                      <>
                                 <button
-                                  onClick={() => handleApprove(withdraw.id)}
-                                  disabled={processingAction === withdraw.id}
-                                  className="p-2 rounded-lg bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title="Approve"
-                                >
-                                  {processingAction === withdraw.id ? (
-                                    <Loader2 className="w-4 h-4 text-green-600 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="w-4 h-4 text-green-600" />
-                                  )}
+                          onClick={() => handleApprove(withdraw.id)}
+                          disabled={processingAction === withdraw.id}
+                          className="p-2 rounded-lg bg-green-50 hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Approve">
+                          
+                                  {processingAction === withdraw.id ?
+                          <Loader2 className="w-4 h-4 text-green-600 animate-spin" /> :
+
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          }
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    setSelectedWithdraw(withdraw)
-                                    setShowRejectModal(true)
-                                  }}
-                                  disabled={processingAction === withdraw.id}
-                                  className="p-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  title="Reject"
-                                >
+                          onClick={() => {
+                            setSelectedWithdraw(withdraw);
+                            setShowRejectModal(true);
+                          }}
+                          disabled={processingAction === withdraw.id}
+                          className="p-2 rounded-lg bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="Reject">
+                          
                                   <XCircle className="w-4 h-4 text-red-600" />
                                 </button>
                               </>
-                            )}
+                      }
                           </div>
                         </td>}
                       </tr>
-                    ))
-                  )}
+                )
+                }
                 </tbody>
               </table>
             </div>
-          )}
+          }
         </div>
 
         {/* View Withdraw Dialog */}
@@ -426,8 +426,8 @@ export default function RestaurantWithdraws() {
             <DialogHeader className="px-6 pt-6 pb-4">
               <DialogTitle>Withdraw Request Details</DialogTitle>
             </DialogHeader>
-            {selectedWithdraw && (
-              <div className="px-6 pb-6 space-y-4">
+            {selectedWithdraw &&
+            <div className="px-6 pb-6 space-y-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Amount</label>
                   <p className="text-sm font-medium text-slate-900 mt-1">
@@ -446,18 +446,18 @@ export default function RestaurantWithdraws() {
                   <label className="text-xs font-semibold text-slate-500 uppercase">Request Time</label>
                   <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.requestedAt || selectedWithdraw.createdAt)}</p>
                 </div>
-                {(selectedWithdraw.status === 'Approved' || selectedWithdraw.status === 'Processed') && selectedWithdraw.processedAt && (
-                  <div>
+                {(selectedWithdraw.status === 'Approved' || selectedWithdraw.status === 'Processed') && selectedWithdraw.processedAt &&
+              <div>
                     <label className="text-xs font-semibold text-slate-500 uppercase">Approved Time</label>
                     <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.processedAt)}</p>
                   </div>
-                )}
-                {selectedWithdraw.status === 'Rejected' && selectedWithdraw.processedAt && (
-                  <div>
+              }
+                {selectedWithdraw.status === 'Rejected' && selectedWithdraw.processedAt &&
+              <div>
                     <label className="text-xs font-semibold text-slate-500 uppercase">Rejected Time</label>
                     <p className="text-sm font-medium text-slate-900 mt-1">{formatDate(selectedWithdraw.processedAt)}</p>
                   </div>
-                )}
+              }
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Status</label>
                   <p className="mt-1">
@@ -489,31 +489,31 @@ export default function RestaurantWithdraws() {
                       <span className="font-semibold">UPI ID:</span>{' '}
                       {selectedWithdraw.restaurantBankDetails?.upiId || selectedWithdraw.restaurantId?.upiId || 'N/A'}
                     </p>
-                    {getSafeQrUrl(selectedWithdraw.restaurantBankDetails?.upiQrImage || selectedWithdraw.restaurantId?.upiQrImage) ? (
-                      <div>
+                    {getSafeQrUrl(selectedWithdraw.restaurantBankDetails?.upiQrImage || selectedWithdraw.restaurantId?.upiQrImage) ?
+                  <div>
                         <p className="text-sm text-slate-800 font-semibold mb-2">UPI QR</p>
                         <img
-                          src={getSafeQrUrl(selectedWithdraw.restaurantBankDetails?.upiQrImage || selectedWithdraw.restaurantId?.upiQrImage)}
-                          alt="Restaurant UPI QR"
-                          className="w-32 h-32 object-contain border border-slate-200 rounded-md bg-white"
-                        />
-                      </div>
-                    ) : null}
+                      src={getSafeQrUrl(selectedWithdraw.restaurantBankDetails?.upiQrImage || selectedWithdraw.restaurantId?.upiQrImage)}
+                      alt="Restaurant UPI QR"
+                      className="w-32 h-32 object-contain border border-slate-200 rounded-md bg-white" />
+                    
+                      </div> :
+                  null}
                   </div>
                 </div>
-                {selectedWithdraw.rejectionReason && (
-                  <div>
+                {selectedWithdraw.rejectionReason &&
+              <div>
                     <label className="text-xs font-semibold text-slate-500 uppercase">Rejection Reason</label>
                     <p className="text-sm font-medium text-slate-900 mt-1">{selectedWithdraw.rejectionReason}</p>
                   </div>
-                )}
+              }
               </div>
-            )}
+            }
             <DialogFooter className="px-6 pb-6">
               <button
                 onClick={() => setIsViewOpen(false)}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md">
+                
                 Close
               </button>
             </DialogFooter>
@@ -536,25 +536,25 @@ export default function RestaurantWithdraws() {
                   onChange={(e) => setRejectionReason(e.target.value)}
                   placeholder="Enter reason for rejection..."
                   rows={4}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                />
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" />
+                
               </div>
             </div>
             <DialogFooter className="px-6 pb-6 flex gap-2">
               <button
                 onClick={() => {
-                  setShowRejectModal(false)
-                  setRejectionReason("")
+                  setShowRejectModal(false);
+                  setRejectionReason("");
                 }}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Cancel
               </button>
               <button
                 onClick={() => selectedWithdraw && handleReject(selectedWithdraw.id)}
                 disabled={!rejectionReason.trim() || processingAction === selectedWithdraw?.id}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                
                 {processingAction === selectedWithdraw?.id ? 'Rejecting...' : 'Reject'}
               </button>
             </DialogFooter>
@@ -574,41 +574,40 @@ export default function RestaurantWithdraws() {
               <div>
                 <h3 className="text-sm font-semibold text-slate-700 mb-2">Toggle Columns</h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {Object.entries(visibleColumns).map(([key, isVisible]) => (
-                    <div key={key} className="flex items-center">
+                  {Object.entries(visibleColumns).map(([key, isVisible]) =>
+                  <div key={key} className="flex items-center">
                       <input
-                        type="checkbox"
-                        id={`toggle-${key}`}
-                        checked={isVisible}
-                        onChange={() => toggleColumn(key)}
-                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
-                      />
+                      type="checkbox"
+                      id={`toggle-${key}`}
+                      checked={isVisible}
+                      onChange={() => toggleColumn(key)}
+                      className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500" />
+                    
                       <label htmlFor={`toggle-${key}`} className="ml-2 text-sm text-slate-700 capitalize">
                         {key.replace(/([A-Z])/g, ' $1').trim()}
                       </label>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
             <DialogFooter className="px-6 pb-6 flex justify-between">
               <button
                 onClick={resetColumns}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all">
+                
                 Reset Columns
               </button>
               <button
                 onClick={() => setIsSettingsOpen(false)}
-                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-              >
+                className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md">
+                
                 Apply
               </button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
-    </div>
-  )
-}
+    </div>);
 
+}

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
-import { Shield, Plus, Pencil, Trash2, Loader2 } from "lucide-react"
-import { adminAPI } from "@food/api"
-import { useAuth } from "@/core/context/AuthContext"
-import { ADMIN_SIDEBAR_ACCESS_OPTIONS, ADMIN_ACCESS_LABEL_MAP } from "@food/utils/adminAccessConfig"
+import { confirmApp } from "@shared/lib/appDialog";import { useEffect, useMemo, useState } from "react";
+import { Shield, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { adminAPI } from "@food/api";
+import { useAuth } from "@/core/context/AuthContext";
+import { ADMIN_SIDEBAR_ACCESS_OPTIONS, ADMIN_ACCESS_LABEL_MAP } from "@food/utils/adminAccessConfig";
 
 const initialForm = {
   name: "",
@@ -14,100 +14,100 @@ const initialForm = {
   zoneAccess: "all",
   zoneIds: [],
   sidebarPermissions: [],
-  isActive: true,
-}
+  isActive: true
+};
 
-const normalizeZoneId = (zone) => String(zone?._id || zone?.id || zone || "")
+const normalizeZoneId = (zone) => String(zone?._id || zone?.id || zone || "");
 
 const getFormValidationError = (form, editingId = "") => {
-  const adminType = String(form?.adminType || "").toUpperCase()
-  const zoneAccess = String(form?.zoneAccess || "").toLowerCase()
-  const password = String(form?.password || "")
-  const email = String(form?.email || "").trim()
+  const adminType = String(form?.adminType || "").toUpperCase();
+  const zoneAccess = String(form?.zoneAccess || "").toLowerCase();
+  const password = String(form?.password || "");
+  const email = String(form?.email || "").trim();
 
-  if (!email) return "Email is required."
-  if (!editingId && !password) return "Password is required."
-  if (password && password.length < 6) return "Password must be at least 6 characters."
+  if (!email) return "Email is required.";
+  if (!editingId && !password) return "Password is required.";
+  if (password && password.length < 6) return "Password must be at least 6 characters.";
 
   if (adminType === "SUBADMIN") {
     if (!Array.isArray(form?.sidebarPermissions) || form.sidebarPermissions.length === 0) {
-      return "Select at least one sidebar access for sub admin."
+      return "Select at least one sidebar access for sub admin.";
     }
     if (zoneAccess === "custom" && (!Array.isArray(form?.zoneIds) || form.zoneIds.length === 0)) {
-      return "Select at least one zone for custom zone access."
+      return "Select at least one zone for custom zone access.";
     }
   }
 
-  return ""
-}
+  return "";
+};
 
 export default function ManageAdmins() {
-  const { user } = useAuth()
-  const [admins, setAdmins] = useState([])
-  const [zones, setZones] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
-  const [editingId, setEditingId] = useState("")
-  const [error, setError] = useState("")
-  const [form, setForm] = useState(initialForm)
+  const { user } = useAuth();
+  const [admins, setAdmins] = useState([]);
+  const [zones, setZones] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState("");
+  const [error, setError] = useState("");
+  const [form, setForm] = useState(initialForm);
 
-  const isSuperAdmin = String(user?.adminType || "").toUpperCase() !== "SUBADMIN"
+  const isSuperAdmin = String(user?.adminType || "").toUpperCase() !== "SUBADMIN";
 
   const loadData = async () => {
-    setLoading(true)
-    setError("")
+    setLoading(true);
+    setError("");
     try {
       const [adminsRes, zonesRes] = await Promise.all([
-        adminAPI.getAdmins(),
-        adminAPI.getZones({ limit: 1000, isActive: true }),
-      ])
-      setAdmins(adminsRes?.data?.data?.admins || [])
-      setZones(zonesRes?.data?.data?.zones || [])
+      adminAPI.getAdmins(),
+      adminAPI.getZones({ limit: 1000, isActive: true })]
+      );
+      setAdmins(adminsRes?.data?.data?.admins || []);
+      setZones(zonesRes?.data?.data?.zones || []);
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to load admins")
+      setError(err?.response?.data?.message || "Failed to load admins");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
     if (isSuperAdmin) {
-      loadData()
+      loadData();
     } else {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [isSuperAdmin])
+  }, [isSuperAdmin]);
 
   const resetForm = () => {
-    setForm(initialForm)
-    setEditingId("")
-  }
+    setForm(initialForm);
+    setEditingId("");
+  };
 
   const visiblePermissions = useMemo(() => {
-    if (form.adminType === "SUPERADMIN") return []
-    return ADMIN_SIDEBAR_ACCESS_OPTIONS
-  }, [form.adminType])
+    if (form.adminType === "SUPERADMIN") return [];
+    return ADMIN_SIDEBAR_ACCESS_OPTIONS;
+  }, [form.adminType]);
 
   const togglePermission = (key) => {
     setForm((prev) => ({
       ...prev,
-      sidebarPermissions: prev.sidebarPermissions.includes(key)
-        ? prev.sidebarPermissions.filter((item) => item !== key)
-        : [...prev.sidebarPermissions, key],
-    }))
-  }
+      sidebarPermissions: prev.sidebarPermissions.includes(key) ?
+      prev.sidebarPermissions.filter((item) => item !== key) :
+      [...prev.sidebarPermissions, key]
+    }));
+  };
 
   const toggleZone = (zoneId) => {
     setForm((prev) => ({
       ...prev,
-      zoneIds: prev.zoneIds.includes(zoneId)
-        ? prev.zoneIds.filter((item) => item !== zoneId)
-        : [...prev.zoneIds, zoneId],
-    }))
-  }
+      zoneIds: prev.zoneIds.includes(zoneId) ?
+      prev.zoneIds.filter((item) => item !== zoneId) :
+      [...prev.zoneIds, zoneId]
+    }));
+  };
 
   const startEdit = (admin) => {
-    setEditingId(String(admin?._id || admin?.id || ""))
+    setEditingId(String(admin?._id || admin?.id || ""));
     setForm({
       name: admin?.name || "",
       email: admin?.email || "",
@@ -118,53 +118,53 @@ export default function ManageAdmins() {
       zoneAccess: admin?.zoneAccess || "all",
       zoneIds: Array.isArray(admin?.zoneIds) ? admin.zoneIds.map(normalizeZoneId).filter(Boolean) : [],
       sidebarPermissions: Array.isArray(admin?.sidebarPermissions) ? admin.sidebarPermissions : [],
-      isActive: admin?.isActive !== false,
-    })
-  }
+      isActive: admin?.isActive !== false
+    });
+  };
 
   const handleSubmit = async (event) => {
-    event.preventDefault()
-    setError("")
-    const validationError = getFormValidationError(form, editingId)
+    event.preventDefault();
+    setError("");
+    const validationError = getFormValidationError(form, editingId);
     if (validationError) {
-      setError(validationError)
-      return
+      setError(validationError);
+      return;
     }
 
-    setSaving(true)
+    setSaving(true);
     try {
       const payload = {
         ...form,
         roleTitle: form.roleTitle.trim() || (form.adminType === "SUPERADMIN" ? "Super Admin" : "Sub Admin"),
         sidebarPermissions: form.adminType === "SUPERADMIN" ? [] : form.sidebarPermissions,
         zoneAccess: form.adminType === "SUPERADMIN" ? "all" : form.zoneAccess,
-        zoneIds: form.adminType === "SUPERADMIN" || form.zoneAccess === "all" ? [] : form.zoneIds,
-      }
+        zoneIds: form.adminType === "SUPERADMIN" || form.zoneAccess === "all" ? [] : form.zoneIds
+      };
       if (editingId) {
-        if (!payload.password) delete payload.password
-        await adminAPI.updateManagedAdmin(editingId, payload)
+        if (!payload.password) delete payload.password;
+        await adminAPI.updateManagedAdmin(editingId, payload);
       } else {
-        await adminAPI.createAdmin(payload)
+        await adminAPI.createAdmin(payload);
       }
-      resetForm()
-      await loadData()
+      resetForm();
+      await loadData();
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to save admin")
+      setError(err?.response?.data?.message || "Failed to save admin");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this admin account?")) return
+    if (!(await confirmApp("Delete this admin account?"))) return;
     try {
-      await adminAPI.deleteManagedAdmin(id)
-      if (editingId === id) resetForm()
-      await loadData()
+      await adminAPI.deleteManagedAdmin(id);
+      if (editingId === id) resetForm();
+      await loadData();
     } catch (err) {
-      setError(err?.response?.data?.message || "Failed to delete admin")
+      setError(err?.response?.data?.message || "Failed to delete admin");
     }
-  }
+  };
 
   if (!isSuperAdmin) {
     return (
@@ -172,8 +172,8 @@ export default function ManageAdmins() {
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
           This section is available only for super admins.
         </div>
-      </div>
-    )
+      </div>);
+
   }
 
   return (
@@ -191,9 +191,9 @@ export default function ManageAdmins() {
           </div>
         </div>
 
-        {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div>
-        ) : null}
+        {error ?
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{error}</div> :
+        null}
 
         <form onSubmit={handleSubmit} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between gap-3">
@@ -201,11 +201,11 @@ export default function ManageAdmins() {
               <h2 className="text-lg font-bold text-slate-900">{editingId ? "Edit Admin" : "Create Admin"}</h2>
               <p className="text-sm text-slate-500">Super admins always get full access. Sub admins can be restricted by sidebar and zone.</p>
             </div>
-            {editingId ? (
-              <button type="button" onClick={resetForm} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">
+            {editingId ?
+            <button type="button" onClick={resetForm} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700">
                 Cancel Edit
-              </button>
-            ) : null}
+              </button> :
+            null}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -228,41 +228,41 @@ export default function ManageAdmins() {
             </label>
           </div>
 
-          {form.adminType === "SUBADMIN" && form.zoneAccess === "custom" ? (
-            <div className="mt-6">
+          {form.adminType === "SUBADMIN" && form.zoneAccess === "custom" ?
+          <div className="mt-6">
               <p className="mb-3 text-sm font-semibold text-slate-900">Zone access</p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {zones.map((zone) => {
-                  const zoneId = normalizeZoneId(zone)
-                  const label = zone?.serviceLocation || zone?.zoneName || zone?.name || zoneId
-                  return (
-                    <label key={zoneId} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+                const zoneId = normalizeZoneId(zone);
+                const label = zone?.serviceLocation || zone?.zoneName || zone?.name || zoneId;
+                return (
+                  <label key={zoneId} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
                       <input type="checkbox" checked={form.zoneIds.includes(zoneId)} onChange={() => toggleZone(zoneId)} />
                       <span>{label}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
+                    </label>);
 
-          {form.adminType === "SUBADMIN" ? (
-            <div className="mt-6">
+              })}
+              </div>
+            </div> :
+          null}
+
+          {form.adminType === "SUBADMIN" ?
+          <div className="mt-6">
               <p className="mb-3 text-sm font-semibold text-slate-900">Sidebar access</p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {visiblePermissions.map((permission) => (
-                  <label key={permission.key} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
+                {visiblePermissions.map((permission) =>
+              <label key={permission.key} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 text-sm text-slate-700">
                     <input type="checkbox" checked={form.sidebarPermissions.includes(permission.key)} onChange={() => togglePermission(permission.key)} />
                     <span>{permission.label}</span>
                   </label>
-                ))}
+              )}
               </div>
-            </div>
-          ) : (
-            <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            </div> :
+
+          <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
               Super admins get full sidebar and all-zone access automatically.
             </div>
-          )}
+          }
 
           <div className="mt-6 flex items-center gap-3">
             <button type="submit" disabled={saving} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white disabled:opacity-70">
@@ -281,13 +281,13 @@ export default function ManageAdmins() {
             <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">{admins.length}</span>
           </div>
 
-          {loading ? (
-            <div className="flex items-center gap-3 py-10 text-slate-500">
+          {loading ?
+          <div className="flex items-center gap-3 py-10 text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading admins...
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            </div> :
+
+          <div className="overflow-x-auto">
               <table className="w-full min-w-[900px]">
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
@@ -301,15 +301,15 @@ export default function ManageAdmins() {
                 </thead>
                 <tbody>
                   {admins.map((admin) => {
-                    const adminId = String(admin?._id || admin?.id || "")
-                    const zoneText = admin?.adminType === "SUPERADMIN" || admin?.zoneAccess === "all"
-                      ? "All zones"
-                      : (admin?.zoneIds || []).map((zone) => zone?.serviceLocation || zone?.zoneName || zone?.name || normalizeZoneId(zone)).join(", ")
-                    const accessText = admin?.adminType === "SUPERADMIN"
-                      ? "Full access"
-                      : (admin?.sidebarPermissions || []).map((key) => ADMIN_ACCESS_LABEL_MAP[key] || key).join(", ")
-                    return (
-                      <tr key={adminId} className="border-b border-slate-100 align-top text-sm text-slate-700">
+                  const adminId = String(admin?._id || admin?.id || "");
+                  const zoneText = admin?.adminType === "SUPERADMIN" || admin?.zoneAccess === "all" ?
+                  "All zones" :
+                  (admin?.zoneIds || []).map((zone) => zone?.serviceLocation || zone?.zoneName || zone?.name || normalizeZoneId(zone)).join(", ");
+                  const accessText = admin?.adminType === "SUPERADMIN" ?
+                  "Full access" :
+                  (admin?.sidebarPermissions || []).map((key) => ADMIN_ACCESS_LABEL_MAP[key] || key).join(", ");
+                  return (
+                    <tr key={adminId} className="border-b border-slate-100 align-top text-sm text-slate-700">
                         <td className="py-4">
                           <div className="font-semibold text-slate-900">{admin?.name || "Unnamed Admin"}</div>
                           <div className="text-xs text-slate-500">{admin?.email}</div>
@@ -337,15 +337,15 @@ export default function ManageAdmins() {
                             </button>
                           </div>
                         </td>
-                      </tr>
-                    )
-                  })}
+                      </tr>);
+
+                })}
                 </tbody>
               </table>
             </div>
-          )}
+          }
         </div>
       </div>
-    </div>
-  )
+    </div>);
+
 }

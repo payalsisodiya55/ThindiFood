@@ -1,119 +1,119 @@
-import { useState, useEffect, useRef, useMemo } from "react"
-import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, UtensilsCrossed, ChefHat, Megaphone, Search } from "lucide-react"
-import api from "@food/api"
-import { adminAPI } from "@food/api"
-import { getModuleToken } from "@food/utils/auth"
-import { Input } from "@food/components/ui/input"
-import { Label } from "@food/components/ui/label"
-import { Button } from "@food/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@food/components/ui/dialog"
-import { Checkbox } from "@food/components/ui/checkbox"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
-const debugError = (...args) => {}
+import { confirmApp } from "@shared/lib/appDialog";import { useState, useEffect, useRef, useMemo } from "react";
+import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, UtensilsCrossed, ChefHat, Megaphone, Search } from "lucide-react";
+import api from "@food/api";
+import { adminAPI } from "@food/api";
+import { getModuleToken } from "@food/utils/auth";
+import { Input } from "@food/components/ui/input";
+import { Label } from "@food/components/ui/label";
+import { Button } from "@food/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@food/components/ui/dialog";
+import { Checkbox } from "@food/components/ui/checkbox";
+const debugLog = (...args) => {};
+const debugWarn = (...args) => {};
+const debugError = (...args) => {};
 
 
 export default function LandingPageManagement() {
-  const [activeTab, setActiveTab] = useState('banners')
-  const [exploreMoreSubTab, setExploreMoreSubTab] = useState('icons')
+  const [activeTab, setActiveTab] = useState('banners');
+  const [exploreMoreSubTab, setExploreMoreSubTab] = useState('icons');
 
   // Hero Banners
-  const [banners, setBanners] = useState([])
-  const [bannersLoading, setBannersLoading] = useState(true)
-  const [bannersUploading, setBannersUploading] = useState(false)
-  const [bannersUploadProgress, setBannersUploadProgress] = useState({ current: 0, total: 0 })
-  const [bannersDeleting, setBannersDeleting] = useState(null)
-  const [bannerZoneId, setBannerZoneId] = useState("global")
-  const [bannerZoneUpdatingId, setBannerZoneUpdatingId] = useState(null)
-  const bannersFileInputRef = useRef(null)
-  const [zones, setZones] = useState([])
-  const [zonesLoading, setZonesLoading] = useState(false)
+  const [banners, setBanners] = useState([]);
+  const [bannersLoading, setBannersLoading] = useState(true);
+  const [bannersUploading, setBannersUploading] = useState(false);
+  const [bannersUploadProgress, setBannersUploadProgress] = useState({ current: 0, total: 0 });
+  const [bannersDeleting, setBannersDeleting] = useState(null);
+  const [bannerZoneId, setBannerZoneId] = useState("global");
+  const [bannerZoneUpdatingId, setBannerZoneUpdatingId] = useState(null);
+  const bannersFileInputRef = useRef(null);
+  const [zones, setZones] = useState([]);
+  const [zonesLoading, setZonesLoading] = useState(false);
 
   // Categories
-  const [categories, setCategories] = useState([])
-  const [categoriesLoading, setCategoriesLoading] = useState(true)
-  const [categoriesUploading, setCategoriesUploading] = useState(false)
-  const [categoriesDeleting, setCategoriesDeleting] = useState(null)
-  const [pendingCategories, setPendingCategories] = useState([]) // {id, file, label, previewUrl}
-  const categoriesFileInputRef = useRef(null)
+  const [categories, setCategories] = useState([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
+  const [categoriesUploading, setCategoriesUploading] = useState(false);
+  const [categoriesDeleting, setCategoriesDeleting] = useState(null);
+  const [pendingCategories, setPendingCategories] = useState([]); // {id, file, label, previewUrl}
+  const categoriesFileInputRef = useRef(null);
 
   // Explore More
-  const [exploreMore, setExploreMore] = useState([])
-  const [exploreMoreLoading, setExploreMoreLoading] = useState(true)
-  const [exploreMoreUploading, setExploreMoreUploading] = useState(false)
-  const [exploreMoreDeleting, setExploreMoreDeleting] = useState(null)
-  const [exploreMoreLabel, setExploreMoreLabel] = useState("")
-  const [exploreMoreLink, setExploreMoreLink] = useState("")
-  const [exploreIconsUploading, setExploreIconsUploading] = useState({})
-  const exploreMoreFileInputRef = useRef(null)
+  const [exploreMore, setExploreMore] = useState([]);
+  const [exploreMoreLoading, setExploreMoreLoading] = useState(true);
+  const [exploreMoreUploading, setExploreMoreUploading] = useState(false);
+  const [exploreMoreDeleting, setExploreMoreDeleting] = useState(null);
+  const [exploreMoreLabel, setExploreMoreLabel] = useState("");
+  const [exploreMoreLink, setExploreMoreLink] = useState("");
+  const [exploreIconsUploading, setExploreIconsUploading] = useState({});
+  const exploreMoreFileInputRef = useRef(null);
 
   // Under 250 Banners
-  const [under250Banners, setUnder250Banners] = useState([])
-  const [under250BannersLoading, setUnder250BannersLoading] = useState(true)
-  const [under250BannersUploading, setUnder250BannersUploading] = useState(false)
-  const [under250BannersUploadProgress, setUnder250BannersUploadProgress] = useState({ current: 0, total: 0 })
-  const [under250BannersDeleting, setUnder250BannersDeleting] = useState(null)
-  const under250BannersFileInputRef = useRef(null)
+  const [under250Banners, setUnder250Banners] = useState([]);
+  const [under250BannersLoading, setUnder250BannersLoading] = useState(true);
+  const [under250BannersUploading, setUnder250BannersUploading] = useState(false);
+  const [under250BannersUploadProgress, setUnder250BannersUploadProgress] = useState({ current: 0, total: 0 });
+  const [under250BannersDeleting, setUnder250BannersDeleting] = useState(null);
+  const under250BannersFileInputRef = useRef(null);
 
   // Dining Banners
-  const [diningBanners, setDiningBanners] = useState([])
-  const [diningBannersLoading, setDiningBannersLoading] = useState(true)
-  const [diningBannersUploading, setDiningBannersUploading] = useState(false)
-  const [diningBannersUploadProgress, setDiningBannersUploadProgress] = useState({ current: 0, total: 0 })
-  const [diningBannersDeleting, setDiningBannersDeleting] = useState(null)
-  const diningBannersFileInputRef = useRef(null)
+  const [diningBanners, setDiningBanners] = useState([]);
+  const [diningBannersLoading, setDiningBannersLoading] = useState(true);
+  const [diningBannersUploading, setDiningBannersUploading] = useState(false);
+  const [diningBannersUploadProgress, setDiningBannersUploadProgress] = useState({ current: 0, total: 0 });
+  const [diningBannersDeleting, setDiningBannersDeleting] = useState(null);
+  const diningBannersFileInputRef = useRef(null);
 
   // Settings
-  const [settings, setSettings] = useState({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "", headerVideoUrls: [] })
-  const [settingsLoading, setSettingsLoading] = useState(true)
-  const [settingsSaving, setSettingsSaving] = useState(false)
-  const [headerVideoUploading, setHeaderVideoUploading] = useState(false)
-  const [headerVideoRemoving, setHeaderVideoRemoving] = useState(false)
-  const [recommendedSearchQuery, setRecommendedSearchQuery] = useState("")
-  const headerVideoInputRef = useRef(null)
+  const [settings, setSettings] = useState({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "", headerVideoUrls: [] });
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [headerVideoUploading, setHeaderVideoUploading] = useState(false);
+  const [headerVideoRemoving, setHeaderVideoRemoving] = useState(false);
+  const [recommendedSearchQuery, setRecommendedSearchQuery] = useState("");
+  const headerVideoInputRef = useRef(null);
 
-  const [allRestaurants, setAllRestaurants] = useState([])
-  const [restaurantsLoading, setRestaurantsLoading] = useState(false)
+  const [allRestaurants, setAllRestaurants] = useState([]);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(false);
 
   // Gourmet Restaurants
-  const [gourmetRestaurants, setGourmetRestaurants] = useState([])
-  const [gourmetLoading, setGourmetLoading] = useState(true)
-  const [gourmetDeleting, setGourmetDeleting] = useState(null)
-  const [selectedRestaurantGourmet, setSelectedRestaurantGourmet] = useState("")
+  const [gourmetRestaurants, setGourmetRestaurants] = useState([]);
+  const [gourmetLoading, setGourmetLoading] = useState(true);
+  const [gourmetDeleting, setGourmetDeleting] = useState(null);
+  const [selectedRestaurantGourmet, setSelectedRestaurantGourmet] = useState("");
 
   // Common
-  const [error, setError] = useState(null)
-  const [success, setSuccess] = useState(null)
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
 
   // Restaurant Selection Modal for Banner Advertising
-  const [showRestaurantModal, setShowRestaurantModal] = useState(false)
-  const [selectedBannerId, setSelectedBannerId] = useState(null)
-  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([])
-  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState("")
-  const [linkingRestaurants, setLinkingRestaurants] = useState(false)
+  const [showRestaurantModal, setShowRestaurantModal] = useState(false);
+  const [selectedBannerId, setSelectedBannerId] = useState(null);
+  const [selectedRestaurantIds, setSelectedRestaurantIds] = useState([]);
+  const [restaurantSearchQuery, setRestaurantSearchQuery] = useState("");
+  const [linkingRestaurants, setLinkingRestaurants] = useState(false);
 
   // Helper function to filter out token-related errors
   const setErrorSafely = (errorMessage) => {
     if (!errorMessage) {
-      setError(null)
-      return
+      setError(null);
+      return;
     }
-    const lowerMessage = errorMessage.toLowerCase()
+    const lowerMessage = errorMessage.toLowerCase();
     // Don't show token/unauthorized/auth errors
     if (lowerMessage.includes('token') ||
-      lowerMessage.includes('unauthorized') ||
-      lowerMessage.includes('no token') ||
-      lowerMessage.includes('authentication') ||
-      lowerMessage.includes('session expired')) {
-      setError(null)
+    lowerMessage.includes('unauthorized') ||
+    lowerMessage.includes('no token') ||
+    lowerMessage.includes('authentication') ||
+    lowerMessage.includes('session expired')) {
+      setError(null);
     } else {
-      setError(errorMessage)
+      setError(errorMessage);
     }
-  }
+  };
 
   // Helper function to get admin token and add to request config
   const getAuthConfig = (additionalConfig = {}) => {
-    const adminToken = getModuleToken('admin')
+    const adminToken = getModuleToken('admin');
 
     // Debug logging in development
     if (import.meta.env.DEV) {
@@ -121,158 +121,158 @@ export default function LandingPageManagement() {
         token: adminToken ? 'exists' : 'missing',
         tokenLength: adminToken?.length || 0,
         path: window.location.pathname
-      })
+      });
     }
 
     if (!adminToken || adminToken.trim() === '' || adminToken === 'null' || adminToken === 'undefined') {
       // Token not found, return config without auth header (will be handled by error)
-      debugWarn('[LandingPageManagement] Admin token not found!')
-      return additionalConfig
+      debugWarn('[LandingPageManagement] Admin token not found!');
+      return additionalConfig;
     }
 
     // Merge headers properly - ensure Authorization is always set
     const mergedHeaders = {
       ...additionalConfig.headers,
-      Authorization: `Bearer ${adminToken.trim()}`,
-    }
+      Authorization: `Bearer ${adminToken.trim()}`
+    };
 
     return {
       ...additionalConfig,
-      headers: mergedHeaders,
-    }
-  }
+      headers: mergedHeaders
+    };
+  };
 
   // Fetch data on mount (authentication is handled by ProtectedRoute)
   useEffect(() => {
-    fetchBanners()
-    fetchZones()
-    fetchUnder250Banners()
-    fetchDiningBanners()
-    fetchAllRestaurants()
-    fetchSettings()
-  }, [])
+    fetchBanners();
+    fetchZones();
+    fetchUnder250Banners();
+    fetchDiningBanners();
+    fetchAllRestaurants();
+    fetchSettings();
+  }, []);
 
   // Fetch Top 10 and Gourmet when Explore More tab is active; refetch restaurants so dropdown is populated
   useEffect(() => {
     if (activeTab === 'explore-more') {
       if (allRestaurants.length === 0) {
-        fetchAllRestaurants()
+        fetchAllRestaurants();
       }
       if (exploreMoreSubTab === 'gourmet') {
-        fetchGourmetRestaurants()
+        fetchGourmetRestaurants();
       } else if (exploreMoreSubTab === 'icons') {
-        fetchExploreMore()
+        fetchExploreMore();
       }
     }
-  }, [activeTab, exploreMoreSubTab])
+  }, [activeTab, exploreMoreSubTab]);
 
   // ==================== HERO BANNERS ====================
   const fetchBanners = async () => {
     try {
-      setBannersLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners', getAuthConfig())
+      setBannersLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners', getAuthConfig());
       if (response.data.success) {
-        setBanners(response.data.data.banners || [])
+        setBanners(response.data.data.banners || []);
       }
     } catch (err) {
       // Handle 401/404 errors gracefully - don't show error messages
       if (err.response?.status === 401) {
         // Token expired or invalid - will be handled by axios interceptor
         // Don't show error message or set banners
-        setBanners([])
-        setError(null)
+        setBanners([]);
+        setError(null);
       } else if (err.response?.status === 404) {
         // Endpoint doesn't exist, set empty array
-        setBanners([])
-        setError(null)
+        setBanners([]);
+        setError(null);
       } else {
         // Filter out token-related errors
-        const errorMessage = err.response?.data?.message || 'Failed to load hero banners'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load hero banners';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setBannersLoading(false)
+      setBannersLoading(false);
     }
-  }
+  };
 
   const fetchZones = async () => {
     try {
-      setZonesLoading(true)
-      const response = await adminAPI.getZones({ limit: 1000 })
+      setZonesLoading(true);
+      const response = await adminAPI.getZones({ limit: 1000 });
       const list =
-        response?.data?.data?.zones ||
-        response?.data?.data?.data?.zones ||
-        response?.data?.data ||
-        []
-      setZones(Array.isArray(list) ? list : [])
+      response?.data?.data?.zones ||
+      response?.data?.data?.data?.zones ||
+      response?.data?.data ||
+      [];
+      setZones(Array.isArray(list) ? list : []);
     } catch (err) {
-      debugError("Failed to fetch zones for hero banners:", err)
-      setZones([])
+      debugError("Failed to fetch zones for hero banners:", err);
+      setZones([]);
     } finally {
-      setZonesLoading(false)
+      setZonesLoading(false);
     }
-  }
+  };
 
   const getZoneLabel = (zone) => {
-    if (!zone) return "Global (all zones)"
+    if (!zone) return "Global (all zones)";
     if (typeof zone === "string") {
-      const matched = zones.find((item) => String(item?._id || item?.id || "") === zone)
+      const matched = zones.find((item) => String(item?._id || item?.id || "") === zone);
       if (matched) {
-        return matched?.zoneName || matched?.name || matched?.serviceLocation || "Zone"
+        return matched?.zoneName || matched?.name || matched?.serviceLocation || "Zone";
       }
-      return "Zone"
+      return "Zone";
     }
-    return zone?.zoneName || zone?.name || zone?.serviceLocation || "Zone"
-  }
+    return zone?.zoneName || zone?.name || zone?.serviceLocation || "Zone";
+  };
 
   const getBannerOrderValue = (banner, fallbackIndex = 0) => {
-    const directOrder = Number(banner?.order)
-    if (Number.isFinite(directOrder)) return directOrder
+    const directOrder = Number(banner?.order);
+    if (Number.isFinite(directOrder)) return directOrder;
 
-    const sortOrder = Number(banner?.sortOrder)
-    if (Number.isFinite(sortOrder)) return sortOrder
+    const sortOrder = Number(banner?.sortOrder);
+    if (Number.isFinite(sortOrder)) return sortOrder;
 
-    return fallbackIndex
-  }
+    return fallbackIndex;
+  };
 
   const handleBannerFileSelect = (e) => {
-    const files = Array.from(e.target?.files || e.files || [])
-    if (files.length === 0) return
+    const files = Array.from(e.target?.files || e.files || []);
+    if (files.length === 0) return;
     if (files.length > 5) {
-      setError('You can upload a maximum of 5 images at once')
-      return
+      setError('You can upload a maximum of 5 images at once');
+      return;
     }
-    uploadBanners(files)
-  }
+    uploadBanners(files);
+  };
 
   const uploadBanners = async (files) => {
     try {
       // Check token first before proceeding
-      const adminToken = getModuleToken('admin')
+      const adminToken = getModuleToken('admin');
       if (!adminToken || adminToken.trim() === '' || adminToken === 'null' || adminToken === 'undefined') {
-        setErrorSafely('Authentication required. Please login again.')
-        return
+        setErrorSafely('Authentication required. Please login again.');
+        return;
       }
 
-      setBannersUploading(true)
-      setError(null)
-      setSuccess(null)
-      setBannersUploadProgress({ current: 0, total: files.length })
+      setBannersUploading(true);
+      setError(null);
+      setSuccess(null);
+      setBannersUploadProgress({ current: 0, total: files.length });
 
       // Use batch upload endpoint for multiple files
-      const formData = new FormData()
+      const formData = new FormData();
       files.forEach((file) => {
         // Backend expects field name "files" (upload.array('files'))
-        formData.append('files', file)
-      })
+        formData.append('files', file);
+      });
       if (bannerZoneId && bannerZoneId !== "global") {
-        formData.append('zoneId', bannerZoneId)
+        formData.append('zoneId', bannerZoneId);
       }
 
       // Use getAuthConfig to ensure proper Authorization header
       // Don't set Content-Type - axios will set it automatically with boundary for FormData
-      const config = getAuthConfig()
+      const config = getAuthConfig();
 
       // Debug: Log the config to verify Authorization header is set
       if (import.meta.env.DEV) {
@@ -280,1107 +280,1107 @@ export default function LandingPageManagement() {
           hasAuthHeader: !!config.headers?.Authorization,
           authHeaderPrefix: config.headers?.Authorization?.substring(0, 20),
           hasFormData: formData instanceof FormData
-        })
+        });
       }
 
-      const response = await api.post('/food/hero-banners/multiple', formData, config)
+      const response = await api.post('/food/hero-banners/multiple', formData, config);
 
       if (response.data.success) {
-        const uploadedBanners = response.data.data?.banners || []
-        const errors = response.data.data?.errors || []
-        const successCount = uploadedBanners.length
-        const failCount = errors.length
+        const uploadedBanners = response.data.data?.banners || [];
+        const errors = response.data.data?.errors || [];
+        const successCount = uploadedBanners.length;
+        const failCount = errors.length;
 
-        await fetchBanners()
-        if (bannersFileInputRef.current) bannersFileInputRef.current.value = ''
+        await fetchBanners();
+        if (bannersFileInputRef.current) bannersFileInputRef.current.value = '';
 
         if (failCount === 0) {
-          setSuccess(`${successCount} hero banner${successCount > 1 ? 's' : ''} uploaded successfully!`)
-          setTimeout(() => setSuccess(null), 5000)
+          setSuccess(`${successCount} hero banner${successCount > 1 ? 's' : ''} uploaded successfully!`);
+          setTimeout(() => setSuccess(null), 5000);
         } else if (successCount > 0) {
-          setSuccess(`${successCount} banner${successCount > 1 ? 's' : ''} uploaded, ${failCount} failed.`)
-          setErrorSafely(errors.join(', '))
-          setTimeout(() => { setSuccess(null); setError(null) }, 5000)
+          setSuccess(`${successCount} banner${successCount > 1 ? 's' : ''} uploaded, ${failCount} failed.`);
+          setErrorSafely(errors.join(', '));
+          setTimeout(() => {setSuccess(null);setError(null);}, 5000);
         } else {
-          setErrorSafely(`Failed to upload banners. ${errors.join(', ')}`)
+          setErrorSafely(`Failed to upload banners. ${errors.join(', ')}`);
         }
       } else {
-        setErrorSafely(response.data.message || 'Failed to upload banners')
+        setErrorSafely(response.data.message || 'Failed to upload banners');
       }
 
-      setBannersUploadProgress({ current: 0, total: 0 })
+      setBannersUploadProgress({ current: 0, total: 0 });
     } catch (err) {
-      debugError('Error uploading banners:', err)
+      debugError('Error uploading banners:', err);
 
       // Handle 401 unauthorized errors - don't show token-related errors
       if (err.response?.status === 401 || err.message === 'Authentication token not found') {
         // Don't show error - let axios interceptor handle logout
-        setError(null)
+        setError(null);
       } else {
         // Filter out token-related errors
-        const errorMessage = err.response?.data?.message || 'Failed to upload banners'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to upload banners';
+        setErrorSafely(errorMessage);
       }
 
-      setBannersUploadProgress({ current: 0, total: 0 })
+      setBannersUploadProgress({ current: 0, total: 0 });
     } finally {
-      setBannersUploading(false)
+      setBannersUploading(false);
     }
-  }
+  };
 
   const handleBannerZoneChange = async (bannerId, nextZoneId) => {
     try {
-      setBannerZoneUpdatingId(bannerId)
-      setError(null)
-      setSuccess(null)
+      setBannerZoneUpdatingId(bannerId);
+      setError(null);
+      setSuccess(null);
       const payload = {
-        zoneId: nextZoneId === "global" ? "" : nextZoneId,
-      }
-      const response = await api.patch(`/food/hero-banners/${bannerId}/zone`, payload, getAuthConfig())
+        zoneId: nextZoneId === "global" ? "" : nextZoneId
+      };
+      const response = await api.patch(`/food/hero-banners/${bannerId}/zone`, payload, getAuthConfig());
       if (response?.data?.success) {
-        setSuccess("Banner zone updated successfully!")
-        await fetchBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess("Banner zone updated successfully!");
+        await fetchBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || "Failed to update banner zone.")
+      setErrorSafely(err.response?.data?.message || "Failed to update banner zone.");
     } finally {
-      setBannerZoneUpdatingId(null)
+      setBannerZoneUpdatingId(null);
     }
-  }
+  };
 
   const handleDeleteBanner = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this hero banner?')) return
+    if (!(await confirmApp('Are you sure you want to delete this hero banner?'))) return;
     try {
-      setBannersDeleting(id)
-      setError(null)
-      setSuccess(null)
-      const response = await api.delete(`/food/hero-banners/${id}`, getAuthConfig())
+      setBannersDeleting(id);
+      setError(null);
+      setSuccess(null);
+      const response = await api.delete(`/food/hero-banners/${id}`, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Hero banner deleted successfully!')
-        await fetchBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Hero banner deleted successfully!');
+        await fetchBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to delete banner.')
+      setErrorSafely(err.response?.data?.message || 'Failed to delete banner.');
     } finally {
-      setBannersDeleting(null)
+      setBannersDeleting(null);
     }
-  }
+  };
 
   const handleToggleBannerStatus = async (id, currentStatus) => {
     try {
-      setError(null)
-      setSuccess(null)
-      const response = await api.patch(`/food/hero-banners/${id}/status`, {}, getAuthConfig())
+      setError(null);
+      setSuccess(null);
+      const response = await api.patch(`/food/hero-banners/${id}/status`, {}, getAuthConfig());
       if (response.data.success) {
-        setSuccess(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
-        await fetchBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to update banner status.')
+      setErrorSafely(err.response?.data?.message || 'Failed to update banner status.');
     }
-  }
+  };
 
   const handleBannerOrderChange = async (id, direction) => {
     const orderedBanners = [...banners].sort((a, b) => {
-      const firstOrder = getBannerOrderValue(a)
-      const secondOrder = getBannerOrderValue(b)
-      if (firstOrder !== secondOrder) return firstOrder - secondOrder
-      return String(a?._id || "").localeCompare(String(b?._id || ""))
-    })
+      const firstOrder = getBannerOrderValue(a);
+      const secondOrder = getBannerOrderValue(b);
+      if (firstOrder !== secondOrder) return firstOrder - secondOrder;
+      return String(a?._id || "").localeCompare(String(b?._id || ""));
+    });
 
-    const currentIndex = orderedBanners.findIndex((banner) => banner._id === id)
-    if (currentIndex < 0) return
+    const currentIndex = orderedBanners.findIndex((banner) => banner._id === id);
+    if (currentIndex < 0) return;
 
-    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
-    if (targetIndex < 0 || targetIndex >= orderedBanners.length) return
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= orderedBanners.length) return;
 
-    const reorderedBanners = [...orderedBanners]
-    const [movedBanner] = reorderedBanners.splice(currentIndex, 1)
-    reorderedBanners.splice(targetIndex, 0, movedBanner)
+    const reorderedBanners = [...orderedBanners];
+    const [movedBanner] = reorderedBanners.splice(currentIndex, 1);
+    reorderedBanners.splice(targetIndex, 0, movedBanner);
 
     try {
-      setError(null)
+      setError(null);
       await Promise.all(
         reorderedBanners.map((banner, index) =>
-          api.patch(`/food/hero-banners/${banner._id}/order`, { order: index }, getAuthConfig())
+        api.patch(`/food/hero-banners/${banner._id}/order`, { order: index }, getAuthConfig())
         )
-      )
+      );
       setBanners(
         reorderedBanners.map((banner, index) => ({
           ...banner,
           order: index,
-          sortOrder: index,
+          sortOrder: index
         }))
-      )
+      );
       if (import.meta.env.DEV) {
         debugLog('[LandingPageManagement] Hero banner order updated', reorderedBanners.map((banner, index) => ({
           id: banner._id,
-          order: index,
-        })))
+          order: index
+        })));
       }
     } catch (err) {
-      setErrorSafely('Failed to update banner order.')
-      await fetchBanners()
+      setErrorSafely('Failed to update banner order.');
+      await fetchBanners();
     }
-  }
+  };
 
   // Handle restaurant selection for banner advertising
   const handleLinkRestaurants = async () => {
-    if (!selectedBannerId) return
+    if (!selectedBannerId) return;
 
     try {
-      setLinkingRestaurants(true)
-      setError(null)
-      setSuccess(null)
+      setLinkingRestaurants(true);
+      setError(null);
+      setSuccess(null);
 
       const response = await api.patch(
         `/food/hero-banners/${selectedBannerId}/link-restaurants`,
         { restaurantIds: selectedRestaurantIds },
         getAuthConfig()
-      )
+      );
 
       if (response.data.success) {
-        setSuccess('Restaurants linked to banner successfully!')
-        setShowRestaurantModal(false)
-        setSelectedBannerId(null)
-        setSelectedRestaurantIds([])
-        setRestaurantSearchQuery("")
-        await fetchBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Restaurants linked to banner successfully!');
+        setShowRestaurantModal(false);
+        setSelectedBannerId(null);
+        setSelectedRestaurantIds([]);
+        setRestaurantSearchQuery("");
+        await fetchBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to link restaurants to banner.')
+      setErrorSafely(err.response?.data?.message || 'Failed to link restaurants to banner.');
     } finally {
-      setLinkingRestaurants(false)
+      setLinkingRestaurants(false);
     }
-  }
+  };
 
   const toggleRestaurantSelection = (restaurantId) => {
-    setSelectedRestaurantIds(prev => {
+    setSelectedRestaurantIds((prev) => {
       if (prev.includes(restaurantId)) {
-        return prev.filter(id => id !== restaurantId)
+        return prev.filter((id) => id !== restaurantId);
       } else {
-        return [...prev, restaurantId]
+        return [...prev, restaurantId];
       }
-    })
-  }
+    });
+  };
 
-  const filteredRestaurantsForModal = allRestaurants.filter(restaurant => {
-    if (!restaurantSearchQuery.trim()) return true
-    const query = restaurantSearchQuery.toLowerCase()
+  const filteredRestaurantsForModal = allRestaurants.filter((restaurant) => {
+    if (!restaurantSearchQuery.trim()) return true;
+    const query = restaurantSearchQuery.toLowerCase();
     return restaurant.name?.toLowerCase().includes(query) ||
-      restaurant.restaurantId?.toLowerCase().includes(query)
-  })
+    restaurant.restaurantId?.toLowerCase().includes(query);
+  });
 
   const filteredRestaurantsForRecommended = useMemo(() => {
-    const query = recommendedSearchQuery.trim().toLowerCase()
-    return allRestaurants
-      .filter((restaurant) => {
-        if (!query) return true
-        return restaurant.name?.toLowerCase().includes(query) ||
-          restaurant.restaurantId?.toLowerCase().includes(query)
-      })
-      .slice(0, 80)
-  }, [allRestaurants, recommendedSearchQuery])
+    const query = recommendedSearchQuery.trim().toLowerCase();
+    return allRestaurants.
+    filter((restaurant) => {
+      if (!query) return true;
+      return restaurant.name?.toLowerCase().includes(query) ||
+      restaurant.restaurantId?.toLowerCase().includes(query);
+    }).
+    slice(0, 80);
+  }, [allRestaurants, recommendedSearchQuery]);
 
   const recommendedRestaurantsSelected = useMemo(() => {
-    const selectedIds = new Set(settings.recommendedRestaurantIds || [])
-    return allRestaurants.filter((restaurant) => selectedIds.has(restaurant._id))
-  }, [allRestaurants, settings.recommendedRestaurantIds])
+    const selectedIds = new Set(settings.recommendedRestaurantIds || []);
+    return allRestaurants.filter((restaurant) => selectedIds.has(restaurant._id));
+  }, [allRestaurants, settings.recommendedRestaurantIds]);
 
   const toggleRecommendedRestaurant = (restaurantId) => {
     setSettings((prev) => {
-      const previousIds = Array.isArray(prev.recommendedRestaurantIds) ? prev.recommendedRestaurantIds : []
-      const alreadySelected = previousIds.includes(restaurantId)
+      const previousIds = Array.isArray(prev.recommendedRestaurantIds) ? prev.recommendedRestaurantIds : [];
+      const alreadySelected = previousIds.includes(restaurantId);
       return {
         ...prev,
-        recommendedRestaurantIds: alreadySelected
-          ? previousIds.filter((id) => id !== restaurantId)
-          : [...previousIds, restaurantId],
-      }
-    })
-  }
+        recommendedRestaurantIds: alreadySelected ?
+        previousIds.filter((id) => id !== restaurantId) :
+        [...previousIds, restaurantId]
+      };
+    });
+  };
 
   // ==================== CATEGORIES ====================
   const fetchCategories = async () => {
     try {
-      setCategoriesLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners/landing/categories', getAuthConfig())
+      setCategoriesLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners/landing/categories', getAuthConfig());
       if (response.data.success) {
-        setCategories(response.data.data.categories || [])
+        setCategories(response.data.data.categories || []);
       }
     } catch (err) {
       // Silently handle 401/404 errors - endpoints may not exist yet
       if (err.response?.status === 401 || err.response?.status === 404) {
-        setCategories([]) // Set empty array if endpoint doesn't exist
-        setError(null) // Clear any previous error
+        setCategories([]); // Set empty array if endpoint doesn't exist
+        setError(null); // Clear any previous error
       } else {
         // Filter out token-related errors
-        const errorMessage = err.response?.data?.message || 'Failed to load categories'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load categories';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setCategoriesLoading(false)
+      setCategoriesLoading(false);
     }
-  }
+  };
 
   const handleCategoryFileSelect = (e) => {
-    const files = Array.from(e.target?.files || e.files || [])
-    if (!files.length) return
+    const files = Array.from(e.target?.files || e.files || []);
+    if (!files.length) return;
 
-    const newItems = files
-      .filter((file) => {
-        if (!file.type.startsWith('image/')) {
-          setError('Only image files are allowed for categories')
-          return false
-        }
-        if (file.size > 5 * 1024 * 1024) {
-          setError('Each image must be smaller than 5MB')
-          return false
-        }
-        return true
-      })
-      .map((file, index) => {
-        const baseName = file.name.replace(/\.[^/.]+$/, '')
-        const prettyName = baseName.replace(/[-_]+/g, ' ').trim()
-        return {
-          id: `${Date.now()}-${index}`,
-          file,
-          label: prettyName || '',
-          previewUrl: URL.createObjectURL(file),
-        }
-      })
+    const newItems = files.
+    filter((file) => {
+      if (!file.type.startsWith('image/')) {
+        setError('Only image files are allowed for categories');
+        return false;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Each image must be smaller than 5MB');
+        return false;
+      }
+      return true;
+    }).
+    map((file, index) => {
+      const baseName = file.name.replace(/\.[^/.]+$/, '');
+      const prettyName = baseName.replace(/[-_]+/g, ' ').trim();
+      return {
+        id: `${Date.now()}-${index}`,
+        file,
+        label: prettyName || '',
+        previewUrl: URL.createObjectURL(file)
+      };
+    });
 
-    if (!newItems.length) return
+    if (!newItems.length) return;
 
-    setPendingCategories((prev) => [...prev, ...newItems])
+    setPendingCategories((prev) => [...prev, ...newItems]);
     // Reset input so same files can be selected again if needed
     if (categoriesFileInputRef.current) {
-      categoriesFileInputRef.current.value = ''
+      categoriesFileInputRef.current.value = '';
     }
-  }
+  };
 
   const handlePendingCategoryLabelChange = (id, newLabel) => {
     setPendingCategories((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, label: newLabel } : item))
-    )
-  }
+    prev.map((item) => item.id === id ? { ...item, label: newLabel } : item)
+    );
+  };
 
   const handleRemovePendingCategory = (id) => {
     setPendingCategories((prev) => {
-      const toRemove = prev.find((item) => item.id === id)
+      const toRemove = prev.find((item) => item.id === id);
       if (toRemove?.previewUrl) {
-        URL.revokeObjectURL(toRemove.previewUrl)
+        URL.revokeObjectURL(toRemove.previewUrl);
       }
-      return prev.filter((item) => item.id !== id)
-    })
-  }
+      return prev.filter((item) => item.id !== id);
+    });
+  };
 
   const handleUploadPendingCategories = async () => {
     if (!pendingCategories.length) {
-      setError('Add at least one category image before uploading')
-      return
+      setError('Add at least one category image before uploading');
+      return;
     }
 
     try {
-      setCategoriesUploading(true)
-      setError(null)
-      setSuccess(null)
+      setCategoriesUploading(true);
+      setError(null);
+      setSuccess(null);
 
-      let successCount = 0
-      let failCount = 0
-      const errors = []
+      let successCount = 0;
+      let failCount = 0;
+      const errors = [];
 
       for (let i = 0; i < pendingCategories.length; i++) {
-        const item = pendingCategories[i]
+        const item = pendingCategories[i];
         if (!item.label.trim()) {
-          failCount++
-          errors.push(`Item ${i + 1}: label is required`)
-          continue
+          failCount++;
+          errors.push(`Item ${i + 1}: label is required`);
+          continue;
         }
 
-        const formData = new FormData()
-        formData.append('image', item.file)
-        formData.append('label', item.label.trim())
+        const formData = new FormData();
+        formData.append('image', item.file);
+        formData.append('label', item.label.trim());
 
         try {
           const response = await api.post('/food/hero-banners/landing/categories', formData, getAuthConfig({
-            headers: { 'Content-Type': 'multipart/form-data' },
-          }))
+            headers: { 'Content-Type': 'multipart/form-data' }
+          }));
           if (response.data.success) {
-            successCount++
+            successCount++;
           } else {
-            failCount++
-            errors.push(`Item ${i + 1}: upload failed`)
+            failCount++;
+            errors.push(`Item ${i + 1}: upload failed`);
           }
         } catch (err) {
-          failCount++
+          failCount++;
           errors.push(
             `Item ${i + 1}: ${err?.response?.data?.message || 'Failed to create category'}`
-          )
+          );
         }
       }
 
       // Clean up previews
       pendingCategories.forEach((item) => {
         if (item.previewUrl) {
-          URL.revokeObjectURL(item.previewUrl)
+          URL.revokeObjectURL(item.previewUrl);
         }
-      })
-      setPendingCategories([])
-      if (categoriesFileInputRef.current) categoriesFileInputRef.current.value = ''
+      });
+      setPendingCategories([]);
+      if (categoriesFileInputRef.current) categoriesFileInputRef.current.value = '';
 
-      await fetchCategories()
+      await fetchCategories();
 
       if (successCount > 0 && failCount === 0) {
         setSuccess(
           `${successCount} categor${successCount > 1 ? 'ies' : 'y'} created successfully!`
-        )
-        setTimeout(() => setSuccess(null), 4000)
+        );
+        setTimeout(() => setSuccess(null), 4000);
       } else if (successCount > 0 && failCount > 0) {
         setSuccess(
           `${successCount} categor${successCount > 1 ? 'ies' : 'y'} created, ${failCount} failed.`
-        )
-        setError(errors.join(', '))
+        );
+        setError(errors.join(', '));
         setTimeout(() => {
-          setSuccess(null)
-          setError(null)
-        }, 5000)
+          setSuccess(null);
+          setError(null);
+        }, 5000);
       } else {
-        setErrorSafely(`Failed to create categories. ${errors.join(', ')}`)
+        setErrorSafely(`Failed to create categories. ${errors.join(', ')}`);
       }
     } finally {
-      setCategoriesUploading(false)
+      setCategoriesUploading(false);
     }
-  }
+  };
 
   const handleDeleteCategory = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return
+    if (!(await confirmApp('Are you sure you want to delete this category?'))) return;
     try {
-      setCategoriesDeleting(id)
-      setError(null)
-      setSuccess(null)
-      const response = await api.delete(`/food/hero-banners/landing/categories/${id}`, getAuthConfig())
+      setCategoriesDeleting(id);
+      setError(null);
+      setSuccess(null);
+      const response = await api.delete(`/food/hero-banners/landing/categories/${id}`, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Category deleted successfully!')
-        await fetchCategories()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Category deleted successfully!');
+        await fetchCategories();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to delete category.')
+      setErrorSafely(err.response?.data?.message || 'Failed to delete category.');
     } finally {
-      setCategoriesDeleting(null)
+      setCategoriesDeleting(null);
     }
-  }
+  };
 
   const handleToggleCategoryStatus = async (id, currentStatus) => {
     try {
-      setError(null)
-      setSuccess(null)
-      const response = await api.patch(`/food/hero-banners/landing/categories/${id}/status`, {}, getAuthConfig())
+      setError(null);
+      setSuccess(null);
+      const response = await api.patch(`/food/hero-banners/landing/categories/${id}/status`, {}, getAuthConfig());
       if (response.data.success) {
-        setSuccess(`Category ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
-        await fetchCategories()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`Category ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchCategories();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to update category status.')
+      setErrorSafely(err.response?.data?.message || 'Failed to update category status.');
     }
-  }
+  };
 
   const handleCategoryOrderChange = async (id, direction) => {
-    const category = categories.find(c => c._id === id)
-    if (!category) return
-    const newOrder = direction === 'up' ? category.order - 1 : category.order + 1
-    const otherCategory = categories.find(c => c.order === newOrder && c._id !== id)
-    if (!otherCategory && newOrder < 0) return
+    const category = categories.find((c) => c._id === id);
+    if (!category) return;
+    const newOrder = direction === 'up' ? category.order - 1 : category.order + 1;
+    const otherCategory = categories.find((c) => c.order === newOrder && c._id !== id);
+    if (!otherCategory && newOrder < 0) return;
     try {
-      setError(null)
-      await api.patch(`/food/hero-banners/landing/categories/${id}/order`, { order: newOrder }, getAuthConfig())
+      setError(null);
+      await api.patch(`/food/hero-banners/landing/categories/${id}/order`, { order: newOrder }, getAuthConfig());
       if (otherCategory) {
-        await api.patch(`/food/hero-banners/landing/categories/${otherCategory._id}/order`, { order: category.order }, getAuthConfig())
+        await api.patch(`/food/hero-banners/landing/categories/${otherCategory._id}/order`, { order: category.order }, getAuthConfig());
       }
-      await fetchCategories()
+      await fetchCategories();
     } catch (err) {
-      setErrorSafely('Failed to update category order.')
+      setErrorSafely('Failed to update category order.');
     }
-  }
+  };
 
   // ==================== EXPLORE MORE ====================
   const fetchExploreMore = async () => {
     try {
-      setExploreMoreLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners/landing/explore-more', getAuthConfig())
+      setExploreMoreLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners/landing/explore-more', getAuthConfig());
       if (response.data.success) {
-        setExploreMore(response.data.data.items || [])
+        setExploreMore(response.data.data.items || []);
       }
     } catch (err) {
       // Silently handle 401/404 errors - endpoints may not exist yet
       if (err.response?.status === 401 || err.response?.status === 404) {
-        setExploreMore([]) // Set empty array if endpoint doesn't exist
-        setError(null) // Clear any previous error
+        setExploreMore([]); // Set empty array if endpoint doesn't exist
+        setError(null); // Clear any previous error
       } else {
         // Filter out token-related errors
-        const errorMessage = err.response?.data?.message || 'Failed to load explore more items'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load explore more items';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setExploreMoreLoading(false)
+      setExploreMoreLoading(false);
     }
-  }
+  };
 
   const handleExploreMoreFileSelect = async (e) => {
-    const file = e.target?.files?.[0]
-    if (!file) return
+    const file = e.target?.files?.[0];
+    if (!file) return;
     if (!exploreMoreLabel.trim() || !exploreMoreLink.trim()) {
-      setError('Please enter both label and link')
-      return
+      setError('Please enter both label and link');
+      return;
     }
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file')
-      return
+      setError('Please select an image file');
+      return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError('Image size exceeds 5MB')
-      return
+      setError('Image size exceeds 5MB');
+      return;
     }
 
     try {
-      setExploreMoreUploading(true)
-      setError(null)
-      setSuccess(null)
-      const formData = new FormData()
-      formData.append('image', file)
-      formData.append('label', exploreMoreLabel.trim())
-      formData.append('link', exploreMoreLink.trim())
+      setExploreMoreUploading(true);
+      setError(null);
+      setSuccess(null);
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('label', exploreMoreLabel.trim());
+      formData.append('link', exploreMoreLink.trim());
       const response = await api.post('/food/hero-banners/landing/explore-more', formData, getAuthConfig({
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }))
+        headers: { 'Content-Type': 'multipart/form-data' }
+      }));
       if (response.data.success) {
-        setSuccess('Explore more item created successfully!')
-        setExploreMoreLabel("")
-        setExploreMoreLink("")
-        if (exploreMoreFileInputRef.current) exploreMoreFileInputRef.current.value = ''
-        await fetchExploreMore()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Explore more item created successfully!');
+        setExploreMoreLabel("");
+        setExploreMoreLink("");
+        if (exploreMoreFileInputRef.current) exploreMoreFileInputRef.current.value = '';
+        await fetchExploreMore();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to create explore more item.')
+      setErrorSafely(err.response?.data?.message || 'Failed to create explore more item.');
     } finally {
-      setExploreMoreUploading(false)
+      setExploreMoreUploading(false);
     }
-  }
+  };
 
   const handleDeleteExploreMore = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this explore more item?')) return
+    if (!(await confirmApp('Are you sure you want to delete this explore more item?'))) return;
     try {
-      setExploreMoreDeleting(id)
-      setError(null)
-      setSuccess(null)
-      const response = await api.delete(`/food/hero-banners/landing/explore-more/${id}`, getAuthConfig())
+      setExploreMoreDeleting(id);
+      setError(null);
+      setSuccess(null);
+      const response = await api.delete(`/food/hero-banners/landing/explore-more/${id}`, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Explore more item deleted successfully!')
-        await fetchExploreMore()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Explore more item deleted successfully!');
+        await fetchExploreMore();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to delete explore more item.')
+      setErrorSafely(err.response?.data?.message || 'Failed to delete explore more item.');
     } finally {
-      setExploreMoreDeleting(null)
+      setExploreMoreDeleting(null);
     }
-  }
+  };
 
   const handleToggleExploreMoreStatus = async (id, currentStatus) => {
     try {
-      setError(null)
-      setSuccess(null)
-      const response = await api.patch(`/food/hero-banners/landing/explore-more/${id}/status`, {}, getAuthConfig())
+      setError(null);
+      setSuccess(null);
+      const response = await api.patch(`/food/hero-banners/landing/explore-more/${id}/status`, {}, getAuthConfig());
       if (response.data.success) {
-        setSuccess(`Explore more item ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
-        await fetchExploreMore()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`Explore more item ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchExploreMore();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to update explore more status.')
+      setErrorSafely(err.response?.data?.message || 'Failed to update explore more status.');
     }
-  }
+  };
 
 
 
   const handleIconUpdate = async (file, label, link, itemId) => {
-    if (!file) return
+    if (!file) return;
 
     // Find existing item by label
-    const existingItem = exploreMore.find(item => item.label?.toLowerCase() === label.toLowerCase())
+    const existingItem = exploreMore.find((item) => item.label?.toLowerCase() === label.toLowerCase());
 
     // Create FormData
-    const formData = new FormData()
-    formData.append('image', file)
+    const formData = new FormData();
+    formData.append('image', file);
 
     try {
-      setExploreIconsUploading(prev => ({ ...prev, [itemId]: true }))
+      setExploreIconsUploading((prev) => ({ ...prev, [itemId]: true }));
       let res;
 
       if (existingItem) {
         // Update existing
         res = await api.patch(`/food/hero-banners/landing/explore-more/${existingItem._id}`, formData, getAuthConfig({
           headers: { 'Content-Type': 'multipart/form-data' }
-        }))
+        }));
       } else {
         // Create new
-        formData.append('label', label)
-        formData.append('link', link)
+        formData.append('label', label);
+        formData.append('link', link);
         res = await api.post('/food/hero-banners/landing/explore-more', formData, getAuthConfig({
           headers: { 'Content-Type': 'multipart/form-data' }
-        }))
+        }));
       }
 
       if (res.data?.success) {
-        setSuccess(`${label} icon updated successfully!`)
-        setTimeout(() => setSuccess(null), 3000)
-        await fetchExploreMore()
+        setSuccess(`${label} icon updated successfully!`);
+        setTimeout(() => setSuccess(null), 3000);
+        await fetchExploreMore();
       }
     } catch (err) {
-      debugError('Upload failed', err)
-      setErrorSafely(err.response?.data?.message || 'Failed to update icon')
+      debugError('Upload failed', err);
+      setErrorSafely(err.response?.data?.message || 'Failed to update icon');
     } finally {
-      setExploreIconsUploading(prev => ({ ...prev, [itemId]: false }))
+      setExploreIconsUploading((prev) => ({ ...prev, [itemId]: false }));
     }
-  }
+  };
 
   const handleExploreMoreOrderChange = async (id, direction) => {
-    const item = exploreMore.find(e => e._id === id)
-    if (!item) return
-    const newOrder = direction === 'up' ? item.order - 1 : item.order + 1
-    const otherItem = exploreMore.find(e => e.order === newOrder && e._id !== id)
-    if (!otherItem && newOrder < 0) return
+    const item = exploreMore.find((e) => e._id === id);
+    if (!item) return;
+    const newOrder = direction === 'up' ? item.order - 1 : item.order + 1;
+    const otherItem = exploreMore.find((e) => e.order === newOrder && e._id !== id);
+    if (!otherItem && newOrder < 0) return;
     try {
-      setError(null)
-      await api.patch(`/food/hero-banners/landing/explore-more/${id}/order`, { order: newOrder }, getAuthConfig())
+      setError(null);
+      await api.patch(`/food/hero-banners/landing/explore-more/${id}/order`, { order: newOrder }, getAuthConfig());
       if (otherItem) {
-        await api.patch(`/food/hero-banners/landing/explore-more/${otherItem._id}/order`, { order: item.order }, getAuthConfig())
+        await api.patch(`/food/hero-banners/landing/explore-more/${otherItem._id}/order`, { order: item.order }, getAuthConfig());
       }
-      await fetchExploreMore()
+      await fetchExploreMore();
     } catch (err) {
-      setErrorSafely('Failed to update explore more order.')
+      setErrorSafely('Failed to update explore more order.');
     }
-  }
+  };
 
   // ==================== UNDER 250 BANNERS ====================
   const fetchUnder250Banners = async () => {
     try {
-      setUnder250BannersLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners/under-250', getAuthConfig())
+      setUnder250BannersLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners/under-250', getAuthConfig());
       if (response.data.success) {
-        setUnder250Banners(response.data.data.banners || [])
+        setUnder250Banners(response.data.data.banners || []);
       }
     } catch (err) {
       // Handle 401/404 errors gracefully - don't show error messages
       if (err.response?.status === 401) {
-        setUnder250Banners([])
-        setError(null)
+        setUnder250Banners([]);
+        setError(null);
       } else if (err.response?.status === 404) {
-        setUnder250Banners([])
-        setError(null)
+        setUnder250Banners([]);
+        setError(null);
       } else {
-        const errorMessage = err.response?.data?.message || 'Failed to load under 250 banners'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load under 250 banners';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setUnder250BannersLoading(false)
+      setUnder250BannersLoading(false);
     }
-  }
+  };
 
   const handleUnder250BannerFileSelect = (e) => {
-    const files = Array.from(e.target?.files || e.files || [])
-    if (files.length === 0) return
+    const files = Array.from(e.target?.files || e.files || []);
+    if (files.length === 0) return;
     if (files.length > 5) {
-      setError('You can upload a maximum of 5 images at once')
-      return
+      setError('You can upload a maximum of 5 images at once');
+      return;
     }
-    uploadUnder250Banners(files)
-  }
+    uploadUnder250Banners(files);
+  };
 
   const uploadUnder250Banners = async (files) => {
     try {
       // Check token first before proceeding
-      const adminToken = getModuleToken('admin')
+      const adminToken = getModuleToken('admin');
       if (!adminToken || adminToken.trim() === '' || adminToken === 'null' || adminToken === 'undefined') {
-        setErrorSafely('Authentication required. Please login again.')
-        return
+        setErrorSafely('Authentication required. Please login again.');
+        return;
       }
 
-      setUnder250BannersUploading(true)
-      setError(null)
-      setSuccess(null)
-      setUnder250BannersUploadProgress({ current: 0, total: files.length })
+      setUnder250BannersUploading(true);
+      setError(null);
+      setSuccess(null);
+      setUnder250BannersUploadProgress({ current: 0, total: files.length });
 
-      const formData = new FormData()
+      const formData = new FormData();
       files.forEach((file) => {
         // Backend expects field name "files" (upload.array('files'))
-        formData.append('files', file)
-      })
+        formData.append('files', file);
+      });
 
       const response = await api.post('/food/hero-banners/under-250/multiple', formData, getAuthConfig({
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }))
+        headers: { 'Content-Type': 'multipart/form-data' }
+      }));
 
       if (response.data.success) {
-        setSuccess(`${response.data.data.banners?.length || files.length} under 250 banner(s) uploaded successfully!`)
-        await fetchUnder250Banners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`${response.data.data.banners?.length || files.length} under 250 banner(s) uploaded successfully!`);
+        await fetchUnder250Banners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to upload under 250 banners'
-      setErrorSafely(errorMessage)
+      const errorMessage = err.response?.data?.message || 'Failed to upload under 250 banners';
+      setErrorSafely(errorMessage);
 
-      setUnder250BannersUploadProgress({ current: 0, total: 0 })
+      setUnder250BannersUploadProgress({ current: 0, total: 0 });
     } finally {
-      setUnder250BannersUploading(false)
+      setUnder250BannersUploading(false);
     }
-  }
+  };
 
   const handleDeleteUnder250Banner = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this under 250 banner?')) return
+    if (!(await confirmApp('Are you sure you want to delete this under 250 banner?'))) return;
     try {
-      setUnder250BannersDeleting(id)
-      setError(null)
-      setSuccess(null)
-      const response = await api.delete(`/food/hero-banners/under-250/${id}`, getAuthConfig())
+      setUnder250BannersDeleting(id);
+      setError(null);
+      setSuccess(null);
+      const response = await api.delete(`/food/hero-banners/under-250/${id}`, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Under 250 banner deleted successfully!')
-        await fetchUnder250Banners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Under 250 banner deleted successfully!');
+        await fetchUnder250Banners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to delete banner.')
+      setErrorSafely(err.response?.data?.message || 'Failed to delete banner.');
     } finally {
-      setUnder250BannersDeleting(null)
+      setUnder250BannersDeleting(null);
     }
-  }
+  };
 
   const handleToggleUnder250BannerStatus = async (id, currentStatus) => {
     try {
-      setError(null)
-      setSuccess(null)
-      const response = await api.patch(`/food/hero-banners/under-250/${id}/status`, {}, getAuthConfig())
+      setError(null);
+      setSuccess(null);
+      const response = await api.patch(`/food/hero-banners/under-250/${id}/status`, {}, getAuthConfig());
       if (response.data.success) {
-        setSuccess(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
-        await fetchUnder250Banners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchUnder250Banners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to update banner status.')
+      setErrorSafely(err.response?.data?.message || 'Failed to update banner status.');
     }
-  }
+  };
 
   const handleUnder250BannerOrderChange = async (id, direction) => {
-    const banner = under250Banners.find(b => b._id === id)
-    if (!banner) return
-    const newOrder = direction === 'up' ? banner.order - 1 : banner.order + 1
-    const otherBanner = under250Banners.find(b => b.order === newOrder && b._id !== id)
-    if (!otherBanner && newOrder < 0) return
+    const banner = under250Banners.find((b) => b._id === id);
+    if (!banner) return;
+    const newOrder = direction === 'up' ? banner.order - 1 : banner.order + 1;
+    const otherBanner = under250Banners.find((b) => b.order === newOrder && b._id !== id);
+    if (!otherBanner && newOrder < 0) return;
     try {
-      setError(null)
-      await api.patch(`/food/hero-banners/under-250/${id}/order`, { order: newOrder }, getAuthConfig())
+      setError(null);
+      await api.patch(`/food/hero-banners/under-250/${id}/order`, { order: newOrder }, getAuthConfig());
       if (otherBanner) {
-        await api.patch(`/food/hero-banners/under-250/${otherBanner._id}/order`, { order: banner.order }, getAuthConfig())
+        await api.patch(`/food/hero-banners/under-250/${otherBanner._id}/order`, { order: banner.order }, getAuthConfig());
       }
-      await fetchUnder250Banners()
+      await fetchUnder250Banners();
     } catch (err) {
-      setErrorSafely('Failed to update banner order.')
+      setErrorSafely('Failed to update banner order.');
     }
-  }
+  };
 
   // ==================== DINING BANNERS ====================
   const fetchDiningBanners = async () => {
     try {
-      setDiningBannersLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners/dining', getAuthConfig())
+      setDiningBannersLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners/dining', getAuthConfig());
       if (response.data.success) {
-        setDiningBanners(response.data.data.banners || [])
+        setDiningBanners(response.data.data.banners || []);
       }
     } catch (err) {
       if (err.response?.status === 401) {
-        setDiningBanners([])
-        setError(null)
+        setDiningBanners([]);
+        setError(null);
       } else if (err.response?.status === 404) {
-        setDiningBanners([])
-        setError(null)
+        setDiningBanners([]);
+        setError(null);
       } else {
-        const errorMessage = err.response?.data?.message || 'Failed to load dining banners'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load dining banners';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setDiningBannersLoading(false)
+      setDiningBannersLoading(false);
     }
-  }
+  };
 
   const handleDiningBannerFileSelect = (e) => {
-    const files = Array.from(e.target?.files || e.files || [])
-    if (files.length === 0) return
+    const files = Array.from(e.target?.files || e.files || []);
+    if (files.length === 0) return;
     if (files.length > 5) {
-      setError('You can upload a maximum of 5 images at once')
-      return
+      setError('You can upload a maximum of 5 images at once');
+      return;
     }
-    uploadDiningBanners(files)
-  }
+    uploadDiningBanners(files);
+  };
 
   const uploadDiningBanners = async (files) => {
     try {
-      const adminToken = getModuleToken('admin')
+      const adminToken = getModuleToken('admin');
       if (!adminToken || adminToken.trim() === '' || adminToken === 'null' || adminToken === 'undefined') {
-        setErrorSafely('Authentication required. Please login again.')
-        return
+        setErrorSafely('Authentication required. Please login again.');
+        return;
       }
 
-      setDiningBannersUploading(true)
-      setError(null)
-      setSuccess(null)
-      setDiningBannersUploadProgress({ current: 0, total: files.length })
+      setDiningBannersUploading(true);
+      setError(null);
+      setSuccess(null);
+      setDiningBannersUploadProgress({ current: 0, total: files.length });
 
-      const formData = new FormData()
+      const formData = new FormData();
       files.forEach((file) => {
-        formData.append('images', file)
-      })
+        formData.append('images', file);
+      });
 
       const response = await api.post('/food/hero-banners/dining/multiple', formData, getAuthConfig({
-        headers: { 'Content-Type': 'multipart/form-data' },
-      }))
+        headers: { 'Content-Type': 'multipart/form-data' }
+      }));
 
       if (response.data.success) {
-        setSuccess(`${response.data.data.banners?.length || files.length} dining banner(s) uploaded successfully!`)
-        await fetchDiningBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`${response.data.data.banners?.length || files.length} dining banner(s) uploaded successfully!`);
+        await fetchDiningBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || 'Failed to upload dining banners'
-      setErrorSafely(errorMessage)
-      setDiningBannersUploadProgress({ current: 0, total: 0 })
+      const errorMessage = err.response?.data?.message || 'Failed to upload dining banners';
+      setErrorSafely(errorMessage);
+      setDiningBannersUploadProgress({ current: 0, total: 0 });
     } finally {
-      setDiningBannersUploading(false)
+      setDiningBannersUploading(false);
     }
-  }
+  };
 
   const handleDeleteDiningBanner = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this dining banner?')) return
+    if (!(await confirmApp('Are you sure you want to delete this dining banner?'))) return;
     try {
-      setDiningBannersDeleting(id)
-      setError(null)
-      setSuccess(null)
-      const response = await api.delete(`/food/hero-banners/dining/${id}`, getAuthConfig())
+      setDiningBannersDeleting(id);
+      setError(null);
+      setSuccess(null);
+      const response = await api.delete(`/food/hero-banners/dining/${id}`, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Dining banner deleted successfully!')
-        await fetchDiningBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Dining banner deleted successfully!');
+        await fetchDiningBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to delete banner.')
+      setErrorSafely(err.response?.data?.message || 'Failed to delete banner.');
     } finally {
-      setDiningBannersDeleting(null)
+      setDiningBannersDeleting(null);
     }
-  }
+  };
 
   const handleToggleDiningBannerStatus = async (id, currentStatus) => {
     try {
-      setError(null)
-      setSuccess(null)
-      const response = await api.patch(`/food/hero-banners/dining/${id}/status`, {}, getAuthConfig())
+      setError(null);
+      setSuccess(null);
+      const response = await api.patch(`/food/hero-banners/dining/${id}/status`, {}, getAuthConfig());
       if (response.data.success) {
-        setSuccess(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
-        await fetchDiningBanners()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`Banner ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchDiningBanners();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to update banner status.')
+      setErrorSafely(err.response?.data?.message || 'Failed to update banner status.');
     }
-  }
+  };
 
   const handleDiningBannerOrderChange = async (id, direction) => {
-    const banner = diningBanners.find(b => b._id === id)
-    if (!banner) return
-    const newOrder = direction === 'up' ? banner.order - 1 : banner.order + 1
-    const otherBanner = diningBanners.find(b => b.order === newOrder && b._id !== id)
-    if (!otherBanner && newOrder < 0) return
+    const banner = diningBanners.find((b) => b._id === id);
+    if (!banner) return;
+    const newOrder = direction === 'up' ? banner.order - 1 : banner.order + 1;
+    const otherBanner = diningBanners.find((b) => b.order === newOrder && b._id !== id);
+    if (!otherBanner && newOrder < 0) return;
     try {
-      setError(null)
-      await api.patch(`/food/hero-banners/dining/${id}/order`, { order: newOrder }, getAuthConfig())
+      setError(null);
+      await api.patch(`/food/hero-banners/dining/${id}/order`, { order: newOrder }, getAuthConfig());
       if (otherBanner) {
-        await api.patch(`/food/hero-banners/dining/${otherBanner._id}/order`, { order: banner.order }, getAuthConfig())
+        await api.patch(`/food/hero-banners/dining/${otherBanner._id}/order`, { order: banner.order }, getAuthConfig());
       }
-      await fetchDiningBanners()
+      await fetchDiningBanners();
     } catch (err) {
-      setErrorSafely('Failed to update banner order.')
+      setErrorSafely('Failed to update banner order.');
     }
-  }
+  };
 
   // ==================== SETTINGS ====================
   const fetchSettings = async () => {
     try {
-      setSettingsLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners/landing/settings', getAuthConfig())
+      setSettingsLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners/landing/settings', getAuthConfig());
       if (response.data.success) {
-        const nextSettings = response.data.data?.settings || response.data.data || {}
+        const nextSettings = response.data.data?.settings || response.data.data || {};
         setSettings({
           exploreMoreHeading: nextSettings.exploreMoreHeading || "Explore More",
           recommendedRestaurantIds: Array.isArray(nextSettings.recommendedRestaurantIds) ? nextSettings.recommendedRestaurantIds : [],
           headerVideoUrl: nextSettings.headerVideoUrl || "",
-          headerVideoUrls: Array.isArray(nextSettings.headerVideoUrls) ? nextSettings.headerVideoUrls : (nextSettings.headerVideoUrl ? [nextSettings.headerVideoUrl] : [])
-        })
+          headerVideoUrls: Array.isArray(nextSettings.headerVideoUrls) ? nextSettings.headerVideoUrls : nextSettings.headerVideoUrl ? [nextSettings.headerVideoUrl] : []
+        });
       }
     } catch (err) {
       // Silently handle 401/404 errors - endpoints may not exist yet, use default settings
       if (err.response?.status === 401 || err.response?.status === 404) {
-        setSettings({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "", headerVideoUrls: [] }) // Use default settings
-        setError(null) // Clear any previous error
+        setSettings({ exploreMoreHeading: "Explore More", recommendedRestaurantIds: [], headerVideoUrl: "", headerVideoUrls: [] }); // Use default settings
+        setError(null); // Clear any previous error
       } else {
         // Filter out token-related errors
-        const errorMessage = err.response?.data?.message || 'Failed to load settings'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load settings';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setSettingsLoading(false)
+      setSettingsLoading(false);
     }
-  }
+  };
 
   const handleSaveSettings = async () => {
     try {
-      setSettingsSaving(true)
-      setError(null)
-      setSuccess(null)
+      setSettingsSaving(true);
+      setError(null);
+      setSuccess(null);
       const response = await api.patch('/food/hero-banners/landing/settings', {
         exploreMoreHeading: settings.exploreMoreHeading,
         recommendedRestaurantIds: Array.isArray(settings.recommendedRestaurantIds) ? settings.recommendedRestaurantIds : []
-      }, getAuthConfig())
+      }, getAuthConfig());
       if (response.data.success) {
-        const savedSettings = response.data.data?.settings || response.data.data || {}
+        const savedSettings = response.data.data?.settings || response.data.data || {};
         setSettings((prev) => ({
           ...prev,
           exploreMoreHeading: savedSettings.exploreMoreHeading || prev.exploreMoreHeading,
           headerVideoUrl: typeof savedSettings.headerVideoUrl === 'string' ? savedSettings.headerVideoUrl : prev.headerVideoUrl,
-          recommendedRestaurantIds: Array.isArray(savedSettings.recommendedRestaurantIds)
-            ? savedSettings.recommendedRestaurantIds
-            : prev.recommendedRestaurantIds
-        }))
-        setSuccess('Settings saved successfully!')
-        setTimeout(() => setSuccess(null), 3000)
+          recommendedRestaurantIds: Array.isArray(savedSettings.recommendedRestaurantIds) ?
+          savedSettings.recommendedRestaurantIds :
+          prev.recommendedRestaurantIds
+        }));
+        setSuccess('Settings saved successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to save settings.')
+      setErrorSafely(err.response?.data?.message || 'Failed to save settings.');
     } finally {
-      setSettingsSaving(false)
+      setSettingsSaving(false);
     }
-  }
+  };
 
   const handleHeaderVideoFileSelect = async (e) => {
-    const file = e.target?.files?.[0]
-    if (!file) return
+    const file = e.target?.files?.[0];
+    if (!file) return;
 
     if (!file.type?.startsWith('video/')) {
-      setErrorSafely('Please select a valid video file.')
-      e.target.value = ''
-      return
+      setErrorSafely('Please select a valid video file.');
+      e.target.value = '';
+      return;
     }
 
     try {
-      setHeaderVideoUploading(true)
-      setError(null)
-      setSuccess(null)
+      setHeaderVideoUploading(true);
+      setError(null);
+      setSuccess(null);
 
-      const formData = new FormData()
-      formData.append('video', file)
+      const formData = new FormData();
+      formData.append('video', file);
 
-      const response = await api.post('/food/hero-banners/landing/settings/header-video', formData, getAuthConfig())
+      const response = await api.post('/food/hero-banners/landing/settings/header-video', formData, getAuthConfig());
       if (response.data.success) {
-        const savedSettings = response.data.data?.settings || response.data.data || {}
+        const savedSettings = response.data.data?.settings || response.data.data || {};
         setSettings((prev) => ({
           ...prev,
           headerVideoUrl: savedSettings.headerVideoUrl || "",
-          headerVideoUrls: Array.isArray(savedSettings.headerVideoUrls) ? savedSettings.headerVideoUrls : (savedSettings.headerVideoUrl ? [savedSettings.headerVideoUrl] : prev.headerVideoUrls)
-        }))
-        setSuccess('Header video uploaded successfully!')
-        setTimeout(() => setSuccess(null), 3000)
+          headerVideoUrls: Array.isArray(savedSettings.headerVideoUrls) ? savedSettings.headerVideoUrls : savedSettings.headerVideoUrl ? [savedSettings.headerVideoUrl] : prev.headerVideoUrls
+        }));
+        setSuccess('Header video uploaded successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to upload header video.')
+      setErrorSafely(err.response?.data?.message || 'Failed to upload header video.');
     } finally {
-      if (e.target) e.target.value = ''
-      setHeaderVideoUploading(false)
+      if (e.target) e.target.value = '';
+      setHeaderVideoUploading(false);
     }
-  }
+  };
 
   const handleRemoveHeaderVideo = async (publicId) => {
-    if (!window.confirm('Remove this homepage header video?')) return
+    if (!(await confirmApp('Remove this homepage header video?'))) return;
 
     try {
-      setHeaderVideoRemoving(true)
-      setError(null)
-      setSuccess(null)
-      const url = publicId
-        ? `/food/hero-banners/landing/settings/header-video?publicId=${encodeURIComponent(publicId)}`
-        : '/food/hero-banners/landing/settings/header-video'
-      const response = await api.delete(url, getAuthConfig())
+      setHeaderVideoRemoving(true);
+      setError(null);
+      setSuccess(null);
+      const url = publicId ?
+      `/food/hero-banners/landing/settings/header-video?publicId=${encodeURIComponent(publicId)}` :
+      '/food/hero-banners/landing/settings/header-video';
+      const response = await api.delete(url, getAuthConfig());
       if (response.data.success) {
-        const savedSettings = response.data.data?.settings || response.data.data || {}
+        const savedSettings = response.data.data?.settings || response.data.data || {};
         setSettings((prev) => ({
           ...prev,
           headerVideoUrl: savedSettings.headerVideoUrl || "",
           headerVideoUrls: Array.isArray(savedSettings.headerVideoUrls) ? savedSettings.headerVideoUrls : []
-        }))
-        setSuccess('Header video removed successfully!')
-        setTimeout(() => setSuccess(null), 3000)
+        }));
+        setSuccess('Header video removed successfully!');
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to remove header video.')
+      setErrorSafely(err.response?.data?.message || 'Failed to remove header video.');
     } finally {
-      setHeaderVideoRemoving(false)
+      setHeaderVideoRemoving(false);
     }
-  }
+  };
 
   // ==================== ALL RESTAURANTS ====================
   const fetchAllRestaurants = async () => {
     try {
-      setRestaurantsLoading(true)
-      setError(null)
-      const response = await adminAPI.getRestaurants({ limit: 1000 })
-      const data = response?.data?.data
+      setRestaurantsLoading(true);
+      setError(null);
+      const response = await adminAPI.getRestaurants({ limit: 1000 });
+      const data = response?.data?.data;
       if (response?.data?.success && data) {
-        const raw = Array.isArray(data) ? data : (data.restaurants || [])
+        const raw = Array.isArray(data) ? data : data.restaurants || [];
         const restaurants = raw.map((r) => ({
           ...r,
           name: r.name || r.restaurantName || ''
-        }))
-        setAllRestaurants(restaurants)
+        }));
+        setAllRestaurants(restaurants);
       }
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 404) {
-        setAllRestaurants([])
-        setError(null)
+        setAllRestaurants([]);
+        setError(null);
       } else {
-        const errorMessage = err.response?.data?.message || 'Failed to load restaurants'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load restaurants';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setRestaurantsLoading(false)
+      setRestaurantsLoading(false);
     }
-  }
+  };
 
   const fetchGourmetRestaurants = async () => {
     try {
-      setGourmetLoading(true)
-      setError(null)
-      const response = await api.get('/food/hero-banners/gourmet', getAuthConfig())
+      setGourmetLoading(true);
+      setError(null);
+      const response = await api.get('/food/hero-banners/gourmet', getAuthConfig());
       if (response.data.success) {
-        setGourmetRestaurants(response.data.data.restaurants || [])
+        setGourmetRestaurants(response.data.data.restaurants || []);
       }
     } catch (err) {
       if (err.response?.status === 401 || err.response?.status === 404) {
-        setGourmetRestaurants([])
-        setError(null)
+        setGourmetRestaurants([]);
+        setError(null);
       } else {
-        const errorMessage = err.response?.data?.message || 'Failed to load Gourmet restaurants'
-        setErrorSafely(errorMessage)
+        const errorMessage = err.response?.data?.message || 'Failed to load Gourmet restaurants';
+        setErrorSafely(errorMessage);
       }
     } finally {
-      setGourmetLoading(false)
+      setGourmetLoading(false);
     }
-  }
+  };
 
   const handleAddGourmetRestaurant = async () => {
     if (!selectedRestaurantGourmet) {
-      setError('Please select a restaurant')
-      return
+      setError('Please select a restaurant');
+      return;
     }
 
     try {
-      setError(null)
-      setSuccess(null)
+      setError(null);
+      setSuccess(null);
       const response = await api.post('/food/hero-banners/gourmet', {
         restaurantId: selectedRestaurantGourmet
-      }, getAuthConfig())
+      }, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Restaurant added to Gourmet successfully!')
-        setSelectedRestaurantGourmet("")
-        await fetchGourmetRestaurants()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Restaurant added to Gourmet successfully!');
+        setSelectedRestaurantGourmet("");
+        await fetchGourmetRestaurants();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to add restaurant to Gourmet.')
+      setErrorSafely(err.response?.data?.message || 'Failed to add restaurant to Gourmet.');
     }
-  }
+  };
   const handleDeleteGourmetRestaurant = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this restaurant from Gourmet?')) return
+    if (!(await confirmApp('Are you sure you want to remove this restaurant from Gourmet?'))) return;
     try {
-      setGourmetDeleting(id)
-      setError(null)
-      setSuccess(null)
-      const response = await api.delete(`/food/hero-banners/gourmet/${id}`, getAuthConfig())
+      setGourmetDeleting(id);
+      setError(null);
+      setSuccess(null);
+      const response = await api.delete(`/food/hero-banners/gourmet/${id}`, getAuthConfig());
       if (response.data.success) {
-        setSuccess('Restaurant removed from Gourmet successfully!')
-        await fetchGourmetRestaurants()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess('Restaurant removed from Gourmet successfully!');
+        await fetchGourmetRestaurants();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to remove restaurant.')
+      setErrorSafely(err.response?.data?.message || 'Failed to remove restaurant.');
     } finally {
-      setGourmetDeleting(null)
+      setGourmetDeleting(null);
     }
-  }
+  };
 
   const handleGourmetOrderChange = async (id, direction) => {
-    const restaurant = gourmetRestaurants.find(r => r._id === id)
-    if (!restaurant) return
-    const newOrder = direction === 'up' ? restaurant.order - 1 : restaurant.order + 1
-    const otherRestaurant = gourmetRestaurants.find(r => r.order === newOrder && r._id !== id)
-    if (!otherRestaurant && newOrder < 0) return
+    const restaurant = gourmetRestaurants.find((r) => r._id === id);
+    if (!restaurant) return;
+    const newOrder = direction === 'up' ? restaurant.order - 1 : restaurant.order + 1;
+    const otherRestaurant = gourmetRestaurants.find((r) => r.order === newOrder && r._id !== id);
+    if (!otherRestaurant && newOrder < 0) return;
     try {
-      setError(null)
-      await api.patch(`/food/hero-banners/gourmet/${id}/order`, { order: newOrder }, getAuthConfig())
+      setError(null);
+      await api.patch(`/food/hero-banners/gourmet/${id}/order`, { order: newOrder }, getAuthConfig());
       if (otherRestaurant) {
-        await api.patch(`/food/hero-banners/gourmet/${otherRestaurant._id}/order`, { order: restaurant.order }, getAuthConfig())
+        await api.patch(`/food/hero-banners/gourmet/${otherRestaurant._id}/order`, { order: restaurant.order }, getAuthConfig());
       }
-      await fetchGourmetRestaurants()
+      await fetchGourmetRestaurants();
     } catch (err) {
-      setErrorSafely('Failed to update Gourmet restaurant order.')
+      setErrorSafely('Failed to update Gourmet restaurant order.');
     }
-  }
+  };
 
   const handleToggleGourmetStatus = async (id, currentStatus) => {
     try {
-      setError(null)
-      setSuccess(null)
-      const response = await api.patch(`/food/hero-banners/gourmet/${id}/status`, {}, getAuthConfig())
+      setError(null);
+      setSuccess(null);
+      const response = await api.patch(`/food/hero-banners/gourmet/${id}/status`, {}, getAuthConfig());
       if (response.data.success) {
-        setSuccess(`Restaurant ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
-        await fetchGourmetRestaurants()
-        setTimeout(() => setSuccess(null), 3000)
+        setSuccess(`Restaurant ${currentStatus ? 'deactivated' : 'activated'} successfully!`);
+        await fetchGourmetRestaurants();
+        setTimeout(() => setSuccess(null), 3000);
       }
     } catch (err) {
-      setErrorSafely(err.response?.data?.message || 'Failed to update restaurant status.')
+      setErrorSafely(err.response?.data?.message || 'Failed to update restaurant status.');
     }
-  }
+  };
 
   // ==================== RENDER ====================
   const tabs = [
-    { id: 'banners', label: 'Hero Banners', icon: ImageIcon },
-    { id: 'under-250', label: '250 Banner', icon: Tag },
-    { id: 'dining', label: 'Dining', icon: UtensilsCrossed },
-    { id: 'homepage-video', label: 'Homepage Video', icon: Layout },
-    { id: 'explore-more', label: 'Explore More', icon: Layout },
-  ]
+  { id: 'banners', label: 'Hero Banners', icon: ImageIcon },
+  { id: 'under-250', label: '250 Banner', icon: Tag },
+  { id: 'dining', label: 'Dining', icon: UtensilsCrossed },
+  { id: 'homepage-video', label: 'Homepage Video', icon: Layout },
+  { id: 'explore-more', label: 'Explore More', icon: Layout }];
+
 
   const exploreMoreTabs = [
-    { id: 'icons', label: 'Icons', icon: ImageIcon },
-    { id: 'gourmet', label: 'Gourmet', icon: ChefHat },
-  ]
+  { id: 'icons', label: 'Icons', icon: ImageIcon },
+  { id: 'gourmet', label: 'Gourmet', icon: ChefHat }];
+
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
@@ -1402,146 +1402,146 @@ export default function LandingPageManagement() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2 mb-6">
           <div className="flex gap-2 overflow-x-auto">
             {tabs.map((tab) => {
-              const Icon = tab.icon
+              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id
-                    ? 'bg-blue-500 text-white'
-                    : 'text-slate-600 hover:bg-slate-100'
-                    }`}
-                >
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${activeTab === tab.id ?
+                  'bg-blue-500 text-white' :
+                  'text-slate-600 hover:bg-slate-100'}`
+                  }>
+                  
                   <Icon className="w-4 h-4" />
                   {tab.label}
-                </button>
-              )
+                </button>);
+
             })}
           </div>
         </div>
 
         {/* Success/Error Messages */}
-        {success && (
-          <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
+        {success &&
+        <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5" />
             <span>{success}</span>
           </div>
-        )}
+        }
 
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-2">
+        {error &&
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center gap-2">
             <AlertCircle className="w-5 h-5" />
             <span>{error}</span>
           </div>
-        )}
+        }
 
         {/* Hero Banners Tab */}
-        {activeTab === 'banners' && (
-          <>
+        {activeTab === 'banners' &&
+        <>
             {/* Upload Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Upload New Banner(s)</h2>
               <div className="mb-4 max-w-sm">
                 <Label htmlFor="hero-banner-zone">Select Zone</Label>
                 <select
-                  id="hero-banner-zone"
-                  value={bannerZoneId}
-                  onChange={(e) => setBannerZoneId(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={bannersUploading || zonesLoading}
-                >
+                id="hero-banner-zone"
+                value={bannerZoneId}
+                onChange={(e) => setBannerZoneId(e.target.value)}
+                className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={bannersUploading || zonesLoading}>
+                
                   <option value="global">Global (all zones)</option>
                   {zones.map((zone) => {
-                    const zoneId = String(zone?._id || zone?.id || "")
-                    const zoneLabel = zone?.zoneName || zone?.name || zone?.serviceLocation || zoneId
-                    return (
-                      <option key={zoneId} value={zoneId}>
+                  const zoneId = String(zone?._id || zone?.id || "");
+                  const zoneLabel = zone?.zoneName || zone?.name || zone?.serviceLocation || zoneId;
+                  return (
+                    <option key={zoneId} value={zoneId}>
                         {zoneLabel}
-                      </option>
-                    )
-                  })}
+                      </option>);
+
+                })}
                 </select>
               </div>
               <div
-                className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  const files = Array.from(e.dataTransfer.files)
-                  if (files.length > 0) handleBannerFileSelect({ files })
-                }}
-                onClick={() => bannersFileInputRef.current?.click()}
-              >
+              className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+              onDragOver={(e) => {e.preventDefault();e.stopPropagation();}}
+              onDragLeave={(e) => {e.preventDefault();e.stopPropagation();}}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) handleBannerFileSelect({ files });
+              }}
+              onClick={() => bannersFileInputRef.current?.click()}>
+              
                 <input
-                  ref={bannersFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleBannerFileSelect}
-                  className="hidden"
-                  disabled={bannersUploading}
-                />
-                {bannersUploading ? (
-                  <div className="flex flex-col items-center gap-3">
+                ref={bannersFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleBannerFileSelect}
+                className="hidden"
+                disabled={bannersUploading} />
+              
+                {bannersUploading ?
+              <div className="flex flex-col items-center gap-3">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                     <p className="text-blue-600 font-medium">
                       Uploading image {bannersUploadProgress.current} of {bannersUploadProgress.total}...
                     </p>
-                    {bannersUploadProgress.total > 0 && (
-                      <div className="w-full max-w-xs">
+                    {bannersUploadProgress.total > 0 &&
+                <div className="w-full max-w-xs">
                         <div className="w-full bg-blue-200 rounded-full h-2">
                           <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(bannersUploadProgress.current / bannersUploadProgress.total) * 100}%` }}
-                          />
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${bannersUploadProgress.current / bannersUploadProgress.total * 100}%` }} />
+                    
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
+                }
+                  </div> :
+
+              <div className="flex flex-col items-center gap-3">
                     <Upload className="w-8 h-8 text-blue-600" />
                     <div>
                       <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); bannersFileInputRef.current?.click(); }}
-                        className="text-blue-600 font-medium hover:text-blue-700 underline"
-                      >
+                    type="button"
+                    onClick={(e) => {e.stopPropagation();bannersFileInputRef.current?.click();}}
+                    className="text-blue-600 font-medium hover:text-blue-700 underline">
+                    
                         Click to upload
                       </button>
                       <span className="text-slate-600"> or drag and drop</span>
                     </div>
                     <p className="text-xs text-slate-500">PNG, JPG, WEBP up to 5MB each (Max 5 images at once)</p>
                   </div>
-                )}
+              }
               </div>
             </div>
 
             {/* Banners List */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Banner List ({banners.length})</h2>
-              {bannersLoading ? (
-                <div className="flex items-center justify-center py-12">
+              {bannersLoading ?
+            <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                </div>
-              ) : banners.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                </div> :
+            banners.length === 0 ?
+            <div className="text-center py-12 text-slate-500">
                   <ImageIcon className="w-12 h-12 mx-auto mb-3 text-slate-400" />
                   <p>No banners uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {[...banners]
-                    .sort((a, b) => {
-                      const firstOrder = getBannerOrderValue(a)
-                      const secondOrder = getBannerOrderValue(b)
-                      if (firstOrder !== secondOrder) return firstOrder - secondOrder
-                      return String(a?._id || "").localeCompare(String(b?._id || ""))
-                    })
-                    .map((banner, index) => (
-                    <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                </div> :
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {[...banners].
+              sort((a, b) => {
+                const firstOrder = getBannerOrderValue(a);
+                const secondOrder = getBannerOrderValue(b);
+                if (firstOrder !== secondOrder) return firstOrder - secondOrder;
+                return String(a?._id || "").localeCompare(String(b?._id || ""));
+              }).
+              map((banner, index) =>
+              <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                       <div className="relative aspect-video bg-slate-100">
                         <img src={banner.imageUrl} alt={`Hero Banner ${index + 1}`} className="w-full h-full object-cover" />
                         <div className="absolute top-2 right-2">
@@ -1557,21 +1557,21 @@ export default function LandingPageManagement() {
                         <div className="mb-3">
                           <Label className="text-xs font-semibold text-slate-600">Selected Zone</Label>
                           <select
-                            value={banner?.zoneId?._id || banner?.zoneId || "global"}
-                            onChange={(e) => handleBannerZoneChange(banner._id, e.target.value)}
-                            disabled={bannerZoneUpdatingId === banner._id || zonesLoading}
-                            className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
+                      value={banner?.zoneId?._id || banner?.zoneId || "global"}
+                      onChange={(e) => handleBannerZoneChange(banner._id, e.target.value)}
+                      disabled={bannerZoneUpdatingId === banner._id || zonesLoading}
+                      className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                      
                             <option value="global">Global (all zones)</option>
                             {zones.map((zone) => {
-                              const zoneId = String(zone?._id || zone?.id || "")
-                              const zoneLabel = zone?.zoneName || zone?.name || zone?.serviceLocation || zoneId
-                              return (
-                                <option key={zoneId} value={zoneId}>
+                        const zoneId = String(zone?._id || zone?.id || "");
+                        const zoneLabel = zone?.zoneName || zone?.name || zone?.serviceLocation || zoneId;
+                        return (
+                          <option key={zoneId} value={zoneId}>
                                   {zoneLabel}
-                                </option>
-                              )
-                            })}
+                                </option>);
+
+                      })}
                           </select>
                           <p className="mt-1 text-xs text-slate-500">
                             Showing in: {getZoneLabel(banner?.zoneId)}
@@ -1588,13 +1588,13 @@ export default function LandingPageManagement() {
                           </div>
                           <div className="flex items-center gap-2 flex-wrap">
                             <button
-                              onClick={() => {
-                                setSelectedBannerId(banner._id)
-                                setSelectedRestaurantIds(banner.linkedRestaurants?.map(r => r._id || r) || [])
-                                setShowRestaurantModal(true)
-                              }}
-                              className="px-3 py-1.5 rounded text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center gap-1"
-                            >
+                        onClick={() => {
+                          setSelectedBannerId(banner._id);
+                          setSelectedRestaurantIds(banner.linkedRestaurants?.map((r) => r._id || r) || []);
+                          setShowRestaurantModal(true);
+                        }}
+                        className="px-3 py-1.5 rounded text-sm font-medium bg-blue-100 text-blue-800 hover:bg-blue-200 flex items-center gap-1">
+                        
                               <Megaphone className="w-4 h-4" />
                               Advertise
                             </button>
@@ -1606,111 +1606,111 @@ export default function LandingPageManagement() {
                             </button>
                           </div>
                         </div>
-                        {banner.linkedRestaurants && banner.linkedRestaurants.length > 0 && (
-                          <div className="mt-2 pt-2 border-t border-slate-200">
+                        {banner.linkedRestaurants && banner.linkedRestaurants.length > 0 &&
+                  <div className="mt-2 pt-2 border-t border-slate-200">
                             <p className="text-xs text-slate-600 mb-1">Linked Restaurants ({banner.linkedRestaurants.length}):</p>
                             <div className="flex flex-wrap gap-1">
-                              {banner.linkedRestaurants.slice(0, 3).map((restaurant) => (
-                                <span key={restaurant._id || restaurant} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">
+                              {banner.linkedRestaurants.slice(0, 3).map((restaurant) =>
+                      <span key={restaurant._id || restaurant} className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs">
                                   {restaurant.name || 'Restaurant'}
                                 </span>
-                              ))}
-                              {banner.linkedRestaurants.length > 3 && (
-                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
+                      )}
+                              {banner.linkedRestaurants.length > 3 &&
+                      <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
                                   +{banner.linkedRestaurants.length - 3} more
                                 </span>
-                              )}
+                      }
                             </div>
                           </div>
-                        )}
+                  }
                       </div>
                     </div>
-                  ))}
-                </div>
               )}
+                </div>
+            }
             </div>
           </>
-        )}
+        }
 
         {/* Under 250 Banner Tab */}
-        {activeTab === 'under-250' && (
-          <>
+        {activeTab === 'under-250' &&
+        <>
             {/* Upload Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Upload New Banner(s)</h2>
               <div
-                className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  const files = Array.from(e.dataTransfer.files)
-                  if (files.length > 0) handleUnder250BannerFileSelect({ files })
-                }}
-                onClick={() => under250BannersFileInputRef.current?.click()}
-              >
+              className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+              onDragOver={(e) => {e.preventDefault();e.stopPropagation();}}
+              onDragLeave={(e) => {e.preventDefault();e.stopPropagation();}}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) handleUnder250BannerFileSelect({ files });
+              }}
+              onClick={() => under250BannersFileInputRef.current?.click()}>
+              
                 <input
-                  ref={under250BannersFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleUnder250BannerFileSelect}
-                  className="hidden"
-                  disabled={under250BannersUploading}
-                />
-                {under250BannersUploading ? (
-                  <div className="flex flex-col items-center gap-3">
+                ref={under250BannersFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleUnder250BannerFileSelect}
+                className="hidden"
+                disabled={under250BannersUploading} />
+              
+                {under250BannersUploading ?
+              <div className="flex flex-col items-center gap-3">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                     <p className="text-blue-600 font-medium">
                       Uploading image {under250BannersUploadProgress.current} of {under250BannersUploadProgress.total}...
                     </p>
-                    {under250BannersUploadProgress.total > 0 && (
-                      <div className="w-full max-w-xs">
+                    {under250BannersUploadProgress.total > 0 &&
+                <div className="w-full max-w-xs">
                         <div className="w-full bg-blue-200 rounded-full h-2">
                           <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(under250BannersUploadProgress.current / under250BannersUploadProgress.total) * 100}%` }}
-                          />
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${under250BannersUploadProgress.current / under250BannersUploadProgress.total * 100}%` }} />
+                    
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
+                }
+                  </div> :
+
+              <div className="flex flex-col items-center gap-3">
                     <Upload className="w-8 h-8 text-blue-600" />
                     <div>
                       <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); under250BannersFileInputRef.current?.click(); }}
-                        className="text-blue-600 font-medium hover:text-blue-700 underline"
-                      >
+                    type="button"
+                    onClick={(e) => {e.stopPropagation();under250BannersFileInputRef.current?.click();}}
+                    className="text-blue-600 font-medium hover:text-blue-700 underline">
+                    
                         Click to upload
                       </button>
                       <span className="text-slate-600"> or drag and drop</span>
                     </div>
                     <p className="text-xs text-slate-500">PNG, JPG, WEBP up to 5MB each (Max 5 images at once)</p>
                   </div>
-                )}
+              }
               </div>
             </div>
 
             {/* Banners List */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Banner List ({under250Banners.length})</h2>
-              {under250BannersLoading ? (
-                <div className="flex items-center justify-center py-12">
+              {under250BannersLoading ?
+            <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                </div>
-              ) : under250Banners.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                </div> :
+            under250Banners.length === 0 ?
+            <div className="text-center py-12 text-slate-500">
                   <Tag className="w-12 h-12 mx-auto mb-3 text-slate-400" />
                   <p>No under 250 banners uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {under250Banners.map((banner, index) => (
-                    <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                </div> :
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {under250Banners.map((banner, index) =>
+              <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                       <div className="relative aspect-video bg-slate-100">
                         <img src={banner.imageUrl} alt={`Under 250 Banner ${index + 1}`} className="w-full h-full object-cover" />
                         <div className="absolute top-2 right-2">
@@ -1741,92 +1741,92 @@ export default function LandingPageManagement() {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
               )}
+                </div>
+            }
             </div>
           </>
-        )}
+        }
 
         {/* Dining Banner Tab */}
-        {activeTab === 'dining' && (
-          <>
+        {activeTab === 'dining' &&
+        <>
             {/* Upload Section */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Upload New Dining Banner(s)</h2>
               <div
-                className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
-                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  const files = Array.from(e.dataTransfer.files)
-                  if (files.length > 0) handleDiningBannerFileSelect({ files })
-                }}
-                onClick={() => diningBannersFileInputRef.current?.click()}
-              >
+              className="border-2 border-dashed border-blue-300 rounded-lg p-8 text-center bg-blue-50/30 cursor-pointer transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+              onDragOver={(e) => {e.preventDefault();e.stopPropagation();}}
+              onDragLeave={(e) => {e.preventDefault();e.stopPropagation();}}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) handleDiningBannerFileSelect({ files });
+              }}
+              onClick={() => diningBannersFileInputRef.current?.click()}>
+              
                 <input
-                  ref={diningBannersFileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleDiningBannerFileSelect}
-                  className="hidden"
-                  disabled={diningBannersUploading}
-                />
-                {diningBannersUploading ? (
-                  <div className="flex flex-col items-center gap-3">
+                ref={diningBannersFileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleDiningBannerFileSelect}
+                className="hidden"
+                disabled={diningBannersUploading} />
+              
+                {diningBannersUploading ?
+              <div className="flex flex-col items-center gap-3">
                     <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
                     <p className="text-blue-600 font-medium">
                       Uploading image {diningBannersUploadProgress.current} of {diningBannersUploadProgress.total}...
                     </p>
-                    {diningBannersUploadProgress.total > 0 && (
-                      <div className="w-full max-w-xs">
+                    {diningBannersUploadProgress.total > 0 &&
+                <div className="w-full max-w-xs">
                         <div className="w-full bg-blue-200 rounded-full h-2">
                           <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${(diningBannersUploadProgress.current / diningBannersUploadProgress.total) * 100}%` }}
-                          />
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${diningBannersUploadProgress.current / diningBannersUploadProgress.total * 100}%` }} />
+                    
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
+                }
+                  </div> :
+
+              <div className="flex flex-col items-center gap-3">
                     <Upload className="w-8 h-8 text-blue-600" />
                     <div>
                       <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); diningBannersFileInputRef.current?.click(); }}
-                        className="text-blue-600 font-medium hover:text-blue-700 underline"
-                      >
+                    type="button"
+                    onClick={(e) => {e.stopPropagation();diningBannersFileInputRef.current?.click();}}
+                    className="text-blue-600 font-medium hover:text-blue-700 underline">
+                    
                         Click to upload
                       </button>
                       <span className="text-slate-600"> or drag and drop</span>
                     </div>
                     <p className="text-xs text-slate-500">PNG, JPG, WEBP up to 5MB each (Max 5 images at once)</p>
                   </div>
-                )}
+              }
               </div>
             </div>
 
             {/* Banners List */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <h2 className="text-lg font-bold text-slate-900 mb-4">Banner List ({diningBanners.length})</h2>
-              {diningBannersLoading ? (
-                <div className="flex items-center justify-center py-12">
+              {diningBannersLoading ?
+            <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                </div>
-              ) : diningBanners.length === 0 ? (
-                <div className="text-center py-12 text-slate-500">
+                </div> :
+            diningBanners.length === 0 ?
+            <div className="text-center py-12 text-slate-500">
                   <UtensilsCrossed className="w-12 h-12 mx-auto mb-3 text-slate-400" />
                   <p>No dining banners uploaded yet.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {diningBanners.map((banner, index) => (
-                    <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                </div> :
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {diningBanners.map((banner, index) =>
+              <div key={banner._id} className="border border-slate-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
                       <div className="relative aspect-video bg-slate-100">
                         <img src={banner.imageUrl} alt={`Dining Banner ${index + 1}`} className="w-full h-full object-cover" />
                         <div className="absolute top-2 right-2">
@@ -1857,16 +1857,16 @@ export default function LandingPageManagement() {
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
               )}
+                </div>
+            }
             </div>
           </>
-        )}
+        }
 
         {/* Homepage Video Tab */}
-        {activeTab === 'homepage-video' && (
-          <>
+        {activeTab === 'homepage-video' &&
+        <>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
@@ -1876,101 +1876,101 @@ export default function LandingPageManagement() {
                   </p>
                 </div>
                 <input
-                  ref={headerVideoInputRef}
-                  type="file"
-                  accept="video/*"
-                  className="hidden"
-                  onChange={handleHeaderVideoFileSelect}
-                />
+                ref={headerVideoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleHeaderVideoFileSelect} />
+              
                 <Button
-                  type="button"
-                  onClick={() => headerVideoInputRef.current?.click()}
-                  disabled={headerVideoUploading || settingsLoading}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
-                >
+                type="button"
+                onClick={() => headerVideoInputRef.current?.click()}
+                disabled={headerVideoUploading || settingsLoading}
+                className="bg-blue-500 hover:bg-blue-600 text-white">
+                
                   {headerVideoUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
                   Upload Video
                 </Button>
               </div>
 
-              {settingsLoading ? (
-                <div className="flex items-center justify-center py-10">
+              {settingsLoading ?
+            <div className="flex items-center justify-center py-10">
                   <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                </div>
-              ) : (settings.headerVideoUrls?.length > 0) ? (
-                <div className="space-y-4">
+                </div> :
+            settings.headerVideoUrls?.length > 0 ?
+            <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {settings.headerVideoUrls.map((url, idx) => (
-                      <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+                    {settings.headerVideoUrls.map((url, idx) =>
+                <div key={idx} className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
                         <video
-                          src={url}
-                          controls
-                          muted
-                          playsInline
-                          className="w-full rounded-lg border border-slate-200 bg-black"
-                        />
+                    src={url}
+                    controls
+                    muted
+                    playsInline
+                    className="w-full rounded-lg border border-slate-200 bg-black" />
+                  
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-slate-500 font-medium">Video {idx + 1}</span>
                           <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleRemoveHeaderVideo(null)}
-                            disabled={headerVideoRemoving}
-                            className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2"
-                          >
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoveHeaderVideo(null)}
+                      disabled={headerVideoRemoving}
+                      className="text-red-600 border-red-200 hover:bg-red-50 text-xs h-7 px-2">
+                      
                             {headerVideoRemoving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3 mr-1" />}
                             Remove
                           </Button>
                         </div>
                       </div>
-                    ))}
+                )}
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                </div> :
+
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
                   <AlertCircle className="w-8 h-8 text-slate-400 mx-auto mb-3" />
                   <p className="text-slate-700 font-medium">No homepage videos uploaded yet.</p>
                   <p className="text-sm text-slate-500 mt-1">
                     The app will keep using the default bundled video until you upload one here.
                   </p>
                 </div>
-              )}
+            }
             </div>
           </>
-        )}
+        }
 
         {/* Explore More Tab */}
-        {activeTab === 'explore-more' && (
-          <>
+        {activeTab === 'explore-more' &&
+        <>
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg font-bold text-slate-900">Landing Settings</h2>
                 <Button
-                  onClick={handleSaveSettings}
-                  disabled={settingsSaving || settingsLoading}
-                  className="bg-blue-500 hover:bg-blue-600 text-white"
-                >
+                onClick={handleSaveSettings}
+                disabled={settingsSaving || settingsLoading}
+                className="bg-blue-500 hover:bg-blue-600 text-white">
+                
                   {settingsSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Save Settings
                 </Button>
               </div>
 
-              {settingsLoading ? (
-                <div className="flex items-center justify-center py-8">
+              {settingsLoading ?
+            <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
-                </div>
-              ) : (
-                <div className="space-y-5">
+                </div> :
+
+            <div className="space-y-5">
                   <div>
                     <Label htmlFor="explore-more-heading">Explore More Heading</Label>
                     <Input
-                      id="explore-more-heading"
-                      value={settings.exploreMoreHeading || ""}
-                      onChange={(e) => setSettings((prev) => ({ ...prev, exploreMoreHeading: e.target.value }))}
-                      className="mt-2"
-                      placeholder="Explore More"
-                    />
+                  id="explore-more-heading"
+                  value={settings.exploreMoreHeading || ""}
+                  onChange={(e) => setSettings((prev) => ({ ...prev, exploreMoreHeading: e.target.value }))}
+                  className="mt-2"
+                  placeholder="Explore More" />
+                
                   </div>
 
                   <div>
@@ -1982,178 +1982,178 @@ export default function LandingPageManagement() {
                     <div className="relative mb-3">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <Input
-                        id="recommended-search"
-                        value={recommendedSearchQuery}
-                        onChange={(e) => setRecommendedSearchQuery(e.target.value)}
-                        placeholder="Search restaurants..."
-                        className="pl-9"
-                      />
+                    id="recommended-search"
+                    value={recommendedSearchQuery}
+                    onChange={(e) => setRecommendedSearchQuery(e.target.value)}
+                    placeholder="Search restaurants..."
+                    className="pl-9" />
+                  
                     </div>
 
-                    {recommendedRestaurantsSelected.length > 0 && (
-                      <div className="mb-3 flex flex-wrap gap-2">
-                        {recommendedRestaurantsSelected.map((restaurant) => (
-                          <button
-                            key={restaurant._id}
-                            type="button"
-                            onClick={() => toggleRecommendedRestaurant(restaurant._id)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs hover:bg-blue-100"
-                          >
+                    {recommendedRestaurantsSelected.length > 0 &&
+                <div className="mb-3 flex flex-wrap gap-2">
+                        {recommendedRestaurantsSelected.map((restaurant) =>
+                  <button
+                    key={restaurant._id}
+                    type="button"
+                    onClick={() => toggleRecommendedRestaurant(restaurant._id)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-xs hover:bg-blue-100">
+                    
                             <span>{restaurant.name}</span>
                             <span className="text-blue-500">x</span>
                           </button>
-                        ))}
+                  )}
                       </div>
-                    )}
+                }
 
                     <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-lg divide-y divide-slate-100">
-                      {filteredRestaurantsForRecommended.length === 0 ? (
-                        <div className="p-4 text-sm text-slate-500 text-center">No restaurants found</div>
-                      ) : (
-                        filteredRestaurantsForRecommended.map((restaurant) => {
-                          const isChecked = (settings.recommendedRestaurantIds || []).includes(restaurant._id)
-                          return (
-                            <label
-                              key={restaurant._id}
-                              className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50"
-                            >
+                      {filteredRestaurantsForRecommended.length === 0 ?
+                  <div className="p-4 text-sm text-slate-500 text-center">No restaurants found</div> :
+
+                  filteredRestaurantsForRecommended.map((restaurant) => {
+                    const isChecked = (settings.recommendedRestaurantIds || []).includes(restaurant._id);
+                    return (
+                      <label
+                        key={restaurant._id}
+                        className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-slate-50">
+                        
                               <div className="min-w-0">
                                 <p className="text-sm font-medium text-slate-800 truncate">{restaurant.name}</p>
                                  <p className="text-xs text-slate-500 truncate">{restaurant._id || "No ID"}</p>
                               </div>
                               <Checkbox
-                                checked={isChecked}
-                                onCheckedChange={() => toggleRecommendedRestaurant(restaurant._id)}
-                              />
-                            </label>
-                          )
-                        })
-                      )}
+                          checked={isChecked}
+                          onCheckedChange={() => toggleRecommendedRestaurant(restaurant._id)} />
+                        
+                            </label>);
+
+                  })
+                  }
                     </div>
                   </div>
                 </div>
-              )}
+            }
             </div>
 
             {/* Sub-tabs for Explore More */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-2 mb-6">
               <div className="flex gap-2 overflow-x-auto">
                 {exploreMoreTabs.map((tab) => {
-                  const Icon = tab.icon
-                  const isActive = activeTab === 'explore-more' && (tab.id === 'gourmet' ? gourmetRestaurants.length > 0 : false)
-                  return (
-                    <button
-                      key={tab.id}
-                      onClick={() => setExploreMoreSubTab(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${exploreMoreSubTab === tab.id
-                        ? 'bg-blue-500 text-white'
-                        : 'text-slate-600 hover:bg-slate-100'
-                        }`}
-                    >
+                const Icon = tab.icon;
+                const isActive = activeTab === 'explore-more' && (tab.id === 'gourmet' ? gourmetRestaurants.length > 0 : false);
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setExploreMoreSubTab(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${exploreMoreSubTab === tab.id ?
+                    'bg-blue-500 text-white' :
+                    'text-slate-600 hover:bg-slate-100'}`
+                    }>
+                    
                       <Icon className="w-4 h-4" />
                       {tab.label}
-                    </button>
-                  )
-                })}
+                    </button>);
+
+              })}
               </div>
             </div>
 
 
 
             {/* Icons Tab Content */}
-            {exploreMoreSubTab === 'icons' && (
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            {exploreMoreSubTab === 'icons' &&
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h2 className="text-lg font-bold text-slate-900 mb-6">Manage Explore More Icons</h2>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {[
-                    { id: 'offers', label: 'Offers', link: '/user/offers' },
-                    { id: 'gourmet', label: 'Gourmet', link: '/user/gourmet' },
-                    { id: 'collection', label: 'Collections', link: '/user/profile/favorites' }
-                  ].map((item) => {
-                    // Find matching item from DB
-                    const dbItem = exploreMore.find(i => i.label?.toLowerCase() === item.label.toLowerCase())
+              { id: 'offers', label: 'Offers', link: '/user/offers' },
+              { id: 'gourmet', label: 'Gourmet', link: '/user/gourmet' },
+              { id: 'collection', label: 'Collections', link: '/user/profile/favorites' }].
+              map((item) => {
+                // Find matching item from DB
+                const dbItem = exploreMore.find((i) => i.label?.toLowerCase() === item.label.toLowerCase());
 
-                    return (
-                      <div key={item.id} className="border border-slate-200 rounded-lg p-4 flex flex-col items-center relative">
+                return (
+                  <div key={item.id} className="border border-slate-200 rounded-lg p-4 flex flex-col items-center relative">
                         <span className="text-sm font-semibold text-slate-700 mb-3">{item.label}</span>
 
                         <div className="w-24 h-24 mb-4 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center overflow-hidden relative group">
-                          {dbItem?.imageUrl ? (
-                            <img
-                              src={dbItem.imageUrl}
-                              alt={item.label}
-                              className="w-full h-full object-contain p-2"
-                            />
-                          ) : (
-                            <ImageIcon className="w-8 h-8 text-slate-300" />
-                          )}
+                          {dbItem?.imageUrl ?
+                      <img
+                        src={dbItem.imageUrl}
+                        alt={item.label}
+                        className="w-full h-full object-contain p-2" /> :
 
-                          {exploreIconsUploading[item.id] && (
-                            <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+
+                      <ImageIcon className="w-8 h-8 text-slate-300" />
+                      }
+
+                          {exploreIconsUploading[item.id] &&
+                      <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
                               <Loader2 className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                             </div>
-                          )}
+                      }
                         </div>
 
                         <div className="w-full mt-auto">
                           <input
-                            type="file"
-                            id={`file-${item.id}`}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={(e) => {
-                              if (e.target.files?.[0]) {
-                                handleIconUpdate(e.target.files[0], item.label, item.link, item.id)
-                              }
-                            }}
-                            disabled={exploreIconsUploading[item.id]}
-                          />
+                        type="file"
+                        id={`file-${item.id}`}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => {
+                          if (e.target.files?.[0]) {
+                            handleIconUpdate(e.target.files[0], item.label, item.link, item.id);
+                          }
+                        }}
+                        disabled={exploreIconsUploading[item.id]} />
+                      
                           <label
-                            htmlFor={`file-${item.id}`}
-                            className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer ${exploreIconsUploading[item.id] ? 'opacity-50 pointer-events-none' : ''}`}
-                          >
+                        htmlFor={`file-${item.id}`}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-2 text-xs font-medium rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors cursor-pointer ${exploreIconsUploading[item.id] ? 'opacity-50 pointer-events-none' : ''}`}>
+                        
                             <Upload className="w-3 h-3" />
                             {dbItem ? 'Change Icon' : 'Upload Icon'}
                           </label>
                         </div>
-                      </div>
-                    )
-                  })}
+                      </div>);
+
+              })}
                 </div>
               </div>
-            )}
+          }
 
             {/* Gourmet Tab Content */}
-            {exploreMoreSubTab === 'gourmet' && (
-              <>
+            {exploreMoreSubTab === 'gourmet' &&
+          <>
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                   <h2 className="text-lg font-bold text-slate-900 mb-4">Add Restaurant to Gourmet</h2>
                   <div className="space-y-4">
                     <div>
                       <Label htmlFor="restaurant-gourmet">Select Restaurant</Label>
                       <select
-                        id="restaurant-gourmet"
-                        value={selectedRestaurantGourmet}
-                        onChange={(e) => setSelectedRestaurantGourmet(e.target.value)}
-                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={restaurantsLoading}
-                      >
+                    id="restaurant-gourmet"
+                    value={selectedRestaurantGourmet}
+                    onChange={(e) => setSelectedRestaurantGourmet(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled={restaurantsLoading}>
+                    
                         <option value="">Select a restaurant...</option>
-                        {allRestaurants
-                          .filter(r => !gourmetRestaurants.some(gr => gr.restaurant?._id === r._id))
-                          .map((restaurant) => (
-                            <option key={restaurant._id} value={restaurant._id}>
+                        {allRestaurants.
+                    filter((r) => !gourmetRestaurants.some((gr) => gr.restaurant?._id === r._id)).
+                    map((restaurant) =>
+                    <option key={restaurant._id} value={restaurant._id}>
                               {restaurant.name}
                             </option>
-                          ))}
+                    )}
                       </select>
                     </div>
                     <Button
-                      onClick={handleAddGourmetRestaurant}
-                      disabled={!selectedRestaurantGourmet}
-                      className="bg-blue-500 hover:bg-blue-600 text-white"
-                    >
+                  onClick={handleAddGourmetRestaurant}
+                  disabled={!selectedRestaurantGourmet}
+                  className="bg-blue-500 hover:bg-blue-600 text-white">
+                  
                       Add to Gourmet
                     </Button>
                   </div>
@@ -2161,37 +2161,37 @@ export default function LandingPageManagement() {
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                   <h2 className="text-lg font-bold text-slate-900 mb-4">Gourmet Restaurants ({gourmetRestaurants.length})</h2>
-                  {gourmetLoading ? (
-                    <div className="flex items-center justify-center py-12">
+                  {gourmetLoading ?
+              <div className="flex items-center justify-center py-12">
                       <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                    </div>
-                  ) : gourmetRestaurants.length === 0 ? (
-                    <div className="text-center py-12 text-slate-500">
+                    </div> :
+              gourmetRestaurants.length === 0 ?
+              <div className="text-center py-12 text-slate-500">
                       <ChefHat className="w-12 h-12 mx-auto mb-3 text-slate-400" />
                       <p>No restaurants added to Gourmet yet.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-                      {gourmetRestaurants
-                        .sort((a, b) => a.order - b.order)
-                        .map((item, index) => {
-                          // Get restaurant cover image with priority: coverImages > menuImages > profileImage
-                          const coverImages = item.restaurant?.coverImages && item.restaurant.coverImages.length > 0
-                            ? item.restaurant.coverImages.map(img => img.url || img).filter(Boolean)
-                            : []
+                    </div> :
 
-                          const menuImages = item.restaurant?.menuImages && item.restaurant.menuImages.length > 0
-                            ? item.restaurant.menuImages.map(img => img.url || img).filter(Boolean)
-                            : []
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {gourmetRestaurants.
+                sort((a, b) => a.order - b.order).
+                map((item, index) => {
+                  // Get restaurant cover image with priority: coverImages > menuImages > profileImage
+                  const coverImages = item.restaurant?.coverImages && item.restaurant.coverImages.length > 0 ?
+                  item.restaurant.coverImages.map((img) => img.url || img).filter(Boolean) :
+                  [];
 
-                          const restaurantImage = coverImages.length > 0
-                            ? coverImages[0]
-                            : (menuImages.length > 0
-                              ? menuImages[0]
-                              : (item.restaurant?.profileImage?.url || "https://via.placeholder.com/400"))
+                  const menuImages = item.restaurant?.menuImages && item.restaurant.menuImages.length > 0 ?
+                  item.restaurant.menuImages.map((img) => img.url || img).filter(Boolean) :
+                  [];
 
-                          return (
-                            <div key={item._id} className="border border-slate-200 rounded-lg overflow-hidden">
+                  const restaurantImage = coverImages.length > 0 ?
+                  coverImages[0] :
+                  menuImages.length > 0 ?
+                  menuImages[0] :
+                  item.restaurant?.profileImage?.url || "https://via.placeholder.com/400";
+
+                  return (
+                    <div key={item._id} className="border border-slate-200 rounded-lg overflow-hidden">
                               <div className="relative h-32 bg-slate-100">
                                 <img src={restaurantImage} alt={item.restaurant?.name} className="w-full h-full object-cover" />
                                 <div className="absolute top-1 right-1">
@@ -2220,16 +2220,16 @@ export default function LandingPageManagement() {
                                   </button>
                                 </div>
                               </div>
-                            </div>
-                          )
-                        })}
+                            </div>);
+
+                })}
                     </div>
-                  )}
+              }
                 </div>
               </>
-            )}
+          }
           </>
-        )}
+        }
 
         {/* Restaurant Selection Modal */}
         <Dialog open={showRestaurantModal} onOpenChange={setShowRestaurantModal}>
@@ -2251,118 +2251,118 @@ export default function LandingPageManagement() {
                     placeholder="Search restaurants by name or ID..."
                     value={restaurantSearchQuery}
                     onChange={(e) => setRestaurantSearchQuery(e.target.value)}
-                    className="pl-10 h-11 bg-white border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
+                    className="pl-10 h-11 bg-white border-slate-300 focus:border-blue-500 focus:ring-blue-500" />
+                  
                 </div>
-                {selectedRestaurantIds.length > 0 && (
-                  <div className="flex items-center gap-2">
+                {selectedRestaurantIds.length > 0 &&
+                <div className="flex items-center gap-2">
                     <div className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium">
                       {selectedRestaurantIds.length} restaurant{selectedRestaurantIds.length > 1 ? 's' : ''} selected
                     </div>
                     <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedRestaurantIds([])}
-                      className="text-xs text-slate-600 hover:text-slate-900"
-                    >
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedRestaurantIds([])}
+                    className="text-xs text-slate-600 hover:text-slate-900">
+                    
                       Clear selection
                     </Button>
                   </div>
-                )}
+                }
               </div>
 
               {/* Restaurant List */}
               <div className="flex-1 overflow-y-auto bg-white">
-                {restaurantsLoading ? (
-                  <div className="flex flex-col items-center justify-center py-16">
+                {restaurantsLoading ?
+                <div className="flex flex-col items-center justify-center py-16">
                     <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-3" />
                     <p className="text-slate-500">Loading restaurants...</p>
-                  </div>
-                ) : filteredRestaurantsForModal.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+                  </div> :
+                filteredRestaurantsForModal.length === 0 ?
+                <div className="flex flex-col items-center justify-center py-16 text-center px-6">
                     <ImageIcon className="w-16 h-16 text-slate-300 mb-4" />
                     <p className="text-slate-600 font-medium mb-1">No restaurants found</p>
                     <p className="text-sm text-slate-500">
                       {restaurantSearchQuery ? 'Try a different search term' : 'No restaurants available'}
                     </p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-100">
-                    {filteredRestaurantsForModal.map((restaurant) => {
-                      const isSelected = selectedRestaurantIds.includes(restaurant._id)
-                      const profileImageUrl = restaurant.profileImage?.url || restaurant.profileImage || null
+                  </div> :
 
-                      return (
-                        <div
-                          key={restaurant._id}
-                          className={`px-6 py-4 transition-all cursor-pointer ${isSelected
-                            ? 'bg-blue-50 border-l-4 border-l-blue-500'
-                            : 'hover:bg-slate-50'
-                            }`}
-                          onClick={() => toggleRestaurantSelection(restaurant._id)}
-                        >
+                <div className="divide-y divide-slate-100">
+                    {filteredRestaurantsForModal.map((restaurant) => {
+                    const isSelected = selectedRestaurantIds.includes(restaurant._id);
+                    const profileImageUrl = restaurant.profileImage?.url || restaurant.profileImage || null;
+
+                    return (
+                      <div
+                        key={restaurant._id}
+                        className={`px-6 py-4 transition-all cursor-pointer ${isSelected ?
+                        'bg-blue-50 border-l-4 border-l-blue-500' :
+                        'hover:bg-slate-50'}`
+                        }
+                        onClick={() => toggleRestaurantSelection(restaurant._id)}>
+                        
                           <div className="flex items-center gap-4">
                             <div className="flex-shrink-0">
                               <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => toggleRestaurantSelection(restaurant._id)}
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-5 h-5"
-                              />
+                              checked={isSelected}
+                              onCheckedChange={() => toggleRestaurantSelection(restaurant._id)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-5 h-5" />
+                            
                             </div>
 
                             {/* Restaurant Image */}
                             <div className="flex-shrink-0">
-                              {profileImageUrl ? (
-                                <img
-                                  src={profileImageUrl}
-                                  alt={restaurant.name}
-                                  className="w-16 h-16 rounded-xl object-cover border-2 border-slate-200"
-                                  onError={(e) => {
-                                    e.target.style.display = 'none'
-                                    e.target.nextSibling.style.display = 'flex'
-                                  }}
-                                />
-                              ) : null}
+                              {profileImageUrl ?
+                            <img
+                              src={profileImageUrl}
+                              alt={restaurant.name}
+                              className="w-16 h-16 rounded-xl object-cover border-2 border-slate-200"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }} /> :
+
+                            null}
                               <div
-                                className={`w-16 h-16 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg ${profileImageUrl ? 'hidden' : 'flex'
-                                  }`}
-                              >
+                              className={`w-16 h-16 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg ${profileImageUrl ? 'hidden' : 'flex'}`
+                              }>
+                              
                                 {restaurant.name?.charAt(0)?.toUpperCase() || 'R'}
                               </div>
                             </div>
 
                             {/* Restaurant Info */}
                             <div className="flex-1 min-w-0">
-                              <h3 className={`font-semibold text-base mb-1 ${isSelected ? 'text-blue-900' : 'text-slate-900'
-                                }`}>
+                              <h3 className={`font-semibold text-base mb-1 ${isSelected ? 'text-blue-900' : 'text-slate-900'}`
+                            }>
                                 {restaurant.name || 'Unnamed Restaurant'}
                               </h3>
                               <p className="text-sm text-slate-500 truncate">
                                 ID: {restaurant.restaurantId || restaurant._id}
                               </p>
-                              {restaurant.rating && (
-                                <div className="flex items-center gap-1 mt-1">
+                              {restaurant.rating &&
+                            <div className="flex items-center gap-1 mt-1">
                                   <span className="text-xs text-slate-400">?</span>
                                   <span className="text-xs text-slate-600">{restaurant.rating}</span>
                                 </div>
-                              )}
+                            }
                             </div>
 
                             {/* Selected Indicator */}
-                            {isSelected && (
-                              <div className="flex-shrink-0">
+                            {isSelected &&
+                          <div className="flex-shrink-0">
                                 <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
                                   <CheckCircle2 className="w-5 h-5 text-white" />
                                 </div>
                               </div>
-                            )}
+                          }
                           </div>
-                        </div>
-                      )
-                    })}
+                        </div>);
+
+                  })}
                   </div>
-                )}
+                }
               </div>
 
               {/* Action Buttons */}
@@ -2374,31 +2374,31 @@ export default function LandingPageManagement() {
                   <Button
                     variant="outline"
                     onClick={() => {
-                      setShowRestaurantModal(false)
-                      setSelectedBannerId(null)
-                      setSelectedRestaurantIds([])
-                      setRestaurantSearchQuery("")
+                      setShowRestaurantModal(false);
+                      setSelectedBannerId(null);
+                      setSelectedRestaurantIds([]);
+                      setRestaurantSearchQuery("");
                     }}
-                    className="px-6"
-                  >
+                    className="px-6">
+                    
                     Cancel
                   </Button>
                   <Button
                     onClick={handleLinkRestaurants}
                     disabled={linkingRestaurants || selectedRestaurantIds.length === 0}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 min-w-[140px]"
-                  >
-                    {linkingRestaurants ? (
-                      <>
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 min-w-[140px]">
+                    
+                    {linkingRestaurants ?
+                    <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Linking...
-                      </>
-                    ) : (
-                      <>
+                      </> :
+
+                    <>
                         <Megaphone className="w-4 h-4 mr-2" />
                         Link {selectedRestaurantIds.length > 0 ? `(${selectedRestaurantIds.length})` : ''} Restaurant{selectedRestaurantIds.length !== 1 ? 's' : ''}
                       </>
-                    )}
+                    }
                   </Button>
                 </div>
               </div>
@@ -2406,9 +2406,7 @@ export default function LandingPageManagement() {
           </DialogContent>
         </Dialog>
 
-      </div >
-    </div >
-  )
+      </div>
+    </div>);
+
 }
-
-
