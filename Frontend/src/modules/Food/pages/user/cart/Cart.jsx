@@ -630,6 +630,50 @@ export default function Cart() {
     [restaurantData, deliveryTimingNow],
   )
 
+  const currentRestaurantAvailability = useMemo(() => {
+    if (!restaurantData) return null
+
+    return getRestaurantAvailabilityStatus(restaurantData, new Date(deliveryTimingNow), {
+      preferSelfDeliveryTimings:
+        fulfillmentMode === "delivery" && isApprovedSelfDeliveryRestaurant(restaurantData),
+    })
+  }, [restaurantData, deliveryTimingNow, fulfillmentMode])
+
+  const placeOrderAvailabilityMessage = useMemo(() => {
+    if (!restaurantData || !currentRestaurantAvailability) return ""
+
+    if (currentRestaurantAvailability.isActive === false) {
+      return "This restaurant is currently unavailable for orders."
+    }
+
+    if (currentRestaurantAvailability.isAcceptingOrders === false) {
+      return "This restaurant is not accepting orders right now."
+    }
+
+    if (currentRestaurantAvailability.isOpen === false) {
+      if (fulfillmentMode === "takeaway") {
+        return "This restaurant is currently closed for pickup."
+      }
+      return "This restaurant is currently closed and cannot accept orders."
+    }
+
+    if (
+      fulfillmentMode === "delivery" &&
+      selfDeliveryTimingStatus?.isWithinWindow === false
+    ) {
+      return selfDeliveryTimingStatus.message
+    }
+
+    return ""
+  }, [
+    restaurantData,
+    currentRestaurantAvailability,
+    fulfillmentMode,
+    selfDeliveryTimingStatus,
+  ])
+
+  const isPlaceOrderBlocked = Boolean(placeOrderAvailabilityMessage)
+
   const takeawayScheduleWindow = useMemo(() => {
     if (!isPickupScheduled || !restaurantData) return null
 
@@ -2380,6 +2424,12 @@ export default function Cart() {
       }
 
       const fulfillmentType = fulfillmentMode === "delivery" ? "delivery" : "takeaway"
+      if (placeOrderAvailabilityMessage) {
+        toast.error(placeOrderAvailabilityMessage)
+        setIsPlacingOrder(false)
+        return
+      }
+
       const effectivePickupDate = pickupDate || new Date().toLocaleDateString("en-CA")
       const hasPickupSelection = Boolean(isPickupScheduled && pickupTime)
       const pickupAtIso = hasPickupSelection
@@ -3454,12 +3504,12 @@ export default function Cart() {
       >
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
           <div className="w-full max-w-lg mx-auto space-y-3">
-            {fulfillmentMode === "delivery" && ((selfDeliveryTimingStatus?.isWithinWindow === false) || placeOrderErrorMessage) ? (
+            {(isPlaceOrderBlocked || placeOrderErrorMessage) ? (
               <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-amber-800 shadow-sm">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p className="text-xs font-medium leading-5">
-                  {fulfillmentMode === "delivery" && selfDeliveryTimingStatus?.isWithinWindow === false
-                    ? selfDeliveryTimingStatus.message
+                  {isPlaceOrderBlocked
+                    ? placeOrderAvailabilityMessage
                     : placeOrderErrorMessage}
                 </p>
               </div>
@@ -3505,7 +3555,11 @@ export default function Cart() {
             {/* Place Order Button */}
             <button
               onClick={handlePlaceOrder}
-              disabled={isPlacingOrder || (selectedPaymentMethod === "wallet" && walletBalance < total)}
+              disabled={
+                isPlacingOrder ||
+                isPlaceOrderBlocked ||
+                (selectedPaymentMethod === "wallet" && walletBalance < total)
+              }
               className="w-full bg-gradient-to-r from-[#00c87e] to-[#00c87e] hover:from-[#00c87e] hover:to-[#00c87e] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#00c87e]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
             >
               {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (

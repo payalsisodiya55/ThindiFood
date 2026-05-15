@@ -1,4 +1,4 @@
-import { confirmApp } from "@shared/lib/appDialog";import { Link } from "react-router-dom";
+﻿import { confirmApp } from "@shared/lib/appDialog";import { Link } from "react-router-dom";
 import { useState } from "react";
 
 import { Heart, Star, Clock, MapPin, ArrowRight, ArrowLeft, Bookmark } from "lucide-react";
@@ -79,7 +79,7 @@ export default function Favorites() {
               <div>
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold">My Favorites</h1>
                 <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm font-semibold">
-                  {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} � {restaurantFavorites.length || 0} {restaurantFavorites.length === 1 ? "restaurant" : "restaurants"}
+                  {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} • {restaurantFavorites.length || 0} {restaurantFavorites.length === 1 ? "restaurant" : "restaurants"}
                 </p>
               </div>
             </div>
@@ -127,7 +127,7 @@ export default function Favorites() {
           restaurantFavorites.map((restaurant, index) =>
           <ScrollReveal key={restaurant.slug} delay={index * 0.1}>
               <Link to={`/user/restaurants/${restaurant.slug}`}>
-                <Card className="overflow-hidden h-full">
+                <Card className="overflow-hidden h-full p-0 gap-0 border-none shadow-md">
                   <div className="h-32 w-full relative overflow-hidden">
                     <img
                     src={restaurant.image}
@@ -156,16 +156,16 @@ export default function Favorites() {
                       </div>
                     </div>
                   </div>
-                  <CardContent className="p-3 space-y-2">
+                  <CardContent className="p-4 pt-3 flex flex-col gap-2.5">
                     <div>
-                      <CardTitle className="text-sm font-bold mb-0.5 line-clamp-1">
+                      <CardTitle className="text-[16px] font-extrabold text-gray-900 tracking-tight line-clamp-1">
                         {restaurant.name}
                       </CardTitle>
-                      <p className="text-xs text-muted-foreground font-medium line-clamp-1">
+                      <p className="text-[13px] text-gray-500 font-medium line-clamp-1">
                         {restaurant.cuisine}
                       </p>
                     </div>
-                    <div className="flex items-center justify-between text-xs pt-2 border-t">
+                    <div className="flex items-center justify-between text-[13px] text-gray-600 font-medium pt-1">
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Clock className="h-3 w-3" />
                         <span className="font-medium">{restaurant.deliveryTime}</span>
@@ -175,7 +175,7 @@ export default function Favorites() {
                         <span className="font-medium">{restaurant.distance}</span>
                       </div>
                     </div>
-                    <Button className="w-full bg-gradient-to-r bg-primary-orange hover:opacity-90 text-white text-xs py-1.5 h-8">
+                    <Button className="w-full mt-1 bg-green-600 hover:bg-green-700 text-white text-[13px] font-bold h-9 rounded-xl shadow-sm transition-all active:scale-[0.98]">
                       View Restaurant
                       <ArrowRight className="h-3 w-3 ml-1" />
                     </Button>
@@ -207,7 +207,7 @@ export default function Favorites() {
             return (
               <ScrollReveal key={`${dish.id}-${dish.restaurantId}`} delay={index * 0.1}>
                     <Link to={`/food/user/restaurants/${restaurantSlug}?dish=${dish.id}`}>
-                      <Card className="overflow-hidden h-full cursor-pointer hover:shadow-lg transition-shadow">
+                      <Card className="overflow-hidden h-full p-0 gap-0 border-none cursor-pointer shadow-md hover:shadow-xl transition-shadow">
                         <div className="h-32 w-full relative overflow-hidden">
                           <img
                         src={dish.image || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&h=600&fit=crop&q=80"}
@@ -230,16 +230,16 @@ export default function Favorites() {
                             </Button>
                           </div>
                         </div>
-                        <CardContent className="p-3 space-y-2">
+                        <CardContent className="p-4 pt-3 flex flex-col gap-2.5">
                           <div>
-                            <CardTitle className="text-sm font-bold mb-0.5 line-clamp-1">
+                            <CardTitle className="text-[16px] font-extrabold text-gray-900 tracking-tight line-clamp-1">
                               {dish.name}
                             </CardTitle>
-                            <p className="text-xs text-muted-foreground line-clamp-1">
+                            <p className="text-[13px] text-gray-500 font-medium line-clamp-1">
                               {dish.restaurantName || "Restaurant"}
                             </p>
                           </div>
-                          <div className="flex items-center justify-between text-xs pt-2 border-t">
+                          <div className="flex items-center justify-between text-[13px] text-gray-600 font-medium pt-1">
                             <div className="flex items-center gap-1">
                               {dish.foodType === "Veg" ?
                           <div className="w-3 h-3 border-2 border-green-600 flex items-center justify-center rounded-sm">
@@ -256,7 +256,7 @@ export default function Favorites() {
                               {"\u20B9"}{Math.round(dish.price || 0)}
                             </div>
                           </div>
-                          <Button className="w-full bg-gradient-to-r bg-primary-orange hover:opacity-90 text-white text-xs py-1.5 h-8">
+                          <Button className="w-full mt-1 bg-green-600 hover:bg-green-700 text-white text-[13px] font-bold h-9 rounded-xl shadow-sm transition-all active:scale-[0.98]">
                             View Dish
                             <ArrowRight className="h-3 w-3 ml-1" />
                           </Button>

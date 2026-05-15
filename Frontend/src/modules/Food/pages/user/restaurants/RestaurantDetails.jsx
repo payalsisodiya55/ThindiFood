@@ -15,6 +15,7 @@ import {
   Clock,
   Tag,
   ChevronDown,
+  ChevronRight,
   Info,
   Star,
   SlidersHorizontal,
@@ -124,6 +125,56 @@ function RestaurantDetailsContent() {
     const variant = getVariantForDish(item, preferredVariantId)
     const lineItemId = getLineItemIdForDish(item, variant)
     return quantities[lineItemId] || 0
+  }
+
+  const getDishVariantQuantities = (item) => {
+    const variants = getFoodVariants(item)
+    if (variants.length === 0) {
+      const quantity = getDishQuantity(item)
+      return quantity
+        ? [
+            {
+              variant: null,
+              quantity,
+            },
+          ]
+        : []
+    }
+
+    return variants
+      .map((variant) => ({
+        variant,
+        quantity: getDishQuantity(item, variant?.id || ""),
+      }))
+      .filter((entry) => entry.quantity > 0)
+  }
+
+  const getTotalDishQuantity = (item) =>
+    getDishVariantQuantities(item).reduce((sum, entry) => sum + entry.quantity, 0)
+
+  const getPreferredVariantIdForItem = (item) => {
+    const variantEntries = getDishVariantQuantities(item)
+    if (variantEntries.length === 1) {
+      return variantEntries[0]?.variant?.id || ""
+    }
+    return getDefaultFoodVariant(item)?.id || ""
+  }
+
+  const getVariantSelectionSummary = (item) => {
+    const variantEntries = getDishVariantQuantities(item)
+    if (variantEntries.length === 0) return ""
+    if (variantEntries.length === 1) {
+      const entry = variantEntries[0]
+      const variantLabel = entry?.variant?.name || "Selected"
+      return `${variantLabel} · ${entry.quantity} added`
+    }
+    return `${variantEntries.length} variants · ${getTotalDishQuantity(item)} added`
+  }
+
+  const openItemDetailModal = (item, preferredVariantId = "") => {
+    setSelectedItem(item)
+    setSelectedVariantId(preferredVariantId || getPreferredVariantIdForItem(item))
+    setShowItemDetail(true)
   }
 
   // Initialize filters from localStorage if available
@@ -1150,9 +1201,15 @@ function RestaurantDetailsContent() {
       setSelectedVariantId("")
       return
     }
-    const defaultVariant = getDefaultFoodVariant(selectedItem)
-    setSelectedVariantId(defaultVariant?.id || "")
-  }, [selectedItem])
+
+    setSelectedVariantId((currentVariantId) => {
+      const variants = getFoodVariants(selectedItem)
+      if (variants.some((variant) => String(variant.id) === String(currentVariantId || ""))) {
+        return currentVariantId
+      }
+      return getPreferredVariantIdForItem(selectedItem)
+    })
+  }, [selectedItem, quantities])
 
   // Helper function to update item quantity in both local state and cart
   const updateItemQuantity = (item, newQuantity, event = null, preferredVariant = null) => {
@@ -1682,8 +1739,7 @@ function RestaurantDetailsContent() {
 
   // Handle item card click
   const handleItemClick = (item) => {
-    setSelectedItem(item)
-    setShowItemDetail(true)
+    openItemDetailModal(item)
   }
 
   // Helper function to calculate final price after discount
@@ -2533,10 +2589,11 @@ function RestaurantDetailsContent() {
                   )}
                   {isExpanded && sectionItems.length > 0 && (
                     <div className="space-y-0">
-                      {sectionItems.map((item) => {
-                        const quantity = getDishQuantity(item)
-                        // Determine veg/non-veg based on foodType
-                        const isVeg = item.foodType === "Veg"
+                        {sectionItems.map((item) => {
+                          const hasVariants = hasFoodVariants(item)
+                          const quantity = hasVariants ? getTotalDishQuantity(item) : getDishQuantity(item)
+                          // Determine veg/non-veg based on foodType
+                          const isVeg = item.foodType === "Veg"
 
                         // Debug: Log preparationTime for troubleshooting
                         if (item.preparationTime) {
@@ -2648,7 +2705,7 @@ function RestaurantDetailsContent() {
                             </div>
 
                             {/* Right Side - Image and Add Button */}
-                            <div className="relative w-32 h-32 flex-shrink-0">
+                              <div className="relative w-32 h-32 flex-shrink-0">
                               {item.image ? (
                                 <img
                                   src={item.image}
@@ -2677,8 +2734,10 @@ function RestaurantDetailsContent() {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      if (!shouldShowGrayscale) {
+                                      if (!shouldShowGrayscale && !hasVariants) {
                                         updateItemQuantity(item, Math.max(0, quantity - 1), e)
+                                      } else if (!shouldShowGrayscale && hasVariants) {
+                                        openItemDetailModal(item)
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
@@ -2690,15 +2749,17 @@ function RestaurantDetailsContent() {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      if (!shouldShowGrayscale) {
+                                      if (!shouldShowGrayscale && !hasVariants) {
                                         updateItemQuantity(item, quantity + 1, e)
+                                      } else if (!shouldShowGrayscale && hasVariants) {
+                                        openItemDetailModal(item)
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
                                     className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                   >
-                                    <Plus size={14} className="stroke-[3px]" />
-                                  </button>
+                                      <Plus size={14} className="stroke-[3px]" />
+                                    </button>
                                 </motion.div>
                               ) : (
                                 <motion.button
@@ -2709,7 +2770,11 @@ function RestaurantDetailsContent() {
                                   onClick={(e) => {
                                     e.stopPropagation()
                                     if (!shouldShowGrayscale) {
-                                      updateItemQuantity(item, 1, e)
+                                      if (hasVariants) {
+                                        openItemDetailModal(item)
+                                      } else {
+                                        updateItemQuantity(item, 1, e)
+                                      }
                                     }
                                   }}
                                   disabled={shouldShowGrayscale}
@@ -2769,7 +2834,8 @@ function RestaurantDetailsContent() {
                             {isSubsectionExpanded && subsectionItems.length > 0 && (
                               <div className="space-y-0">
                                 {subsectionItems.map((item) => {
-                                  const quantity = getDishQuantity(item)
+                                  const hasVariants = hasFoodVariants(item)
+                                  const quantity = hasVariants ? getTotalDishQuantity(item) : getDishQuantity(item)
                                   // Determine veg/non-veg based on foodType
                                   const isVeg = item.foodType === "Veg"
 
@@ -2920,8 +2986,10 @@ function RestaurantDetailsContent() {
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (!shouldShowGrayscale) {
+                                                if (!shouldShowGrayscale && !hasVariants) {
                                                   updateItemQuantity(item, Math.max(0, quantity - 1), e)
+                                                } else if (!shouldShowGrayscale && hasVariants) {
+                                                  openItemDetailModal(item)
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
@@ -2933,8 +3001,10 @@ function RestaurantDetailsContent() {
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (!shouldShowGrayscale) {
+                                                if (!shouldShowGrayscale && !hasVariants) {
                                                   updateItemQuantity(item, quantity + 1, e)
+                                                } else if (!shouldShowGrayscale && hasVariants) {
+                                                  openItemDetailModal(item)
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
@@ -2952,7 +3022,11 @@ function RestaurantDetailsContent() {
                                             onClick={(e) => {
                                               e.stopPropagation()
                                               if (!shouldShowGrayscale) {
-                                                updateItemQuantity(item, 1, e)
+                                                if (hasVariants) {
+                                                  openItemDetailModal(item)
+                                                } else {
+                                                  updateItemQuantity(item, 1, e)
+                                                }
                                               }
                                             }}
                                             disabled={shouldShowGrayscale}
@@ -3050,7 +3124,7 @@ function RestaurantDetailsContent() {
                       {menuCategories.map((category, index) => (
                         <button
                           key={index}
-                          className="w-full flex items-center justify-between py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
+                          className="w-full flex items-center justify-between gap-4 py-3 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                           onClick={() => {
                             setShowMenuSheet(false)
                             // Scroll to category section
@@ -3066,26 +3140,26 @@ function RestaurantDetailsContent() {
                             }, 300) // Small delay to allow sheet to close
                           }}
                         >
-                          <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex items-center gap-3 flex-1 min-w-0">
                             {category.image ? (
                               <img
                                 src={category.image}
                                 alt={category.name}
-                                className="h-10 w-10 rounded-xl object-cover border border-gray-200"
+                                className="h-10 w-10 rounded-xl object-cover border border-gray-200 flex-shrink-0"
                                 onError={(event) => {
                                   event.currentTarget.style.display = "none"
                                 }}
                               />
                             ) : (
-                              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-sm font-bold uppercase text-gray-500">
+                              <span className="flex flex-shrink-0 h-10 w-10 items-center justify-center rounded-xl bg-gray-100 text-sm font-bold uppercase text-gray-500">
                                 {category.name?.charAt(0) || "C"}
                               </span>
                             )}
-                            <span className="text-base font-medium text-gray-900 dark:text-white truncate">
+                            <span className="text-base font-medium text-gray-900 dark:text-white truncate flex-1 min-w-0">
                               {category.name}
                             </span>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-shrink-0">
                             <span className="text-sm text-gray-500 dark:text-gray-400">
                               {category.count}
                             </span>
@@ -3094,8 +3168,6 @@ function RestaurantDetailsContent() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Close Button */}
                   <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-4 bg-white dark:bg-[#1a1a1a]">
                     <Button
                       className="w-full bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-[#00c87e] dark:hover:bg-[#00c87e] text-white border-0 flex items-center justify-center gap-2 py-6 rounded-xl font-bold transition-all shadow-lg"
