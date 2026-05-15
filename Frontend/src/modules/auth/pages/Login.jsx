@@ -31,6 +31,8 @@ export default function UnifiedOTPFastLogin() {
     return digits.length === 10 ? digits : ""
   }
 
+  const hasValidPhoneNumber = normalizedPhone().length === 10
+
   const hasMeaningfulName = (user) => {
     const rawName = String(user?.name || user?.fullName || "").trim()
     if (!rawName) return false
@@ -59,17 +61,17 @@ export default function UnifiedOTPFastLogin() {
 
   const handleSendOTP = async (e) => {
     e.preventDefault()
-    if (!termsAccepted) {
-      setTermsError(true)
-      toast.error("Please accept the Terms of Service & Privacy Policy to continue.")
-      return
-    }
-    setTermsError(false)
     const phone = normalizedPhone()
     if (phone.length !== 10) {
       toast.error("Please enter a valid 10-digit phone number")
       return
     }
+    if (!termsAccepted) {
+      setTermsError(true)
+      toast.error("Please accept Terms & Conditions before proceeding.")
+      return
+    }
+    setTermsError(false)
     if (submitting.current) return
     submitting.current = true
     setLoading(true)
@@ -313,7 +315,7 @@ export default function UnifiedOTPFastLogin() {
       {/* Back Button - Desktop Web View Only */}
       <button
         onClick={() => navigate("/")}
-        className="hidden md:flex fixed top-8 left-8 z-50 items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 shadow-xl text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-all hover:-translate-y-0.5 active:scale-95"
+        className="hidden md:flex fixed top-8 left-8 z-50 items-center justify-center w-12 h-12 rounded-full bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-700 shadow-xl text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-all hover:-translate-y-0.5 active:scale-95 cursor-pointer"
       >
         <ArrowLeft className="w-6 h-6" />
       </button>
@@ -453,7 +455,7 @@ export default function UnifiedOTPFastLogin() {
                         type="button"
                         onClick={handleResendOTP}
                         disabled={loading}
-                        className="text-xs font-black text-[#00c87e] underline disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="text-xs font-black text-[#00c87e] underline cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         Resend OTP
                       </button>
@@ -506,13 +508,13 @@ export default function UnifiedOTPFastLogin() {
 
             <button
               type="submit"
-              disabled={loading || (step === 1 && !termsAccepted)}
+              disabled={loading || (step === 1 && !hasValidPhoneNumber)}
               className={`w-full py-4 rounded-2xl font-black text-lg transition-all relative overflow-hidden shadow-xl ${
                 loading
                   ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
-                  : step === 1 && !termsAccepted
+                  : step === 1 && !hasValidPhoneNumber
                   ? "bg-gray-200 dark:bg-gray-700 cursor-not-allowed text-gray-400 dark:text-gray-500"
-                  : "bg-[#00c87e] hover:bg-[#00b371] text-white hover:shadow-2xl hover:shadow-[#00c87e]/30 active:scale-[0.98] hover:-translate-y-0.5"
+                  : "bg-[#00c87e] hover:bg-[#00b371] text-white hover:shadow-2xl hover:shadow-[#00c87e]/30 active:scale-[0.98] hover:-translate-y-0.5 cursor-pointer"
               }`}
             >
               {loading ? (
@@ -527,7 +529,7 @@ export default function UnifiedOTPFastLogin() {
         <div className="mt-6 text-center space-y-2">
            {/* Consent checkbox — only shown on step 1 */}
            {step === 1 && (
-             <label className={`flex items-start gap-2.5 cursor-pointer text-left px-1 ${termsError ? 'animate-shake' : ''}`}>
+             <label className={`flex items-center justify-center gap-2.5 cursor-pointer px-1 ${termsError ? 'animate-shake' : ''}`}>
                <input
                  type="checkbox"
                  checked={termsAccepted}
@@ -543,7 +545,7 @@ export default function UnifiedOTPFastLogin() {
                  <Link
                    to="/food/user/profile/terms"
                    onClick={(e) => e.stopPropagation()}
-                   className="text-gray-900 dark:text-white underline hover:text-[#00c87e] transition-colors"
+                   className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors"
                  >
                    Terms of Service
                  </Link>
@@ -551,7 +553,7 @@ export default function UnifiedOTPFastLogin() {
                  <Link
                    to="/food/user/profile/privacy"
                    onClick={(e) => e.stopPropagation()}
-                   className="text-gray-900 dark:text-white underline hover:text-[#00c87e] transition-colors"
+                   className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors"
                  >
                    Privacy Policy
                  </Link>

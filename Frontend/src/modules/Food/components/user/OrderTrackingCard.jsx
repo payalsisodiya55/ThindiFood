@@ -66,6 +66,7 @@ const ACTIVE_PHASES = new Set([
 
 const LOCAL_ORDER_GRACE_MS = 2 * 60 * 1000;
 const STALE_PICKUP_OVERDUE_MS = 15 * 60 * 1000;
+const STALE_TAKEAWAY_ACTIVE_MS = 60 * 60 * 1000;
 
 /** Orders that should show the live tracking strip (any in-flight order, not terminal). */
 const TERMINAL_STATUSES = new Set([
@@ -92,6 +93,18 @@ const isActiveOrder = (order) => {
   ) {
     const pickupAtMs = new Date(order?.pickupAt || 0).getTime();
     if (Number.isFinite(pickupAtMs) && Date.now() - pickupAtMs > STALE_PICKUP_OVERDUE_MS) {
+      return false;
+    }
+  }
+
+  if (
+    isTakeaway &&
+    ["ready", "ready_for_pickup", "reached_pickup", "picked_up"].includes(status)
+  ) {
+    const freshnessMs = new Date(
+      order?.pickupAt || order?.updatedAt || order?.createdAt || 0,
+    ).getTime();
+    if (Number.isFinite(freshnessMs) && Date.now() - freshnessMs > STALE_TAKEAWAY_ACTIVE_MS) {
       return false;
     }
   }
@@ -352,6 +365,10 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
   const [dismissedKey, setDismissedKey] = useState(null);
 
   if (!hasCustomerAuth) {
+    return null;
+  }
+
+  if (!hasFetchedApi) {
     return null;
   }
 

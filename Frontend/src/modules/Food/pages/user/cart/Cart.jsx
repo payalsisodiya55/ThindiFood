@@ -2719,11 +2719,11 @@ export default function Cart() {
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
                   {fulfillmentMode === "delivery" ? (
                     <>
-                      Deliver to <span className="font-semibold">{getDisplayAddressLabel(defaultAddress?.label || "Home")}</span>
+                      Deliver to  <span className="font-semibold">{getDisplayAddressLabel(defaultAddress?.label || "Home")}</span>
                     </>
                   ) : (
                     <>
-                      Pickup at <span className="font-semibold">Restaurant</span>
+                      Pickup at <span className="font-semibold">{restaurantName}</span>
                     </>
                   )}
                   <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">
@@ -3249,12 +3249,17 @@ export default function Cart() {
                     <div className="flex-1">
                         <div className="flex flex-col">
                           <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
-                            {fulfillmentMode === "delivery" ? "Deliver to" : "Pickup at "}
+                            {fulfillmentMode === "delivery" ? "Deliver to " : "Pickup at "}
                             <span className="font-semibold">
-                              {fulfillmentMode === "delivery" ? (getDisplayAddressLabel(defaultAddress?.label || "Home")) : "Restaurant"}
+                              {fulfillmentMode === "delivery" ? (getDisplayAddressLabel(defaultAddress?.label || "Home")) : restaurantName}
                             </span>
                           </p>
                           <div className="mt-1">
+                            {fulfillmentMode === "delivery" && recipientName && (
+                              <p className="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">
+                                {recipientName}
+                              </p>
+                            )}
                             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
                               {fulfillmentMode === "delivery"
                                 ? (formatFullAddress(defaultAddress) || defaultAddress?.address || "Select a delivery location")
@@ -3266,9 +3271,11 @@ export default function Cart() {
                                   {restaurantDistanceLabel}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                  Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(0)}
-                                </span>
+                                deliveryFee > 0 && (
+                                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                    Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(0)}
+                                  </span>
+                                )
                               )}
                             </div>
                           </div>
@@ -3684,7 +3691,7 @@ export default function Cart() {
                       </svg>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      Pickup at Restaurant
+                      Pickup at {restaurantName}
                     </h2>
                   </div>
                   <p className="text-gray-500 dark:text-gray-400 text-base">

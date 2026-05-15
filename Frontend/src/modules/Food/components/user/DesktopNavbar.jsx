@@ -68,17 +68,18 @@ export default function DesktopNavbar({ showLogo = true }) {
         openLocationSelector()
     }
 
-    const isQuick = location.pathname.endsWith("/quick")
+    const isQuick = location.pathname.endsWith("/quick") || location.pathname === "/quick"
     const isDining = location.pathname === "/food/user/dining" || location.pathname === "/food/dining" || location.pathname === "/user/dining" || location.pathname === "/dining"
     const isUnder250 = location.pathname === "/food/user/under-250" || location.pathname === "/food/under-250" || location.pathname === "/user/under-250" || location.pathname === "/under-250"
-    const isProfile = location.pathname.startsWith("/food/user/profile") || location.pathname.startsWith("/food/profile")
-    const isDeliveryPage = location.pathname === "/food/user/delivery" || location.pathname === "/food/delivery" || location.pathname === "/user/delivery"
+    const isProfile = location.pathname.startsWith("/food/user/profile") || location.pathname.startsWith("/food/profile") || location.pathname.startsWith("/user/profile") || location.pathname.startsWith("/profile")
+    const isDeliveryPage = location.pathname === "/food/user/delivery" || location.pathname === "/food/delivery" || location.pathname === "/user/delivery" || location.pathname === "/delivery"
     const isDelivery = !isDining && !isUnder250 && !isProfile && !isQuick && !isDeliveryPage && (
         location.pathname === "/food/user" || 
         location.pathname === "/food" || 
         location.pathname === "/user" || 
         location.pathname === "/" ||
-        (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile") && !location.pathname.includes("/delivery"))
+        (location.pathname.startsWith("/food/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile") && !location.pathname.includes("/delivery")) ||
+        (location.pathname.startsWith("/user") && !location.pathname.includes("/dining") && !location.pathname.includes("/under-250") && !location.pathname.includes("/profile") && !location.pathname.includes("/delivery"))
     )
     const isBannerRoute =
         location.pathname === "/food/user" ||

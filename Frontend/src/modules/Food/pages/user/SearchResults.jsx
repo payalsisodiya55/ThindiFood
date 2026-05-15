@@ -943,7 +943,7 @@ export default function SearchResults() {
                           </div>
                           {restaurant.offer && (
                             <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 bg-gradient-to-t from-black/80 to-transparent">
-                              <p className="text-white text-[10px] sm:text-xs font-bold flex items-center gap-1">
+                              <p className="text-white text-xs sm:text-sm font-bold flex items-center gap-1">
                                 <BadgePercent className="h-3 w-3" />
                                 {restaurant.offer}
                               </p>
@@ -956,16 +956,16 @@ export default function SearchResults() {
                               {restaurant.name}
                             </h4>
                             {restaurant.rating && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-600 text-white rounded text-[10px] sm:text-xs font-bold shrink-0">
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-green-600 text-white rounded text-xs sm:text-sm font-bold shrink-0">
                                 {restaurant.rating}
                                 <Star className="h-2.5 w-2.5 fill-current" />
                               </div>
                             )}
                           </div>
-                          <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate mb-2 sm:mb-3">
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate mb-2 sm:mb-3 font-medium">
                             {restaurant.cuisine || "Special Delicacies"}
                           </p>
-                          <div className="flex items-center gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium">
+                          <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
                             {restaurant.deliveryTime && (
                               <div className="flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
@@ -1033,21 +1033,21 @@ export default function SearchResults() {
                           </div>
                         </div>
                         <CardContent className="p-3 sm:p-4">
-                           <div className="flex justify-between items-start mb-1 sm:mb-2">
+                          <div className="flex justify-between items-start mb-1 sm:mb-2">
                             <h4 className="font-bold text-sm sm:text-base text-gray-900 dark:text-white transition-colors truncate">
                               {restaurant.name}
                             </h4>
                             {restaurant.rating && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 rounded text-[10px] sm:text-xs font-bold shrink-0">
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 rounded text-xs sm:text-sm font-bold shrink-0">
                                 {restaurant.rating}
                                 <Star className="h-2.5 w-2.5 fill-current" />
                               </div>
                             )}
                           </div>
-                          <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 truncate mb-1 sm:mb-2">
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 truncate mb-1 sm:mb-2 font-medium">
                             {restaurant.cuisine || "Special Delicacies"}
                           </p>
-                          <div className="flex items-center gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 font-medium">
+                          <div className="flex items-center gap-3 text-xs sm:text-sm text-gray-600 dark:text-gray-400 font-medium">
                             {restaurant.deliveryTime }
                             {restaurant.distance && (
                               <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-700"></span>

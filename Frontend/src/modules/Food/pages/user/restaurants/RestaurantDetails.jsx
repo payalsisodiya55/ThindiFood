@@ -1401,6 +1401,16 @@ function RestaurantDetailsContent() {
       .filter(Boolean)
   }, [restaurant?.menuSections])
 
+  // Pure Veg detection - hide Non-veg filter if no Non-veg items exist
+  const isPureVeg = useMemo(() => {
+    if (!restaurant?.menuSections || !Array.isArray(restaurant.menuSections)) return false;
+    return !restaurant.menuSections.some(section => {
+      const sectionItems = toRenderableArray(section?.items);
+      const subsectionItems = toRenderableArray(section?.subsections).flatMap(sub => toRenderableArray(sub?.items));
+      return [...sectionItems, ...subsectionItems].some(item => item.foodType === "Non-Veg");
+    });
+  }, [restaurant?.menuSections]);
+
   // Count active filters
   const getActiveFilterCount = () => {
     let count = 0
@@ -2194,13 +2204,13 @@ function RestaurantDetailsContent() {
                     </div>
                     
                     <div className="space-y-3">
-                      <div className="flex items-start gap-2.5">
-                        <div className="mt-0.5 p-1 rounded-md bg-gray-50 dark:bg-gray-800 shrink-0">
-                          <MapPin className="h-3 w-3 text-gray-500" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">Outlet Address</p>
-                          <p className="text-[11px] text-gray-600 dark:text-gray-300 leading-relaxed">
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-bold text-[#00c87e] uppercase tracking-tight ml-9">Outlet Address</p>
+                        <div className="flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 shrink-0">
+                            <MapPin className="h-3.5 w-3.5 text-[#00c87e]" />
+                          </div>
+                          <p className="text-[11px] text-[#00c87e] font-medium leading-relaxed mt-0.5">
                             {restaurant?.location || "Address not available"}
                           </p>
                         </div>
@@ -2327,24 +2337,26 @@ function RestaurantDetailsContent() {
                     <X className="h-3 w-3 text-gray-600" />
                   )}
                 </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 bg-white rounded-full ${filters.vegNonVeg === "non-veg" ? "border-amber-700 bg-amber-50" : ""
-                    }`}
-                  onClick={() =>
-                    setFilters((prev) => ({
-                      ...prev,
-                      vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
-                    }))
-                  }
-                >
-                  <div className="h-3 w-3 rounded-full bg-amber-700" />
-                  Non-veg
-                  {filters.vegNonVeg === "non-veg" && (
-                    <X className="h-3 w-3 text-gray-600" />
-                  )}
-                </Button>
+                {!isPureVeg && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 bg-white rounded-full ${filters.vegNonVeg === "non-veg" ? "border-amber-700 bg-amber-50" : ""
+                      }`}
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
+                      }))
+                    }
+                  >
+                    <div className="h-3 w-3 rounded-full bg-amber-700" />
+                    Non-veg
+                    {filters.vegNonVeg === "non-veg" && (
+                      <X className="h-3 w-3 text-gray-600" />
+                    )}
+                  </Button>
+                )}
               </div>
 
               {menuCategories.length > 0 && (
@@ -2544,90 +2556,93 @@ function RestaurantDetailsContent() {
                           >
                             {/* Left Side - Details */}
                             <div className="flex-1 min-w-0">
-                              {/* Veg Icon & Spicy Indicator */}
-                              <div className="flex items-center gap-2 mb-1">
-                                {isVeg ? (
-                                  <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                    <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                                  </div>
-                                ) : (
-                                  <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                    <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                                  </div>
-                                )}
-                                {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
-                              </div>
-
-                              <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
-
-                              {/* Highly Reordered Progress Bar - Show if recommended */}
-                              {isRecommendedItem(item) && (
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="h-1.5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                    <div className="h-full bg-[#00c87e] w-3/4"></div>
-                                  </div>
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
+                              <div className="flex items-start gap-2 mb-1">
+                                <div className="mt-1 flex-shrink-0">
+                                  {isVeg ? (
+                                    <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                    </div>
+                                  ) : (
+                                    <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                      <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
+                                    {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
+                                  </div>
 
-                                <div className="flex items-center gap-2 mt-1">
-                                  <div className="flex items-center gap-1.5">
-                                    <p className="font-bold text-gray-900 dark:text-white">
-                                      {item.offer 
-                                        ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
-                                        : getFoodPriceLabel(item)}
-                                    </p>
-                                    {item.offer && (
-                                      <p className="text-sm text-gray-400 line-through">
-                                        ₹{Math.round(getFoodDisplayPrice(item))}
+                                  {/* Highly Reordered Progress Bar - Show if recommended */}
+                                  {isRecommendedItem(item) && (
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <div className="h-1.5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                        <div className="h-full bg-[#00c87e] w-3/4"></div>
+                                      </div>
+                                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
+                                    </div>
+                                  )}
+
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <div className="flex items-center gap-1.5">
+                                      <p className="font-bold text-gray-900 dark:text-white">
+                                        {item.offer 
+                                          ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
+                                          : getFoodPriceLabel(item)}
                                       </p>
+                                      {item.offer && (
+                                        <p className="text-sm text-gray-400 line-through">
+                                          ₹{Math.round(getFoodDisplayPrice(item))}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {/* Preparation Time - Show if available */}
+                                    {item.preparationTime && String(item.preparationTime).trim() && (
+                                      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                                        <Clock size={12} className="text-gray-500" />
+                                        <span>{String(item.preparationTime).trim()}</span>
+                                      </div>
                                     )}
                                   </div>
-                                {/* Preparation Time - Show if available */}
-                                {item.preparationTime && String(item.preparationTime).trim() && (
-                                  <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                                    <Clock size={12} className="text-gray-500" />
-                                    <span>{String(item.preparationTime).trim()}</span>
+
+                                  {/* Description - Show if available */}
+                                  {item.description && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
+                                  )}
+
+                                  {/* Mobile-only action buttons */}
+                                  <div className="flex gap-4 mt-3 md:hidden">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        handleBookmarkClick(item)
+                                      }}
+                                      className={`p-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
+                                        ? "border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20"
+                                        : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                                        }`}
+                                    >
+                                      <Bookmark
+                                        size={18}
+                                        className={isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500" : ""}
+                                      />
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        handleShareClick(item)
+                                      }}
+                                      className="p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                    >
+                                      <Share2 size={18} />
+                                    </button>
                                   </div>
-                                )}
+                                </div>
                               </div>
-
-                              {/* Description - Show if available */}
-                              {item.description && (
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
-                              )}
-
-                              {/* Mobile-only action buttons */}
-                              <div className="flex gap-4 mt-3 md:hidden">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    handleBookmarkClick(item)
-                                  }}
-                                  className={`p-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
-                                    ? "border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20"
-                                    : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-                                    }`}
-                                >
-                                  <Bookmark
-                                    size={18}
-                                    className={isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500" : ""}
-                                  />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    handleShareClick(item)
-                                  }}
-                                  className="p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                                >
-                                  <Share2 size={18} />
-                                </button>
-                              </div>
-
                             </div>
 
                             {/* Right Side - Image and Add Button */}
@@ -2652,9 +2667,9 @@ function RestaurantDetailsContent() {
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.8 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 ${shouldShowGrayscale
+                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                    : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e]/10'
+                                    : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                     }`}
                                 >
                                   <button
@@ -2665,7 +2680,7 @@ function RestaurantDetailsContent() {
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
-                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] hover:text-[#00c87e]'}
+                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                   >
                                     <Minus size={14} />
                                   </button>
@@ -2678,7 +2693,7 @@ function RestaurantDetailsContent() {
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
-                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] hover:text-[#00c87e]'}
+                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                   >
                                     <Plus size={14} className="stroke-[3px]" />
                                   </button>
@@ -2696,12 +2711,12 @@ function RestaurantDetailsContent() {
                                     }
                                   }}
                                   disabled={shouldShowGrayscale}
-                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-colors ${shouldShowGrayscale
+                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                    : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e]/10'
+                                    : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                     }`}
                                 >
-                                  ADD <Plus size={14} className="stroke-[3px]" />
+                                  ADD <Plus size={14} className="stroke-[3px] group-hover:text-white transition-colors" />
                                 </motion.button>
                               )}
                             </div>
@@ -2776,98 +2791,101 @@ function RestaurantDetailsContent() {
                                     >
                                       {/* Left Side - Details */}
                                       <div className="flex-1 min-w-0">
-                                        {/* Veg Icon & Spicy Indicator */}
-                                        <div className="flex items-center gap-2 mb-1">
-                                          {isVeg ? (
-                                            <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                              <div className="w-2 h-2 bg-green-600 rounded-full"></div>
-                                            </div>
-                                          ) : (
-                                            <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                              <div className="w-2 h-2 bg-red-600 rounded-full"></div>
-                                            </div>
-                                          )}
-                                          {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
-                                        </div>
-
-                                        <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
-
-                                        {/* Highly Reordered Progress Bar - Show if recommended */}
-                                        {isRecommendedItem(item) && (
-                                          <div className="flex items-center gap-2 mt-1">
-                                            <div className="h-1.5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                                              <div className="h-full bg-[#00c87e] w-3/4"></div>
-                                            </div>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
-                                          </div>
-                                        )}
-
-                                        <div className="flex items-center gap-2 mt-1">
-                                          <div className="flex items-center gap-1.5">
-                                            <p className="font-bold text-gray-900 dark:text-white">
-                                              {item.offer 
-                                                ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
-                                                : getFoodPriceLabel(item)}
-                                            </p>
-                                            {item.offer && (
-                                              <p className="text-sm text-gray-400 line-through">
-                                                ₹{Math.round(getFoodDisplayPrice(item))}
-                                              </p>
+                                        <div className="flex items-start gap-2 mb-1">
+                                          <div className="mt-1 flex-shrink-0">
+                                            {isVeg ? (
+                                              <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                              </div>
+                                            ) : (
+                                              <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                                <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                                              </div>
                                             )}
                                           </div>
-                                          {/* Preparation Time - Show if available */}
-                                          {item.preparationTime && String(item.preparationTime).trim() && (
-                                            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                                              <Clock size={12} className="text-gray-500" />
-                                              <span>{String(item.preparationTime).trim()}</span>
+                                          <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                              <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
+                                              {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
                                             </div>
-                                          )}
-                                        </div>
-                                        {item.offer && (
-                                          <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20">
-                                            <Tag className="w-2.5 h-2.5" />
-                                            {item.offer.discountType === 'percentage' 
-                                              ? `${item.offer.discountValue}% OFF` 
-                                              : `₹${item.offer.discountValue} OFF`}
+
+                                            {/* Highly Reordered Progress Bar - Show if recommended */}
+                                            {isRecommendedItem(item) && (
+                                              <div className="flex items-center gap-2 mt-1">
+                                                <div className="h-1.5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                                  <div className="h-full bg-[#00c87e] w-3/4"></div>
+                                                </div>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
+                                              </div>
+                                            )}
+
+                                            <div className="flex items-center gap-2 mt-1">
+                                              <div className="flex items-center gap-1.5">
+                                                <p className="font-bold text-gray-900 dark:text-white">
+                                                  {item.offer 
+                                                    ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
+                                                    : getFoodPriceLabel(item)}
+                                                </p>
+                                                {item.offer && (
+                                                  <p className="text-sm text-gray-400 line-through">
+                                                    ₹{Math.round(getFoodDisplayPrice(item))}
+                                                  </p>
+                                                )}
+                                              </div>
+                                              {/* Preparation Time - Show if available */}
+                                              {item.preparationTime && String(item.preparationTime).trim() && (
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                                                  <Clock size={12} className="text-gray-500" />
+                                                  <span>{String(item.preparationTime).trim()}</span>
+                                                </div>
+                                              )}
+                                            </div>
+                                            {item.offer && (
+                                              <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20">
+                                                <Tag className="w-2.5 h-2.5" />
+                                                {item.offer.discountType === 'percentage' 
+                                                  ? `${item.offer.discountValue}% OFF` 
+                                                  : `₹${item.offer.discountValue} OFF`}
+                                              </div>
+                                            )}
+
+                                            {/* Description - Show if available */}
+                                            {item.description && (
+                                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
+                                            )}
+
+                                            {/* Mobile-only action buttons */}
+                                            <div className="flex gap-4 mt-3 md:hidden">
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.preventDefault()
+                                                  e.stopPropagation()
+                                                  handleBookmarkClick(item)
+                                                }}
+                                                className={`p-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
+                                                  ? "border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20"
+                                                  : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+                                                  }`}
+                                              >
+                                                <Bookmark
+                                                  size={18}
+                                                  className={isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500" : ""}
+                                                />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.preventDefault()
+                                                  e.stopPropagation()
+                                                  handleShareClick(item)
+                                                }}
+                                                className="p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                              >
+                                                <Share2 size={18} />
+                                              </button>
+                                            </div>
                                           </div>
-                                        )}
-
-                                        {/* Description - Show if available */}
-                                        {item.description && (
-                                          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
-                                        )}
-
-                                        {/* Mobile-only action buttons */}
-                                        <div className="flex gap-4 mt-3 md:hidden">
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              handleBookmarkClick(item)
-                                            }}
-                                            className={`p-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
-                                              ? "border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20"
-                                              : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-                                              }`}
-                                          >
-                                            <Bookmark
-                                              size={18}
-                                              className={isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500" : ""}
-                                            />
-                                          </button>
-                                          <button
-                                            onClick={(e) => {
-                                              e.preventDefault()
-                                              e.stopPropagation()
-                                              handleShareClick(item)
-                                            }}
-                                            className="p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                                          >
-                                            <Share2 size={18} />
-                                          </button>
                                         </div>
-
                                       </div>
 
                                       {/* Right Side - Image and Add Button */}
@@ -2892,9 +2910,9 @@ function RestaurantDetailsContent() {
                                           <motion.div
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 ${shouldShowGrayscale
+                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                              : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e]/10'
+                                              : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                               }`}
                                           >
                                             <button
@@ -2905,7 +2923,7 @@ function RestaurantDetailsContent() {
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
-                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] hover:text-[#00c87e]'}
+                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                             >
                                               <Minus size={14} />
                                             </button>
@@ -2918,7 +2936,7 @@ function RestaurantDetailsContent() {
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
-                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] hover:text-[#00c87e]'}
+                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                             >
                                               <Plus size={14} className="stroke-[3px]" />
                                             </button>
@@ -2936,12 +2954,12 @@ function RestaurantDetailsContent() {
                                               }
                                             }}
                                             disabled={shouldShowGrayscale}
-                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-colors ${shouldShowGrayscale
+                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                              : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e]/10'
+                                              : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                               }`}
                                           >
-                                            ADD <Plus size={14} className="stroke-[3px]" />
+                                            ADD <Plus size={14} className="stroke-[3px] group-hover:text-white transition-colors" />
                                           </motion.button>
                                         )}
                                       </div>

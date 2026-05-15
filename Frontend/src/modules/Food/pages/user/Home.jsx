@@ -3005,13 +3005,13 @@ export default function Home() {
 
                                 {/* Row 2: open + closes-in + rating */}
                                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide ${
+                                  <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${
                                     availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-500 text-white"
                                   }`}>
                                     {availability.isOpen ? "Open" : "Closed"}
                                   </span>
                                   {availability.isOpen && availability.closingCountdownLabel && (
-                                    <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-medium text-amber-300">
+                                    <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-300">
                                       <Timer className="h-2.5 w-2.5 flex-shrink-0" strokeWidth={2.5} />
                                       {availability.closingCountdownLabel}
                                     </span>
@@ -3025,22 +3025,22 @@ export default function Home() {
                                 </div>
 
                                 {/* Row 3: time + distance + offer */}
-                                <div className="mt-1 flex items-center gap-1 text-[10px] text-white/70">
-                                  <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={1.5} />
+                                <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-white">
+                                  <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
                                   <span>{restaurant.deliveryTime}</span>
-                                  <span className="text-white/40">|</span>
+                                  <span className="text-white/60">|</span>
                                   <span>{restaurant.distance}</span>
                                   {fulfillmentMode === "delivery" && Number(restaurant?.selfDelivery?.fee) >= 0 && (
                                     <>
-                                      <span className="text-white/40">|</span>
-                                      <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
+                                      <span className="text-white/60">|</span>
+                                      <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
                                       <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(0)}</span>
                                     </>
                                   )}
                                   {restaurant.offer && (
                                     <>
-                                      <span className="text-white/40">|</span>
-                                      <BadgePercent className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
+                                      <span className="text-white/60">|</span>
+                                      <BadgePercent className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
                                       <span className="line-clamp-1 flex-1">{restaurant.offer}</span>
                                     </>
                                   )}

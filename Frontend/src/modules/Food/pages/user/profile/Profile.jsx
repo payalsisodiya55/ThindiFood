@@ -31,11 +31,6 @@ import { Card, CardContent } from "@food/components/ui/card";
 import { Button } from "@food/components/ui/button";
 import { useProfile } from "@food/context/ProfileContext";
 import { useLocationSelector } from "@food/components/user/UserLayout";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@food/components/ui/avatar";
 import { useCompanyName } from "@food/hooks/useCompanyName";
 import OptimizedImage from "@food/components/OptimizedImage";
 import {
@@ -483,17 +478,10 @@ export default function Profile() {
         {/* Profile Info Card */}
         <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl py-0 pt-1 shadow-sm mb-0 border-0 dark:border-gray-800 overflow-hidden">
           <CardContent className="p-4 py-0 pt-2">
-            <div className="flex items-start gap-4 mb-4">
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                transition={{ duration: 0.3, type: "spring", stiffness: 300 }}>
-                <Avatar className="h-16 w-16 bg-blue-300 border-0">
-                  <AvatarImage src={avatarImageSrc} alt={displayName} />
-                  <AvatarFallback className="bg-blue-300 text-white text-2xl font-semibold">
-                    {avatarInitial}
-                  </AvatarFallback>
-                </Avatar>
-              </motion.div>
+            <div className="flex items-center gap-4 mb-4">
+              <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-3.5 flex-shrink-0">
+                <User className="h-7 w-7 text-gray-600 dark:text-gray-400" />
+              </div>
               <div className="flex-1 pt-1">
                 <h2 className="text-xl font-bold text-black dark:text-white mb-1">
                   {displayName}
@@ -1199,7 +1187,7 @@ export default function Profile() {
               Delete your account?
             </DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400 mb-6">
-              This action is permanent. Your account will be removed from the database and you will be signed out.
+              This action is permanent. You will be logged out and your account will be deleted permanently.
             </DialogDescription>
             <div className="flex gap-3">
               <Button
