@@ -1763,6 +1763,13 @@ export default function OrdersMain() {
     getNormalizedRestaurantOrderStatus(orderLike) === "confirmed" &&
     !Boolean(orderLike?.isAcceptedByRestaurant);
 
+  const isFutureScheduledBeyondPopupWindow = (orderLike) => {
+    const scheduledAt = orderLike?.scheduledAt
+      ? new Date(orderLike.scheduledAt).getTime()
+      : null;
+    return Boolean(scheduledAt && scheduledAt > Date.now() + 30 * 60000);
+  };
+
   const getPopupOrderTotal = (orderLike) => {
     if (!orderLike) return 0;
 
@@ -2010,13 +2017,14 @@ export default function OrdersMain() {
       const scheduledAt = newOrder.scheduledAt
         ? new Date(newOrder.scheduledAt).getTime()
         : null;
-      const isFutureScheduled =
-        scheduledAt && scheduledAt > Date.now() + 30 * 60000;
+      const isFutureScheduled = isFutureScheduledBeyondPopupWindow(newOrder);
 
       if (isFutureScheduled) {
         toast.info(
           `New scheduled order received for ${new Date(scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
         );
+        stopOrderAlertSound();
+        clearNewOrder();
         requestOrdersRefresh();
         return; // Do not show the immediate popup
       }
@@ -2282,8 +2290,16 @@ export default function OrdersMain() {
   // Check for confirmed orders that haven't been shown in popup yet, or scheduled orders whose time has come
   useEffect(() => {
     const checkOrdersToPopup = async () => {
-      // Skip if popup is already showing or Socket.IO order exists
-      if (showNewOrderPopupRef.current || newOrderRef.current) return;
+      // Skip while an actionable popup order is already active.
+      // Future scheduled orders are intentionally ignored here so they don't
+      // block the popup when their review window actually opens later.
+      if (
+        showNewOrderPopupRef.current ||
+        (newOrderRef.current &&
+          !isFutureScheduledBeyondPopupWindow(newOrderRef.current))
+      ) {
+        return;
+      }
 
       try {
         const response = await restaurantAPI.getOrders();
