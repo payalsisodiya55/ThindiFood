@@ -120,6 +120,49 @@ const isPaymentFailedOrder = (order = {}) => {
   return false;
 };
 
+const getAlertOrderIdentifiers = (orderLike = {}) =>
+  Array.from(
+    new Set(
+      [
+        orderLike?.orderMongoId,
+        orderLike?.order_mongo_id,
+        orderLike?.orderId,
+        orderLike?.order_id,
+        orderLike?._id,
+        orderLike?.id,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+const doAlertOrdersMatch = (left, right) => {
+  const leftIds = getAlertOrderIdentifiers(left);
+  const rightIds = getAlertOrderIdentifiers(right);
+  if (!leftIds.length || !rightIds.length) return false;
+  return leftIds.some((id) => rightIds.includes(id));
+};
+
+const isResolvedAdminOrderAlert = (orderLike = {}) => {
+  const normalizedStatus = String(orderLike?.orderStatus || orderLike?.status || "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    Boolean(orderLike?.isAcceptedByRestaurant) ||
+    normalizedStatus === "accepted" ||
+    normalizedStatus === "preparing" ||
+    normalizedStatus === "ready" ||
+    normalizedStatus === "ready_for_pickup" ||
+    normalizedStatus === "picked_up" ||
+    normalizedStatus === "rejected" ||
+    normalizedStatus === "delivered" ||
+    normalizedStatus === "completed" ||
+    normalizedStatus.includes("cancelled") ||
+    normalizedStatus.includes("canceled")
+  );
+};
+
 
 // Status configuration with titles, colors, and icons
 const statusConfig = {
@@ -273,6 +316,17 @@ export default function OrdersPage({ statusKey = "all" }) {
       alertLoopTimerRef.current = null;
     }
     alertLoopStartedAtRef.current = 0;
+    if (notificationAudioRef.current) {
+      notificationAudioRef.current.pause();
+      notificationAudioRef.current.currentTime = 0;
+    }
+    if (fallbackAudioRef.current) {
+      fallbackAudioRef.current.pause();
+      fallbackAudioRef.current.currentTime = 0;
+    }
+    if (audioContextRef.current?.state === "running") {
+      audioContextRef.current.suspend().catch(() => {});
+    }
   }, []);
 
   const startAlertLoop = useCallback(() => {
@@ -291,6 +345,13 @@ export default function OrdersPage({ statusKey = "all" }) {
       }
     }, ALERT_LOOP_INTERVAL_MS);
   }, [playDefaultRing, stopAlertLoop]);
+
+  const resolveActiveOrderAlert = useCallback((orderLike = {}) => {
+    if (!doAlertOrdersMatch(activeOrderAlertRef.current, orderLike)) return false;
+    stopAlertLoop();
+    activeOrderAlertRef.current = null;
+    return true;
+  }, [stopAlertLoop]);
 
   const showBrowserNotification = useCallback(async (title, body, tag) => {
     if (typeof window === "undefined" || typeof Notification === "undefined") return;
@@ -440,6 +501,15 @@ export default function OrdersPage({ statusKey = "all" }) {
       response?.data?.data;
       const nextOrders = Array.isArray(rawOrders) ? rawOrders : [];
 
+      if (activeOrderAlertRef.current) {
+        const matchingActiveOrder = nextOrders.find((order) =>
+          doAlertOrdersMatch(order, activeOrderAlertRef.current)
+        );
+        if (matchingActiveOrder && isResolvedAdminOrderAlert(matchingActiveOrder)) {
+          resolveActiveOrderAlert(matchingActiveOrder);
+        }
+      }
+
       if (response.data?.success) {
         const nextOrderIds = new Set(
           nextOrders.
@@ -483,7 +553,7 @@ export default function OrdersPage({ statusKey = "all" }) {
     } finally {
       if (!silent) setIsLoading(false);
     }
-  }, [statusKey, playDefaultRing, showBrowserNotification, startAlertLoop]);
+  }, [statusKey, playDefaultRing, resolveActiveOrderAlert, showBrowserNotification, startAlertLoop]);
 
   const normalizedOrders = useMemo(() => {
     const safeOrders = Array.isArray(orders) ? orders : [];
@@ -813,14 +883,21 @@ export default function OrdersPage({ statusKey = "all" }) {
     });
     socket.on("admin_new_order", handleIncomingRealtimeOrder);
     socket.on("play_notification_sound", handleIncomingRealtimeOrder);
+    const handleOrderStatusUpdate = (payload = {}) => {
+      if (isResolvedAdminOrderAlert(payload)) {
+        resolveActiveOrderAlert(payload);
+      }
+    };
+    socket.on("order_status_update", handleOrderStatusUpdate);
 
     return () => {
       socket.off("admin_new_order", handleIncomingRealtimeOrder);
       socket.off("play_notification_sound", handleIncomingRealtimeOrder);
+      socket.off("order_status_update", handleOrderStatusUpdate);
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [statusKey, fetchOrders, playDefaultRing, showBrowserNotification, startAlertLoop]);
+  }, [statusKey, fetchOrders, playDefaultRing, resolveActiveOrderAlert, showBrowserNotification, startAlertLoop]);
 
   useEffect(() => {
     const onVisibilityChange = () => {
@@ -865,6 +942,7 @@ export default function OrdersPage({ statusKey = "all" }) {
       setProcessingActionOrderId(order.id || order.orderId);
       const response = await adminAPI.acceptOrder(orderIdToUse);
       if (response.data?.success) {
+        resolveActiveOrderAlert(order);
         toast.success(response.data?.message || `Order ${order.orderId} accepted`);
         await fetchOrders({ silent: true, withRingCheck: false });
       } else {
@@ -896,6 +974,7 @@ export default function OrdersPage({ statusKey = "all" }) {
       setProcessingActionOrderId(order.id || order.orderId);
       const response = await adminAPI.rejectOrder(orderIdToUse, reason);
       if (response.data?.success) {
+        resolveActiveOrderAlert(order);
         toast.success(response.data?.message || `Order ${order.orderId} rejected`);
         await fetchOrders({ silent: true, withRingCheck: false });
       } else {

@@ -2050,12 +2050,6 @@ export default function OrdersMain() {
   useEffect(() => {
     if (!latestOrderStatusUpdate) return;
 
-    const isUserCancelled =
-      latestOrderStatusUpdate.cancelledBy === "user" &&
-      isCancelledStatus(latestOrderStatusUpdate.orderStatus);
-
-    if (!isUserCancelled) return;
-
     const activePopupOrder = popupOrder || newOrder;
     const activePopupKey = getOrderIdentityKey(activePopupOrder);
     const updatedOrderKey = getOrderIdentityKey(latestOrderStatusUpdate);
@@ -2063,6 +2057,26 @@ export default function OrdersMain() {
     if (!activePopupKey || !updatedOrderKey || activePopupKey !== updatedOrderKey) {
       return;
     }
+
+    const normalizedUpdatedStatus = String(
+      latestOrderStatusUpdate.orderStatus || latestOrderStatusUpdate.status || "",
+    )
+      .trim()
+      .toLowerCase();
+    const isResolvedUpdate =
+      Boolean(latestOrderStatusUpdate.isAcceptedByRestaurant) ||
+      normalizedUpdatedStatus === "accepted" ||
+      normalizedUpdatedStatus === "confirmed" ||
+      normalizedUpdatedStatus === "preparing" ||
+      normalizedUpdatedStatus === "ready" ||
+      normalizedUpdatedStatus === "ready_for_pickup" ||
+      normalizedUpdatedStatus === "picked_up" ||
+      normalizedUpdatedStatus === "rejected" ||
+      normalizedUpdatedStatus === "delivered" ||
+      normalizedUpdatedStatus === "completed" ||
+      isCancelledStatus(normalizedUpdatedStatus);
+
+    if (!isResolvedUpdate) return;
 
     if (audioRef.current) {
       audioRef.current.pause();
@@ -2077,15 +2091,20 @@ export default function OrdersMain() {
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
 
-    const trimmedReason = String(
-      latestOrderStatusUpdate.cancellationReason || "",
-    ).trim();
+    const isUserCancelled =
+      latestOrderStatusUpdate.cancelledBy === "user" &&
+      isCancelledStatus(normalizedUpdatedStatus);
+    if (isUserCancelled) {
+      const trimmedReason = String(
+        latestOrderStatusUpdate.cancellationReason || "",
+      ).trim();
 
-    toast.info(
-      trimmedReason
-        ? `Order cancelled by user. Reason: ${trimmedReason}`
-        : "Order cancelled by user.",
-    );
+      toast.info(
+        trimmedReason
+          ? `Order cancelled by user. Reason: ${trimmedReason}`
+          : "Order cancelled by user.",
+      );
+    }
 
     requestOrdersRefresh();
   }, [latestOrderStatusUpdate, popupOrder, newOrder, clearNewOrder]);
@@ -2180,6 +2199,8 @@ export default function OrdersMain() {
   const stopOrderAlertSound = () => {
     stopNotificationSound?.();
     if (audioRef.current) {
+      audioRef.current.loop = false;
+      audioRef.current.muted = true;
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
@@ -2232,42 +2253,6 @@ export default function OrdersMain() {
 
     throw lastError || new Error("Order not found");
   };
-
-  // Best-effort unlock for popup buzzer so it can keep playing when tab is backgrounded.
-  useEffect(() => {
-    const unlockAudio = async () => {
-      if (audioUnlockedRef.current || !audioRef.current) return;
-      try {
-        audioRef.current.muted = true;
-        await audioRef.current.play();
-        audioRef.current.pause();
-        audioRef.current.currentTime = 0;
-        audioRef.current.muted = false;
-        audioRef.current.volume = 1;
-        audioUnlockedRef.current = true;
-
-        // If an order popup is already open, start buzzing immediately after unlock.
-        if (showNewOrderPopupRef.current && !isMutedRef.current) {
-          audioRef.current.loop = true;
-          audioRef.current.currentTime = 0;
-          audioRef.current.play().catch(() => {});
-        }
-      } catch (_) {
-        audioRef.current.muted = false;
-      }
-    };
-
-    window.addEventListener("pointerdown", unlockAudio, {
-      once: true,
-      passive: true,
-    });
-    window.addEventListener("keydown", unlockAudio, { once: true });
-
-    return () => {
-      window.removeEventListener("pointerdown", unlockAudio);
-      window.removeEventListener("keydown", unlockAudio);
-    };
-  }, []);
 
   const [ordersRefreshToken, setOrdersRefreshToken] = useState(0);
   const requestOrdersRefresh = () => setOrdersRefreshToken((t) => t + 1);
@@ -2345,19 +2330,13 @@ export default function OrdersMain() {
     return () => clearInterval(intervalId);
   }, [ordersRefreshToken]);
 
-  // Play audio when popup opens
+  // Keep the local popup audio fully stopped. Real-time order sound is managed
+  // centrally by useRestaurantNotifications so we don't end up with two
+  // independent audio loops fighting each other.
   useEffect(() => {
-    if (showNewOrderPopup && !isMuted) {
-      if (audioRef.current) {
-        audioRef.current.loop = true;
-        audioRef.current.muted = false;
-        audioRef.current.volume = 1;
-        audioRef.current.currentTime = 0;
-        audioRef.current
-          .play()
-          .catch((err) => debugLog("Audio play failed:", err));
-      }
-    } else if (audioRef.current) {
+    if (audioRef.current) {
+      audioRef.current.loop = false;
+      audioRef.current.muted = true;
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
     }
@@ -2535,7 +2514,6 @@ export default function OrdersMain() {
         }
         
         debugLog("? Order accepted:", orderId);
-        requestOrdersRefresh();
       } catch (error) {
         debugError("? Error accepting order:", error);
         const errorMessage =
@@ -2565,6 +2543,7 @@ export default function OrdersMain() {
     setCountdown(240);
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
+    requestOrdersRefresh();
 
     // Note: PreparingOrders component will automatically refresh orders via its own useEffect
     // No need to manually refresh here as the component polls every 10 seconds
@@ -2602,7 +2581,6 @@ export default function OrdersMain() {
         }
 
         debugLog("? Order rejected:", orderId);
-        requestOrdersRefresh();
       } catch (error) {
         debugError("? Error rejecting order:", error);
         alert("Failed to reject order. Please try again.");
@@ -2617,6 +2595,7 @@ export default function OrdersMain() {
     clearNewOrder();
     setRejectReason("");
     setCountdown(240);
+    requestOrdersRefresh();
   };
 
   const handleRejectCancel = () => {

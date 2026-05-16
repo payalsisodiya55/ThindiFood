@@ -93,6 +93,34 @@ const isResolvedOrderStatus = (value) => {
   );
 };
 
+const getOrderAlertIdentifiers = (orderLike = {}) =>
+  Array.from(
+    new Set(
+      [
+        orderLike?.orderMongoId,
+        orderLike?.order_mongo_id,
+        orderLike?.orderId,
+        orderLike?.order_id,
+        orderLike?._id,
+        orderLike?.id,
+        orderLike?.sessionId,
+      ]
+        .map((value) => String(value || "").trim())
+        .filter(Boolean),
+    ),
+  );
+
+const doOrdersMatch = (left, right) => {
+  const leftIds = getOrderAlertIdentifiers(left);
+  const rightIds = getOrderAlertIdentifiers(right);
+  if (!leftIds.length || !rightIds.length) return false;
+  return leftIds.some((id) => rightIds.includes(id));
+};
+
+const shouldResolveOrderAlert = (orderLike = {}) =>
+  Boolean(orderLike?.isAcceptedByRestaurant) ||
+  isResolvedOrderStatus(orderLike?.orderStatus || orderLike?.status);
+
 
 /**
  * Hook for restaurant to receive real-time order notifications with sound
@@ -305,6 +333,14 @@ export const useRestaurantNotifications = () => {
     }
   };
 
+  const resolveActiveOrderAlert = (orderLike = {}) => {
+    if (!doOrdersMatch(activeOrderRef.current, orderLike)) return false;
+    stopAlertLoop();
+    activeOrderRef.current = null;
+    setNewOrder(null);
+    return true;
+  };
+
   const handleIncomingBookingAlert = (bookingData) => {
     if (!shouldProcessBookingAlert(bookingData)) {
       return;
@@ -380,6 +416,15 @@ export const useRestaurantNotifications = () => {
             const bt = b?.updatedAt || b?.createdAt || 0;
             return new Date(bt).getTime() - new Date(at).getTime();
           });
+
+        if (activeOrderRef.current) {
+          const matchingActiveOrder = (rows || []).find((order) =>
+            doOrdersMatch(order, activeOrderRef.current),
+          );
+          if (matchingActiveOrder && shouldResolveOrderAlert(matchingActiveOrder)) {
+            resolveActiveOrderAlert(matchingActiveOrder);
+          }
+        }
 
         if (confirmed.length > 0) {
           const newest = confirmed[0];
@@ -894,17 +939,8 @@ export const useRestaurantNotifications = () => {
       debugLog('?? Order status update:', normalizedData);
       setLatestOrderStatusUpdate(normalizedData);
 
-      const activeOrderKey = getOrderAlertKey(activeOrderRef.current);
-      const updateOrderKey = getOrderAlertKey(normalizedData);
-      const isSameActiveOrder =
-        activeOrderKey &&
-        updateOrderKey &&
-        activeOrderKey === updateOrderKey;
-
-      if (isSameActiveOrder && isResolvedOrderStatus(normalizedData?.orderStatus)) {
-        stopAlertLoop();
-        activeOrderRef.current = null;
-        setNewOrder(null);
+      if (shouldResolveOrderAlert(normalizedData)) {
+        resolveActiveOrderAlert(normalizedData);
       }
     });
 
@@ -1118,6 +1154,5 @@ export const useRestaurantNotifications = () => {
     setNotificationSoundMuted
   };
 };
-
 
 
