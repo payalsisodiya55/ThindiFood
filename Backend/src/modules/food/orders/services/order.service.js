@@ -48,6 +48,13 @@ import {
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
 const SCHEDULED_TAKEAWAY_POLL_MS = 60 * 1000;
+const STALE_ORDER_RECOVERY_POLL_MS = 15 * 60 * 1000;
+const STALE_ORDER_TIMEOUTS_MS = {
+  created: 45 * 60 * 1000,
+  confirmed: 90 * 60 * 1000,
+  preparing: 6 * 60 * 60 * 1000,
+  ready_for_pickup: 8 * 60 * 60 * 1000,
+};
 /**
  * Fire-and-forget BullMQ enqueue for order lifecycle events.
  * Never blocks API response; failures are logged only.
@@ -564,6 +571,70 @@ function getCancellationMeta(orderLike = {}) {
   };
 }
 
+function getLatestStatusTimestamp(orderLike = {}, statuses = []) {
+  const wanted = new Set(
+    (Array.isArray(statuses) ? statuses : [statuses])
+      .map((status) => String(status || "").toLowerCase())
+      .filter(Boolean),
+  );
+  if (wanted.size === 0) return null;
+
+  const history = Array.isArray(orderLike?.statusHistory)
+    ? [...orderLike.statusHistory].reverse()
+    : [];
+
+  const match = history.find((entry) =>
+    wanted.has(String(entry?.to || "").toLowerCase()),
+  );
+
+  if (!match?.at) return null;
+  const at = new Date(match.at);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
+function getStaleOrderTimeoutMs(orderLike = {}) {
+  const status = String(orderLike?.orderStatus || "").toLowerCase();
+  const baseTimeoutMs = STALE_ORDER_TIMEOUTS_MS[status] || 0;
+  const prepTimeMinutes = Math.max(0, Number(orderLike?.prep_time || 0));
+
+  if (status === "confirmed") {
+    return Math.max(baseTimeoutMs, prepTimeMinutes * 3 * 60 * 1000);
+  }
+
+  if (status === "preparing") {
+    return Math.max(baseTimeoutMs, prepTimeMinutes * 6 * 60 * 1000);
+  }
+
+  if (status === "ready_for_pickup") {
+    return Math.max(baseTimeoutMs, prepTimeMinutes * 8 * 60 * 1000);
+  }
+
+  return baseTimeoutMs;
+}
+
+function isEligibleForStaleOrderRecovery(orderLike = {}) {
+  const status = String(orderLike?.orderStatus || "").toLowerCase();
+  if (!Object.prototype.hasOwnProperty.call(STALE_ORDER_TIMEOUTS_MS, status)) {
+    return false;
+  }
+
+  if (CANCELLATION_ORDER_STATUSES.has(status) || status === "delivered") {
+    return false;
+  }
+
+  const scheduledAt =
+    orderLike?.scheduledAt instanceof Date
+      ? orderLike.scheduledAt
+      : orderLike?.scheduledAt
+        ? new Date(orderLike.scheduledAt)
+        : null;
+  if (scheduledAt && !Number.isNaN(scheduledAt.getTime()) && scheduledAt.getTime() > Date.now()) {
+    return false;
+  }
+
+  return true;
+}
+
 async function getActiveRefundPolicySettings() {
   const doc = await FoodRefundPolicySettings.findOne({ isActive: true })
     .sort({ createdAt: -1 })
@@ -778,6 +849,148 @@ async function applyRefundPolicyForCancellation(
       customerMessage: " Refund initiation failed and needs admin review.",
     };
   }
+}
+
+async function autoCloseStaleOrder(order, now = new Date()) {
+  const from = String(order?.orderStatus || "").toLowerCase();
+  const reason = "Order not accepted within time limit";
+
+  order.orderStatus = "cancelled_by_restaurant";
+  if (order.dispatch?.status && order.dispatch.status !== "accepted") {
+    order.dispatch.status = "cancelled";
+  }
+
+  pushStatusHistory(order, {
+    byRole: "SYSTEM",
+    from,
+    to: "cancelled_by_restaurant",
+    note: reason,
+  });
+
+  const refundOutcome = await applyRefundPolicyForCancellation(order, {
+    cancelledBy: "restaurant",
+    reason,
+  });
+
+  await order.save();
+
+  try {
+    await foodTransactionService.updateTransactionStatus(
+      order._id,
+      "cancelled_by_restaurant",
+      {
+        note: "Order auto-cancelled by watchdog due to stale restaurant status",
+        recordedByRole: "SYSTEM",
+        status: refundOutcome.transactionStatus || undefined,
+      },
+    );
+    await foodTransactionService.reverseRestaurantOnlinePayoutForOrder(order._id, {
+      recordedByRole: "SYSTEM",
+      reason: "restaurant_timeout_auto_cancelled",
+    });
+  } catch (err) {
+    logger.warn(`autoCloseStaleOrder transaction sync failed: ${err?.message || err}`);
+  }
+
+  const refundDetail = refundOutcome.customerMessage || "";
+  const title = "Order Cancelled";
+  const body = `Your order was automatically cancelled because the restaurant did not complete it in time.${refundDetail}`;
+  const payload = {
+    orderMongoId: order._id?.toString?.(),
+    orderId: order.orderId,
+    orderStatus: order.orderStatus,
+    cancelledBy: "restaurant",
+    cancellationReason: reason,
+    cancelledAt: now.toISOString(),
+    refundStatus: refundOutcome.refundStatus,
+    refundPolicyMode: refundOutcome.mode,
+    message: body,
+  };
+
+  try {
+    const io = getIO();
+    if (io) {
+      io.to(rooms.user(order.userId)).emit("order_status_update", payload);
+      if (order.restaurantId) {
+        io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", payload);
+      }
+      const assignedRiderId = order.dispatch?.deliveryPartnerId;
+      if (assignedRiderId) {
+        io.to(rooms.delivery(assignedRiderId)).emit("order_status_update", payload);
+      }
+    }
+  } catch (err) {
+    logger.warn(`autoCloseStaleOrder socket emit failed: ${err?.message || err}`);
+  }
+
+  try {
+    const notifyList = [{ ownerType: "USER", ownerId: order.userId }];
+    if (order.restaurantId) {
+      notifyList.push({ ownerType: "RESTAURANT", ownerId: order.restaurantId });
+    }
+    const assignedRiderId = order.dispatch?.deliveryPartnerId;
+    if (assignedRiderId) {
+      notifyList.push({ ownerType: "DELIVERY_PARTNER", ownerId: assignedRiderId });
+    }
+
+    await notifyOwnersSafely(notifyList, {
+      title,
+      body,
+      image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+      data: {
+        type: "order_status_update",
+        orderId: String(order.orderId || ""),
+        orderMongoId: String(order._id || ""),
+        orderStatus: "cancelled_by_restaurant",
+        cancellationReason: reason,
+        link: `/food/user/orders/${order._id?.toString?.() || ""}`,
+      },
+    });
+  } catch (err) {
+    logger.warn(`autoCloseStaleOrder notification failed: ${err?.message || err}`);
+  }
+
+  return refundOutcome;
+}
+
+async function autoCloseStaleOrders() {
+  const now = new Date();
+  const activeStatuses = Object.keys(STALE_ORDER_TIMEOUTS_MS);
+  const candidates = await FoodOrder.find({
+    orderType: "food",
+    orderStatus: { $in: activeStatuses },
+  }).select(
+    "_id orderId userId restaurantId orderStatus statusHistory createdAt updatedAt scheduledAt prep_time payment pricing dispatch",
+  );
+
+  let recovered = 0;
+
+  for (const order of candidates) {
+    if (!isEligibleForStaleOrderRecovery(order)) continue;
+
+    const statusEnteredAt =
+      getLatestStatusTimestamp(order, order.orderStatus) ||
+      (order.updatedAt instanceof Date ? order.updatedAt : null) ||
+      (order.createdAt instanceof Date ? order.createdAt : null);
+
+    if (!statusEnteredAt) continue;
+
+    const timeoutMs = getStaleOrderTimeoutMs(order);
+    if (!(timeoutMs > 0)) continue;
+
+    if (now.getTime() - statusEnteredAt.getTime() < timeoutMs) continue;
+
+    try {
+      await autoCloseStaleOrder(order, now);
+      recovered += 1;
+    } catch (error) {
+      logger.warn(
+        `Stale order recovery failed for ${order.orderId || order._id}: ${error?.message || error}`,
+      );
+    }
+  }
+
+  return { recovered };
 }
 
 function normalizeOrderForClient(orderDoc) {
@@ -2959,6 +3172,26 @@ function startScheduledTakeawayScheduler() {
 }
 
 startScheduledTakeawayScheduler();
+
+let staleOrderRecoverySchedulerStarted = false;
+function startStaleOrderRecoveryScheduler() {
+  if (staleOrderRecoverySchedulerStarted) return;
+  staleOrderRecoverySchedulerStarted = true;
+
+  setTimeout(() => {
+    void autoCloseStaleOrders();
+  }, 20000);
+
+  setInterval(() => {
+    void autoCloseStaleOrders();
+  }, STALE_ORDER_RECOVERY_POLL_MS);
+}
+
+startStaleOrderRecoveryScheduler();
+
+export async function recoverStuckOrders() {
+  return autoCloseStaleOrders();
+}
 
 export async function verifyDropOtpRestaurant(orderId, restaurantId, otp) {
   const identity = buildOrderIdentityFilter(orderId);

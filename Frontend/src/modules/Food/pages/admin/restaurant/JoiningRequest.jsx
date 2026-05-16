@@ -1,6 +1,6 @@
 import { confirmApp } from "@shared/lib/appDialog";import { useState, useMemo, useEffect, useRef } from "react";
 import {
-  Search, Filter, Eye, Check, X, UtensilsCrossed, ArrowUpDown, Loader2,
+  Search, Filter, Eye, Check, X, UtensilsCrossed, ArrowUpDown, Loader2, ChevronDown,
   FileText, Image as ImageIcon, ExternalLink, CreditCard, Calendar, Star, Building2, User, Phone, Mail, MapPin, Clock } from
 "lucide-react";
 import { adminAPI, restaurantAPI } from "@food/api";
@@ -522,6 +522,21 @@ export default function JoiningRequest() {
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                 
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              </div>
+
+              <div className="relative flex-1 sm:flex-initial min-w-[150px]">
+                <select
+                  value={filters.zone}
+                  onChange={(e) => setFilters({ ...filters, zone: e.target.value })}
+                  className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10">
+                  <option value="">All Zones</option>
+                  {filterOptions.zones.map((zone) => (
+                    <option key={zone} value={zone}>{zone}</option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                </div>
               </div>
             </div>
 

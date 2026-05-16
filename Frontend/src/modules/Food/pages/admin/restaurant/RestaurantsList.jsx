@@ -371,6 +371,10 @@ export default function RestaurantsList() {
     return result
   }, [restaurants, searchQuery, filters, sortConfig])
 
+  const uniqueZones = useMemo(() => {
+    return [...new Set(restaurants.map(r => r.zone).filter(Boolean))].sort()
+  }, [restaurants])
+
   const handleSort = (key) => {
     let direction = "asc"
     if (sortConfig.key === key && sortConfig.direction === "asc") {
@@ -1085,6 +1089,24 @@ export default function RestaurantsList() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
 
+              <div className="relative flex-1 sm:flex-initial min-w-[150px]">
+                <select
+                  value={filters.zone}
+                  onChange={(e) => setFilters({ ...filters, zone: e.target.value })}
+                  className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none pr-10"
+                >
+                  <option value="">All Zones</option>
+                  {uniqueZones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                </div>
+              </div>
+
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-2 transition-all">
@@ -1221,7 +1243,7 @@ export default function RestaurantsList() {
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span 
-                                className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] xl:max-w-[300px] break-words whitespace-normal"
+                                className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] xl:max-w-[300px] break-all whitespace-normal"
                                 onClick={() => handleViewDetails(restaurant)}
                               >
                                 {restaurant.name}
@@ -1233,8 +1255,8 @@ export default function RestaurantsList() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium text-slate-900 max-w-[150px] xl:max-w-[250px] break-words whitespace-normal">{restaurant.ownerName}</span>
-                            <span className="text-xs text-slate-500 max-w-[150px] xl:max-w-[250px] break-words whitespace-normal">{formatPhone(restaurant.ownerPhone)}</span>
+                            <span className="text-sm font-medium text-slate-900 max-w-[150px] xl:max-w-[250px] break-all whitespace-normal">{restaurant.ownerName}</span>
+                            <span className="text-xs text-slate-500 max-w-[150px] xl:max-w-[250px] break-all whitespace-normal">{formatPhone(restaurant.ownerPhone)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -1539,7 +1561,7 @@ export default function RestaurantsList() {
                     </div>
                     <div className="flex-1 min-w-0 text-center md:text-left pt-2">
                       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight break-words">
+                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight break-all">
                           {r?.restaurantName || r?.name || "N/A"}
                         </h3>
                         <div className="flex items-center justify-center md:justify-start gap-2">
@@ -1582,7 +1604,7 @@ export default function RestaurantsList() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mb-0.5">Full Name</p>
-                            <p className="text-base font-bold text-slate-800 break-words">
+                            <p className="text-base font-bold text-slate-800 break-all">
                               {r?.ownerName || "N/A"}
                             </p>
                           </div>
@@ -1593,7 +1615,7 @@ export default function RestaurantsList() {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mb-0.5">Contact Number</p>
-                            <p className="text-base font-bold text-slate-800 break-words">
+                            <p className="text-base font-bold text-slate-800 break-all">
                               {formatPhone(r?.ownerPhone || r?.phone) || "N/A"}
                             </p>
                           </div>
@@ -1605,7 +1627,7 @@ export default function RestaurantsList() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mb-0.5">Email Address</p>
-                              <p className="text-base font-bold text-slate-800 break-words">{r.ownerEmail || r.email}</p>
+                              <p className="text-base font-bold text-slate-800 break-all">{r.ownerEmail || r.email}</p>
                             </div>
                           </div>
                         )}
@@ -1629,7 +1651,7 @@ export default function RestaurantsList() {
                             <MapPin className="w-5 h-5 text-rose-500 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Address</p>
-                              <p className="text-sm font-medium text-slate-900 break-words">
+                              <p className="text-sm font-medium text-slate-900 break-all">
                                 {r?.location ? formatLocationAddress(r.location, selectedRestaurant?.zone) : flatAddress}
                               </p>
                             </div>
@@ -1645,7 +1667,7 @@ export default function RestaurantsList() {
                             <Phone className="w-5 h-5 text-teal-500 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Primary Contact</p>
-                              <p className="text-sm font-medium text-slate-900 break-words">{formatPhone(r.primaryContactNumber || r.phone) || "N/A"}</p>
+                              <p className="text-sm font-medium text-slate-900 break-all">{formatPhone(r.primaryContactNumber || r.phone) || "N/A"}</p>
                             </div>
                           </div>
                         )}
@@ -1654,7 +1676,7 @@ export default function RestaurantsList() {
                             <Mail className="w-5 h-5 text-indigo-500 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Restaurant Email</p>
-                              <p className="text-sm font-medium text-slate-900 break-words">{r.email}</p>
+                              <p className="text-sm font-medium text-slate-900 break-all">{r.email}</p>
                             </div>
                           </div>
                         )}

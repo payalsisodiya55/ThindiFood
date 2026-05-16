@@ -359,8 +359,8 @@ export default function FoodApproval() {
               <div className="p-4 bg-blue-50/50 rounded-xl border border-blue-100/50 flex items-center justify-between">
                 <div>
                    <h3 className="font-bold text-xs text-blue-700 uppercase tracking-wider mb-1">Restaurant</h3>
-                   <p className="text-sm font-semibold text-gray-900">{selectedRequest.restaurantName || '-'}</p>
-                   <p className="text-xs text-gray-500">ID: {selectedRequest.restaurantId || '-'}</p>
+                   <p className="text-sm font-semibold text-gray-900 break-all">{selectedRequest.restaurantName || '-'}</p>
+                   <p className="text-xs text-gray-500 break-all">ID: {selectedRequest.restaurantId || '-'}</p>
                 </div>
                 <div className="px-3 py-1 bg-white rounded-full border border-blue-100 text-[10px] font-bold text-blue-600">
                     {selectedRequest.entityType?.toUpperCase()}
@@ -372,7 +372,7 @@ export default function FoodApproval() {
                 <div className="space-y-4">
                     <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Item Name</label>
-                        <p className="text-sm font-semibold text-gray-900">{selectedRequest.itemName || '-'}</p>
+                        <p className="text-sm font-semibold text-gray-900 break-all">{selectedRequest.itemName || '-'}</p>
                     </div>
                     <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Category</label>
@@ -406,7 +406,7 @@ export default function FoodApproval() {
                 {selectedRequest.description && (
                   <div className="col-span-full">
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description</label>
-                    <p className="text-sm text-gray-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">{selectedRequest.description}</p>
+                    <p className="text-sm text-gray-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 break-all">{selectedRequest.description}</p>
                   </div>
                 )}
 

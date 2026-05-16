@@ -988,22 +988,24 @@ export default function FoodsList() {
                       <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200 relative">
+                        <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-slate-400 uppercase">
+                          {food.name?.charAt(0) || "F"}
+                        </span>
                         <img
-                      src={withImageVersion(food.image)}
-                      alt={food.name}
-                      className="w-full h-full object-cover"
-                      key={`${food.id}-${imageVersion}`}
-                      loading="lazy"
-                      onError={(e) => {
-                        e.target.src = "https://via.placeholder.com/40";
-                      }} />
+                          src={withImageVersion(food.image)}
+                          alt={food.name}
+                          className="w-full h-full object-cover relative z-10"
+                          loading="lazy"
+                          onError={(e) => {
+                            e.target.style.opacity = "0";
+                          }} />
                     
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-900">{food.name}</span>
+                        <span className="text-sm font-medium text-slate-900 break-all">{food.name}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -1113,21 +1115,27 @@ export default function FoodsList() {
           {selectedFood &&
           <div className="p-6 space-y-5">
               <div className="flex items-center gap-4">
-                <img
-                src={withImageVersion(selectedFood.image)}
-                alt={selectedFood.name}
-                className="w-20 h-20 rounded-xl object-cover border border-slate-200"
-                onError={(e) => {
-                  e.target.src = "https://via.placeholder.com/64";
-                }} />
+                <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-50 border border-slate-200 relative flex items-center justify-center">
+                  <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-300 uppercase">
+                    {selectedFood.name?.charAt(0) || "F"}
+                  </span>
+                  <img
+                    src={withImageVersion(selectedFood.image)}
+                    alt={selectedFood.name}
+                    className="w-full h-full object-cover relative z-10"
+                    onError={(e) => {
+                      e.target.style.opacity = "0";
+                    }} 
+                  />
+                </div>
               
                 <div>
-                  <p className="text-lg font-semibold text-slate-900">{selectedFood.name}</p>
+                  <p className="text-lg font-semibold text-slate-900 break-all">{selectedFood.name}</p>
                   <p className="text-sm text-slate-500 mt-0.5">ID #{formatFoodId(selectedFood.id)}</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 border border-slate-200 rounded-lg p-4">
-                <p><span className="font-semibold text-slate-700">Restaurant:</span> <span className="text-slate-900">{selectedFood.restaurantName || "-"}</span></p>
+                <p><span className="font-semibold text-slate-700">Restaurant:</span> <span className="text-slate-900 break-all">{selectedFood.restaurantName || "-"}</span></p>
                 <p><span className="font-semibold text-slate-700">Price:</span> <span className="text-slate-900">{selectedFood.variants?.length ? `Starting from \u20B9${selectedFood.price}` : `\u20B9${selectedFood.price}`}</span></p>
                 <p><span className="font-semibold text-slate-700">Category:</span> <span className="text-slate-900">{selectedFood.categoryName || "-"}</span></p>
                 <p><span className="font-semibold text-slate-700">Food Type:</span> <span className="text-slate-900">{selectedFood.foodType || "-"}</span></p>
@@ -1147,7 +1155,7 @@ export default function FoodsList() {
                 </div> :
             null}
               {selectedFood.description &&
-            <p className="text-sm text-slate-700 leading-relaxed">
+            <p className="text-sm text-slate-700 leading-relaxed break-all">
                   <span className="font-semibold text-slate-800">Description:</span> {selectedFood.description}
                 </p>
             }
