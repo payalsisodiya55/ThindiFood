@@ -5,10 +5,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-
 
 export default function RestaurantReport() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -23,7 +23,6 @@ export default function RestaurantReport() {
   const [zones, setZones] = useState([])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  // Fetch zones for filter dropdown
   useEffect(() => {
     const fetchZones = async () => {
       try {
@@ -38,12 +37,10 @@ export default function RestaurantReport() {
     fetchZones()
   }, [])
 
-  // Fetch restaurant report data
   useEffect(() => {
     const fetchRestaurantReport = async () => {
       try {
         setLoading(true)
-        
         const params = {
           zone: filters.zone !== "All Zones" ? filters.zone : undefined,
           all: filters.all !== "All" ? filters.all : undefined,
@@ -51,9 +48,7 @@ export default function RestaurantReport() {
           time: filters.time !== "All Time" ? filters.time : undefined,
           search: searchQuery || undefined
         }
-
         const response = await adminAPI.getRestaurantReport(params)
-
         if (response?.data?.success && response.data.data) {
           setRestaurants(response.data.data.restaurants || [])
         } else {
@@ -70,12 +65,11 @@ export default function RestaurantReport() {
         setLoading(false)
       }
     }
-
     fetchRestaurantReport()
   }, [filters, searchQuery])
 
   const filteredRestaurants = useMemo(() => {
-    return restaurants // Backend already filters, so just return restaurants
+    return restaurants
   }, [restaurants])
 
   const totalRestaurants = filteredRestaurants.length
@@ -114,19 +108,32 @@ export default function RestaurantReport() {
     }
   }
 
-  const handleFilterApply = () => {
-    // Filters are already applied via useMemo
-  }
+  const handleFilterApply = () => {}
 
   const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.all !== "All" ? 1 : 0) + (filters.type !== "All types" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
 
   const renderStars = (rating, reviews) => {
-    if (rating === 0) {
-      return "?0"
-    }
-    const fullStars = Math.floor(rating)
-    const hasHalfStar = rating % 1 !== 0
-    return "?".repeat(fullStars) + (hasHalfStar ? "½" : "") + "?".repeat(5 - Math.ceil(rating)) + ` (${reviews})`
+    const val = parseFloat(rating) || 0
+    const count = parseInt(reviews) || 0
+    if (val === 0) return <span className="text-slate-400 italic">No reviews</span>
+
+    return (
+      <div className="flex items-center gap-1">
+        <div className="flex items-center">
+          {[...Array(5)].map((_, i) => (
+            <Star
+              key={i}
+              className={`w-3.5 h-3.5 ${
+                i < Math.floor(val)
+                  ? "text-amber-400 fill-amber-400"
+                  : "text-slate-200 fill-slate-200"
+              }`}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-slate-500">({count})</span>
+      </div>
+    )
   }
 
   if (loading) {
@@ -143,7 +150,6 @@ export default function RestaurantReport() {
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center">
@@ -153,15 +159,12 @@ export default function RestaurantReport() {
           </div>
         </div>
 
-        {/* Search Data Section */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
           <h3 className="text-sm font-semibold text-slate-700 mb-4">Search Data</h3>
           <div className="flex flex-col lg:flex-row lg:items-end gap-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 flex-1">
               <div className="relative">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Zone
-                </label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Zone</label>
                 <select
                   value={filters.zone}
                   onChange={(e) => setFilters(prev => ({ ...prev, zone: e.target.value }))}
@@ -176,9 +179,7 @@ export default function RestaurantReport() {
               </div>
 
               <div className="relative">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  All
-                </label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">All Status</label>
                 <select
                   value={filters.all}
                   onChange={(e) => setFilters(prev => ({ ...prev, all: e.target.value }))}
@@ -192,9 +193,7 @@ export default function RestaurantReport() {
               </div>
 
               <div className="relative">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Type
-                </label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Type</label>
                 <select
                   value={filters.type}
                   onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
@@ -208,9 +207,7 @@ export default function RestaurantReport() {
               </div>
 
               <div className="relative">
-                <label className="block text-sm font-semibold text-slate-700 mb-2">
-                  Time
-                </label>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Time</label>
                 <select
                   value={filters.time}
                   onChange={(e) => setFilters(prev => ({ ...prev, time: e.target.value }))}
@@ -252,11 +249,9 @@ export default function RestaurantReport() {
           </div>
         </div>
 
-        {/* Restaurant Report Table Section */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
             <h2 className="text-xl font-bold text-slate-900">Restaurant Report Table {totalRestaurants}</h2>
-
             <div className="flex items-center gap-3">
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
@@ -281,20 +276,16 @@ export default function RestaurantReport() {
                   <DropdownMenuLabel>Export Format</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => handleExport("csv")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as CSV
+                    <FileText className="w-4 h-4 mr-2" /> Export as CSV
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExport("excel")} className="cursor-pointer">
-                    <FileSpreadsheet className="w-4 h-4 mr-2" />
-                    Export as Excel
+                    <FileSpreadsheet className="w-4 h-4 mr-2" /> Export as Excel
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExport("pdf")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as PDF
+                    <FileText className="w-4 h-4 mr-2" /> Export as PDF
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExport("json")} className="cursor-pointer">
-                    <Code className="w-4 h-4 mr-2" />
-                    Export as JSON
+                    <Code className="w-4 h-4 mr-2" /> Export as JSON
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -307,65 +298,19 @@ export default function RestaurantReport() {
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>SL</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Restaurant Name</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Food</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Order</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Order Amount</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Discount Given</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total Admin Commission</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Total VAT/TAX</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                    <div className="flex items-center gap-1">
-                      <span>Average Ratings</span>
-                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                    </div>
-                  </th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">SL</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Restaurant Name</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Food</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Order</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Order Amount</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Discount Given</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total Admin Commission</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Total VAT/TAX</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Average Ratings</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-slate-100">
@@ -381,9 +326,7 @@ export default function RestaurantReport() {
                 ) : (
                   filteredRestaurants.map((restaurant) => (
                     <tr key={restaurant.sl} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-700">{restaurant.sl}</span>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-700">{restaurant.sl}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center flex-shrink-0">
@@ -392,9 +335,7 @@ export default function RestaurantReport() {
                                 src={restaurant.icon}
                                 alt={restaurant.restaurantName}
                                 className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.src = "https://via.placeholder.com/32"
-                                }}
+                                onError={(e) => { e.target.src = "https://via.placeholder.com/32" }}
                               />
                             ) : (
                               <div className="w-full h-full bg-slate-300 flex items-center justify-center text-xs text-slate-600 font-semibold">
@@ -405,33 +346,17 @@ export default function RestaurantReport() {
                           <span className="text-sm font-medium text-slate-900">{restaurant.restaurantName}</span>
                         </div>
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{restaurant.totalFood}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{restaurant.totalOrder}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{restaurant.totalOrderAmount}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{restaurant.totalDiscountGiven}</td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalFood}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalOrder}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-900">{restaurant.totalOrderAmount}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalDiscountGiven}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-sm font-medium ${
-                          restaurant.totalAdminCommission.startsWith('?-') || restaurant.totalAdminCommission.startsWith('-?')
-                            ? 'text-red-600'
-                            : 'text-slate-900'
-                        }`}>
+                        <span className={`text-sm font-medium ${restaurant.totalAdminCommission.includes('-') ? 'text-red-600' : 'text-slate-900'}`}>
                           {restaurant.totalAdminCommission}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{restaurant.totalVATTAX}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{renderStars(restaurant.averageRatings, restaurant.reviews)}</span>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{restaurant.totalVATTAX}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-700">{renderStars(restaurant.averageRatings, restaurant.reviews)}</td>
                     </tr>
                   ))
                 )}
@@ -441,19 +366,15 @@ export default function RestaurantReport() {
         </div>
       </div>
 
-      {/* Settings Dialog */}
       <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
+        <DialogContent className="max-w-md bg-white p-0">
           <DialogHeader className="px-6 pt-6 pb-4">
             <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Report Settings
+              <Settings className="w-5 h-5" /> Report Settings
             </DialogTitle>
           </DialogHeader>
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-700">
-              Restaurant report settings and preferences will be available here.
-            </p>
+          <div className="px-6 pb-6 text-sm text-slate-700">
+            Restaurant report settings and preferences will be available here.
           </div>
           <div className="px-6 pb-6 flex items-center justify-end">
             <button
@@ -468,4 +389,3 @@ export default function RestaurantReport() {
     </div>
   )
 }
-

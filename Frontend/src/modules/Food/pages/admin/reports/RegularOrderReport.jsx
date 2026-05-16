@@ -19,6 +19,10 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const ALL_ZONES = "All Zones"
+const ALL_RESTAURANTS = "All restaurants"
+const ALL_CUSTOMERS = "All customers"
+const ALL_TIME = "All Time"
 
 const statusMeta = {
   Scheduled: { label: "Scheduled Orders", color: "text-amber-600", bg: "bg-amber-50", icon: scheduledIcon },
@@ -32,6 +36,37 @@ const statusMeta = {
 }
 
 const PAGE_SIZE = 25
+const normalizeString = (value) => String(value ?? "").trim().toLowerCase()
+const sameValue = (left, right) => normalizeString(left) === normalizeString(right)
+const getZoneLabel = (order = {}) => {
+  const restaurant = order.restaurantId || order.restaurant || {}
+  const zoneId = restaurant?.zoneId || order.zoneId || order.zone || {}
+
+  return (
+    zoneId?.name ||
+    zoneId?.zoneName ||
+    order.zoneName ||
+    restaurant?.zone ||
+    restaurant?.location?.area ||
+    restaurant?.location?.city ||
+    order?.address?.area ||
+    order?.address?.city ||
+    "N/A"
+  )
+}
+
+const getRestaurantName = (order = {}) =>
+  order.restaurantId?.restaurantName ||
+  order.restaurantId?.name ||
+  order.restaurantName ||
+  order.restaurant ||
+  "N/A"
+
+const getCustomerName = (order = {}) =>
+  order.userId?.name ||
+  order.customerName ||
+  "Unnamed"
+
 const getDiscountBreakdown = (pricing = {}, order = {}) => {
   const platformCouponDiscount = Number(order.platformCouponDiscount ?? pricing.platformCouponDiscount ?? 0)
   const restaurantCouponDiscount = Number(order.restaurantCouponDiscount ?? pricing.restaurantCouponDiscount ?? 0)
@@ -66,10 +101,10 @@ export default function RegularOrderReport() {
   const [customers, setCustomers] = useState([])
   
   const [filters, setFilters] = useState({
-    zone: "All Zones",
-    restaurant: "All restaurants",
-    customer: "All customers",
-    time: "All Time",
+    zone: ALL_ZONES,
+    restaurant: ALL_RESTAURANTS,
+    customer: ALL_CUSTOMERS,
+    time: ALL_TIME,
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -141,16 +176,9 @@ export default function RegularOrderReport() {
       setLoading(true)
       setError(null)
       try {
-        const { fromDate, toDate } = getDateRange()
         const params = {
           page: 1,
           limit: 10000, // Fetch all orders for report (can be optimized later)
-          search: searchQuery || undefined,
-          zone: filters.zone !== "All Zones" ? filters.zone : undefined,
-          restaurant: filters.restaurant !== "All restaurants" ? filters.restaurant : undefined,
-          customer: filters.customer !== "All customers" ? filters.customer : undefined,
-          startDate: fromDate ? fromDate.toISOString().split('T')[0] : undefined,
-          endDate: toDate ? toDate.toISOString().split('T')[0] : undefined,
         }
 
         const response = await adminAPI.getOrders(params)
@@ -186,20 +214,31 @@ export default function RegularOrderReport() {
                 ? Number(pricing.total)
                 : computedTotal
 
-            const restaurantName =
-              order.restaurantId?.restaurantName ||
-              order.restaurantName ||
-              ""
-
-            const customerName =
-              order.userId?.name ||
-              order.customerName ||
-              "N/A"
+            const restaurantName = getRestaurantName(order)
+            const customerName = getCustomerName(order)
+            const zoneName = getZoneLabel(order)
 
             const backendStatus = String(order.orderStatus || "").toLowerCase()
-            let displayStatus = order.orderStatus
-            if (!backendStatus || backendStatus === "created" || backendStatus === "confirmed") {
+            const paymentStatusRaw = String(order.paymentStatus || order.payment?.status || "").toLowerCase()
+            const refundStatusRaw = String(order.refundStatus || order.payment?.refund?.status || "").toLowerCase()
+            const restaurantAccepted =
+              Boolean(order.isAcceptedByRestaurant) ||
+              backendStatus === "preparing" ||
+              backendStatus === "ready_for_pickup" ||
+              backendStatus === "picked_up" ||
+              backendStatus === "delivered"
+
+            let displayStatus = order.orderStatus || "Pending"
+            if (refundStatusRaw === "processed" || paymentStatusRaw === "refunded") {
+              displayStatus = "Refunded"
+            } else if (paymentStatusRaw === "failed" || refundStatusRaw === "failed") {
+              displayStatus = "Payment Failed"
+            } else if (String(order.order_type || "").toLowerCase() === "scheduled") {
+              displayStatus = "Scheduled"
+            } else if (!backendStatus || backendStatus === "created") {
               displayStatus = "Pending"
+            } else if (backendStatus === "confirmed") {
+              displayStatus = restaurantAccepted ? "Accepted" : "Pending"
             } else if (backendStatus === "preparing" || backendStatus === "ready_for_pickup") {
               displayStatus = "Processing"
             } else if (backendStatus === "picked_up") {
@@ -216,6 +255,7 @@ export default function RegularOrderReport() {
               orderId: order.orderId,
               restaurant: restaurantName,
               customerName,
+              customerId: String(order.userId?._id || order.userId?.id || order.userId || ""),
               totalItemAmount: subtotal,
               couponDiscount,
               platformCouponDiscount: discountBreakdown.platformCouponDiscount,
@@ -225,6 +265,9 @@ export default function RegularOrderReport() {
               deliveryCharge,
               platformFee,
               totalAmount,
+              restaurantId: String(order.restaurantId?._id || order.restaurantId?.id || order.restaurantId || ""),
+              zoneName,
+              createdAt: order.createdAt || order.created_at || order.orderDate || null,
               restaurantEarning: Number(pricing.payoutAdjustments?.netPayout ?? 0),
               adminCommission: Number(pricing.restaurantCommission ?? 0),
               discountBreakdown: [
@@ -250,17 +293,45 @@ export default function RegularOrderReport() {
     }
 
     fetchOrders()
-  }, [filters, searchQuery])
+  }, [])
 
   const filteredOrders = useMemo(() => {
-    if (!searchQuery.trim()) return orders
-    const q = searchQuery.toLowerCase().trim()
-    return orders.filter((o) =>
-      String(o.orderId || "")
-        .toLowerCase()
-        .includes(q),
-    )
-  }, [orders, searchQuery])
+    const { fromDate, toDate } = getDateRange()
+    const query = normalizeString(searchQuery)
+
+    return orders.filter((order) => {
+      if (query && !normalizeString(order.orderId).includes(query)) {
+        return false
+      }
+
+      if (filters.zone !== ALL_ZONES && !sameValue(order.zoneName, filters.zone)) {
+        return false
+      }
+
+      if (filters.restaurant !== ALL_RESTAURANTS && !sameValue(order.restaurant, filters.restaurant)) {
+        return false
+      }
+
+      if (filters.customer !== ALL_CUSTOMERS && !sameValue(order.customerName, filters.customer)) {
+        return false
+      }
+
+      if (fromDate || toDate) {
+        const createdAt = order.createdAt ? new Date(order.createdAt) : null
+        if (!createdAt || Number.isNaN(createdAt.getTime())) {
+          return false
+        }
+        if (fromDate && createdAt < fromDate) {
+          return false
+        }
+        if (toDate && createdAt > toDate) {
+          return false
+        }
+      }
+
+      return true
+    })
+  }, [orders, searchQuery, filters])
 
   const handleExport = (format) => {
     if (filteredOrders.length === 0) {
@@ -296,16 +367,24 @@ export default function RegularOrderReport() {
 
   const handleResetFilters = () => {
     setFilters({
-      zone: "All Zones",
-      restaurant: "All restaurants",
-      customer: "All customers",
-      time: "All Time",
+      zone: ALL_ZONES,
+      restaurant: ALL_RESTAURANTS,
+      customer: ALL_CUSTOMERS,
+      time: ALL_TIME,
     })
+    setSearchQuery("")
+    setCurrentPage(1)
   }
 
-  const activeFiltersCount = (filters.zone !== "All Zones" ? 1 : 0) + (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.customer !== "All customers" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
+  const activeFiltersCount = (filters.zone !== ALL_ZONES ? 1 : 0) + (filters.restaurant !== ALL_RESTAURANTS ? 1 : 0) + (filters.customer !== ALL_CUSTOMERS ? 1 : 0) + (filters.time !== ALL_TIME ? 1 : 0)
 
   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE))
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const paginatedOrders = useMemo(() => {
     const safePage = Math.min(currentPage, totalPages)
@@ -420,10 +499,10 @@ export default function RegularOrderReport() {
                 onChange={(e) => handleFilterChange("zone", e.target.value)}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All Zones">All Zones</option>
+                <option value={ALL_ZONES}>{ALL_ZONES}</option>
                 {zones.map((zone) => (
-                  <option key={zone._id} value={zone.name}>
-                    {zone.name}
+                  <option key={zone._id} value={zone.name || zone.zoneName || zone.serviceLocation || "Unnamed Zone"}>
+                    {zone.name || zone.zoneName || zone.serviceLocation || "Unnamed Zone"}
                   </option>
                 ))}
               </select>
@@ -436,10 +515,10 @@ export default function RegularOrderReport() {
                 onChange={(e) => handleFilterChange("restaurant", e.target.value)}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All restaurants">All restaurants</option>
+                <option value={ALL_RESTAURANTS}>{ALL_RESTAURANTS}</option>
                 {restaurants.map((restaurant) => (
-                  <option key={restaurant._id} value={restaurant.name}>
-                    {restaurant.name}
+                  <option key={restaurant._id} value={restaurant.name || restaurant.restaurantName || "Unnamed Restaurant"}>
+                    {restaurant.name || restaurant.restaurantName || "Unnamed Restaurant"}
                   </option>
                 ))}
               </select>
@@ -452,10 +531,10 @@ export default function RegularOrderReport() {
                 onChange={(e) => handleFilterChange("customer", e.target.value)}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option value="All customers">All customers</option>
+                <option value={ALL_CUSTOMERS}>{ALL_CUSTOMERS}</option>
                 {customers.map((customer) => (
-                  <option key={customer._id} value={customer.name}>
-                    {customer.name}
+                  <option key={customer._id} value={customer.name || "Unnamed"}>
+                    {customer.name || "Unnamed"}
                   </option>
                 ))}
               </select>
@@ -468,7 +547,7 @@ export default function RegularOrderReport() {
                 onChange={(e) => handleFilterChange("time", e.target.value)}
                 className="w-full px-2.5 py-1.5 pr-5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs appearance-none cursor-pointer"
               >
-                <option key="all-time" value="All Time">All Time</option>
+                <option key="all-time" value={ALL_TIME}>{ALL_TIME}</option>
                 <option key="today" value="Today">Today</option>
                 <option key="this-week" value="This Week">This Week</option>
                 <option key="this-month" value="This Month">This Month</option>

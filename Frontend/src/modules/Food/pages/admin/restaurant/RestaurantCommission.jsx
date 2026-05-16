@@ -323,13 +323,15 @@ export default function RestaurantCommission() {
       errors.restaurantId = "Restaurant is required"
     }
 
-    if (!formData.defaultCommission.value || parseFloat(formData.defaultCommission.value) < 0) {
-      errors.defaultCommission = "Default commission value is required"
-    }
-
-    if (formData.defaultCommission.type === "percentage" && 
-        (parseFloat(formData.defaultCommission.value) < 0 || parseFloat(formData.defaultCommission.value) > 100)) {
-      errors.defaultCommission = "Percentage must be between 0-100"
+    if (!formData.defaultCommission.value) {
+      errors.defaultCommission = "Commission value is required"
+    } else {
+      const val = parseFloat(formData.defaultCommission.value)
+      if (formData.defaultCommission.type === "percentage" && (val < 0 || val > 99)) {
+        errors.defaultCommission = "Percentage must be between 0-99"
+      } else if (formData.defaultCommission.type === "amount" && (val < 0 || val > 999)) {
+        errors.defaultCommission = "Amount must be between 0-999"
+      }
     }
 
     setFormErrors(errors)
@@ -654,16 +656,23 @@ export default function RestaurantCommission() {
                 <div>
                   <input
                     type="number"
-                    step={formData.defaultCommission.type === "percentage" ? "0.1" : "0.01"}
+                    step={formData.defaultCommission.type === "percentage" ? "0.1" : "1"}
+                    min="0"
+                    max={formData.defaultCommission.type === "percentage" ? "99" : "999"}
                     value={formData.defaultCommission.value}
-                    onChange={(e) => setFormData(prev => ({
-                      ...prev,
-                      defaultCommission: { ...prev.defaultCommission, value: e.target.value }
-                    }))}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const max = formData.defaultCommission.type === "percentage" ? 99 : 999;
+                      if (val !== "" && parseFloat(val) > max) return;
+                      setFormData(prev => ({
+                        ...prev,
+                        defaultCommission: { ...prev.defaultCommission, value: val }
+                      }));
+                    }}
                     className={`w-full px-3 py-2 text-sm border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
                       formErrors.defaultCommission ? "border-red-500" : "border-slate-300"
                     }`}
-                    placeholder={formData.defaultCommission.type === "percentage" ? "e.g., 10" : "e.g., 5.00"}
+                    placeholder={formData.defaultCommission.type === "percentage" ? "e.g., 10" : "e.g., 50"}
                   />
                   {formErrors.defaultCommission && (
                     <p className="text-xs text-red-500 mt-1">{formErrors.defaultCommission}</p>

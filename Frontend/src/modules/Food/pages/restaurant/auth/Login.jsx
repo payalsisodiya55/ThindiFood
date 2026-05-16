@@ -167,7 +167,7 @@ export default function RestaurantLogin() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-white flex flex-col overflow-y-auto overscroll-contain font-sans"
+      className="min-h-screen bg-white flex flex-col font-sans"
       style={{ paddingBottom: keyboardInset ? `${keyboardInset + 24}px` : undefined }}
     >
       {/* Curved Header Background */}
@@ -180,7 +180,7 @@ export default function RestaurantLogin() {
         <div className="absolute bottom-0 w-full h-[100px] bg-white rounded-t-[100px] shadow-[0_-20px_40px_rgba(0,0,0,0.05)]" />
       </div>
 
-      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-12 sm:-mt-16 z-10 overflow-hidden">
+      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-12 sm:-mt-16 z-10">
         <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-4 sm:mb-6">
           <img
             src={thindiLogo}

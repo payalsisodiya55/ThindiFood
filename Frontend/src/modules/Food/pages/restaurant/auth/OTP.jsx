@@ -29,6 +29,18 @@ export default function RestaurantOTP() {
   const hasSubmittedRef = useRef(false)
   const otpSectionRef = useRef(null)
 
+  const focusOtpInput = (index = 0) => {
+    const targetInput = inputRefs.current[index]
+    if (!targetInput) return
+
+    try {
+      targetInput.focus({ preventScroll: true })
+    } catch {
+      targetInput.focus()
+    }
+    setFocusedIndex(index)
+  }
+
   useEffect(() => {
     const stored = sessionStorage.getItem("restaurantAuthData")
     if (stored) {
@@ -66,10 +78,20 @@ export default function RestaurantOTP() {
   }, [navigate])
 
   useEffect(() => {
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus()
+    if (!authData) return
+
+    const rafId = window.requestAnimationFrame(() => {
+      focusOtpInput(0)
+    })
+    const timeoutId = window.setTimeout(() => {
+      focusOtpInput(0)
+    }, 250)
+
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(timeoutId)
     }
-  }, [])
+  }, [authData])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -284,7 +306,7 @@ export default function RestaurantOTP() {
       setError(message)
       setOtp(["", "", "", ""])
       hasSubmittedRef.current = false
-      inputRefs.current[0]?.focus()
+      focusOtpInput(0)
     } finally {
       setIsLoading(false)
     }
@@ -328,7 +350,7 @@ export default function RestaurantOTP() {
 
     setIsLoading(false)
     setOtp(["", "", "", ""])
-    inputRefs.current[0]?.focus()
+    focusOtpInput(0)
   }
 
   const isOtpComplete = otp.every((digit) => digit !== "")
@@ -339,7 +361,7 @@ export default function RestaurantOTP() {
 
   return (
     <div
-      className={`h-[100dvh] bg-white flex flex-col font-sans ${keyboardOffset > 0 ? "overflow-y-auto overflow-x-hidden" : "overflow-hidden"}`}
+      className={`min-h-[100dvh] bg-white flex flex-col font-sans ${keyboardOffset > 0 ? "overflow-x-hidden" : ""}`}
       style={keyboardOffset > 0 ? { paddingBottom: `${Math.min(keyboardOffset, 360)}px` } : undefined}
     >
       {/* Curved Header Background */}
@@ -361,7 +383,7 @@ export default function RestaurantOTP() {
         </button>
       </div>
 
-      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-12 sm:-mt-16 z-10 overflow-hidden">
+      <div className="flex-1 flex flex-col items-center px-4 sm:px-8 -mt-12 sm:-mt-16 z-10">
         {/* Central Logo / Branding */}
         <div className="w-28 h-28 sm:w-32 sm:h-32 bg-white rounded-full shadow-xl flex items-center justify-center border-4 border-slate-50 mb-4 sm:mb-6 overflow-hidden">
           <div className="text-center">
@@ -396,6 +418,9 @@ export default function RestaurantOTP() {
                   ref={(el) => (inputRefs.current[index] = el)}
                   type="text"
                   inputMode="numeric"
+                  pattern="[0-9]*"
+                  autoComplete={index === 0 ? "one-time-code" : "off"}
+                  autoFocus={index === 0}
                   maxLength={1}
                   value={digit}
                   onChange={(e) => handleChange(index, e.target.value)}

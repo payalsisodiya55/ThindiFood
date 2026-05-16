@@ -1102,6 +1102,7 @@ export default function FoodsList() {
                 Next
                 <ChevronRight className="w-4 h-4" />
               </button>
+
             </div>
           </div>
         }
@@ -1112,8 +1113,8 @@ export default function FoodsList() {
           <DialogHeader className="px-6 py-4 border-b border-slate-200 bg-slate-50">
             <DialogTitle className="text-lg font-semibold text-slate-900">Food Details</DialogTitle>
           </DialogHeader>
-          {selectedFood &&
-          <div className="p-6 space-y-5">
+          {selectedFood && (
+            <div className="p-6 space-y-5">
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-xl overflow-hidden bg-slate-50 border border-slate-200 relative flex items-center justify-center">
                   <span className="absolute inset-0 flex items-center justify-center text-xl font-bold text-slate-300 uppercase">
@@ -1125,15 +1126,15 @@ export default function FoodsList() {
                     className="w-full h-full object-cover relative z-10"
                     onError={(e) => {
                       e.target.style.opacity = "0";
-                    }} 
+                    }}
                   />
                 </div>
-              
                 <div>
                   <p className="text-lg font-semibold text-slate-900 break-all">{selectedFood.name}</p>
                   <p className="text-sm text-slate-500 mt-0.5">ID #{formatFoodId(selectedFood.id)}</p>
                 </div>
               </div>
+
               <div className="grid grid-cols-2 gap-4 text-sm bg-slate-50 border border-slate-200 rounded-lg p-4">
                 <p><span className="font-semibold text-slate-700">Restaurant:</span> <span className="text-slate-900 break-all">{selectedFood.restaurantName || "-"}</span></p>
                 <p><span className="font-semibold text-slate-700">Price:</span> <span className="text-slate-900">{selectedFood.variants?.length ? `Starting from \u20B9${selectedFood.price}` : `\u20B9${selectedFood.price}`}</span></p>
@@ -1141,26 +1142,28 @@ export default function FoodsList() {
                 <p><span className="font-semibold text-slate-700">Food Type:</span> <span className="text-slate-900">{selectedFood.foodType || "-"}</span></p>
                 <p><span className="font-semibold text-slate-700">Approval:</span> <span className="text-slate-900 capitalize">{selectedFood.approvalStatus || "-"}</span></p>
               </div>
-              {selectedFood.variants?.length ?
-            <div className="rounded-lg border border-slate-200 bg-white p-4">
+
+              {selectedFood.variants?.length ? (
+                <div className="rounded-lg border border-slate-200 bg-white p-4">
                   <p className="text-sm font-semibold text-slate-800 mb-2">Variants</p>
                   <div className="space-y-2">
-                    {selectedFood.variants.map((variant) =>
-                <div key={variant.id || variant._id} className="flex items-center justify-between text-sm text-slate-700">
-                        <span>{variant.name}</span>
-                        <span className="font-semibold text-slate-900">{"\u20B9"}{variant.price}</span>
+                    {selectedFood.variants.map((variant) => (
+                      <div key={variant.id || variant._id} className="flex items-start justify-between gap-4 text-sm text-slate-700 py-1.5 border-b border-slate-50 last:border-0">
+                        <span className="break-all flex-1">{variant.name}</span>
+                        <span className="font-semibold text-slate-900 shrink-0">{"\u20B9"}{variant.price}</span>
                       </div>
-                )}
+                    ))}
                   </div>
-                </div> :
-            null}
-              {selectedFood.description &&
-            <p className="text-sm text-slate-700 leading-relaxed break-all">
+                </div>
+              ) : null}
+
+              {selectedFood.description && (
+                <p className="text-sm text-slate-700 leading-relaxed break-all">
                   <span className="font-semibold text-slate-800">Description:</span> {selectedFood.description}
                 </p>
-            }
+              )}
             </div>
-          }
+          )}
         </DialogContent>
       </Dialog>
 
