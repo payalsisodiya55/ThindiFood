@@ -366,13 +366,14 @@ export const useRestaurantNotifications = () => {
           response?.data?.data?.data?.orders ||
           [];
 
-        // REST layer normalizes backend statuses so:
-        // - backend "created" -> UI "confirmed"
-        // We alert only for "confirmed/new order waiting for review".
+        // Alert only for orders still waiting for restaurant review.
         const confirmed = (rows || [])
           .filter((o) => {
             const status = String(o?.status || "").toLowerCase();
-            return status === "confirmed" || status === "created";
+            return (
+              (status === "confirmed" || status === "created") &&
+              !Boolean(o?.isAcceptedByRestaurant)
+            );
           })
           .sort((a, b) => {
             const at = a?.updatedAt || a?.createdAt || 0;
@@ -1117,7 +1118,6 @@ export const useRestaurantNotifications = () => {
     setNotificationSoundMuted
   };
 };
-
 
 
 

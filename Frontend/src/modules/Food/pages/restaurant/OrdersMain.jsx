@@ -52,6 +52,7 @@ const filterTabs = [
 
 const allOrdersStatusPriority = {
   pending: 0,
+  created: 1,
   confirmed: 1,
   preparing: 2,
   ready: 3,
@@ -1760,15 +1761,8 @@ export default function OrdersMain() {
 
   const isScheduledAwaitingRestaurantAcceptance = (orderLike) =>
     isScheduledRestaurantOrder(orderLike) &&
-    getNormalizedRestaurantOrderStatus(orderLike) === "confirmed" &&
+    ["created", "confirmed"].includes(getNormalizedRestaurantOrderStatus(orderLike)) &&
     !Boolean(orderLike?.isAcceptedByRestaurant);
-
-  const isFutureScheduledBeyondPopupWindow = (orderLike) => {
-    const scheduledAt = orderLike?.scheduledAt
-      ? new Date(orderLike.scheduledAt).getTime()
-      : null;
-    return Boolean(scheduledAt && scheduledAt > Date.now() + 30 * 60000);
-  };
 
   const getPopupOrderTotal = (orderLike) => {
     if (!orderLike) return 0;
@@ -2014,19 +2008,10 @@ export default function OrdersMain() {
         return;
       }
 
-      const scheduledAt = newOrder.scheduledAt
-        ? new Date(newOrder.scheduledAt).getTime()
-        : null;
-      const isFutureScheduled = isFutureScheduledBeyondPopupWindow(newOrder);
-
-      if (isFutureScheduled) {
-        toast.info(
-          `New scheduled order received for ${new Date(scheduledAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`,
-        );
-        stopOrderAlertSound();
+      if (Boolean(newOrder?.isAcceptedByRestaurant)) {
         clearNewOrder();
         requestOrdersRefresh();
-        return; // Do not show the immediate popup
+        return;
       }
 
       const normalizedIncomingOrder = normalizeOrderForPopup(newOrder);
@@ -2291,26 +2276,19 @@ export default function OrdersMain() {
   useEffect(() => {
     const checkOrdersToPopup = async () => {
       // Skip while an actionable popup order is already active.
-      // Future scheduled orders are intentionally ignored here so they don't
-      // block the popup when their review window actually opens later.
-      if (
-        showNewOrderPopupRef.current ||
-        (newOrderRef.current &&
-          !isFutureScheduledBeyondPopupWindow(newOrderRef.current))
-      ) {
+      if (showNewOrderPopupRef.current || newOrderRef.current) {
         return;
       }
 
       try {
         const response = await restaurantAPI.getOrders();
         if (response.data?.success && response.data.data?.orders) {
-          const now = Date.now();
-
           // Find orders that should trigger the popup
           const targetOrders = response.data.data.orders.filter((order) => {
             if (hasOrderBeenShown(order)) return false;
 
-            const isConfirmed = order.status === "confirmed";
+            const normalizedStatus = getNormalizedRestaurantOrderStatus(order);
+            const isConfirmed = normalizedStatus === "created";
             const isUnacceptedScheduled =
               isScheduledAwaitingRestaurantAcceptance(order);
 
@@ -2319,19 +2297,17 @@ export default function OrdersMain() {
               !order.scheduledAt &&
               !Boolean(order.isAcceptedByRestaurant)
             ) {
-              return true; // ordinary confirmed fallback
+              return true; // ordinary new-order fallback
             }
 
             if (
               order.scheduledAt &&
               (
-                order.status === "created" ||
+                normalizedStatus === "created" ||
                 isUnacceptedScheduled
               )
             ) {
-              const scheduledTime = new Date(order.scheduledAt).getTime();
-              // Show popup if scheduled time is <= 30 mins from now
-              if (scheduledTime <= now + 30 * 60000) return true;
+              return true;
             }
 
             return false;
@@ -4536,9 +4512,11 @@ function OrderCard({
   
   const statusLabel = isActiveDineIn 
     ? "Live Table" 
-    : String(status || "")
-        .replace(/_/g, " ")
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+    : normalizedStatus === "created"
+      ? "Pending Review"
+      : String(status || "")
+          .replace(/_/g, " ")
+          .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${isPreparing && onCancel ? "pr-14" : ""}`}>
@@ -5588,7 +5566,8 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
               const status = getNormalizedRestaurantOrderStatus(order);
               return (
                 isScheduledRestaurantOrder(order) &&
-                status === "confirmed"
+                status === "confirmed" &&
+                Boolean(order.isAcceptedByRestaurant)
               );
             })
             .map((order) => ({
