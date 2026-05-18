@@ -760,7 +760,7 @@ export default function Home() {
         id: "collection",
         label: "Collections",
         image: exploreCollection,
-        href: "/food/user/collections",
+        href: "/user/profile/favorites",
       },
     ];
 
@@ -784,7 +784,7 @@ export default function Home() {
           href:
             (apiItem.type || item.id)?.toString().toLowerCase() === "collections" ||
             item.label?.toLowerCase() === "collections"
-              ? "/food/user/collections"
+              ? "/user/profile/favorites"
               : href,
         };
       }

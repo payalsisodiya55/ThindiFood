@@ -412,6 +412,13 @@ const buildZoneRestaurantFilter = async (zoneIdRaw) => {
     return { $or: zoneClauses };
 };
 
+const getVisibleRestaurantIdsWithApprovedFoods = async () => {
+    return FoodItem.distinct('restaurantId', {
+        approvalStatus: 'approved',
+        isAvailable: { $ne: false }
+    });
+};
+
 const notifyAdminsAboutRestaurantProfileReview = async (restaurantId, restaurantName) => {
     try {
         const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
@@ -1484,7 +1491,15 @@ export const listApprovedRestaurants = async (query = {}) => {
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
-    const filter = { status: 'approved' };
+    const visibleRestaurantIds = await getVisibleRestaurantIdsWithApprovedFoods();
+    if (!visibleRestaurantIds.length) {
+        return { restaurants: [], total: 0, page, limit };
+    }
+
+    const filter = {
+        status: 'approved',
+        _id: { $in: visibleRestaurantIds }
+    };
 
     if (query.city && String(query.city).trim()) {
         const city = String(query.city).trim().slice(0, 80);
@@ -1671,6 +1686,9 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     let value = String(idOrSlug || '').trim();
     if (!value) return null;
 
+    const visibleRestaurantIds = await getVisibleRestaurantIdsWithApprovedFoods();
+    if (!visibleRestaurantIds.length) return null;
+
     try {
         value = decodeURIComponent(value).trim();
     } catch (e) {
@@ -1679,6 +1697,9 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
 
     // ObjectId path
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
+        const isVisibleRestaurant = visibleRestaurantIds.some((id) => String(id) === String(value));
+        if (!isVisibleRestaurant) return null;
+
         const doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
         if (!doc) return null;
         return {
@@ -1702,6 +1723,7 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
 
     const doc = await FoodRestaurant.findOne({
         status: 'approved',
+        _id: { $in: visibleRestaurantIds },
         $or: [
             { restaurantNameNormalized },
             { restaurantName: { $regex: new RegExp(`^${escapeRegex(value)}$`, 'i') } },

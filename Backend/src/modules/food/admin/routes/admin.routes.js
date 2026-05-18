@@ -99,6 +99,7 @@ router.patch('/restaurants/:id/location', adminController.updateRestaurantLocati
 router.patch('/restaurants/:id/menu', adminController.updateRestaurantMenuById);
 router.patch('/restaurants/:id/approve', adminController.approveRestaurant);
 router.patch('/restaurants/:id/reject', adminController.rejectRestaurant);
+router.delete('/restaurants/:id', adminController.deleteRestaurantController);
 router.get('/restaurants/:id/self-delivery', getRestaurantSelfDeliveryConfigAdminController);
 router.patch('/restaurants/:id/self-delivery', updateRestaurantSelfDeliveryConfigAdminController);
 router.get('/restaurants/delivery/pending', listPendingDeliveryApprovalsController);

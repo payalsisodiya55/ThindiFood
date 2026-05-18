@@ -6,6 +6,7 @@ import { clearModuleAuth } from "@food/utils/auth"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
+import { toast } from "sonner"
 
 // Import icons from Dashboard-icons
 import locationIcon from "@food/assets/Dashboard-icons/image1.png"
@@ -624,11 +625,11 @@ export default function RestaurantsList() {
     const longitude = Number(locationForm.longitude)
 
     if (!locationForm.zoneId) {
-      alert("Please select a zone")
+      toast.error("Please select a zone")
       return
     }
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !locationForm.formattedAddress) {
-      alert("Please select a location from dropdown")
+      toast.error("Please select a location from dropdown")
       return
     }
 
@@ -689,10 +690,10 @@ export default function RestaurantsList() {
       }
 
       setIsEditingLocation(false)
-      alert("Restaurant location updated successfully")
+      toast.success("Restaurant location updated successfully")
     } catch (err) {
       debugError("Error saving restaurant location:", err)
-      alert(err?.response?.data?.message || "Failed to update restaurant location")
+      toast.error(err?.response?.data?.message || "Failed to update restaurant location")
     } finally {
       setSavingLocation(false)
     }
@@ -817,11 +818,11 @@ export default function RestaurantsList() {
       const closingMinutes = timeToMinutes(normalizedClosingTime)
       if (openingMinutes !== null && closingMinutes !== null) {
         if (openingMinutes === closingMinutes) {
-          alert("Opening time and closing time cannot be same")
+          toast.error("Opening time and closing time cannot be same")
           return
         }
         if (closingMinutes < openingMinutes) {
-          alert("Closing time cannot be less than opening time")
+          toast.error("Closing time cannot be less than opening time")
           return
         }
       }
@@ -873,10 +874,10 @@ export default function RestaurantsList() {
 
       setIsEditingDetails(false)
       setProfileImageFile(null)
-      alert("Restaurant details updated successfully")
+      toast.success("Restaurant details updated successfully")
     } catch (err) {
       debugError("Error updating restaurant details:", err)
-      alert(err?.response?.data?.message || "Failed to update restaurant details")
+      toast.error(err?.response?.data?.message || "Failed to update restaurant details")
     } finally {
       setSavingDetails(false)
     }
@@ -929,7 +930,7 @@ export default function RestaurantsList() {
         setBanConfirmDialog(null)
 
         // Show success message
-        debugLog(`Restaurant ${isBanning ? 'banned' : 'unbanned'} successfully`)
+        toast.success(`Restaurant ${isBanning ? 'banned' : 'unbanned'} successfully`)
       } catch (apiErr) {
         debugError("API Error:", apiErr)
         // If API fails, still update locally for better UX
@@ -941,12 +942,12 @@ export default function RestaurantsList() {
           )
         )
         setBanConfirmDialog(null)
-        alert(`Restaurant ${isBanning ? 'banned' : 'unbanned'} locally. Please check backend connection.`)
+        toast.warning(`Restaurant status updated locally. Please check backend connection.`)
       }
 
     } catch (err) {
       debugError("Error banning/unbanning restaurant:", err)
-      alert(`Failed to ${action} restaurant. Please try again.`)
+      toast.error(`Failed to ${action} restaurant. Please try again.`)
     } finally {
       setBanning(false)
     }
@@ -985,15 +986,15 @@ export default function RestaurantsList() {
         setDeleteConfirmDialog(null)
 
         // Show success message
-        alert(`Restaurant "${restaurant.name}" deleted successfully!`)
+        toast.success(`Restaurant "${restaurant.name}" deleted successfully!`)
       } catch (apiErr) {
         debugError("API Error:", apiErr)
-        alert(apiErr.response?.data?.message || "Failed to delete restaurant. Please try again.")
+        toast.error(apiErr.response?.data?.message || "Failed to delete restaurant. Please try again.")
       }
 
     } catch (err) {
       debugError("Error deleting restaurant:", err)
-      alert("Failed to delete restaurant. Please try again.")
+      toast.error("Failed to delete restaurant. Please try again.")
     } finally {
       setDeleting(false)
     }
@@ -2388,7 +2389,7 @@ export default function RestaurantsList() {
 
       {/* Ban/Unban Confirmation Dialog */}
       {banConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={cancelBanRestaurant}>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={cancelBanRestaurant}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">
@@ -2447,7 +2448,7 @@ export default function RestaurantsList() {
 
       {/* Delete Confirmation Dialog */}
       {deleteConfirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={cancelDeleteRestaurant}>
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={cancelDeleteRestaurant}>
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
             <div className="p-6">
               <div className="flex items-center gap-4 mb-4">

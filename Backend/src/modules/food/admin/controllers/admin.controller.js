@@ -1782,3 +1782,17 @@ export async function deleteAdminManaged(req, res, next) {
         next(error);
     }
 }
+
+export async function deleteRestaurantController(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+        }
+        const { deleteCurrentRestaurantAccount } = await import('../../restaurant/services/restaurant.service.js');
+        const result = await deleteCurrentRestaurantAccount(id);
+        res.status(200).json({ success: true, message: 'Restaurant deleted successfully', data: result });
+    } catch (error) {
+        next(error);
+    }
+}
