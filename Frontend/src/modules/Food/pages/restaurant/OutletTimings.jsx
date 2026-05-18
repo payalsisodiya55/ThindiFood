@@ -9,6 +9,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { restaurantAPI } from "@food/api"
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -56,6 +57,8 @@ const getDefaultDays = () => ({
   Sunday: { isOpen: true, openingTime: "09:00", closingTime: "22:00" },
 })
 
+const RESTAURANT_ONLINE_STATUS_KEY = "restaurant_online_status"
+
 export default function OutletTimings() {
   const companyName = useCompanyName()
   const navigate = useNavigate()
@@ -64,6 +67,36 @@ export default function OutletTimings() {
   const [days, setDays] = useState(getDefaultDays)
   const [loading, setLoading] = useState(true)
   const saveTimerRef = useRef(null)
+
+  const syncRestaurantOfflineIfNeeded = async (nextDays) => {
+    try {
+      const restaurantRes = await restaurantAPI.getCurrentRestaurant()
+      const restaurant =
+        restaurantRes?.data?.data?.restaurant ||
+        restaurantRes?.data?.restaurant ||
+        null
+
+      if (!restaurant) return
+
+      const availability = getRestaurantAvailabilityStatus(
+        { ...restaurant, outletTimings: nextDays },
+        new Date(),
+        { ignoreOperationalStatus: true }
+      )
+
+      if (!availability.isWithinTimings && restaurant.isAcceptingOrders !== false) {
+        await restaurantAPI.updateAcceptingOrders(false)
+        try {
+          localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(false))
+        } catch {}
+        window.dispatchEvent(
+          new CustomEvent("restaurantStatusChanged", { detail: { isOnline: false } })
+        )
+      }
+    } catch (error) {
+      debugError("Error syncing restaurant offline state from outlet timings:", error)
+    }
+  }
 
   // Load from backend on mount.
   useEffect(() => {
@@ -94,6 +127,7 @@ export default function OutletTimings() {
     saveTimerRef.current = setTimeout(async () => {
       try {
         await restaurantAPI.saveOutletTimings(days)
+        await syncRestaurantOfflineIfNeeded(days)
         window.dispatchEvent(new Event("outletTimingsUpdated"))
       } catch (error) {
         debugError("Error saving outlet timings to backend:", error)

@@ -5,6 +5,7 @@ import { restaurantAPI } from "@food/api"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import useNotificationInbox from "@food/hooks/useNotificationInbox"
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -17,6 +18,8 @@ const extractRestaurantPayload = (response) =>
   response?.data?.user ||
   response?.data?.data ||
   null
+
+const RESTAURANT_ONLINE_STATUS_KEY = "restaurant_online_status"
 
 
 export default function RestaurantNavbar({
@@ -69,10 +72,41 @@ export default function RestaurantNavbar({
     const fetchRestaurantData = async () => {
       try {
         setLoading(true)
-        const response = await restaurantAPI.getCurrentRestaurant()
+        const [response, timingsResponse] = await Promise.all([
+          restaurantAPI.getCurrentRestaurant(),
+          restaurantAPI.getOutletTimings(),
+        ])
         const data = extractRestaurantPayload(response)
         if (data) {
-          setRestaurantData(data)
+          const outletTimings =
+            timingsResponse?.data?.data?.outletTimings ||
+            timingsResponse?.data?.outletTimings ||
+            null
+          const mergedRestaurant = outletTimings
+            ? { ...data, outletTimings }
+            : data
+          const availability = getRestaurantAvailabilityStatus(
+            mergedRestaurant,
+            new Date(),
+            { ignoreOperationalStatus: true }
+          )
+
+          if (!availability.isWithinTimings && data.isAcceptingOrders !== false) {
+            try {
+              await restaurantAPI.updateAcceptingOrders(false)
+            } catch (statusError) {
+              debugError("Error auto-setting restaurant offline in navbar:", statusError)
+            }
+            try {
+              localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(false))
+            } catch {}
+            window.dispatchEvent(
+              new CustomEvent("restaurantStatusChanged", { detail: { isOnline: false } })
+            )
+            setRestaurantData({ ...mergedRestaurant, isAcceptingOrders: false })
+          } else {
+            setRestaurantData(mergedRestaurant)
+          }
         }
       } catch (error) {
         // Only log error if it's not a network/timeout error (backend might be down/slow)
