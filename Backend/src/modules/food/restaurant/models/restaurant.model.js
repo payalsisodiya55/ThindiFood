@@ -308,6 +308,19 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    resubmissionCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    lastSubmittedAt: {
+      type: Date,
+    },
+    lastSubmissionType: {
+      type: String,
+      enum: ['new_registration', 'reverification'],
+      default: 'new_registration',
+    },
     locationChangeRequest: {
       type: locationChangeRequestSchema,
       default: undefined,

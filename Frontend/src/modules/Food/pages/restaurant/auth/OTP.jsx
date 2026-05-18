@@ -255,12 +255,26 @@ export default function RestaurantOTP() {
       const accessToken = data?.accessToken
       const refreshToken = data?.refreshToken ?? null
       const restaurant = data?.user ?? data?.restaurant
+      const restaurantStatus = String(restaurant?.status || "").toLowerCase()
 
       if (accessToken && restaurant) {
         setRestaurantAuthData("restaurant", accessToken, restaurant, refreshToken)
         window.dispatchEvent(new Event("restaurantAuthChanged"))
         sessionStorage.removeItem("restaurantAuthData")
         sessionStorage.removeItem("restaurantLoginPhone")
+
+        if (restaurantStatus === "rejected") {
+          const reason = String(restaurant?.rejectionReason || "").trim()
+          setError(
+            reason
+              ? `Your restaurant was rejected: ${reason}. Please submit your details again for re-verification.`
+              : "Your restaurant was rejected. Please submit your details again for re-verification."
+          )
+          window.setTimeout(() => {
+            navigate("/food/restaurant/onboarding?step=1", { replace: true })
+          }, 1400)
+          return
+        }
 
         setTimeout(async () => {
           if (authData?.isSignUp) {

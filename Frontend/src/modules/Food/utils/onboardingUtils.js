@@ -160,6 +160,10 @@ const buildOnboardingLikeDataFromRestaurant = (restaurant) => {
 export const isRestaurantOnboardingComplete = (restaurant) => {
   if (!restaurant) return false
 
+  if (restaurant?.status === "rejected") {
+    return false
+  }
+
   // Approved restaurants should never be forced into onboarding again.
   if (restaurant?.status === "approved") {
     return true

@@ -49,6 +49,26 @@ const normalizeTotalRatingsValue = (value) => {
 
 const toUrl = (v) => (v && (typeof v === 'string' ? v : v.url)) ? (typeof v === 'string' ? v : v.url) : '';
 
+const parseImageUrlList = (value) => {
+    if (!value) return [];
+    let raw = value;
+    if (typeof value === 'string') {
+        try {
+            raw = JSON.parse(value);
+        } catch {
+            raw = value.includes(',') ? value.split(',') : [value];
+        }
+    }
+    return (Array.isArray(raw) ? raw : [raw])
+        .map((item) => toUrl(item) || String(item || '').trim())
+        .filter(Boolean);
+};
+
+const firstImageUrl = (...values) =>
+    values
+        .map((value) => toUrl(value) || String(value || '').trim())
+        .find(Boolean) || '';
+
 const normalizeRestaurantTime = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return '';
@@ -253,6 +273,9 @@ const toRestaurantProfile = (doc) => {
         approvedAt: doc.approvedAt || null,
         rejectedAt: doc.rejectedAt || null,
         rejectionReason: doc.rejectionReason || '',
+        resubmissionCount: Math.max(0, Number(doc.resubmissionCount) || 0),
+        lastSubmittedAt: doc.lastSubmittedAt || null,
+        lastSubmissionType: doc.lastSubmissionType || 'new_registration',
         locationChangeRequest: normalizeLocationChangeRequest(doc.locationChangeRequest),
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
@@ -625,7 +648,10 @@ export const registerRestaurant = async (payload, files) => {
                 }
             },
             menuImages,
-            ...images
+            ...images,
+            resubmissionCount: 0,
+            lastSubmittedAt: new Date(),
+            lastSubmissionType: 'new_registration'
         });
 
         try {
@@ -674,6 +700,235 @@ export const registerRestaurant = async (payload, files) => {
     }
 };
 
+export const resubmitRejectedRestaurant = async (restaurantId, payload, files) => {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
+        throw new ValidationError('Invalid restaurant id');
+    }
+
+    const currentRestaurant = await FoodRestaurant.findById(restaurantId);
+    if (!currentRestaurant) {
+        throw new ValidationError('Restaurant not found');
+    }
+
+    if (String(currentRestaurant.status || '').toLowerCase() === 'approved') {
+        throw new ValidationError('Approved restaurants cannot use re-verification onboarding');
+    }
+
+    const {
+        restaurantName,
+        ownerName,
+        ownerEmail,
+        ownerPhone,
+        primaryContactNumber,
+        pureVegRestaurant,
+        addressLine1,
+        addressLine2,
+        area,
+        city,
+        state,
+        pincode,
+        landmark,
+        formattedAddress,
+        latitude,
+        longitude,
+        zoneId,
+        cuisines,
+        openingTime,
+        closingTime,
+        estimatedDeliveryTime,
+        openDays,
+        panNumber,
+        nameOnPan,
+        gstRegistered,
+        gstNumber,
+        gstLegalName,
+        gstAddress,
+        fssaiNumber,
+        fssaiExpiry,
+        accountNumber,
+        ifscCode,
+        accountHolderName,
+        accountType,
+        featuredDish,
+        offer,
+        selfDeliveryEnabled,
+        selfDeliveryRadius,
+        selfDeliveryFee,
+        selfDeliveryMinOrderAmount,
+        selfDeliveryStart,
+        selfDeliveryEnd
+    } = payload;
+
+    const { digits: ownerPhoneDigits, last10: ownerPhoneLast10 } = normalizePhone(ownerPhone);
+    if (!ownerPhoneLast10) {
+        throw new ValidationError('Owner phone is invalid');
+    }
+
+    const restaurantNameNormalized = normalizeName(restaurantName);
+    if (!restaurantNameNormalized) {
+        throw new ValidationError('Restaurant name is required to register a restaurant');
+    }
+
+    const images = {};
+
+    if (files?.profileImage?.[0]) {
+        images.profileImage = await uploadImageBuffer(files.profileImage[0].buffer, 'food/restaurants/profile');
+    }
+    if (files?.panImage?.[0]) {
+        images.panImage = await uploadImageBuffer(files.panImage[0].buffer, 'food/restaurants/pan');
+    }
+    if (files?.gstImage?.[0]) {
+        images.gstImage = await uploadImageBuffer(files.gstImage[0].buffer, 'food/restaurants/gst');
+    }
+    if (files?.fssaiImage?.[0]) {
+        images.fssaiImage = await uploadImageBuffer(files.fssaiImage[0].buffer, 'food/restaurants/fssai');
+    }
+
+    let uploadedMenuImages = [];
+    if (files?.menuImages?.length) {
+        uploadedMenuImages = await Promise.all(
+            files.menuImages.map((file) => uploadImageBuffer(file.buffer, 'food/restaurants/menu'))
+        );
+    }
+
+    const existingMenuImages = parseImageUrlList(payload.existingMenuImages);
+    const currentMenuImages = Array.isArray(currentRestaurant.menuImages)
+        ? currentRestaurant.menuImages.map((image) => toUrl(image)).filter(Boolean)
+        : [];
+    const menuImages = [
+        ...(existingMenuImages.length ? existingMenuImages : uploadedMenuImages.length ? [] : currentMenuImages),
+        ...uploadedMenuImages
+    ].filter(Boolean).slice(0, 10);
+
+    images.profileImage = images.profileImage || firstImageUrl(payload.existingProfileImage, currentRestaurant.profileImage);
+    images.panImage = images.panImage || firstImageUrl(payload.existingPanImage, currentRestaurant.panImage);
+    images.gstImage = images.gstImage || firstImageUrl(payload.existingGstImage, currentRestaurant.gstImage);
+    images.fssaiImage = images.fssaiImage || firstImageUrl(payload.existingFssaiImage, currentRestaurant.fssaiImage);
+
+    if (!images.profileImage || !images.panImage || !images.fssaiImage || menuImages.length === 0 || (gstRegistered && !images.gstImage)) {
+        throw new ValidationError('Please upload all required images before resubmitting');
+    }
+
+    const normalizedOpeningTime = normalizeRestaurantTime(openingTime);
+    const normalizedClosingTime = normalizeRestaurantTime(closingTime);
+    const openingMinutes = timeToMinutes(normalizedOpeningTime);
+    const closingMinutes = timeToMinutes(normalizedClosingTime);
+    if (openingMinutes !== null && closingMinutes !== null) {
+        if (openingMinutes === closingMinutes) {
+            throw new ValidationError('Opening time and closing time cannot be same');
+        }
+        if (closingMinutes < openingMinutes) {
+            throw new ValidationError('Closing time cannot be less than opening time');
+        }
+    }
+
+    const estimatedDeliveryTimeText = String(estimatedDeliveryTime || '').trim();
+    const estimatedDeliveryTimeMinutes = parseEstimatedDeliveryMinutes(estimatedDeliveryTimeText);
+    const selfDeliveryRadiusValue = Math.max(0, Number(selfDeliveryRadius ?? 3) || 0);
+    const selfDeliveryFeeValue = Math.max(0, Number(selfDeliveryFee ?? 0) || 0);
+    const selfDeliveryMinOrderAmountValue = Math.max(0, Number(selfDeliveryMinOrderAmount ?? 0) || 0);
+    const selfDeliveryStartTime = normalizeRestaurantTime(selfDeliveryStart) || '10:00';
+    const selfDeliveryEndTime = normalizeRestaurantTime(selfDeliveryEnd) || '22:00';
+    const latNum = toFiniteNumber(latitude);
+    const lngNum = toFiniteNumber(longitude);
+
+    const update = {
+        restaurantName,
+        restaurantNameNormalized,
+        ownerName,
+        ownerEmail,
+        ownerPhone: ownerPhoneDigits,
+        ownerPhoneDigits,
+        ownerPhoneLast10,
+        primaryContactNumber,
+        pureVegRestaurant: pureVegRestaurant === true,
+        zoneId: zoneId && mongoose.Types.ObjectId.isValid(String(zoneId).trim())
+            ? new mongoose.Types.ObjectId(String(zoneId).trim())
+            : undefined,
+        location: {
+            type: 'Point',
+            coordinates: latNum !== null && lngNum !== null ? [lngNum, latNum] : undefined,
+            latitude: latNum ?? undefined,
+            longitude: lngNum ?? undefined,
+            formattedAddress: typeof formattedAddress === 'string' ? formattedAddress.trim() : '',
+            address: typeof formattedAddress === 'string' ? formattedAddress.trim() : '',
+            addressLine1: addressLine1 || '',
+            addressLine2: addressLine2 || '',
+            area: area || '',
+            city: city || '',
+            state: state || '',
+            pincode: pincode || '',
+            landmark: landmark || ''
+        },
+        cuisines: cuisines || [],
+        openingTime: normalizedOpeningTime || undefined,
+        closingTime: normalizedClosingTime || undefined,
+        openDays: openDays || [],
+        estimatedDeliveryTime: estimatedDeliveryTimeText || undefined,
+        estimatedDeliveryTimeMinutes: estimatedDeliveryTimeMinutes ?? undefined,
+        panNumber,
+        nameOnPan,
+        gstRegistered,
+        gstNumber,
+        gstLegalName,
+        gstAddress,
+        fssaiNumber,
+        fssaiExpiry,
+        accountNumber,
+        ifscCode,
+        accountHolderName,
+        accountType,
+        featuredDish: featuredDish || '',
+        offer: offer || '',
+        selfDelivery: {
+            enabled: selfDeliveryEnabled === true,
+            approvalStatus: selfDeliveryEnabled === true ? 'pending' : 'none',
+            radius: selfDeliveryRadiusValue,
+            fee: selfDeliveryFeeValue,
+            minOrderAmount: selfDeliveryMinOrderAmountValue,
+            timings: {
+                start: selfDeliveryStartTime,
+                end: selfDeliveryEndTime
+            }
+        },
+        menuImages,
+        profileImage: images.profileImage,
+        panImage: images.panImage,
+        gstImage: gstRegistered ? images.gstImage : '',
+        fssaiImage: images.fssaiImage,
+        status: 'pending',
+        approvedAt: null,
+        rejectedAt: null,
+        rejectionReason: '',
+        lastSubmittedAt: new Date(),
+        lastSubmissionType: 'reverification'
+    };
+
+    const nextResubmissionCount = Math.max(0, Number(currentRestaurant.resubmissionCount) || 0) + 1;
+
+    const doc = await FoodRestaurant.findByIdAndUpdate(
+        restaurantId,
+        {
+            $set: {
+                ...update,
+                resubmissionCount: nextResubmissionCount
+            },
+            $unset: {
+                locationChangeRequest: 1
+            }
+        },
+        { new: true, runValidators: true }
+    ).lean();
+
+    if (!doc) {
+        throw new ValidationError('Restaurant not found');
+    }
+
+    void notifyAdminsAboutRestaurantProfileReview(restaurantId, restaurantName || currentRestaurant.restaurantName || doc.restaurantName);
+
+    return toRestaurantProfile(doc);
+};
+
 export const getCurrentRestaurantProfile = async (restaurantId) => {
     if (!restaurantId) return null;
     await queueLegacySelfDeliveryForReapproval(restaurantId);
@@ -694,6 +949,17 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'ownerEmail',
                 'ownerPhone',
                 'primaryContactNumber',
+                'panNumber',
+                'nameOnPan',
+                'panImage',
+                'gstRegistered',
+                'gstNumber',
+                'gstLegalName',
+                'gstAddress',
+                'gstImage',
+                'fssaiNumber',
+                'fssaiExpiry',
+                'fssaiImage',
                 'accountNumber',
                 'ifscCode',
                 'accountHolderName',

@@ -1,5 +1,6 @@
 import {
     registerRestaurant,
+    resubmitRejectedRestaurant,
     listApprovedRestaurants,
     getApprovedRestaurantByIdOrSlug,
     getCurrentRestaurantProfile,
@@ -141,6 +142,17 @@ export const getRestaurantComplaintsController = async (req, res, next) => {
         const restaurantId = req.user?.userId;
         const data = await getRestaurantComplaints(restaurantId, req.query || {});
         return sendResponse(res, 200, 'Complaints fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const resubmitRejectedRestaurantController = async (req, res, next) => {
+    try {
+        const validated = validateRestaurantRegisterDto(req.body);
+        const restaurantId = req.user?.userId;
+        const restaurant = await resubmitRejectedRestaurant(restaurantId, validated, req.files);
+        return sendResponse(res, 200, 'Restaurant re-verification submitted successfully', { restaurant });
     } catch (error) {
         next(error);
     }

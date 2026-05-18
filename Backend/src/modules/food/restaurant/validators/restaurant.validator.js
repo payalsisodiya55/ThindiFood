@@ -112,7 +112,12 @@ const restaurantRegisterSchema = z.object({
     selfDeliveryFee: z.string().optional(),
     selfDeliveryMinOrderAmount: z.string().optional(),
     selfDeliveryStart: z.string().optional(),
-    selfDeliveryEnd: z.string().optional()
+    selfDeliveryEnd: z.string().optional(),
+    existingMenuImages: z.string().optional(),
+    existingProfileImage: z.string().optional(),
+    existingPanImage: z.string().optional(),
+    existingGstImage: z.string().optional(),
+    existingFssaiImage: z.string().optional()
 });
 
 export const validateRestaurantRegisterDto = (body) => {

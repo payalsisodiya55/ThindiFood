@@ -306,12 +306,11 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
     }
   }
 
-  // If restaurant approval status is used, only allow login for approved restaurants.
-  if (restaurant.status && restaurant.status !== "approved") {
+  // Pending restaurants are blocked until admin review, but rejected restaurants
+  // can log back in and resubmit onboarding for re-verification.
+  if (restaurant.status === "pending") {
     throw new AuthError(
-      restaurant.status === "pending"
-        ? "Your restaurant registration is pending approval."
-        : "Your restaurant registration has been rejected. Please contact support.",
+      "Your restaurant registration is pending approval.",
     );
   }
 

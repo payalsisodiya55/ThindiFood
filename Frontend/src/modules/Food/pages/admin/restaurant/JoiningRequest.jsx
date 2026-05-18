@@ -28,7 +28,10 @@ const normalizeApprovalStatus = (value) => String(value || "").trim().toLowerCas
 
 const getRequestStatusMeta = (request) => {
   const status = normalizeApprovalStatus(request?.status || (request?.isActive !== false ? "approved" : "pending"));
-  const isReverification = request?.requestType === "location_reverification" || !!request?.locationChangeRequest?.requestedAt;
+  const isReverification =
+  request?.requestType === "location_reverification" ||
+  request?.requestType === "reverification" ||
+  !!request?.locationChangeRequest?.requestedAt;
 
   if (status === "approved") {
     return { label: "Approved", className: "bg-green-100 text-green-700" };
@@ -1181,7 +1184,7 @@ export default function JoiningRequest() {
                           <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                           approvalStatus === "approved" ? "bg-green-100 text-green-700" : approvalStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`
                           }>
-                            {approvalStatus === "approved" ? "Approved" : approvalStatus === "rejected" ? "Rejected" : "Pending"}
+                            {statusMeta.label}
                           </span>
                         </div>
                       </div>

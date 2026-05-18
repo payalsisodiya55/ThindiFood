@@ -3433,6 +3433,8 @@ export async function getPendingRestaurants(scope = {}) {
         requestType:
             r.status === 'pending' && r.locationChangeRequest?.requestedAt
                 ? 'location_reverification'
+                : Number(r.resubmissionCount || 0) > 0
+                    ? 'reverification'
                 : 'new_registration',
         changeReason: r.locationChangeRequest?.reason || '',
     }));
