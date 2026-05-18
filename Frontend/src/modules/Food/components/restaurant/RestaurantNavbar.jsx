@@ -91,20 +91,25 @@ export default function RestaurantNavbar({
             { ignoreOperationalStatus: true }
           )
 
-          if (!availability.isWithinTimings && data.isAcceptingOrders !== false) {
+          const nextIsOnline = Boolean(availability.isWithinTimings)
+
+          if (Boolean(data.isAcceptingOrders) !== nextIsOnline) {
             try {
-              await restaurantAPI.updateAcceptingOrders(false)
+              await restaurantAPI.updateAcceptingOrders(nextIsOnline)
             } catch (statusError) {
-              debugError("Error auto-setting restaurant offline in navbar:", statusError)
+              debugError("Error auto-syncing restaurant availability in navbar:", statusError)
             }
             try {
-              localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(false))
+              localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(nextIsOnline))
             } catch {}
             window.dispatchEvent(
-              new CustomEvent("restaurantStatusChanged", { detail: { isOnline: false } })
+              new CustomEvent("restaurantStatusChanged", { detail: { isOnline: nextIsOnline } })
             )
-            setRestaurantData({ ...mergedRestaurant, isAcceptingOrders: false })
+            setRestaurantData({ ...mergedRestaurant, isAcceptingOrders: nextIsOnline })
           } else {
+            try {
+              localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(nextIsOnline))
+            } catch {}
             setRestaurantData(mergedRestaurant)
           }
         }
@@ -358,19 +363,14 @@ export default function RestaurantNavbar({
       {/* Left Side - Restaurant Info */}
       <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
         {logoUrl && (
-          <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain rounded-lg" />
+          <img src={logoUrl} alt="Logo" className="h-10 w-auto max-w-[48px] object-contain shrink-0" />
         )}
         <div className="min-w-0">
-          {/* Restaurant Name & Company */}
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <h1 className="text-[15px] font-bold text-gray-900 truncate">
+          {/* Restaurant Name */}
+          <div className="flex items-baseline gap-1.5">
+            <h1 className="text-[15px] font-bold text-gray-900 whitespace-nowrap">
               {loading ? "Loading..." : (restaurantName || "Restaurant")}
             </h1>
-            {companyName && !loading && (
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-tight shrink-0">
-                {companyName}
-              </span>
-            )}
           </div>
           {!loading && location && location.trim() !== "" && (
             <div className="flex items-center gap-1 mt-0.5 opacity-80">

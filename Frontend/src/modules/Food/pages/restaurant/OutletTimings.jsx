@@ -67,8 +67,9 @@ export default function OutletTimings() {
   const [days, setDays] = useState(getDefaultDays)
   const [loading, setLoading] = useState(true)
   const saveTimerRef = useRef(null)
+  const latestDaysRef = useRef(getDefaultDays())
 
-  const syncRestaurantOfflineIfNeeded = async (nextDays) => {
+  const syncRestaurantAvailabilityFromTimings = async (nextDays) => {
     try {
       const restaurantRes = await restaurantAPI.getCurrentRestaurant()
       const restaurant =
@@ -84,18 +85,26 @@ export default function OutletTimings() {
         { ignoreOperationalStatus: true }
       )
 
-      if (!availability.isWithinTimings && restaurant.isAcceptingOrders !== false) {
-        await restaurantAPI.updateAcceptingOrders(false)
+      const nextIsOnline = Boolean(availability.isWithinTimings)
+
+      if (Boolean(restaurant.isAcceptingOrders) !== nextIsOnline) {
+        await restaurantAPI.updateAcceptingOrders(nextIsOnline)
         try {
-          localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(false))
+          localStorage.setItem(RESTAURANT_ONLINE_STATUS_KEY, JSON.stringify(nextIsOnline))
         } catch {}
         window.dispatchEvent(
-          new CustomEvent("restaurantStatusChanged", { detail: { isOnline: false } })
+          new CustomEvent("restaurantStatusChanged", { detail: { isOnline: nextIsOnline } })
         )
       }
     } catch (error) {
-      debugError("Error syncing restaurant offline state from outlet timings:", error)
+      debugError("Error syncing restaurant availability from outlet timings:", error)
     }
+  }
+
+  const persistOutletTimings = async (nextDays) => {
+    await restaurantAPI.saveOutletTimings(nextDays)
+    await syncRestaurantAvailabilityFromTimings(nextDays)
+    window.dispatchEvent(new Event("outletTimingsUpdated"))
   }
 
   // Load from backend on mount.
@@ -107,7 +116,9 @@ export default function OutletTimings() {
         const res = await restaurantAPI.getOutletTimings()
         const outletTimings = res?.data?.data?.outletTimings || res?.data?.outletTimings
         if (mounted && outletTimings && typeof outletTimings === "object") {
-          setDays({ ...getDefaultDays(), ...outletTimings })
+          const mergedDays = { ...getDefaultDays(), ...outletTimings }
+          latestDaysRef.current = mergedDays
+          setDays(mergedDays)
         }
       } catch (error) {
         debugError("Error loading outlet timings from backend:", error)
@@ -122,13 +133,15 @@ export default function OutletTimings() {
 
   // Save to backend whenever days change (debounced).
   useEffect(() => {
+    latestDaysRef.current = days
+  }, [days])
+
+  useEffect(() => {
     if (loading) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       try {
-        await restaurantAPI.saveOutletTimings(days)
-        await syncRestaurantOfflineIfNeeded(days)
-        window.dispatchEvent(new Event("outletTimingsUpdated"))
+        await persistOutletTimings(days)
       } catch (error) {
         debugError("Error saving outlet timings to backend:", error)
       }
@@ -137,6 +150,22 @@ export default function OutletTimings() {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [days, loading])
+
+  const handleBack = async () => {
+    try {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      if (!loading) {
+        await persistOutletTimings(latestDaysRef.current)
+      }
+    } catch (error) {
+      debugError("Error flushing outlet timings before navigation:", error)
+    } finally {
+      navigate("/food/restaurant/explore")
+    }
+  }
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -228,7 +257,7 @@ export default function OutletTimings() {
         <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/food/restaurant/explore")}
+              onClick={handleBack}
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               aria-label="Go back"
             >
