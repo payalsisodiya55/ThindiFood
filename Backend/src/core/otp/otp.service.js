@@ -11,6 +11,8 @@ const generateOtpCode = () => {
 };
 
 const normalizePhoneForOtp = (phone) => String(phone || '').replace(/\D/g, '');
+const USER_TEST_OTP_PHONE = '9998888777';
+const USER_TEST_OTP_CODE = '1234';
 
 const getPhoneCandidates = (phone) => {
     const raw = String(phone || '').trim();
@@ -91,6 +93,7 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
     const forceRandom = options?.forceRandom === true;
     const phoneCandidates = getPhoneCandidates(phone);
     const normalizedPhone = normalizePhoneForOtp(phone) || String(phone || '').trim();
+    const normalizedLast10 = normalizedPhone.slice(-10);
     const existing = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
     const now = new Date();
 
@@ -109,12 +112,17 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         }
     }
 
-    const shouldUseDefaultOtp = config.useDefaultOtp && !forceRandom;
+    const isFixedTestOtpPhone = normalizedLast10 === USER_TEST_OTP_PHONE && !forceRandom;
+    const shouldUseDefaultOtp = (config.useDefaultOtp || isFixedTestOtpPhone) && !forceRandom;
 
     let otp;
     if (shouldUseDefaultOtp) {
-        otp = '1234';
-        logger.info(`Default OTP mode enabled. OTP is ${otp} for phone ${phone}`);
+        otp = isFixedTestOtpPhone ? USER_TEST_OTP_CODE : '1234';
+        logger.info(
+            isFixedTestOtpPhone
+                ? `Fixed test OTP enabled. OTP is ${otp} for phone ${phone}`
+                : `Default OTP mode enabled. OTP is ${otp} for phone ${phone}`
+        );
     } else {
         otp = generateOtpCode();
         logger.info(`SMS OTP mode enabled. Generated OTP for phone ${phone} will be sent via SMS India Hub if credentials are configured.`);
