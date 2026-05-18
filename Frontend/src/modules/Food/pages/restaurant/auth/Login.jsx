@@ -4,6 +4,7 @@ import { Button } from "@food/components/ui/button"
 import { deliveryBoyAPI, restaurantAPI } from "@food/api"
 import { setAuthData } from "@food/utils/auth"
 import thindiLogo from "@/assets/taamioRestLogo.png"
+import { Eye, EyeOff } from "lucide-react"
 
 
 
@@ -31,6 +32,7 @@ export default function RestaurantLogin() {
   const [isSending, setIsSending] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
   const [deliveryForm, setDeliveryForm] = useState({ username: "", password: "" })
+  const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
     setSelectedRole(initialRole)
@@ -284,7 +286,7 @@ export default function RestaurantLogin() {
                   </label>
                   <div className="flex items-center gap-2 h-16 bg-slate-50 border border-slate-100 rounded-[32px] px-6 focus-within:border-[#00c87e]/30 focus-within:ring-4 focus-within:ring-[#00c87e]/5 transition-all overflow-hidden">
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
                       placeholder="Delivery password"
                       value={deliveryForm.password}
@@ -292,6 +294,17 @@ export default function RestaurantLogin() {
                       className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#00c87e] px-2"
                       style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="p-1 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none shrink-0"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
                   </div>
                 </div>
 

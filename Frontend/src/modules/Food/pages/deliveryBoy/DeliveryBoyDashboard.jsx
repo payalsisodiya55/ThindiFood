@@ -157,12 +157,7 @@ export default function DeliveryBoyDashboard() {
                 Open an order to confirm pickup, start delivery, or enter OTP.
               </p>
             </div>
-            <Link
-              to="/food/restaurant/login?role=delivery"
-              className="text-sm font-semibold text-[#00a86b]"
-            >
-              Login Page
-            </Link>
+
           </div>
 
           {loading ? (

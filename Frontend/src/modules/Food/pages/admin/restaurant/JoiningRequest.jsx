@@ -163,6 +163,41 @@ const formatTime12Hour = (timeStr) => {
   return `${String(hour).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
 };
 
+const getDisplayAddress = (r) => {
+  if (!r) return "—";
+  const obLoc = r?.onboarding?.step1?.location || r?.step1?.location;
+  const loc = r?.location;
+  const line1 = (r?.addressLine1 || loc?.addressLine1 || obLoc?.addressLine1 || "").trim();
+  const line2 = (r?.addressLine2 || loc?.addressLine2 || obLoc?.addressLine2 || "").trim();
+  const area = (r?.area || loc?.area || obLoc?.area || "").trim();
+  const landmark = (r?.landmark || loc?.landmark || obLoc?.landmark || "").trim();
+  const city = (r?.city || loc?.city || obLoc?.city || "").trim();
+  const state = (r?.state || loc?.state || obLoc?.state || "").trim();
+  const pincode = (r?.pincode || loc?.pincode || obLoc?.pincode || "").trim();
+  const formattedAddress = (r?.address || loc?.formattedAddress || loc?.address || obLoc?.formattedAddress || "").trim();
+
+  if (formattedAddress && !isCoordinateLikeAddress(formattedAddress)) {
+    return formattedAddress;
+  }
+
+  const mainParts = [line1, line2, area, landmark].filter(Boolean);
+  const cityStatePinParts = [city, state, pincode].filter(Boolean);
+  const cityStatePinStr = cityStatePinParts.join(" ");
+
+  if (mainParts.length > 0) {
+    if (cityStatePinStr) {
+      return [...mainParts, cityStatePinStr].join(", ");
+    }
+    return mainParts.join(", ");
+  }
+
+  if (cityStatePinStr) {
+    return cityStatePinStr;
+  }
+
+  return r?.zone || "—";
+};
+
 
 export default function JoiningRequest() {
   const [activeTab, setActiveTab] = useState("pending");
@@ -604,15 +639,7 @@ export default function JoiningRequest() {
                       <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'zone' ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
                   </th>
-                  <th
-                    className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
-                    onClick={() => handleSort('businessModel')}>
-                    
-                    <div className="flex items-center gap-1">
-                      <span>Business Model</span>
-                      <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'businessModel' ? 'text-blue-600' : 'text-slate-400'}`} />
-                    </div>
-                  </th>
+                  
                   <th
                     className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                     onClick={() => handleSort('status')}>
@@ -628,21 +655,21 @@ export default function JoiningRequest() {
               <tbody className="bg-white divide-y divide-slate-100">
                 {loading ?
                 <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center">
+                    <td colSpan={6} className="px-6 py-20 text-center">
                       <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-3" />
                       <p className="text-lg font-semibold text-slate-700">Loading restaurant requests...</p>
                     </td>
                   </tr> :
                 error ?
                 <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center">
+                    <td colSpan={6} className="px-6 py-20 text-center">
                       <p className="text-lg font-semibold text-red-600 mb-1">Error: {error}</p>
                       <p className="text-sm text-slate-500">Failed to load restaurant requests. Please try again.</p>
                     </td>
                   </tr> :
                 filteredRequests.length === 0 ?
                 <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center">
+                    <td colSpan={6} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No restaurant requests match your search</p>
@@ -696,9 +723,7 @@ export default function JoiningRequest() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{request.zone || "—"}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{request.businessModel || "—"}</span>
-                      </td>
+                      
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusMeta.className}`}>
                           {statusMeta.label}
@@ -789,24 +814,7 @@ export default function JoiningRequest() {
                   </div>
               }
 
-                {/* Business Model Filter */}
-                {filterOptions.businessModels.length > 0 &&
-              <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Business Model
-                    </label>
-                    <select
-                  value={filters.businessModel}
-                  onChange={(e) => setFilters({ ...filters, businessModel: e.target.value })}
-                  className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                  
-                      <option value="">All Business Models</option>
-                      {filterOptions.businessModels.map((model) =>
-                  <option key={model} value={model}>{model}</option>
-                  )}
-                    </select>
-                  </div>
-              }
+                
 
                 {/* Date Range Filters */}
                 <div className="grid grid-cols-2 gap-3">
@@ -959,21 +967,8 @@ export default function JoiningRequest() {
               const profileImgUrl =
               getNormalizedImageUrl(restaurantPhotoList[0]) || (
               typeof r?.profileImage === "string" ? r.profileImage : r?.profileImage?.url || r?.profileImageUrl?.url || r?.restaurantImage);
-              const addressParts = [
-              r?.addressLine1,
-              r?.addressLine2,
-              r?.area,
-              r?.city,
-              r?.landmark,
-              r?.location?.addressLine1,
-              r?.location?.addressLine2,
-              r?.location?.area,
-              r?.location?.city,
-              r?.onboarding?.step1?.location?.addressLine1,
-              r?.onboarding?.step1?.location?.area,
-              r?.onboarding?.step1?.location?.city].
-              filter(Boolean);
-              const hasAddress = addressParts.length > 0 || r?.location || r?.onboarding?.step1?.location;
+              const displayAddress = getDisplayAddress(r);
+              const hasAddress = !!displayAddress && displayAddress !== "—";
               const openingTime = r?.openingTime || r?.deliveryTimings?.openingTime || r?.onboarding?.step2?.deliveryTimings?.openingTime;
               const closingTime = r?.closingTime || r?.deliveryTimings?.closingTime || r?.onboarding?.step2?.deliveryTimings?.closingTime;
               const approvalStatus = r?.status || (r?.isActive !== false ? "approved" : "pending");
@@ -1060,13 +1055,7 @@ export default function JoiningRequest() {
                             <div className="flex-1 min-w-0">
                               <p className="text-xs text-slate-500">Address</p>
                               <p className="text-sm font-medium text-slate-900 break-words">
-                                {addressParts.length > 0 ?
-                              [r.addressLine1, r.addressLine2, r.area, r.city, r.landmark].filter(Boolean).join(", ") :
-                              r?.location?.addressLine1 ?
-                              [r.location.addressLine1, r.location.addressLine2, r.location.area, r.location.city].filter(Boolean).join(", ") :
-                              r?.onboarding?.step1?.location ?
-                              [r.onboarding.step1.location.addressLine1, r.onboarding.step1.location.addressLine2, r.onboarding.step1.location.area, r.onboarding.step1.location.city].filter(Boolean).join(", ") :
-                              r?.zone || "—"}
+                                {displayAddress}
                               </p>
                             </div>
                           </div>
@@ -1107,22 +1096,9 @@ export default function JoiningRequest() {
                   {/* Cuisine & Timings */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-slate-200">
                     <div>
-                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Cuisine & Details</h4>
+                      <h4 className="text-lg font-semibold text-slate-900 mb-4">Restaurant Details</h4>
                       <div className="space-y-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs text-slate-500 mb-1">Cuisines</p>
-                          <div className="flex flex-wrap gap-2">
-                            {r?.cuisines && Array.isArray(r.cuisines) && r.cuisines.length > 0 ?
-                            r.cuisines.map((cuisine, idx) =>
-                            <span key={idx} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                                  {cuisine}
-                                </span>
-                            ) :
-
-                            <span className="text-sm text-slate-700">N/A</span>
-                            }
-                          </div>
-                        </div>
+                        
                         {typeof r?.pureVegRestaurant === "boolean" &&
                         <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Food Type</p>
@@ -1536,12 +1512,7 @@ export default function JoiningRequest() {
                             <p className="font-medium text-slate-900 break-words whitespace-normal">{new Date(r.approvedAt).toLocaleString('en-IN')}</p>
                                 </div>
                       }
-                        {r.businessModel &&
-                      <div className="min-w-0 flex-1">
-                            <p className="text-xs text-slate-500 mb-1">Business Model</p>
-                            <p className="font-medium text-slate-900 break-words whitespace-normal">{r.businessModel}</p>
-                                </div>
-                      }
+                        
                         {r.phoneVerified !== undefined &&
                       <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Phone Verified</p>

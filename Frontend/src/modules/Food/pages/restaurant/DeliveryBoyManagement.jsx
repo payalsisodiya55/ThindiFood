@@ -80,6 +80,8 @@ export default function DeliveryBoyManagement() {
       newErrors.phone = "Phone number is required";
     } else if (!/^\d{10}$/.test(form.phone)) {
       newErrors.phone = "Phone must be exactly 10 digits";
+    } else if (deliveryBoys.some((db) => db.phone === form.phone)) {
+      newErrors.phone = "This phone number is already registered";
     }
 
     if (!form.username.trim()) {
