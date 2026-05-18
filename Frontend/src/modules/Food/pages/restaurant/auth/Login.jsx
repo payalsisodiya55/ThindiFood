@@ -151,7 +151,8 @@ export default function RestaurantLogin() {
       const response = await deliveryBoyAPI.login(username, password)
       const data = response?.data?.data || response?.data || {}
       setAuthData("delivery", data.accessToken, data.user, data.refreshToken || null)
-      navigate(redirectTarget || "/food/delivery-boy/orders", { replace: true })
+      const deliveryDest = (redirectTarget && redirectTarget.includes("/delivery-boy")) ? redirectTarget : "/food/delivery-boy/orders"
+      navigate(deliveryDest, { replace: true })
     } catch (apiErr) {
       const message =
         apiErr?.response?.data?.message ||
