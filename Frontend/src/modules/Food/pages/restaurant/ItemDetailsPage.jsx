@@ -542,6 +542,14 @@ export default function ItemDetailsPage() {
       return;
     }
 
+    const hasAttachedImage = images.some((img) =>
+      typeof img === "string" && String(img).trim() !== ""
+    );
+    if (!hasAttachedImage) {
+      toast.error("Please upload a menu item image");
+      return;
+    }
+
     try {
       setUploadingImages(true);
 
@@ -825,6 +833,11 @@ export default function ItemDetailsPage() {
 
         {/* Image Carousel */}
         <div className="relative bg-white">
+          <div className="px-4 pt-4">
+            <p className="text-sm font-medium text-gray-900">
+              Item image<span className="text-rose-500 ml-1">*</span>
+            </p>
+          </div>
           {images.length > 0 ?
           <div className="relative w-full h-80 overflow-hidden bg-gray-100">
               {/* Image container with swipe support */}

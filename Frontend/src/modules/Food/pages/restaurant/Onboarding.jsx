@@ -59,6 +59,16 @@ const MAX_MENU_IMAGES_COUNT = 10
 const VALID_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
 const INDIAN_PRIMARY_CONTACT_REGEX = /^(?:[6-9]\d{9}|0\d{10}|\d{10,11})$/
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,6}$/
+const CITY_CENTER_PINCODES = {
+  "indore|madhya pradesh": "452001",
+}
+
+const normalizeAddressToken = (value = "") =>
+  String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+
 let onboardingFileCache = {
   step2: {
     menuImages: [],
@@ -1526,29 +1536,29 @@ export default function RestaurantOnboarding() {
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Nearby landmark (optional)"
           />
-          <Input
-            value={step1.location?.area || ""}
-            onChange={(e) =>
-              setStep1({
-                ...step1,
-                location: { ...step1.location, area: e.target.value },
-              })
-            }
-            readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+            <Input
+              value={step1.location?.area || ""}
+              onChange={(e) =>
+                setStep1({
+                  ...step1,
+                  location: { ...step1.location, area: e.target.value },
+                })
+              }
+            readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.area?.trim())}
+            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.area?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="Area / Sector / Locality*"
           />
           <Input
             value={step1.location?.city || ""}
             onChange={(e) => {
               const val = e.target.value.replace(/[^a-zA-Z\s]/g, "")
-              setStep1({
-                ...step1,
-                location: { ...step1.location, city: val },
-              })
-            }}
-            readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+                setStep1({
+                  ...step1,
+                  location: { ...step1.location, city: val },
+                })
+              }}
+            readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.city?.trim())}
+            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.city?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
             placeholder="City"
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1561,8 +1571,8 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, state: val },
                 })
               }}
-              readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.state?.trim())}
+              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.state?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="State"
             />
             <Input
@@ -1574,8 +1584,8 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, pincode: val },
                 })
               }}
-              readOnly={Boolean(step1.location?.latitude && step1.location?.longitude)}
-              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.pincode?.trim())}
+              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.pincode?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
               placeholder="Pincode"
             />
           </div>
@@ -1636,18 +1646,25 @@ export default function RestaurantOnboarding() {
         return !!window.google?.maps?.places?.Autocomplete
       }
 
-      const parsePlace = (place) => {
-        const formattedAddress = place?.formatted_address || ""
-        const comps = Array.isArray(place?.address_components) ? place.address_components : []
-        const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+      const getParsedAddressParts = (components = []) => {
+        const comps = Array.isArray(components) ? components : []
+        const get = (types, key = "long_name") =>
+          comps.find((c) => types.some((t) => c.types?.includes(t)))?.[key] || ""
         const area =
           get(["sublocality_level_1", "sublocality", "neighborhood"]) ||
-          get(["locality"])
+          get(["locality"]) ||
+          get(["administrative_area_level_2"])
         const city =
           get(["locality"]) ||
           get(["administrative_area_level_2"])
         const state = get(["administrative_area_level_1"])
         const pincode = get(["postal_code"])
+        return { area, city, state, pincode }
+      }
+
+      const parsePlace = (place) => {
+        const formattedAddress = place?.formatted_address || ""
+        const { area, city, state, pincode } = getParsedAddressParts(place?.address_components)
         const lat = place?.geometry?.location?.lat?.()
         const lng = place?.geometry?.location?.lng?.()
         return {
@@ -1661,6 +1678,105 @@ export default function RestaurantOnboarding() {
         }
       }
 
+      const getCityCenterPincode = (parsed, place) => {
+        const placeTypes = Array.isArray(place?.types) ? place.types : []
+        const isCitySelection = placeTypes.some((type) =>
+          ["locality", "postal_town", "administrative_area_level_2"].includes(type)
+        )
+
+        if (!isCitySelection) return ""
+
+        const city = normalizeAddressToken(parsed?.city)
+        const area = normalizeAddressToken(parsed?.area)
+        const state = normalizeAddressToken(parsed?.state)
+        const formattedAddress = normalizeAddressToken(parsed?.formattedAddress)
+        const looksLikeWholeCity = city && area === city && formattedAddress.startsWith(`${city},`)
+
+        if (!looksLikeWholeCity) return ""
+
+        return CITY_CENTER_PINCODES[`${city}|${state}`] || ""
+      }
+
+      const geocodePlace = async (place) => {
+        const geocoder = new window.google.maps.Geocoder()
+        const placeId = place?.place_id
+        const placeTypes = Array.isArray(place?.types) ? place.types : []
+        const formattedAddress = String(place?.formatted_address || "").trim()
+        const lat = place?.geometry?.location?.lat?.()
+        const lng = place?.geometry?.location?.lng?.()
+        const isBroadLocationSelection = placeTypes.some((type) =>
+          [
+            "locality",
+            "administrative_area_level_1",
+            "administrative_area_level_2",
+            "administrative_area_level_3",
+            "postal_town",
+          ].includes(type)
+        )
+
+        const requests = [
+          placeId ? { source: "placeId", request: { placeId } } : null,
+          Number.isFinite(lat) && Number.isFinite(lng)
+            ? { source: "location", request: { location: { lat, lng } } }
+            : null,
+          formattedAddress ? { source: "address", request: { address: formattedAddress } } : null,
+        ].filter(Boolean)
+
+        if (!requests.length) return null
+
+        const geocodeRequest = ({ source, request }) =>
+          new Promise((resolve) => {
+            geocoder.geocode(request, (results, status) => {
+              if (status !== "OK" || !Array.isArray(results) || !results.length) {
+                resolve({ source, results: [] })
+                return
+              }
+              resolve({ source, results })
+            })
+          })
+
+        const resultGroups = await Promise.all(requests.map(geocodeRequest))
+        const addressResults = resultGroups.find((group) => group.source === "address")?.results || []
+        const orderedResults = [
+          ...(isBroadLocationSelection ? addressResults : []),
+          ...resultGroups.flatMap((group) => group.results),
+        ]
+        const seenResults = new Set()
+        const results = orderedResults.filter((result) => {
+          const key = `${result?.place_id || ""}::${result?.formatted_address || ""}`
+          if (seenResults.has(key)) return false
+          seenResults.add(key)
+          return true
+        })
+
+        if (!results.length) return null
+
+        const [primaryResult, ...fallbackResults] = results
+        const primaryParsed = getParsedAddressParts(primaryResult?.address_components)
+
+        return fallbackResults.reduce(
+          (acc, result) => {
+            const parsed = getParsedAddressParts(result?.address_components)
+            return {
+              formattedAddress: acc.formattedAddress || result?.formatted_address || "",
+              area: acc.area || parsed.area || "",
+              city: acc.city || parsed.city || "",
+              state: acc.state || parsed.state || "",
+              pincode: acc.pincode || parsed.pincode || "",
+              geometry: acc.geometry || result?.geometry || null,
+            }
+          },
+          {
+            formattedAddress: primaryResult?.formatted_address || "",
+            area: primaryParsed.area || "",
+            city: primaryParsed.city || "",
+            state: primaryParsed.state || "",
+            pincode: primaryParsed.pincode || "",
+            geometry: primaryResult?.geometry || null,
+          }
+        )
+      }
+
       const ok = await loadMaps()
       if (!ok || cancelled || !locationSearchInputRef.current) return
       if (placesAutocompleteRef.current) return
@@ -1668,14 +1784,36 @@ export default function RestaurantOnboarding() {
       placesAutocompleteRef.current = new window.google.maps.places.Autocomplete(
         locationSearchInputRef.current,
         {
-          fields: ["formatted_address", "address_components", "geometry"],
+          fields: ["formatted_address", "address_components", "geometry", "place_id", "types"],
           componentRestrictions: { country: "in" },
         }
       )
 
-      placesAutocompleteRef.current.addListener("place_changed", () => {
+      placesAutocompleteRef.current.addListener("place_changed", async () => {
         const place = placesAutocompleteRef.current.getPlace()
-        const parsed = parsePlace(place)
+        let parsed = parsePlace(place)
+
+        if (!parsed.pincode || !parsed.area || !parsed.city || !parsed.state) {
+          const geocodedPlace = await geocodePlace(place)
+          if (geocodedPlace) {
+            parsed = {
+              ...parsed,
+              formattedAddress: parsed.formattedAddress || geocodedPlace.formattedAddress || "",
+              area: parsed.area || geocodedPlace.area || "",
+              city: parsed.city || geocodedPlace.city || "",
+              state: parsed.state || geocodedPlace.state || "",
+              pincode: parsed.pincode || geocodedPlace.pincode || "",
+            }
+          }
+        }
+
+        const cityCenterPincode = getCityCenterPincode(parsed, place)
+        if (cityCenterPincode) {
+          parsed = {
+            ...parsed,
+            pincode: cityCenterPincode,
+          }
+        }
 
         // Validation: Ensure selected location is within the chosen zone
         if (step1.zoneId && parsed.latitude && parsed.longitude) {
@@ -1692,20 +1830,33 @@ export default function RestaurantOnboarding() {
           }
         }
 
-        setStep1((prev) => ({
-          ...prev,
-          location: {
-            ...prev.location,
-            formattedAddress: parsed.formattedAddress || prev.location.formattedAddress,
-            addressLine1: prev.location.addressLine1 || parsed.formattedAddress || "",
-            area: parsed.area || prev.location.area,
-            city: parsed.city || prev.location.city,
-            state: parsed.state || prev.location.state,
-            pincode: parsed.pincode || prev.location.pincode,
-            latitude: parsed.latitude !== "" ? parsed.latitude : prev.location.latitude,
-            longitude: parsed.longitude !== "" ? parsed.longitude : prev.location.longitude,
-          },
-        }))
+        if (locationSearchInputRef.current) {
+          locationSearchInputRef.current.value = parsed.formattedAddress || ""
+        }
+
+        setStep1((prev) => {
+          const previousAutoAddress = String(prev.location.formattedAddress || "").trim()
+          const currentAddressLine1 = String(prev.location.addressLine1 || "").trim()
+          const shouldReplaceAddressLine1 =
+            !currentAddressLine1 || currentAddressLine1 === previousAutoAddress
+
+          return {
+            ...prev,
+            location: {
+              ...prev.location,
+              formattedAddress: parsed.formattedAddress || "",
+              addressLine1: shouldReplaceAddressLine1
+                ? (parsed.formattedAddress || "")
+                : prev.location.addressLine1,
+              area: parsed.area || "",
+              city: parsed.city || "",
+              state: parsed.state || "",
+              pincode: parsed.pincode || "",
+              latitude: parsed.latitude !== "" ? parsed.latitude : "",
+              longitude: parsed.longitude !== "" ? parsed.longitude : "",
+            },
+          }
+        })
       })
     }
 
