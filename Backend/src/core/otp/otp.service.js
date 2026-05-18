@@ -11,8 +11,10 @@ const generateOtpCode = () => {
 };
 
 const normalizePhoneForOtp = (phone) => String(phone || '').replace(/\D/g, '');
-const USER_TEST_OTP_PHONE = '9998888777';
-const USER_TEST_OTP_CODE = '1234';
+const FIXED_TEST_OTP_MAP = new Map([
+    ['9998888777', '1234'],
+    ['7223077890', '1234'],
+]);
 
 const getPhoneCandidates = (phone) => {
     const raw = String(phone || '').trim();
@@ -112,12 +114,13 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         }
     }
 
-    const isFixedTestOtpPhone = normalizedLast10 === USER_TEST_OTP_PHONE && !forceRandom;
+    const fixedTestOtp = !forceRandom ? FIXED_TEST_OTP_MAP.get(normalizedLast10) : null;
+    const isFixedTestOtpPhone = Boolean(fixedTestOtp);
     const shouldUseDefaultOtp = (config.useDefaultOtp || isFixedTestOtpPhone) && !forceRandom;
 
     let otp;
     if (shouldUseDefaultOtp) {
-        otp = isFixedTestOtpPhone ? USER_TEST_OTP_CODE : '1234';
+        otp = isFixedTestOtpPhone ? fixedTestOtp : '1234';
         logger.info(
             isFixedTestOtpPhone
                 ? `Fixed test OTP enabled. OTP is ${otp} for phone ${phone}`
