@@ -7,7 +7,7 @@ import {
 
 export async function getPendingFoodApprovals(req, res, next) {
     try {
-        const data = await listPendingFoodApprovals(req.query || {});
+        const data = await listPendingFoodApprovals(req.query || {}, req.adminScope || {});
         return sendResponse(res, 200, 'Pending food approvals fetched successfully', data);
     } catch (error) {
         next(error);

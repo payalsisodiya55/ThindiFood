@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { Search, CheckCircle2, XCircle, Eye, Clock, Loader2 } from "lucide-react"
+import { Search, CheckCircle2, XCircle, Eye, Clock, Loader2, MapPin, ChevronDown } from "lucide-react"
 import { Card } from "@food/components/ui/card"
 import {
   Dialog,
@@ -20,6 +20,8 @@ export default function FoodApproval() {
   const [foodRequests, setFoodRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedZone, setSelectedZone] = useState("all")
+  const [zones, setZones] = useState([])
   const [selectedRequest, setSelectedRequest] = useState(null)
   const [showDetailModal, setShowDetailModal] = useState(false)
   const [showRejectModal, setShowRejectModal] = useState(false)
@@ -27,13 +29,41 @@ export default function FoodApproval() {
   const [processing, setProcessing] = useState(false)
   const isMountedRef = useRef(true)
 
+  const getRequestZoneId = useCallback((request) => {
+    const rawZoneId =
+      request?.zoneId?._id ||
+      request?.zoneId ||
+      request?.zone?._id ||
+      request?.zone ||
+      request?.restaurant?.zoneId?._id ||
+      request?.restaurant?.zoneId
+
+    return rawZoneId ? String(rawZoneId) : ""
+  }, [])
+
+  // Fetch zones for filter dropdown
+  useEffect(() => {
+    const fetchZones = async () => {
+      try {
+        const response = await adminAPI.getZones({ page: 1, limit: 1000 })
+        const list = response?.data?.data?.zones || []
+        setZones(Array.isArray(list) ? list : [])
+      } catch (error) {
+        debugError('Error fetching zones:', error)
+        setZones([])
+      }
+    }
+    fetchZones()
+  }, [])
+
   // Fetch pending food approval requests
   const fetchFoodRequests = useCallback(async ({ silent = false } = {}) => {
     try {
       if (!silent) {
         setLoading(true)
       }
-      const response = await adminAPI.getPendingFoodApprovals()
+      const params = selectedZone !== 'all' ? { zoneId: selectedZone } : {}
+      const response = await adminAPI.getPendingFoodApprovals(params)
       const data = response?.data?.data?.requests || response?.data?.requests || []
       if (!isMountedRef.current) return
       setFoodRequests(data)
@@ -49,7 +79,7 @@ export default function FoodApproval() {
         setLoading(false)
       }
     }
-  }, [])
+  }, [selectedZone])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -80,15 +110,22 @@ export default function FoodApproval() {
       window.removeEventListener("pageshow", onPageShow)
       document.removeEventListener("visibilitychange", onVisibility)
     }
-  }, [fetchFoodRequests])
+  }, [fetchFoodRequests, selectedZone])
 
-  // Filter requests based on search query
+  // Filter requests based on search query and zone
   const filteredRequests = useMemo(() => {
+    let results = foodRequests
+
+    // Client-side zone filter (fallback if backend doesn't filter)
+    if (selectedZone !== 'all') {
+      results = results.filter((request) => getRequestZoneId(request) === selectedZone)
+    }
+
     if (!searchQuery.trim()) {
-      return foodRequests
+      return results
     }
     const query = searchQuery.toLowerCase().trim()
-    return foodRequests.filter((request) =>
+    return results.filter((request) =>
       request.itemName?.toLowerCase().includes(query) ||
       request.category?.toLowerCase().includes(query) ||
       request.restaurantName?.toLowerCase().includes(query) ||
@@ -96,7 +133,7 @@ export default function FoodApproval() {
       request.approvalStatus?.toLowerCase().includes(query) ||
       request.entityType?.toLowerCase().includes(query)
     )
-  }, [foodRequests, searchQuery])
+  }, [foodRequests, getRequestZoneId, searchQuery, selectedZone])
 
   const totalRequests = filteredRequests.length
 
@@ -200,8 +237,8 @@ export default function FoodApproval() {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="mb-4">
+          {/* Search Bar + Zone Filter */}
+          <div className="mb-4 flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <span className="absolute inset-y-0 left-2.5 flex items-center text-gray-400">
                 <Search className="w-4 h-4" />
@@ -213,6 +250,26 @@ export default function FoodApproval() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm focus:outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
               />
+            </div>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-2.5 flex items-center text-gray-400 pointer-events-none">
+                <MapPin className="w-4 h-4" />
+              </span>
+              <select
+                value={selectedZone}
+                onChange={(e) => setSelectedZone(e.target.value)}
+                className="rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-8 text-sm font-medium text-gray-700 focus:outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd] appearance-none min-w-[160px] cursor-pointer"
+              >
+                <option value="all">All Zones</option>
+                {zones.map((zone) => (
+                  <option key={zone._id} value={zone._id}>
+                    {zone.zoneName || zone.name || "Unnamed Zone"}
+                  </option>
+                ))}
+              </select>
+              <span className="absolute inset-y-0 right-2.5 flex items-center text-gray-400 pointer-events-none">
+                <ChevronDown className="w-4 h-4" />
+              </span>
             </div>
           </div>
 
