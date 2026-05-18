@@ -4,11 +4,16 @@ const orderItemSchema = new mongoose.Schema(
     {
         itemId: { type: String, required: true, trim: true },
         name: { type: String, required: true, trim: true },
+        variantId: { type: String, default: '', trim: true },
+        variantName: { type: String, default: '', trim: true },
+        variantPrice: { type: Number, default: 0, min: 0 },
         price: { type: Number, required: true, min: 0 },
         quantity: { type: Number, required: true, min: 1 },
         isVeg: { type: Boolean },
         image: { type: String, default: '' },
-        notes: { type: String, default: '' }
+        notes: { type: String, default: '' },
+        description: { type: String, default: '' },
+        preparationTime: { type: mongoose.Schema.Types.Mixed, default: null }
     },
     { _id: false }
 );

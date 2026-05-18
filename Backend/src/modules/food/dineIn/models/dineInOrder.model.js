@@ -24,6 +24,24 @@ const dineInOrderItemSchema = new mongoose.Schema(
             trim: true,
         },
 
+        variantId: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+
+        variantName: {
+            type: String,
+            default: '',
+            trim: true,
+        },
+
+        variantPrice: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
+
         price: {
             type: Number,
             required: true,

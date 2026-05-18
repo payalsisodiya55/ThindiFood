@@ -23,6 +23,10 @@ import autoTable from "jspdf-autotable"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { RED } from "@food/constants/color"
 import { buildReorderCartItems } from "@food/utils/reorderCart"
+import {
+  formatOrderItemLabel,
+  formatOrderItemQuantityLabel,
+} from "@food/utils/orderItemDisplay"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -333,7 +337,7 @@ export default function UserOrderDetails() {
 
       // Items table
       const tableData = items.map(item => [
-        item.variantName ? `${item.name || 'Item'} (${item.variantName})` : (item.name || 'Item'),
+        formatOrderItemLabel(item),
         String(item.quantity || item.qty || 1),
         `Rs. ${Number(item.price || 0).toFixed(2)}`,
         `Rs. ${Number((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}`
@@ -636,7 +640,7 @@ export default function UserOrderDetails() {
                   />
                 </div>
                 <span className="text-sm text-gray-700 font-medium">
-                  {item.quantity || item.qty || 1} x {item.name}{item.variantName ? ` (${item.variantName})` : ""}
+                  {formatOrderItemQuantityLabel(item)}
                 </span>
               </div>
               <span className="text-sm text-gray-800 font-medium">

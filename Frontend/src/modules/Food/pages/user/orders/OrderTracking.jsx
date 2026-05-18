@@ -38,6 +38,10 @@ import { useCompanyName } from "@food/hooks/useCompanyName"
 import circleIcon from "@food/assets/circleicon.png"
 import { RESTAURANT_PIN_SVG, CUSTOMER_PIN_SVG, RIDER_BIKE_SVG } from "@food/constants/mapIcons"
 import { RED } from "@food/constants/color"
+import {
+  formatOrderItemLabel,
+  formatOrderItemQuantityLabel,
+} from "@food/utils/orderItemDisplay"
 
 // Fallback definitions in case imports fail at runtime or are shadowed
 const DEFAULT_CUSTOMER_PIN = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="#10B981"><path d="M12 2C8.13 2 5 5.13 5 9c0 4.17 4.42 9.92 6.24 12.11.4.48 1.08.48 1.52 0C14.58 18.92 19 13.17 19 9c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5 14.5 7.62 14.5 9 13.38 11.5 12 11.5z"/><circle cx="12" cy="9" r="3" fill="#FFFFFF"/></svg>`;
@@ -2222,7 +2226,7 @@ export default function OrderTracking() {
                       <span className={`w-4 h-4 rounded border ${item.isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center`}>
                         <span className={`w-2 h-2 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
                       </span>
-                      <span>{item.quantity} x {item.name}{item.variantName ? ` (${item.variantName})` : ""}</span>
+                      <span>{formatOrderItemQuantityLabel(item)}</span>
                     </div>
                   ))}
                 </div>
@@ -2359,10 +2363,8 @@ export default function OrderTracking() {
                         <div className={`w-2.5 h-2.5 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900 leading-tight">{item.name}</p>
-                        {item.variantName ? (
-                          <p className="text-sm text-gray-500 mt-0.5">{item.variantName}</p>
-                        ) : null}
+                        <p className="font-semibold text-gray-900 leading-tight">{formatOrderItemLabel(item, { includeVariant: false })}</p>
+                        {item.variantName ? <p className="text-sm text-gray-500 mt-0.5">{item.variantName}</p> : null}
                         <p className="text-sm text-gray-500 mt-0.5">Quantity: {item.quantity}</p>
                       </div>
                     </div>

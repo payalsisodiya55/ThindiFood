@@ -198,6 +198,58 @@ async function ensureFoodItemsAreOrderable(restaurantId, items = []) {
   );
 }
 
+async function enrichOrderItemVariants(ordersLike = []) {
+  const orders = Array.isArray(ordersLike) ? ordersLike : [ordersLike];
+  const itemIds = [
+    ...new Set(
+      orders
+        .flatMap((order) => (Array.isArray(order?.items) ? order.items : []))
+        .filter((item) => !String(item?.variantName || "").trim())
+        .map((item) => String(item?.itemId || "").trim())
+        .filter((itemId) => mongoose.isValidObjectId(itemId)),
+    ),
+  ];
+
+  if (itemIds.length === 0) return ordersLike;
+
+  const foodDocs = await FoodItem.find({ _id: { $in: itemIds } })
+    .select("_id variants")
+    .lean();
+  const foodsById = new Map(foodDocs.map((doc) => [String(doc._id), doc]));
+
+  orders.forEach((order) => {
+    if (!Array.isArray(order?.items)) return;
+
+    order.items = order.items.map((item) => {
+      if (String(item?.variantName || "").trim()) return item;
+
+      const foodDoc = foodsById.get(String(item?.itemId || "").trim());
+      const variants = Array.isArray(foodDoc?.variants) ? foodDoc.variants : [];
+      if (variants.length === 0) return item;
+
+      const itemVariantId = String(item?.variantId || "").trim();
+      const itemPrice = Number(item?.variantPrice ?? item?.price);
+      const matchedVariant =
+        variants.find((variant) => itemVariantId && String(variant?._id || "") === itemVariantId) ||
+        variants.find((variant) => {
+          const variantPrice = Number(variant?.price);
+          return Number.isFinite(itemPrice) && Number.isFinite(variantPrice) && Math.abs(variantPrice - itemPrice) < 0.01;
+        });
+
+      if (!matchedVariant?.name) return item;
+
+      return {
+        ...item,
+        variantId: itemVariantId || String(matchedVariant._id || ""),
+        variantName: String(matchedVariant.name || "").trim(),
+        variantPrice: Number(matchedVariant.price) || itemPrice || 0,
+      };
+    });
+  });
+
+  return ordersLike;
+}
+
 async function notifyOwnersSafely(targets, payload) {
   try {
     await sendNotificationToOwners(targets, payload);
@@ -2502,6 +2554,7 @@ export async function listOrdersUser(userId, query) {
       .lean(),
     FoodOrder.countDocuments(filter),
   ]);
+  await enrichOrderItemVariants(docs);
   return buildPaginatedResult({
     docs: docs.map((doc) => normalizeOrderForClient(doc)),
     total,
@@ -2527,6 +2580,7 @@ export async function getOrderById(
     .select("+deliveryOtp")
     .lean();
   if (!order) throw new NotFoundError("Order not found");
+  await enrichOrderItemVariants(order);
   if (admin && Array.isArray(adminScope?.allowedZoneIds) && adminScope.allowedZoneIds.length > 0) {
     const currentZoneId = String(order?.zoneId || '');
     if (!currentZoneId || !adminScope.allowedZoneIds.includes(currentZoneId)) {
@@ -2806,6 +2860,7 @@ export async function listOrdersRestaurant(restaurantId, query) {
       .lean(),
     FoodOrder.countDocuments(filter),
   ]);
+  await enrichOrderItemVariants(docs);
   return buildPaginatedResult({ docs, total, page, limit });
 }
 
@@ -3272,6 +3327,7 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
     .lean();
 
   if (!order) return null;
+  await enrichOrderItemVariants(order);
   return sanitizeOrderForExternal(order);
 }
 
@@ -3311,6 +3367,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
       .lean(),
     FoodOrder.countDocuments(filter),
   ]);
+  await enrichOrderItemVariants(docs);
   return buildPaginatedResult({ docs, total, page, limit });
 }
 
@@ -4226,6 +4283,7 @@ export async function listOrdersAdmin(query, adminScope = {}) {
       .lean(),
     FoodOrder.countDocuments(filter),
   ]);
+  await enrichOrderItemVariants(docs);
   const enrichedDocs = docs.map((doc) => {
     const cancellationMeta = getCancellationMeta(doc);
     const refundPolicyMode = getRefundPolicyModeForCancellation(

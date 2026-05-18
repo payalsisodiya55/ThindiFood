@@ -7,6 +7,7 @@ import { useCart } from "@food/context/CartContext"
 import { toast } from "sonner"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { buildReorderCartItems } from "@food/utils/reorderCart"
+import { formatOrderItemQuantityLabel } from "@food/utils/orderItemDisplay"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -874,11 +875,13 @@ Order again from this restaurant in the ${companyName} app.`
                               </div>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm text-gray-800 font-medium block">
-                                  {itemQuantity} x {itemName}
+                                  {formatOrderItemQuantityLabel({
+                                    ...item,
+                                    name: itemName,
+                                    quantity: itemQuantity,
+                                  })}
                                 </span>
-                                {item.variantName ? (
-                                  <p className="text-xs text-gray-500 mt-0.5">{item.variantName}</p>
-                                ) : null}
+                                {item.variantName ? <p className="text-xs text-gray-500 mt-0.5">{item.variantName}</p> : null}
                                 {item.description && (
                                   <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{item.description}</p>
                                 )}

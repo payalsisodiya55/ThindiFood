@@ -9,6 +9,8 @@ import { Button } from "@food/components/ui/button"
 import { Badge } from "@food/components/ui/badge"
 import { useOrders } from "@food/context/OrdersContext"
 import { useCompanyName } from "@food/hooks/useCompanyName"
+import { orderAPI } from "@food/api"
+import { formatOrderItemLabel } from "@food/utils/orderItemDisplay"
 
 export default function OrderInvoice() {
   const companyName = useCompanyName()
@@ -263,10 +265,8 @@ export default function OrderInvoice() {
                                 className="w-8 h-8 sm:w-12 sm:h-12 object-cover rounded flex-shrink-0"
                               />
                               <div className="min-w-0 flex-1">
-                                <span className="font-medium block">{item.name}</span>
-                                {item.variantName ? (
-                                  <span className="text-xs text-gray-500">{item.variantName}</span>
-                                ) : null}
+                                <span className="font-medium block">{formatOrderItemLabel(item, { includeVariant: false })}</span>
+                                {item.variantName ? <span className="text-xs text-gray-500">{item.variantName}</span> : null}
                                 <span className="text-muted-foreground sm:hidden text-xs">
                                   Qty: {item.quantity} � ${item.price.toFixed(2)}
                                 </span>

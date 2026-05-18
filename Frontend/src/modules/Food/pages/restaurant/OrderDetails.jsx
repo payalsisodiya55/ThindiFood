@@ -7,6 +7,11 @@ import { jsPDF } from "jspdf"
 import autoTable from "jspdf-autotable"
 import { restaurantAPI } from "@food/api"
 import {
+  formatOrderItemLabel,
+  formatOrderItemQuantityLabel,
+  getOrderItemVariantLabel,
+} from "@food/utils/orderItemDisplay"
+import {
   ArrowLeft,
   Printer,
   Copy,
@@ -224,6 +229,7 @@ export default function OrderDetails() {
             },
             items: order.items?.map(item => ({
               name: item.name,
+              variantName: item.variantName || item.variant?.name || "",
               quantity: item.quantity,
               price: item.price,
               type: item.isVeg ? 'Veg' : 'Non-Veg'
@@ -436,7 +442,7 @@ export default function OrderDetails() {
     // Items Table
     const itemsTableData = orderData.items.map(item => [
       `${item.quantity}x`,
-      item.name,
+      formatOrderItemLabel(item),
       item.type || "-",
       formatMoney(item.price)
     ])
@@ -817,14 +823,14 @@ export default function OrderDetails() {
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-semibold text-gray-900">
-                      {item.quantity} x {item.name}
+                      {formatOrderItemQuantityLabel(item)}
                     </p>
                     <p className="text-sm font-semibold text-gray-900">{formatMoney(item.price)}</p>
                   </div>
-                  {item.type && (
+                  {(item.type || getOrderItemVariantLabel(item)) && (
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>Quantity</span>
-                      <span>{item.type}</span>
+                      {getOrderItemVariantLabel(item) ? <span>{getOrderItemVariantLabel(item)}</span> : null}
+                      {item.type ? <span>{item.type}</span> : null}
                     </div>
                   )}
                 </div>

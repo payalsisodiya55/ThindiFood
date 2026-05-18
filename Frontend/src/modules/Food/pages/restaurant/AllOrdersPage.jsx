@@ -16,6 +16,7 @@ import {
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
 import { restaurantAPI } from "@food/api"
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
+import { formatOrderItemQuantityLabel } from "@food/utils/orderItemDisplay"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -193,6 +194,7 @@ export default function AllOrdersPage() {
     // Format items
     const items = (order.items || []).map(item => ({
       name: item.name || 'Item',
+      variantName: item.variantName || item.variant?.name || '',
       quantity: item.quantity || 1,
       price: item.price || 0
     }))
@@ -673,7 +675,7 @@ export default function AllOrdersPage() {
               {order.items.slice(0, 1).map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between">
                   <span className="text-sm text-gray-900">
-                    {item.quantity} x {item.name}
+                    {formatOrderItemQuantityLabel(item)}
                   </span>
                   <span className="text-sm font-medium text-gray-900">{formatMoney(item.price)}</span>
                 </div>

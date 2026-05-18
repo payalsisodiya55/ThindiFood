@@ -78,6 +78,11 @@ const normalizeDineInOrderItems = (items = []) => {
         return {
             itemId,
             name,
+            variantId: String(item?.variantId || item?.variant?._id || item?.variant?.id || '').trim(),
+            variantName: String(item?.variantName || item?.variant?.name || '').trim(),
+            variantPrice: Number.isFinite(Number(item?.variantPrice ?? item?.variant?.price))
+                ? roundMoney(Number(item?.variantPrice ?? item?.variant?.price))
+                : 0,
             price: roundMoney(price),
             quantity,
             isVeg: Boolean(item?.isVeg),

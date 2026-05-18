@@ -31,6 +31,11 @@ import notificationSound from "@food/assets/audio/alert.mp3";
 import { restaurantAPI, diningAPI, dineInAPI } from "@food/api";
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications";
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
+import {
+  formatOrderItemLabel,
+  formatOrderItemQuantityLabel,
+  formatOrderItemsSummary,
+} from "@food/utils/orderItemDisplay";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 const debugLog = (...args) => {};
@@ -364,8 +369,7 @@ const transformOrderForList = (order) => ({
   ),
   eta: null,
   itemsSummary:
-    order.items?.map((item) => `${item.quantity}x ${item.name}`).join(", ") ||
-    "No items",
+    formatOrderItemsSummary(order.items),
   photoUrl: order.items?.[0]?.image || null,
   photoAlt: order.items?.[0]?.name || "Order",
   paymentMethod: order.paymentMethod || order.payment?.method || null,
@@ -388,9 +392,7 @@ const getDineInSessionLatestRound = (session) => {
 const getDineInItemsSummary = (session) => {
   const rounds = Array.isArray(session?.orders) ? session.orders : [];
   const items = rounds.flatMap((round) => (Array.isArray(round?.items) ? round.items : []));
-  return items.length
-    ? items.map((item) => `${item.quantity}x ${item.name}`).join(", ")
-    : "No items";
+  return formatOrderItemsSummary(items);
 };
 
 const transformDineInSessionForList = (session, tableLike = null) => {
@@ -441,7 +443,7 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     itemsSummary:
       isClosedSession
         ? getDineInItemsSummary(session)
-        : (latestRound?.items || []).map((item) => `${item.quantity}x ${item.name}`).join(", ") || "Active Session",
+        : formatOrderItemsSummary(latestRound?.items || []) || "Active Session",
     photoUrl: null,
     photoAlt: "Dine-In",
     sortTimestamp: new Date(displayTimeSource || Date.now()).getTime(),
@@ -500,10 +502,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
             }),
             deliveredAt:
               order.deliveredAt || order.updatedAt || order.createdAt,
-            itemsSummary:
-              order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
-                .join(", ") || "No items",
+            itemsSummary: formatOrderItemsSummary(order.items),
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
             amount: order.pricing?.total || order.total || 0,
@@ -760,10 +759,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
             cancelledBy: order.cancelledBy || "unknown",
             cancellationReason:
               order.cancellationReason || "No reason provided",
-            itemsSummary:
-              order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
-                .join(", ") || "No items",
+            itemsSummary: formatOrderItemsSummary(order.items),
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
             amount: order.pricing?.total || order.total || 0,
@@ -1165,9 +1161,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                       hour: "2-digit",
                       minute: "2-digit",
                     }),
-                    itemsSummary: (latestRound?.items || [])
-                      .map((item) => `${item.quantity}x ${item.name}`)
-                      .join(", ") || "Active Session",
+                    itemsSummary: formatOrderItemsSummary(latestRound?.items || []) || "Active Session",
                     photoUrl: null,
                     photoAlt: "Dine-In",
                     sortTimestamp: new Date(session.updatedAt || session.createdAt).getTime(),
@@ -2820,7 +2814,7 @@ export default function OrdersMain() {
 
         // Prepare table data
         const tableData = orderToPrint.items.map((item) => [
-          item.name || "Item",
+          formatOrderItemLabel(item),
           item.quantity || 1,
           `₹${(item.price || 0).toFixed(2)}`,
           `₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
@@ -3653,7 +3647,7 @@ export default function OrdersMain() {
                                   <div className="flex-1">
                                     <div className="flex items-start justify-between">
                                       <p className="text-sm font-medium text-gray-900">
-                                        {item.quantity} x {item.name}
+                                        {formatOrderItemQuantityLabel(item)}
                                       </p>
                                       <p className="text-xs text-gray-600 ml-2">
                                         ₹{item.price * item.quantity}
@@ -4774,10 +4768,7 @@ function PreparingOrders({
               sortTimestamp: preparingTimestamp.getTime(),
               initialETA, // Store initial ETA in minutes
               preparingTimestamp, // Store when order started preparing
-              itemsSummary:
-                order.items
-                  ?.map((item) => `${item.quantity}x ${item.name}`)
-                  .join(", ") || "No items",
+              itemsSummary: formatOrderItemsSummary(order.items),
               photoUrl: order.items?.[0]?.image || null,
               photoAlt: order.items?.[0]?.name || "Order",
               customerPhone: getOrderCustomerPhone(order),
@@ -4833,10 +4824,7 @@ function PreparingOrders({
                       initialETA: 30,
                       preparingTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()),
                       sortTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()).getTime(),
-                      itemsSummary:
-                        (latestRound?.items || [])
-                          .map((item) => `${item.quantity}x ${item.name}`)
-                          .join(", ") || "No items",
+                      itemsSummary: formatOrderItemsSummary(latestRound?.items || []),
                       photoUrl: null,
                       photoAlt: "Dine-In",
                       deliveryPartnerId: null,
@@ -5159,10 +5147,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
             }),
             sortTimestamp: new Date(order.createdAt).getTime(),
             eta: null, // Don't show ETA for ready orders
-            itemsSummary:
-              order.items
-                ?.map((item) => `${item.quantity}x ${item.name}`)
-                .join(", ") || "No items",
+            itemsSummary: formatOrderItemsSummary(order.items),
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
             customerPhone: getOrderCustomerPhone(order),
@@ -5231,10 +5216,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                       }),
                       sortTimestamp: new Date(latestRound?.createdAt || session.createdAt).getTime(),
                       eta: null,
-                      itemsSummary:
-                        (latestRound?.items || [])
-                          .map((item) => `${item.quantity}x ${item.name}`)
-                          .join(", ") || "No items",
+                      itemsSummary: formatOrderItemsSummary(latestRound?.items || []),
                       photoUrl: null,
                       photoAlt: "Dine-In",
                       paymentMethod: null,
@@ -5584,10 +5566,7 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
               prepTimeMinutes:
                 Number(order.prep_time) > 0 ? Number(order.prep_time) : null,
               prepStartTime: order.prep_start_time || null,
-              itemsSummary:
-                order.items
-                  ?.map((item) => `${item.quantity}x ${item.name}`)
-                  .join(", ") || "No items",
+              itemsSummary: formatOrderItemsSummary(order.items),
               photoUrl: order.items?.[0]?.image || null,
               photoAlt: order.items?.[0]?.name || "Order",
               paymentMethod: order.paymentMethod || order.payment?.method || null,
