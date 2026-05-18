@@ -269,8 +269,10 @@ export default function DeliverySettings() {
     const startVal = startH * 60 + startM
     const endVal = endH * 60 + endM
     
-    if (endVal <= startVal) {
-      setTimeError("End time must be after start time")
+    // Allow overnight windows like 10:00 -> 00:00.
+    // Only block identical values because that creates a zero-length window.
+    if (endVal === startVal) {
+      setTimeError("Start time and end time cannot be the same")
       return false
     }
     setTimeError("")
