@@ -90,6 +90,12 @@ const formatClockTime = (value) => {
   });
 };
 
+const getOrderSummaryLines = (summary = "") => {
+  const text = String(summary || "").trim();
+  if (!text || text === "No items") return text ? [text] : [];
+  return text.split(/,\s*(?=\d+\s*x\s+)/i).map((line) => line.trim()).filter(Boolean);
+};
+
 const getOrderPrepTimeMinutes = (orderLike) => {
   const directValue = Number(orderLike?.prep_time);
   if (Number.isFinite(directValue) && directValue > 0) {
@@ -643,9 +649,13 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                     </div>
 
                     <div className="mt-2">
-                      <p className="text-xs text-gray-600 line-clamp-1">
-                        {order.itemsSummary}
-                      </p>
+                      <div className="space-y-0.5 text-xs text-gray-600 leading-snug">
+                        {getOrderSummaryLines(order.itemsSummary).map((line, index) => (
+                          <p key={index} className="break-words">
+                            {line}
+                          </p>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="mt-2 flex items-end justify-between gap-2">
@@ -918,9 +928,13 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
                     </div>
 
                     <div className="mt-2">
-                      <p className="text-xs text-gray-600 line-clamp-1">
-                        {order.itemsSummary}
-                      </p>
+                      <div className="space-y-0.5 text-xs text-gray-600 leading-snug">
+                        {getOrderSummaryLines(order.itemsSummary).map((line, index) => (
+                          <p key={index} className="break-words">
+                            {line}
+                          </p>
+                        ))}
+                      </div>
                       {order.cancellationReason && (
                         <p className="text-[10px] text-red-600 mt-1 line-clamp-1">
                           Reason: {order.cancellationReason}
@@ -4339,9 +4353,13 @@ export default function OrdersMain() {
 
               <div className="mb-3">
                 <p className="text-xs font-medium text-gray-700 mb-1">Items</p>
-                <p className="text-xs text-gray-600">
-                  {selectedOrder.itemsSummary}
-                </p>
+                <div className="space-y-1 text-xs text-gray-600 leading-snug">
+                  {getOrderSummaryLines(selectedOrder.itemsSummary).map((line, index) => (
+                    <p key={index} className="break-words">
+                      {line}
+                    </p>
+                  ))}
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
@@ -4606,7 +4624,13 @@ function OrderCard({
 
           {/* Middle row */}
           <div className="mt-2">
-            <p className="text-xs text-gray-600 line-clamp-1">{itemsSummary}</p>
+            <div className="space-y-0.5 text-xs text-gray-600 leading-snug">
+              {getOrderSummaryLines(itemsSummary).map((line, index) => (
+                <p key={index} className="break-words">
+                  {line}
+                </p>
+              ))}
+            </div>
           </div>
 
           {/* Bottom row - Compact Scheduled Design */}
