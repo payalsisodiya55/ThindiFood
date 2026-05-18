@@ -414,7 +414,28 @@ const buildZoneRestaurantFilter = async (zoneIdRaw) => {
 
 const notifyAdminsAboutRestaurantProfileReview = async (restaurantId, restaurantName) => {
     try {
+        const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
+        const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
         const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
+        const admins = await FoodAdmin.find({ isActive: true }).select('_id').lean();
+        if (admins.length) {
+            await createInboxNotifications({
+                notifications: admins.map((admin) => ({
+                    ownerType: 'ADMIN',
+                    ownerId: String(admin._id),
+                    title: 'Restaurant Approval Pending',
+                    message: `Restaurant "${restaurantName || 'Unknown Restaurant'}" updated its profile and is pending approval again.`,
+                    link: `/admin/food/restaurants/joining-request?restaurantId=${encodeURIComponent(String(restaurantId))}`,
+                    category: 'restaurant_approval',
+                    source: 'SYSTEM',
+                    metadata: {
+                        type: 'restaurant_profile_updated',
+                        restaurantId: String(restaurantId),
+                        restaurantName: restaurantName || 'Unknown Restaurant'
+                    }
+                }))
+            });
+        }
         void notifyAdminsSafely({
             title: 'Restaurant Profile Updated',
             body: `Restaurant "${restaurantName || 'Unknown Restaurant'}" updated its profile and is pending approval again.`,
@@ -601,7 +622,28 @@ export const registerRestaurant = async (payload, files) => {
         });
 
         try {
+            const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
+            const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
             const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
+            const admins = await FoodAdmin.find({ isActive: true }).select('_id').lean();
+            if (admins.length) {
+                await createInboxNotifications({
+                    notifications: admins.map((admin) => ({
+                        ownerType: 'ADMIN',
+                        ownerId: String(admin._id),
+                        title: 'New Restaurant Onboarded',
+                        message: `New restaurant onboarded: ${restaurant.restaurantName}. Restaurant approval pending.`,
+                        link: `/admin/food/restaurants/joining-request?restaurantId=${encodeURIComponent(String(restaurant._id))}`,
+                        category: 'restaurant_onboarding',
+                        source: 'SYSTEM',
+                        metadata: {
+                            type: 'new_registration',
+                            restaurantId: String(restaurant._id),
+                            restaurantName: restaurant.restaurantName
+                        }
+                    }))
+                });
+            }
             void notifyAdminsSafely({
                 title: 'New Restaurant Registration 🏪',
                 body: `A new restaurant "${restaurant.restaurantName}" has registered and is pending approval.`,

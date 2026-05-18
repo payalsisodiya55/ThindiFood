@@ -14,6 +14,7 @@ const normalizePagination = ({ page = 1, limit = 20 } = {}) => {
 
 const normalizeOwnerType = (role) => {
     const normalized = String(role || '').trim().toUpperCase();
+    if (normalized === 'ADMIN') return 'ADMIN';
     if (normalized === 'USER') return 'USER';
     if (normalized === 'RESTAURANT') return 'RESTAURANT';
     if (normalized === 'DELIVERY_PARTNER') return 'DELIVERY_PARTNER';
@@ -56,7 +57,7 @@ export const createInboxNotifications = async ({ notifications = [] } = {}) => {
             message: String(item.message).trim(),
             link: String(item.link || '').trim(),
             category: String(item.category || 'broadcast').trim(),
-            source: 'ADMIN_BROADCAST',
+            source: String(item.source || 'ADMIN_BROADCAST').trim(),
             metadata: item.metadata && typeof item.metadata === 'object' ? item.metadata : {},
         };
 

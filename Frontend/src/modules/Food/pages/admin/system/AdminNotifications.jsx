@@ -4,12 +4,21 @@ import useAdminNotifications from "@food/hooks/useAdminNotifications";
 
 export default function AdminNotifications() {
   const navigate = useNavigate();
-  const { items, loading, clearAll, dismissOne } = useAdminNotifications();
+  const { items, loading, clearAll, dismissOne, markAsRead } = useAdminNotifications();
+
+  const handleOpen = async (item) => {
+    if (item?.id && !item?.isRead) {
+      await markAsRead(item.id);
+    }
+    if (item?.path) {
+      navigate(item.path);
+    }
+  };
 
   return (
-    <div className="p-6">
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-        <div className="flex items-start justify-between gap-4 mb-6">
+    <div className="p-4 sm:p-6">
+      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
               <Bell className="w-6 h-6" />
@@ -17,7 +26,7 @@ export default function AdminNotifications() {
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
               <p className="text-sm text-slate-500">
-                Approval and support alerts that need admin attention.
+                Restaurant onboarding and admin alerts that need attention.
               </p>
             </div>
           </div>
@@ -25,7 +34,7 @@ export default function AdminNotifications() {
             <button
               type="button"
               onClick={clearAll}
-              className="inline-flex items-center gap-2 rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50"
             >
               <Trash2 className="w-4 h-4" />
               Clear all
@@ -45,29 +54,29 @@ export default function AdminNotifications() {
             {items.map((item) => (
               <div
                 key={item?.id}
-                className="rounded-2xl border border-slate-200 bg-slate-50/50 px-4 py-4"
+                className={`rounded-2xl border px-4 py-4 ${
+                  item?.isRead
+                    ? "border-slate-200 bg-slate-50/50"
+                    : "border-amber-200 bg-amber-50/50"
+                }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <button
                     type="button"
-                    onClick={() => item?.path && navigate(item.path)}
+                    onClick={() => handleOpen(item)}
                     className="min-w-0 flex-1 text-left"
                   >
-                    <p className="text-base font-semibold text-slate-900">
+                    <p className={`text-base ${item?.isRead ? "font-semibold text-slate-900" : "font-bold text-slate-950"}`}>
                       {item?.title || "Notification"}
                     </p>
-                    <p className="text-sm text-slate-600 mt-1">
+                    <p className="text-sm text-slate-600 mt-1 leading-6">
                       {item?.message || "-"}
                     </p>
-                    <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
+                    <div className="flex flex-wrap items-center gap-2 mt-3 text-xs text-slate-500">
                       <Clock className="w-3.5 h-3.5" />
                       <span>{item?.timeLabel || "N/A"}</span>
-                      {item?.metaLabel ? (
-                        <>
-                          <span>•</span>
-                          <span>{item.metaLabel}</span>
-                        </>
-                      ) : null}
+                      {!item?.isRead ? <span className="h-2 w-2 rounded-full bg-amber-500" /> : null}
+                      {item?.metaLabel ? <span>{item.metaLabel}</span> : null}
                     </div>
                   </button>
                   <button

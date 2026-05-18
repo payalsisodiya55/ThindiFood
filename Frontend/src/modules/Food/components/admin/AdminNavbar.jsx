@@ -61,7 +61,11 @@ export default function AdminNavbar({ onMenuClick }) {
   const [adminData, setAdminData] = useState(null);
   const [businessSettings, setBusinessSettings] = useState(() => getCachedSettings() || null);
   const searchInputRef = useRef(null);
-  const { items: adminNotifications } = useAdminNotifications();
+  const {
+    items: adminNotifications,
+    unreadCount,
+    markAsRead,
+  } = useAdminNotifications();
 
   // Load business settings
   useEffect(() => {
@@ -259,10 +263,18 @@ export default function AdminNavbar({ onMenuClick }) {
     }
   };
 
-  const notificationCount = adminNotifications.length;
+  const notificationCount = unreadCount;
   const openNotificationsPage = () => {
     setNotificationsOpen(false);
     navigate("/admin/food/notifications");
+  };
+
+  const handleNotificationClick = async (item) => {
+    if (item?.id && !item?.isRead) {
+      await markAsRead(item.id);
+    }
+    setNotificationsOpen(false);
+    navigate(item?.path || "/admin/food/notifications");
   };
 
   return (
@@ -341,7 +353,7 @@ export default function AdminNavbar({ onMenuClick }) {
                   <div className="px-4 py-3 border-b border-neutral-200 flex items-center justify-between">
                     <div>
                       <p className="text-sm font-semibold text-neutral-900">Notifications</p>
-                      <p className="text-xs text-neutral-500">Approval and support alerts</p>
+                      <p className="text-xs text-neutral-500">Restaurant onboarding and admin alerts</p>
                     </div>
                     <button
                       type="button"
@@ -363,19 +375,22 @@ export default function AdminNavbar({ onMenuClick }) {
                         <button
                           key={item?.id}
                           type="button"
-                          onClick={openNotificationsPage}
-                          className="w-full text-left px-4 py-4 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 transition-colors"
+                          onClick={() => handleNotificationClick(item)}
+                          className={`w-full text-left px-4 py-4 border-b border-neutral-100 last:border-b-0 hover:bg-neutral-50 transition-colors ${
+                            item?.isRead ? "bg-white" : "bg-amber-50/40"
+                          }`}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
-                              <p className="text-sm font-semibold text-neutral-900 truncate">
+                              <p className={`text-sm truncate ${item?.isRead ? "font-medium text-neutral-800" : "font-semibold text-neutral-900"}`}>
                                 {item?.title || "Notification"}
                               </p>
                               <p className="text-xs text-neutral-600 mt-1 line-clamp-2">
                                 {item?.message || "-"}
                               </p>
-                              <p className="text-[11px] text-neutral-400 mt-2">
-                                {item?.metaLabel || item?.category || "Admin alert"}
+                              <p className="text-[11px] text-neutral-400 mt-2 flex items-center gap-2">
+                                {!item?.isRead ? <span className="h-2 w-2 rounded-full bg-amber-500" /> : null}
+                                <span>{item?.metaLabel || item?.category || "Admin alert"}</span>
                               </p>
                             </div>
                             <span className="shrink-0 text-[10px] text-neutral-400">
