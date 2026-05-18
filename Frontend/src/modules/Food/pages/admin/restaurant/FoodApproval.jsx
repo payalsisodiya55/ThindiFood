@@ -467,6 +467,21 @@ export default function FoodApproval() {
                   </div>
                 )}
 
+                {/* Variants */}
+                {selectedRequest.variants && selectedRequest.variants.length > 0 && (
+                  <div className="col-span-full">
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Variants</label>
+                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 space-y-2">
+                      {selectedRequest.variants.map((v, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-sm py-1 border-b border-dashed border-slate-200 last:border-0">
+                          <span className="font-medium text-gray-800">{v.name}</span>
+                          <span className="font-bold text-green-600">₹{v.price}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Images */}
                 {(() => {
                   const allImages = (selectedRequest.images || []).filter(img => img && typeof img === 'string');

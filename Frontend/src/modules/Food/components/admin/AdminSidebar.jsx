@@ -135,7 +135,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
     if (l.includes("offer approvals")) return badges.productOffers
     if (l.includes("food approval")) return badges.foodApprovals
-    if (l === "foods") return badges.foods
+    if (l === "foods") return 0
     if (l === "restaurants" || l.includes("new joining request")) return badges.restaurants
     if (l.includes("restaurant complaints")) return badges.restaurantComplaints
     if (p.includes("orders/pending")) return badges.orders
@@ -149,6 +149,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (l.includes("join-request")) return badges.deliveryPartners
     return 0
   }
+
   const [logoUrl, setLogoUrl] = useState(() => getCachedSettings()?.logo?.url || null)
   const [companyName, setCompanyName] = useState(() => getCachedSettings()?.companyName || null)
 
@@ -495,6 +496,8 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
   const renderMenuItem = (item, index, isInSection = false) => {
     if (item.type === "link") {
       const Icon = iconMap[item.icon] || Utensils
+      const badgeCount = getBadgeCount(item.label, item.path)
+      const showBadge = badgeCount > 0
       return (
         <Link
           key={index}
@@ -525,14 +528,14 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
               <span className={cn("text-left truncate", isInSection ? "font-semibold" : "font-medium")}>
                 {item.label}
               </span>
-              {getBadgeCount(item.label, item.path) > 0 && (
+              {showBadge && (
                 <span className="shrink-0 bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-1 min-w-[18px] text-center">
-                  {getBadgeCount(item.label, item.path) > 99 ? "99+" : getBadgeCount(item.label, item.path)}
+                  {badgeCount > 99 ? "99+" : badgeCount}
                 </span>
               )}
             </div>
           )}
-          {isCollapsed && getBadgeCount(item.label, item.path) > 0 && (
+          {isCollapsed && showBadge && (
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-neutral-950" />
           )}
         </Link>
