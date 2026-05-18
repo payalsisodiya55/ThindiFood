@@ -265,6 +265,9 @@ export async function createDeliveryBoy(restaurantId, payload = {}) {
     phone,
     username,
     password,
+    isActive: true,
+    availabilityStatus: "offline",
+    lastSeenAt: null,
   });
 
   return deliveryBoy.toObject();
@@ -288,8 +291,30 @@ export async function updateDeliveryBoy(restaurantId, deliveryBoyId, payload = {
   });
   if (!deliveryBoy) throw new NotFoundError("Delivery boy not found");
 
-  if (payload?.name !== undefined) deliveryBoy.name = String(payload.name || "").trim();
-  if (payload?.phone !== undefined) deliveryBoy.phone = String(payload.phone || "").trim();
+  if (payload?.name !== undefined) {
+    const nextName = String(payload.name || "").trim();
+    if (!nextName) throw new ValidationError("Name is required");
+    deliveryBoy.name = nextName;
+  }
+  if (payload?.phone !== undefined) {
+    const nextPhone = String(payload.phone || "").trim();
+    if (!nextPhone) throw new ValidationError("Phone is required");
+    deliveryBoy.phone = nextPhone;
+  }
+  if (payload?.username !== undefined) {
+    const nextUsername = toLowerUsername(payload.username);
+    if (!nextUsername) throw new ValidationError("Username is required");
+    if (nextUsername !== deliveryBoy.username) {
+      const existing = await FoodDeliveryBoy.findOne({
+        username: nextUsername,
+        _id: { $ne: deliveryBoy._id },
+      }).lean();
+      if (existing) {
+        throw new ValidationError("Username already exists");
+      }
+      deliveryBoy.username = nextUsername;
+    }
+  }
   if (payload?.isActive !== undefined) deliveryBoy.isActive = payload.isActive === true;
   if (payload?.password) deliveryBoy.password = String(payload.password);
 
@@ -297,9 +322,49 @@ export async function updateDeliveryBoy(restaurantId, deliveryBoyId, payload = {
   return deliveryBoy.toObject();
 }
 
-export async function deactivateDeliveryBoy(restaurantId, deliveryBoyId) {
+export async function deleteDeliveryBoy(restaurantId, deliveryBoyId) {
   await ensureRestaurantSelfDeliveryApprovedForManagement(restaurantId);
-  return updateDeliveryBoy(restaurantId, deliveryBoyId, { isActive: false });
+  const restaurantObjectId = toObjectId(restaurantId, "Restaurant id");
+  const deliveryBoyObjectId = toObjectId(deliveryBoyId, "Delivery boy id");
+
+  const deliveryBoy = await FoodDeliveryBoy.findOne({
+    _id: deliveryBoyObjectId,
+    restaurantId: restaurantObjectId,
+  }).lean();
+  if (!deliveryBoy) throw new NotFoundError("Delivery boy not found");
+
+  await FoodDeliveryBoy.deleteOne({
+    _id: deliveryBoyObjectId,
+    restaurantId: restaurantObjectId,
+  });
+
+  return {
+    deleted: true,
+    _id: deliveryBoyObjectId,
+  };
+}
+
+export async function updateDeliveryBoyAvailability(deliveryBoyId, payload = {}) {
+  const deliveryBoyObjectId = toObjectId(deliveryBoyId, "Delivery boy id");
+  const rawStatus = String(payload?.status || "").trim().toLowerCase();
+  const nextStatus = rawStatus === "online" ? "online" : "offline";
+
+  const deliveryBoy = await FoodDeliveryBoy.findById(deliveryBoyObjectId);
+  if (!deliveryBoy) {
+    throw new NotFoundError("Delivery boy not found");
+  }
+  if (deliveryBoy.isActive === false) {
+    throw new ForbiddenError("Delivery boy account is inactive");
+  }
+
+  deliveryBoy.availabilityStatus = nextStatus;
+  deliveryBoy.lastSeenAt = new Date();
+  await deliveryBoy.save();
+
+  return {
+    availabilityStatus: deliveryBoy.availabilityStatus,
+    lastSeenAt: deliveryBoy.lastSeenAt,
+  };
 }
 
 export async function assignDeliveryBoyToOrder(restaurantId, orderId, deliveryBoyId) {

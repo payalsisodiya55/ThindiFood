@@ -61,6 +61,7 @@ export default function DeliveryBoyDashboard() {
     let active = true;
     const load = async () => {
       try {
+        await deliveryBoyAPI.updateAvailability("online");
         const response = await deliveryBoyAPI.getOrders();
         const nextOrders = response?.data?.data?.orders || [];
         if (active) setOrders(nextOrders);
@@ -86,7 +87,10 @@ export default function DeliveryBoyDashboard() {
     return { total, completed, pending, outForDelivery };
   }, [orders]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await deliveryBoyAPI.updateAvailability("offline");
+    } catch {}
     clearModuleAuth("delivery");
     navigate("/food/restaurant/login?role=delivery", { replace: true });
   };

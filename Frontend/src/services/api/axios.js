@@ -68,14 +68,14 @@ function getAccessToken(config) {
   const module = getModuleFromConfig(config);
   const key = `${module}_accessToken`;
   try {
-    // 1. Try module-specific token first
     const moduleToken = localStorage.getItem(key);
     if (moduleToken) return moduleToken;
-    
-    // 2. Fallback to generic token only for non-admin modules
-    if (module !== "admin") {
+
+    // Only the user module still supports the legacy generic token key.
+    if (module === "user") {
       return localStorage.getItem("accessToken") || null;
     }
+
     return null;
   } catch {
     return null;
@@ -84,14 +84,14 @@ function getAccessToken(config) {
 
 function getRefreshToken(module) {
   try {
-    // 1. Try module-specific refresh token
     const moduleRefreshToken = localStorage.getItem(`${module}_refreshToken`);
     if (moduleRefreshToken) return moduleRefreshToken;
-    
-    // 2. Fallback to generic refresh token only for non-admin modules
-    if (module !== "admin") {
+
+    // Only the user module still supports the legacy generic refresh token key.
+    if (module === "user") {
       return localStorage.getItem("refreshToken") || null;
     }
+
     return null;
   } catch {
     return null;

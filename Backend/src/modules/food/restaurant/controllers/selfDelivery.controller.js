@@ -61,11 +61,24 @@ export async function updateDeliveryBoyController(req, res, next) {
 export async function deactivateDeliveryBoyController(req, res, next) {
   try {
     const restaurantId = req.user?.userId;
-    const deliveryBoy = await selfDeliveryService.deactivateDeliveryBoy(
+    const result = await selfDeliveryService.deleteDeliveryBoy(
       restaurantId,
       req.params.id,
     );
-    return sendResponse(res, 200, "Delivery boy deactivated", { deliveryBoy });
+    return sendResponse(res, 200, "Delivery boy deleted", result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateDeliveryBoyAvailabilityController(req, res, next) {
+  try {
+    const deliveryBoyId = req.user?.userId;
+    const data = await selfDeliveryService.updateDeliveryBoyAvailability(
+      deliveryBoyId,
+      req.body || {},
+    );
+    return sendResponse(res, 200, "Delivery boy availability updated", data);
   } catch (error) {
     next(error);
   }

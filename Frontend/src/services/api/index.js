@@ -2712,6 +2712,12 @@ export const deliveryBoyAPI = {
       { otp: String(otp || "").trim() },
       { contextModule: "delivery" },
     ),
+  updateAvailability: (status) =>
+    apiClient.patch(
+      "/food/delivery-boy/availability",
+      { status: String(status || "").trim().toLowerCase() === "online" ? "online" : "offline" },
+      { contextModule: "delivery" },
+    ),
 };
 
 const DINING_BOOKINGS_STORAGE_KEY = "food_dining_bookings_v1";

@@ -475,6 +475,10 @@ export const loginDeliveryBoy = async (username, password) => {
     expiresAt,
   });
 
+  deliveryBoy.availabilityStatus = "online";
+  deliveryBoy.lastSeenAt = new Date();
+  await deliveryBoy.save();
+
   return {
     accessToken,
     refreshToken,

@@ -3,6 +3,7 @@ import { sendError } from '../../utils/response.js';
 import { FoodUser } from '../users/user.model.js';
 import { FoodAdmin } from '../admin/admin.model.js';
 import { sanitizeAdminForClient } from '../admin/adminAccess.constants.js';
+import { FoodDeliveryBoy } from '../../modules/food/restaurant/models/deliveryBoy.model.js';
 
 export const requireAdmin = (req, res, next) => {
     if (req.user?.role !== 'ADMIN') {
@@ -58,6 +59,19 @@ export const authMiddleware = (req, res, next) => {
                     return next();
                 })
                 .catch(() => sendError(res, 401, 'Authentication failed'));
+            return;
+        }
+        if (decoded.role === 'DELIVERY_BOY') {
+            req.user = {
+                userId: decoded.userId,
+                role: decoded.role
+            };
+            FoodDeliveryBoy.findById(decoded.userId).select('isActive').lean().then((doc) => {
+                if (!doc || doc.isActive === false) {
+                    return sendError(res, 401, 'Delivery boy account is inactive');
+                }
+                next();
+            }).catch(() => sendError(res, 401, 'Authentication failed'));
             return;
         }
         req.user = {

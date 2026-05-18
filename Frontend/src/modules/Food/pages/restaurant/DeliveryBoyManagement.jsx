@@ -1,5 +1,14 @@
-import { useEffect, useState } from "react";
-import { ArrowLeft, AlertCircle, Plus, Eye, EyeOff } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  AlertCircle,
+  Pencil,
+  Plus,
+  Eye,
+  EyeOff,
+  Trash2,
+  X,
+} from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { toast } from "sonner";
@@ -25,6 +34,11 @@ const normalizeSelfDeliveryApprovalStatus = (restaurant) => {
   return rawStatus;
 };
 
+const getAvailabilityLabel = (deliveryBoy) =>
+  String(deliveryBoy?.availabilityStatus || "").toLowerCase() === "online"
+    ? "Active"
+    : "Inactive";
+
 export default function DeliveryBoyManagement() {
   const goBack = useRestaurantBackNavigation();
   const [deliveryBoys, setDeliveryBoys] = useState([]);
@@ -34,9 +48,25 @@ export default function DeliveryBoyManagement() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selfDeliveryApprovalStatus, setSelfDeliveryApprovalStatus] = useState("none");
+  const [editingId, setEditingId] = useState("");
+  const [deletingId, setDeletingId] = useState("");
 
-  const canManageDeliveryBoys =
-    selfDeliveryApprovalStatus === "approved";
+  const canManageDeliveryBoys = selfDeliveryApprovalStatus === "approved";
+  const isEditing = Boolean(editingId);
+
+  const titleText = isEditing ? "Edit Delivery Boy" : "Add Delivery Boy";
+  const submitText = isEditing ? "Save Changes" : "Create Delivery Boy";
+
+  const normalizedPhoneMap = useMemo(
+    () =>
+      new Map(
+        deliveryBoys.map((boy) => [
+          String(boy?._id || ""),
+          String(boy?.phone || "").replace(/\D/g, ""),
+        ]),
+      ),
+    [deliveryBoys],
+  );
 
   const loadDeliveryBoys = async () => {
     const response = await restaurantAPI.getDeliveryBoys();
@@ -55,6 +85,7 @@ export default function DeliveryBoyManagement() {
           restaurantResponse?.data?.data?.restaurant ||
           restaurantResponse?.data?.restaurant ||
           null;
+        if (!active) return;
         setDeliveryBoys(deliveryBoyResponse?.data?.data?.deliveryBoys || []);
         setSelfDeliveryApprovalStatus(normalizeSelfDeliveryApprovalStatus(restaurant));
       } finally {
@@ -67,8 +98,17 @@ export default function DeliveryBoyManagement() {
     };
   }, []);
 
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setErrors({});
+    setEditingId("");
+    setShowPassword(false);
+  };
+
   const validateForm = () => {
     const newErrors = {};
+    const normalizedPhone = String(form.phone || "").replace(/\D/g, "");
+    const normalizedUsername = String(form.username || "").trim().toLowerCase();
 
     if (!form.name.trim()) {
       newErrors.name = "Name is required";
@@ -76,25 +116,39 @@ export default function DeliveryBoyManagement() {
       newErrors.name = "Name should only contain alphabets and spaces";
     }
 
-    if (!form.phone) {
+    if (!normalizedPhone) {
       newErrors.phone = "Phone number is required";
-    } else if (!/^\d{10}$/.test(form.phone)) {
+    } else if (!/^\d{10}$/.test(normalizedPhone)) {
       newErrors.phone = "Phone must be exactly 10 digits";
-    } else if (deliveryBoys.some((db) => db.phone === form.phone)) {
-      newErrors.phone = "This phone number is already registered";
+    } else {
+      const duplicatePhone = deliveryBoys.some((db) => {
+        if (String(db?._id || "") === editingId) return false;
+        return normalizedPhoneMap.get(String(db?._id || "")) === normalizedPhone;
+      });
+      if (duplicatePhone) {
+        newErrors.phone = "This phone number is already registered";
+      }
     }
 
-    if (!form.username.trim()) {
+    if (!normalizedUsername) {
       newErrors.username = "Username is required";
-    } else if (!/^[a-zA-Z0-9_]+$/.test(form.username)) {
+    } else if (!/^[a-zA-Z0-9_]+$/.test(normalizedUsername)) {
       newErrors.username = "Username can only contain letters, numbers, and underscores";
-    } else if (form.username.length < 3) {
+    } else if (normalizedUsername.length < 3) {
       newErrors.username = "Username must be at least 3 characters";
+    } else {
+      const duplicateUsername = deliveryBoys.some((db) => {
+        if (String(db?._id || "") === editingId) return false;
+        return String(db?.username || "").trim().toLowerCase() === normalizedUsername;
+      });
+      if (duplicateUsername) {
+        newErrors.username = "This username is already registered";
+      }
     }
 
-    if (!form.password) {
+    if (!isEditing && !form.password) {
       newErrors.password = "Password is required";
-    } else if (form.password.length < 6) {
+    } else if (form.password && form.password.length < 6) {
       newErrors.password = "Password must be at least 6 characters";
     }
 
@@ -113,58 +167,117 @@ export default function DeliveryBoyManagement() {
 
     setSubmitting(true);
     try {
-      await restaurantAPI.createDeliveryBoy(form);
-      setForm(EMPTY_FORM);
-      setErrors({});
-      toast.success("Delivery boy created successfully");
+      const payload = {
+        name: form.name.trim(),
+        phone: form.phone.replace(/\D/g, ""),
+        username: form.username.trim().toLowerCase(),
+      };
+
+      if (form.password) {
+        payload.password = form.password;
+      }
+
+      if (isEditing) {
+        await restaurantAPI.updateDeliveryBoy(editingId, payload);
+        toast.success("Delivery boy updated successfully");
+      } else {
+        await restaurantAPI.createDeliveryBoy({ ...payload, password: form.password });
+        toast.success("Delivery boy created successfully");
+      }
+
+      resetForm();
       await loadDeliveryBoys();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to create delivery boy");
+      toast.error(error?.response?.data?.message || "Failed to save delivery boy");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleToggle = async (deliveryBoy) => {
-    if (!canManageDeliveryBoys) return;
-    await restaurantAPI.updateDeliveryBoy(deliveryBoy._id, {
-      isActive: deliveryBoy.isActive !== true,
+  const handleEdit = (deliveryBoy) => {
+    setEditingId(String(deliveryBoy?._id || ""));
+    setForm({
+      name: String(deliveryBoy?.name || ""),
+      phone: String(deliveryBoy?.phone || "").replace(/\D/g, "").slice(0, 10),
+      username: String(deliveryBoy?.username || ""),
+      password: "",
     });
-    await loadDeliveryBoys();
+    setErrors({});
+    setShowPassword(false);
+  };
+
+  const handleDelete = async (deliveryBoy) => {
+    if (!canManageDeliveryBoys) return;
+
+    const confirmed = window.confirm(
+      `Delete ${deliveryBoy?.name || "this delivery boy"}? They will be removed from the database and won't be able to log in again.`,
+    );
+    if (!confirmed) return;
+
+    const targetId = String(deliveryBoy?._id || "");
+    if (!targetId) return;
+
+    setDeletingId(targetId);
+    try {
+      await restaurantAPI.deleteDeliveryBoy(targetId);
+      if (editingId === targetId) {
+        resetForm();
+      }
+      toast.success("Delivery boy deleted successfully");
+      await loadDeliveryBoys();
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to delete delivery boy");
+    } finally {
+      setDeletingId("");
+    }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 px-4 py-4">
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="mx-auto max-w-4xl space-y-4">
         <div className="flex items-center gap-3">
-          <button onClick={goBack} className="p-2 rounded-xl bg-white border border-gray-200">
-            <ArrowLeft className="w-5 h-5 text-gray-900" />
+          <button onClick={goBack} className="rounded-xl border border-gray-200 bg-white p-2">
+            <ArrowLeft className="h-5 w-5 text-gray-900" />
           </button>
           <div>
             <h1 className="text-xl font-bold text-gray-900">Delivery Boy Management</h1>
-            <p className="text-sm text-gray-500">Create and manage your self-delivery team</p>
+            <p className="text-sm text-gray-500">Create, edit and manage your self-delivery team</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="rounded-3xl bg-white border border-gray-200 p-5 space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-gray-200 bg-white p-5">
           {!canManageDeliveryBoys ? (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-              <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <p className="text-sm text-amber-800">
                 Delivery boys can be managed only after self-delivery is approved by admin.
               </p>
             </div>
           ) : null}
-          <div className="flex items-center gap-2">
-            <Plus className="w-4 h-4 text-gray-600" />
-            <h2 className="font-semibold text-gray-900">Add Delivery Boy</h2>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              {isEditing ? <Pencil className="h-4 w-4 text-gray-600" /> : <Plus className="h-4 w-4 text-gray-600" />}
+              <h2 className="font-semibold text-gray-900">{titleText}</h2>
+            </div>
+            {isEditing ? (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="inline-flex items-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-600"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </button>
+            ) : null}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {[
               ["name", "Name", 40],
               ["phone", "Phone", 10],
               ["username", "Username", 20],
-              ["password", "Password", 32],
+              ["password", isEditing ? "Password (optional)" : "Password", 32],
             ].map(([key, label, max]) => (
               <label key={key} className="block">
                 <span className="text-sm font-medium text-gray-700">{label}</span>
@@ -178,83 +291,108 @@ export default function DeliveryBoyManagement() {
                       if (key === "phone") val = val.replace(/\D/g, "").slice(0, 10);
                       if (key === "name") val = val.replace(/[^a-zA-Z\s]/g, "");
                       if (key === "username") val = val.replace(/[^a-zA-Z0-9_]/g, "");
-                      
+
                       setForm((prev) => ({ ...prev, [key]: val }));
                       if (errors[key]) setErrors((prev) => ({ ...prev, [key]: null }));
                     }}
                     disabled={!canManageDeliveryBoys}
-                    placeholder={`Enter ${label.toLowerCase()}`}
+                    placeholder={`Enter ${String(label).toLowerCase()}`}
                     className={`w-full rounded-xl border px-3 py-2.5 outline-none transition-all ${
                       key === "password" ? "pr-10" : ""
                     } ${
-                      errors[key] 
-                        ? "border-red-500 bg-red-50 focus:border-red-600 focus:ring-2 focus:ring-red-100" 
+                      errors[key]
+                        ? "border-red-500 bg-red-50 focus:border-red-600 focus:ring-2 focus:ring-red-100"
                         : "border-gray-300 focus:border-gray-900 focus:ring-2 focus:ring-gray-100"
                     } disabled:bg-gray-50 disabled:text-gray-500`}
                   />
-                  {key === "password" && (
+                  {key === "password" ? (
                     <button
                       type="button"
-                      onClick={() => setShowPassword(!showPassword)}
+                      onClick={() => setShowPassword((prev) => !prev)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
                     >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
-                  )}
+                  ) : null}
                 </div>
-                {errors[key] && (
-                  <p className="mt-1 text-[10px] font-medium text-red-500 ml-1 italic flex items-center gap-1">
-                    <AlertCircle className="w-2.5 h-2.5" />
+                {errors[key] ? (
+                  <p className="ml-1 mt-1 flex items-center gap-1 text-[10px] font-medium italic text-red-500">
+                    <AlertCircle className="h-2.5 w-2.5" />
                     {errors[key]}
                   </p>
-                )}
+                ) : null}
               </label>
             ))}
           </div>
+
           <button
             type="submit"
             disabled={submitting || !canManageDeliveryBoys}
-            className="rounded-xl bg-gray-900 text-white px-4 py-3 font-semibold disabled:opacity-60"
+            className="rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white disabled:opacity-60"
           >
-            {submitting ? "Creating..." : "Create Delivery Boy"}
+            {submitting ? (isEditing ? "Saving..." : "Creating...") : submitText}
           </button>
         </form>
 
-        <div className="rounded-3xl bg-white border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-900 mb-4">Delivery Boys</h2>
+        <div className="rounded-3xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-4 font-semibold text-gray-900">Delivery Boys</h2>
           {loading ? <p className="text-sm text-gray-500">Loading...</p> : null}
           {!loading && deliveryBoys.length === 0 ? (
             <p className="text-sm text-gray-500">No delivery boys added yet.</p>
           ) : null}
+
           <div className="space-y-3">
-            {deliveryBoys.map((deliveryBoy) => (
-              <div
-                key={deliveryBoy._id}
-                className="rounded-2xl border border-gray-200 px-4 py-3 flex items-center justify-between gap-4"
-              >
-                <div>
-                  <p className="font-semibold text-gray-900">{deliveryBoy.name}</p>
-                  <p className="text-sm text-gray-500">
-                    {deliveryBoy.phone} · @{deliveryBoy.username}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Current Order: {deliveryBoy.currentOrderId?.orderId || "None"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleToggle(deliveryBoy)}
-                  disabled={!canManageDeliveryBoys}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold ${
-                    deliveryBoy.isActive
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-slate-100 text-slate-700"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+            {deliveryBoys.map((deliveryBoy) => {
+              const isOnline = String(deliveryBoy?.availabilityStatus || "").toLowerCase() === "online";
+              const isDeleting = deletingId === String(deliveryBoy?._id || "");
+
+              return (
+                <div
+                  key={deliveryBoy._id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 px-4 py-3"
                 >
-                  {deliveryBoy.isActive ? "Active" : "Inactive"}
-                </button>
-              </div>
-            ))}
+                  <div className="min-w-0">
+                    <p className="font-semibold text-gray-900">{deliveryBoy.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {deliveryBoy.phone} - @{deliveryBoy.username}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400">
+                      Current Order: {deliveryBoy.currentOrderId?.orderId || "None"}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold ${
+                        isOnline ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-700"
+                      }`}
+                    >
+                      {getAvailabilityLabel(deliveryBoy)}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(deliveryBoy)}
+                        disabled={!canManageDeliveryBoys || isDeleting}
+                        className="inline-flex items-center gap-1 rounded-xl border border-gray-200 px-3 py-2 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(deliveryBoy)}
+                        disabled={!canManageDeliveryBoys || isDeleting}
+                        className="inline-flex items-center gap-1 rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {isDeleting ? "Deleting..." : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
