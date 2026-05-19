@@ -481,9 +481,15 @@ export default function Profile() {
         <Card className="bg-white dark:bg-[#1a1a1a] rounded-2xl py-0 pt-1 shadow-sm mb-0 border-0 dark:border-gray-800 overflow-hidden">
           <CardContent className="p-4 py-0 pt-2">
             <div className="flex items-center gap-4 mb-4">
-              <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-3.5 flex-shrink-0">
-                <User className="h-7 w-7 text-gray-600 dark:text-gray-400" />
-              </div>
+              {userProfile?.profileImage ? (
+                <div className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0 border border-gray-200 dark:border-gray-800">
+                  <img src={userProfile.profileImage} alt={displayName} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-3.5 flex-shrink-0">
+                  <User className="h-7 w-7 text-gray-600 dark:text-gray-400" />
+                </div>
+              )}
               <div className="flex-1 pt-1">
                 <h2 className="text-xl font-bold text-black dark:text-white mb-1">
                   {displayName}
@@ -1154,7 +1160,7 @@ export default function Profile() {
                 <div className="w-10 h-10 bg-gray-800 shadow-sm border border-gray-700 rounded-full flex items-center justify-center">
                   <Moon className="h-6 w-6 text-blue-400" />
                 </div>
-                <span className="font-semibold text-gray-900 dark:text-white">Dark Mode</span>
+                <span className={`font-semibold ${tempAppearance === "dark" ? "text-white" : "text-gray-900 dark:text-white"}`}>Dark Mode</span>
               </button>
             </div>
             <Button

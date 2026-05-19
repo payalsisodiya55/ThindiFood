@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowLeft, Search, MoreVertical, ChevronRight, Star, RotateCcw, AlertCircle, Loader2, Clock, X, Share2, MessageCircle, Send, Copy, Mail, MessagesSquare, Link2 } from "lucide-react"
 import { RED } from "@food/constants/color"
@@ -11,6 +11,22 @@ import { formatOrderItemQuantityLabel } from "@food/utils/orderItemDisplay"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+
+const createOrdersFingerprint = (orders) => {
+  if (!Array.isArray(orders) || orders.length === 0) return ""
+  return orders
+    .map((order) =>
+      [
+        order?.id || order?.mongoId || order?.orderId || "",
+        order?.status || "",
+        order?.originalStatus || "",
+        order?.restaurantRating || "",
+        order?.deliveredAt || "",
+        order?.updatedAt || "",
+      ].join(":"),
+    )
+    .join("|")
+}
 
 const isUnpaidRazorpayOrder = (order) => {
   const method = String(order?.payment?.method || order?.paymentMethod || "").toLowerCase()
@@ -52,6 +68,25 @@ const isDeliveredDeliveryOrder = (order) => {
   )
 }
 
+const isCompletedOrder = (order) => {
+  const normalizedStatus = normalizeOrderStatus(
+    order?.status || order?.orderStatus || order?.originalStatus,
+  )
+
+  if (isDeliveredDeliveryOrder(order)) return true
+
+  return (
+    [
+      "delivered",
+      "completed",
+      "delivered_self",
+      "picked_up",
+      "picked_up_by_boy",
+    ].includes(normalizedStatus) ||
+    Boolean(order?.deliveredAt || order?.completedAt || order?.deliveryState?.deliveredAt)
+  )
+}
+
 
 export default function Orders() {
   const navigate = useNavigate()
@@ -67,6 +102,7 @@ export default function Orders() {
   const [restaurantFeedbackText, setRestaurantFeedbackText] = useState("")
   const [submittingRating, setSubmittingRating] = useState(false)
   const [countdowns, setCountdowns] = useState({})
+  const ordersFingerprintRef = useRef("")
   
   // Close menu when clicking outside
   useEffect(() => {
@@ -164,16 +200,11 @@ export default function Orders() {
       const transformedStatus = order.status || ''
 
       // Check if order is delivered - check both original and transformed status
-      const isDelivered =
-        originalStatus === 'delivered' ||
-        originalStatus === 'completed' ||
-        originalStatus.toLowerCase() === 'delivered' ||
-        originalStatus.toLowerCase() === 'completed' ||
-        transformedStatus === 'delivered' ||
-        transformedStatus === 'completed' ||
-        transformedStatus.toLowerCase() === 'delivered' ||
-        transformedStatus.toLowerCase() === 'completed' ||
-        isDeliveredDeliveryOrder(order)
+      const isDelivered = isCompletedOrder({
+        ...order,
+        status: transformedStatus || originalStatus,
+        originalStatus,
+      })
 
       const hasRestaurantRating = Number.isFinite(Number(order.restaurantRating))
       const hasRating = hasRestaurantRating
@@ -288,9 +319,11 @@ export default function Orders() {
       return [...firstPageOrders, ...remainingOrders]
     }
 
-    const fetchOrders = async () => {
+    const fetchOrders = async ({ showLoader = false } = {}) => {
       try {
-        setLoading(true)
+        if (showLoader) {
+          setLoading(true)
+        }
         const ordersData = await fetchAllOrders()
 
         if (ordersData.length > 0) {
@@ -403,14 +436,23 @@ export default function Orders() {
             }
           })
 
+          const dedupedOrders = []
+          const seenOrderIds = new Set()
+          for (const order of transformedOrders) {
+            const orderKey = String(order.id || order.mongoId || order.orderId || "").trim()
+            if (orderKey && seenOrderIds.has(orderKey)) continue
+            if (orderKey) seenOrderIds.add(orderKey)
+            dedupedOrders.push(order)
+          }
+
           // Sort by date (newest first)
-          transformedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+          dedupedOrders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 
           debugLog('? Orders fetched and transformed:', {
-            total: transformedOrders.length,
-            delivered: transformedOrders.filter(o => o.status === 'delivered' || o.originalStatus === 'delivered').length,
-            withRating: transformedOrders.filter(o => o.restaurantRating).length,
-            sample: transformedOrders.slice(0, 2).map(o => ({
+            total: dedupedOrders.length,
+            delivered: dedupedOrders.filter(o => o.status === 'delivered' || o.originalStatus === 'delivered').length,
+            withRating: dedupedOrders.filter(o => o.restaurantRating).length,
+            sample: dedupedOrders.slice(0, 2).map(o => ({
               id: o.id,
               status: o.status,
               originalStatus: o.originalStatus,
@@ -419,10 +461,17 @@ export default function Orders() {
             }))
           })
 
-          setOrders(transformedOrders)
+          const nextFingerprint = createOrdersFingerprint(dedupedOrders)
+          if (nextFingerprint !== ordersFingerprintRef.current) {
+            ordersFingerprintRef.current = nextFingerprint
+            setOrders(dedupedOrders)
+          }
         } else {
           debugLog('?? No orders data in response')
-          setOrders([])
+          if (ordersFingerprintRef.current !== "") {
+            ordersFingerprintRef.current = ""
+            setOrders([])
+          }
         }
       } catch (error) {
         debugError('Error fetching user orders:', error)
@@ -432,14 +481,21 @@ export default function Orders() {
         } else if (error?.response?.data?.message) {
           errorMessage = error.response.data.message
         }
-        toast.error(errorMessage)
-        setOrders([])
+        if (showLoader) {
+          toast.error(errorMessage)
+        }
+        if (ordersFingerprintRef.current !== "") {
+          ordersFingerprintRef.current = ""
+          setOrders([])
+        }
       } finally {
-        setLoading(false)
+        if (showLoader) {
+          setLoading(false)
+        }
       }
     }
 
-    fetchOrders()
+    fetchOrders({ showLoader: true })
 
     // Poll for order updates every 20 seconds to detect delivered orders
     // This ensures rating popup shows quickly when order is delivered
@@ -475,6 +531,15 @@ export default function Orders() {
 
     return restaurantMatch || itemsMatch
   })
+
+  const visibleOrders = []
+  const seenVisibleOrderIds = new Set()
+  for (const order of filteredOrders) {
+    const orderKey = String(order.id || order.mongoId || order.orderId || "").trim()
+    if (orderKey && seenVisibleOrderIds.has(orderKey)) continue
+    if (orderKey) seenVisibleOrderIds.add(orderKey)
+    visibleOrders.push(order)
+  }
 
   const ratingSubmitDisabled = submittingRating ||
     selectedRestaurantRating === null
@@ -766,12 +831,12 @@ Order again from this restaurant in the ${companyName} app.`
 
       {/* Orders List */}
       <div className="px-4 py-2 space-y-4">
-        {filteredOrders.length === 0 ? (
+        {visibleOrders.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center">
             <p className="text-gray-600">No orders found matching your search</p>
           </div>
         ) : (
-          filteredOrders.map((order) => {
+          visibleOrders.map((order, index) => {
             const normalizedPaymentMethod = String(
               order.payment?.method ||
               order.paymentMethod ||
@@ -793,7 +858,7 @@ Order again from this restaurant in the ${companyName} app.`
               !isCancelled &&
               (order.payment?.status === 'failed')
 
-            const isDelivered = order.status === 'delivered' || isDeliveredDeliveryOrder(order)
+            const isDelivered = isCompletedOrder(order)
             const isRestaurantCancelled = order.isRestaurantCancelled || order.status === 'restaurant_cancelled'
             const isUserCancelled = order.isUserCancelled || (isCancelled && order.cancelledBy === 'user')
             const showRefundForCancellation = isRestaurantCancelled && !isCodOrder
@@ -830,7 +895,7 @@ Order again from this restaurant in the ${companyName} app.`
             const location = order.restaurantLocation || `${order.address?.city || ''}, ${order.address?.state || ''}`.trim() || 'Location not available'
 
             return (
-              <div key={order.id} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+              <div key={`${order.id || order.mongoId || order.orderId || "order"}-${index}`} className="relative bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                 {/* Card Header: Restaurant Info */}
                 <div className="flex items-start justify-between p-4 pb-2">
                   <div className="flex gap-3">
@@ -914,7 +979,10 @@ Order again from this restaurant in the ${companyName} app.`
                       const itemImage = item.image || null
 
                       return (
-                        <div key={item._id || item.id || item.itemId || idx} className="flex items-start gap-3">
+                        <div
+                          key={`${item._id || item.id || item.itemId || item.variantId || item.name || "item"}-${idx}`}
+                          className="flex items-start gap-3"
+                        >
                           {/* Item Image */}
                           {itemImage && (
                             <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
@@ -1076,7 +1144,7 @@ Order again from this restaurant in the ${companyName} app.`
                       </div>
                       <span className="text-xs font-semibold text-red-500">Payment failed</span>
                     </div>
-                  ) : isDelivered && order.restaurantRating ? (
+                  ) : isDelivered && Number(order.restaurantRating) > 0 ? (
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm text-gray-800">You rated</span>

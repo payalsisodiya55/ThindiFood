@@ -518,43 +518,69 @@ export default function EditProfile() {
               )}
             </div>
 
+            <style>{`
+              .dark .MuiInputBase-input { color: white !important; -webkit-text-fill-color: white !important; }
+              .dark .MuiInputBase-input::placeholder { color: #9ca3af !important; -webkit-text-fill-color: #9ca3af !important; opacity: 1 !important; }
+              .dark .MuiSvgIcon-root { color: white !important; }
+              .dark input:-webkit-autofill,
+              .dark input:-webkit-autofill:hover, 
+              .dark input:-webkit-autofill:focus, 
+              .dark input:-webkit-autofill:active {
+                  -webkit-box-shadow: 0 0 0 30px #1a1a1a inset !important;
+                  -webkit-text-fill-color: white !important;
+              }
+            `}</style>
             {/* Date of Birth Field */}
             <div className="space-y-1.5">
               <Label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700 dark:text-white">
                 Date of birth
               </Label>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  value={formData.dateOfBirth}
-                  onChange={(newValue) => handleChange('dateOfBirth', newValue)}
-                  maxDate={dayjs()}
-                  slotProps={{
-                    textField: {
-                      className: "w-full",
-                      sx: {
-                        '& .MuiOutlinedInput-root': {
-                          height: '48px',
-                          borderRadius: '8px',
-                          '& fieldset': {
-                            borderColor: '#d1d5db',
+              <div className="[&_fieldset]:dark:!border-gray-700 [&_.MuiOutlinedInput-root:hover_fieldset]:dark:!border-gray-500">
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    value={formData.dateOfBirth}
+                    onChange={(newValue) => handleChange('dateOfBirth', newValue)}
+                    maxDate={dayjs()}
+                    slotProps={{
+                      textField: {
+                        className: "w-full",
+                        sx: {
+                          '.dark & .MuiInputBase-input': {
+                            color: 'white !important',
+                            WebkitTextFillColor: 'white !important',
                           },
-                          '&:hover fieldset': {
-                            borderColor: '#9ca3af',
+                          '.dark & .MuiInputBase-input::placeholder': {
+                            color: 'white !important',
+                            WebkitTextFillColor: 'white !important',
+                            opacity: '1 !important',
                           },
-                          '&.Mui-focused fieldset': {
-                            borderColor: RED,
-                            borderWidth: '1px',
+                          '.dark & .MuiSvgIcon-root': {
+                            color: 'white !important',
                           },
-                        },
-                        '& .MuiInputBase-input': {
-                          padding: '12px 14px',
-                          fontSize: '16px',
+                          '& .MuiOutlinedInput-root': {
+                            height: '48px',
+                            borderRadius: '8px',
+                            '& fieldset': {
+                              borderColor: '#d1d5db',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#9ca3af',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: RED,
+                              borderWidth: '1px',
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            padding: '12px 14px',
+                            fontSize: '16px',
+                          },
                         },
                       },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
+                    }}
+                  />
+                </LocalizationProvider>
+              </div>
               {fieldErrors.dateOfBirth && (
                 <p className="text-xs text-red-600">{fieldErrors.dateOfBirth}</p>
               )}
@@ -565,37 +591,51 @@ export default function EditProfile() {
               <Label htmlFor="anniversary" className="text-sm font-medium text-gray-700 dark:text-white">
                 Anniversary <span className="text-gray-400 dark:text-gray-500 font-normal">(Optional)</span>
               </Label>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  value={formData.anniversary}
-                  onChange={(newValue) => handleChange('anniversary', newValue)}
-                  slotProps={{
-                    textField: {
-                      className: "w-full",
-                      sx: {
-                        '& .MuiOutlinedInput-root': {
-                          height: '48px',
-                          borderRadius: '8px',
-                          '& fieldset': {
-                            borderColor: '#d1d5db',
+              <div className="[&_fieldset]:dark:!border-gray-700 [&_.MuiOutlinedInput-root:hover_fieldset]:dark:!border-gray-500">
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <DatePicker
+                    value={formData.anniversary}
+                    onChange={(newValue) => handleChange('anniversary', newValue)}
+                    slotProps={{
+                      textField: {
+                        className: "w-full",
+                        sx: {
+                          '.dark & .MuiInputBase-input': {
+                            color: 'white !important',
+                            WebkitTextFillColor: 'white !important',
                           },
-                          '&:hover fieldset': {
-                            borderColor: '#9ca3af',
+                          '.dark & .MuiInputBase-input::placeholder': {
+                            color: 'white !important',
+                            WebkitTextFillColor: 'white !important',
+                            opacity: '1 !important',
                           },
-                          '&.Mui-focused fieldset': {
-                            borderColor: RED,
-                            borderWidth: '1px',
+                          '.dark & .MuiSvgIcon-root': {
+                            color: 'white !important',
                           },
-                        },
-                        '& .MuiInputBase-input': {
-                          padding: '12px 14px',
-                          fontSize: '16px',
+                          '& .MuiOutlinedInput-root': {
+                            height: '48px',
+                            borderRadius: '8px',
+                            '& fieldset': {
+                              borderColor: '#d1d5db',
+                            },
+                            '&:hover fieldset': {
+                              borderColor: '#9ca3af',
+                            },
+                            '&.Mui-focused fieldset': {
+                              borderColor: RED,
+                              borderWidth: '1px',
+                            },
+                          },
+                          '& .MuiInputBase-input': {
+                            padding: '12px 14px',
+                            fontSize: '16px',
+                          },
                         },
                       },
-                    },
-                  }}
-                />
-              </LocalizationProvider>
+                    }}
+                  />
+                </LocalizationProvider>
+              </div>
             </div>
 
             {/* Gender Field */}

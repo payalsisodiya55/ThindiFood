@@ -469,7 +469,7 @@ export default function Customers() {
                                 }}
                               />
                             ) : (
-                              <span className="text-xs font-semibold">{getInitials(customer.name)}</span>
+                              <User className="w-5 h-5 text-slate-500" />
                             )}
                           </div>
                           <span 
