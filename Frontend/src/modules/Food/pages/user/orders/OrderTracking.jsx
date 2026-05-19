@@ -5,8 +5,14 @@ import { toast } from "sonner"
 import {
   ArrowLeft,
   Share2,
+  Copy,
   RefreshCw,
+  Link2,
+  Mail,
+  MessageCircle,
+  MessagesSquare,
   Phone,
+  Send,
   User,
   ChevronRight,
   MapPin,
@@ -736,6 +742,8 @@ export default function OrderTracking() {
   const [showRefundPreference, setShowRefundPreference] = useState(false)
   const [refundPreferenceFlow, setRefundPreferenceFlow] = useState("")
   const [isSavingRefundPreference, setIsSavingRefundPreference] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [sharePayload, setSharePayload] = useState(null)
   const [resolvedLookupId, setResolvedLookupId] = useState("")
   const [shouldRenderMap, setShouldRenderMap] = useState(false)
   const handleEtaUpdate = useCallback((newEta) => setEstimatedTime(newEta), [])
@@ -1706,25 +1714,101 @@ export default function OrderTracking() {
     }
   }
 
-  const handleShare = async () => {
+  const tryNativeShare = async (payload) => {
+    if (typeof navigator === "undefined" || !navigator.share) return false
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: `Track my order from ${order?.restaurant || companyName}`,
-          text: `Hey! Track my order from ${order?.restaurant || companyName} with ID #${order?.orderId || order?.id}.`,
-          url: window.location.href,
-        });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success("Tracking link copied to clipboard!");
-      }
+      await navigator.share(payload)
+      return true
     } catch (error) {
-      if (error.name !== 'AbortError') {
-        debugError('Error sharing:', error);
-        toast.error("Failed to share link");
-      }
+      if (error?.name === "AbortError") return true
+      return false
     }
-  };
+  }
+
+  const copyToClipboard = async (text) => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const textArea = document.createElement("textarea")
+        textArea.value = text
+        textArea.style.position = "fixed"
+        textArea.style.opacity = "0"
+        document.body.appendChild(textArea)
+        textArea.select()
+        document.execCommand("copy")
+        document.body.removeChild(textArea)
+      }
+      toast.success("Link copied to clipboard!")
+    } catch (error) {
+      debugError("Error copying share link:", error)
+      toast.error("Failed to copy link")
+    }
+  }
+
+  const openShareTarget = (target) => {
+    if (!sharePayload?.url) return
+
+    const text = sharePayload.text || ""
+    const url = sharePayload.url
+    const encodedText = encodeURIComponent(text)
+    const encodedUrl = encodeURIComponent(url)
+    let shareLink = ""
+
+    if (target === "whatsapp") {
+      shareLink = `https://wa.me/?text=${encodeURIComponent(`${text} ${url}`)}`
+    } else if (target === "telegram") {
+      shareLink = `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`
+    } else if (target === "email") {
+      shareLink = `mailto:?subject=${encodeURIComponent(sharePayload.title || "Track my order")}&body=${encodeURIComponent(`${text}\n\n${url}`)}`
+    } else if (target === "sms") {
+      shareLink = `sms:?body=${encodeURIComponent(`${text} ${url}`)}`
+    } else if (target === "facebook") {
+      shareLink = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`
+    } else if (target === "x") {
+      shareLink = `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${text} ${url}`)}`
+    } else if (target === "linkedin") {
+      shareLink = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
+    }
+
+    if (shareLink) {
+      window.open(shareLink, "_blank", "noopener,noreferrer")
+      setShowShareModal(false)
+    }
+  }
+
+  const copyShareLink = async () => {
+    if (!sharePayload?.url) return
+    await copyToClipboard(sharePayload.url)
+    setShowShareModal(false)
+  }
+
+  const handleSystemShareFromModal = async () => {
+    if (!sharePayload) return
+    const shared = await tryNativeShare(sharePayload)
+    if (shared) {
+      setShowShareModal(false)
+      toast.success("Shared successfully")
+    }
+  }
+
+  const handleShare = async () => {
+    const payload = {
+      title: `Track my order from ${order?.restaurant || companyName}`,
+      text: `Hey! Track my order from ${order?.restaurant || companyName} with ID #${order?.orderId || order?.id}.`,
+      url: window.location.href,
+    }
+
+    setSharePayload(payload)
+
+    const shared = await tryNativeShare(payload)
+    if (shared) {
+      toast.success("Shared successfully")
+      return
+    }
+
+    setShowShareModal(true)
+  }
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
@@ -2342,6 +2426,108 @@ export default function OrderTracking() {
         }}
         onSelect={handleRefundPreferenceSelect}
       />
+
+      {showShareModal && sharePayload && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 pt-10 sm:items-center">
+          <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Share tracking</h3>
+                <p className="mt-0.5 text-xs text-gray-500">Mobile me native share na ho to yahan se app choose kar sakte ho</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowShareModal(false)}
+                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                aria-label="Close share modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 px-5 py-5">
+              {typeof navigator !== "undefined" && navigator.share && (
+                <button
+                  type="button"
+                  onClick={handleSystemShareFromModal}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold text-white transition-colors opacity-90 hover:opacity-100"
+                  style={{ backgroundColor: RED }}
+                >
+                  <Share2 className="h-4 w-4" />
+                  Share via apps
+                </button>
+              )}
+
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("whatsapp")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <MessageCircle className="h-5 w-5 text-green-600" />
+                  WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("telegram")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Send className="h-5 w-5 text-sky-500" />
+                  Telegram
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("email")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Mail className="h-5 w-5 text-rose-500" />
+                  Email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("sms")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <MessagesSquare className="h-5 w-5 text-violet-500" />
+                  SMS
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("facebook")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Share2 className="h-5 w-5 text-blue-600" />
+                  Facebook
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("x")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Link2 className="h-5 w-5 text-gray-900" />
+                  X
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openShareTarget("linkedin")}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Share2 className="h-5 w-5 text-blue-700" />
+                  LinkedIn
+                </button>
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Copy className="h-5 w-5 text-gray-600" />
+                  Copy link
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
