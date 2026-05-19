@@ -199,10 +199,10 @@ const DeliveryMap = memo(({ orderId, order, isVisible, fallbackCustomerCoords = 
 const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow = true, rightContent }) => (
   <motion.button
     onClick={onClick}
-    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 transition-colors text-left border-b border-dashed border-gray-200 last:border-0"
+    className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors text-left border-b border-dashed border-gray-200 dark:border-gray-800 last:border-0"
     whileTap={{ scale: 0.99 }}
   >
-    <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
       {iconNode ? (
         <div
           className="w-6 h-6 flex-shrink-0 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
