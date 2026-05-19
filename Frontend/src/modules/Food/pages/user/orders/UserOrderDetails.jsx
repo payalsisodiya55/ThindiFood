@@ -280,7 +280,10 @@ export default function UserOrderDetails() {
   const userPhone = order.user?.phone || order.userPhone || ""
   const paymentMethod = order.payment?.method || "Online"
   const isTakeawayOrder = String(order.fulfillmentType || "").toLowerCase() === "takeaway"
+  const normalizedOrderStatus = String(order.status || "").trim().toLowerCase()
   const orderStatusLabel = formatOrderStatusLabel(order.status, isTakeawayOrder)
+  const canShowRestaurantComplaint =
+    normalizedOrderStatus === "delivered" || normalizedOrderStatus === "completed"
   const paymentDate = order.createdAt
     ? new Date(order.createdAt).toLocaleString("en-IN", {
       month: "long",
@@ -921,8 +924,8 @@ export default function UserOrderDetails() {
         </button>
       </div>
 
-      {/* Restaurant Complaint Button - Below Order Details */}
-      {order && (
+      {/* Restaurant Complaint Button - show only after successful delivery/completion */}
+      {order && canShowRestaurantComplaint && (
         <div className="p-4 pb-24">
           <button
             type="button"

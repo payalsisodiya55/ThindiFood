@@ -163,13 +163,6 @@ export default function SubmitComplaint() {
           <ArrowLeft className="w-6 h-6 text-gray-700" />
         </button>
         <h1 className="text-lg font-semibold text-gray-800 ml-3">Submit Complaint</h1>
-        <button
-          type="button"
-          onClick={() => navigate("/user/profile/support")}
-          className="ml-auto text-sm font-semibold text-[#EB590E]"
-        >
-          View History
-        </button>
       </div>
 
       {/* Order Info */}
