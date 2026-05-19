@@ -637,7 +637,7 @@ const DeliveryTrackingMap = ({
           <motion.div 
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="absolute top-4 left-4 z-[150] pointer-events-none"
+            className="absolute top-4 left-4 z-30 pointer-events-none"
           >
             <div className="bg-orange-500/95 backdrop-blur-xl rounded-2xl p-3 shadow-[0_10px_30px_rgba(249,115,22,0.4)] border border-orange-400/50 flex flex-col min-w-[90px] group overflow-hidden relative">
               <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent pointer-events-none" />
@@ -661,7 +661,7 @@ const DeliveryTrackingMap = ({
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[150] pointer-events-none w-full max-w-[280px]"
+            className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 pointer-events-none w-full max-w-[280px]"
           >
             <div className="bg-white/95 backdrop-blur-md rounded-2xl px-5 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-white/50 flex flex-col items-center text-center">
               <div className="flex items-center gap-3 mb-2">

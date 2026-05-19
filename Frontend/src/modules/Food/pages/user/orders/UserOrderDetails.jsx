@@ -39,6 +39,43 @@ const firstNonEmptyText = (...values) => {
   return ""
 }
 
+const getCleanPhone = (...values) => {
+  for (const value of values) {
+    const cleaned = String(value || "").replace(/[^\d+]/g, "")
+    if (cleaned.length >= 5) return cleaned
+  }
+  return ""
+}
+
+const extractRestaurantId = (orderData) => {
+  const candidates = [
+    orderData?.restaurantId,
+    orderData?.restaurant,
+  ]
+
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim()
+    if (candidate && typeof candidate === "object") {
+      const id = candidate._id || candidate.id
+      if (typeof id === "string" && id.trim()) return id.trim()
+    }
+  }
+
+  return ""
+}
+
+const hasUsableRestaurantPhone = (value) =>
+  Boolean(
+    getCleanPhone(
+      value?.primaryContactNumber,
+      value?.phone,
+      value?.contactNumber,
+      value?.ownerPhone,
+      value?.contact?.phone,
+      value?.location?.phone,
+    ),
+  )
+
 const formatOrderStatusLabel = (status, isTakeawayOrder = false) => {
   const normalized = String(status || "").trim().toLowerCase()
   if (!normalized) return "Processing"
@@ -98,13 +135,18 @@ export default function UserOrderDetails() {
 
         setOrder(orderData)
 
-        // If restaurantId is just a string (not populated), fetch restaurant details separately
-        const restaurantId = orderData.restaurantId
-        if (restaurantId && typeof restaurantId === 'string' && !orderData.restaurant) {
+        const inlineRestaurant = orderData.restaurantId || orderData.restaurant || null
+        const restaurantId = extractRestaurantId(orderData)
+        const needsRestaurantFetch =
+          Boolean(restaurantId) && !hasUsableRestaurantPhone(inlineRestaurant)
+
+        if (needsRestaurantFetch) {
           try {
             const restaurantResponse = await restaurantAPI.getRestaurantById(restaurantId)
             if (restaurantResponse?.data?.success && restaurantResponse.data.data?.restaurant) {
               setRestaurant(restaurantResponse.data.data.restaurant)
+            } else if (restaurantResponse?.data?.data && typeof restaurantResponse.data.data === "object") {
+              setRestaurant(restaurantResponse.data.data)
             } else if (restaurantResponse?.data?.restaurant) {
               setRestaurant(restaurantResponse.data.restaurant)
             }
@@ -112,6 +154,8 @@ export default function UserOrderDetails() {
             debugWarn("Failed to fetch restaurant details:", restaurantError)
             // Don't show error toast, just log it - order details can still be shown
           }
+        } else {
+          setRestaurant(null)
         }
       } catch (error) {
         debugError("Error fetching order details:", error)
@@ -259,19 +303,43 @@ export default function UserOrderDetails() {
     (pricing.subtotal || 0)
 
   // Restaurant phone (multiple fallbacks) - use fetched restaurant data first
-  const restaurantPhone =
-    restaurantObj.primaryContactNumber ||
-    restaurantObj.phone ||
-    restaurantObj.contactNumber ||
-    order.restaurantPhone ||
-    ""
+  const restaurantPhone = getCleanPhone(
+    restaurantObj.primaryContactNumber,
+    restaurantObj.phone,
+    restaurantObj.contactNumber,
+    restaurantObj.ownerPhone,
+    restaurantObj.contact?.phone,
+    restaurantObj.location?.phone,
+    order.restaurantPhone,
+    order.restaurantId?.primaryContactNumber,
+    order.restaurantId?.phone,
+    order.restaurantId?.contactNumber,
+    order.restaurantId?.ownerPhone,
+    order.restaurantId?.contact?.phone,
+    order.restaurantId?.location?.phone,
+    order.restaurant?.primaryContactNumber,
+    order.restaurant?.phone,
+    order.restaurant?.contactNumber,
+    order.restaurant?.ownerPhone,
+    order.restaurant?.contact?.phone,
+    order.restaurant?.location?.phone,
+  )
 
   const handleCallRestaurant = () => {
     if (!restaurantPhone) {
       toast.error("Restaurant phone number not available")
       return
     }
-    window.location.href = `tel:${restaurantPhone}`
+    try {
+      const link = document.createElement("a")
+      link.href = `tel:${restaurantPhone}`
+      link.setAttribute("target", "_self")
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    } catch {
+      window.location.assign(`tel:${restaurantPhone}`)
+    }
   }
 
   const handleDownloadSummary = async () => {
@@ -707,12 +775,7 @@ export default function UserOrderDetails() {
                 ₹{Number(pricing.platformFee || 0).toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Subscription / other fees</span>
-              <span className="text-gray-800">
-                ₹{Number(pricing.subscriptionFee || 0).toFixed(2)}
-              </span>
-            </div>
+
 
             <div className="border-t border-gray-100 my-2 pt-2 flex justify-between items-center">
               <span className="font-bold text-gray-800">Paid</span>

@@ -1209,18 +1209,30 @@ export default function OrderTracking() {
 
   const orderDetailsStatusLabel = useMemo(() => {
     const raw = String(order?.status || "").toLowerCase().trim()
-    if (raw === "delivered") return "PICKED UP"
-    return String(order?.status || "").replace(/_/g, " ").toUpperCase()
-  }, [order?.status])
+    const isTakeawayOrder = String(order?.fulfillmentType || "").toLowerCase() === "takeaway"
+    if (raw === "created" || raw === "placed" || raw === "pending") return "ORDER PLACED"
+    if (raw === "confirmed" || raw === "accepted") return "CONFIRMED"
+    if (raw === "preparing") return "PREPARING"
+    if (raw === "ready" || raw === "ready_for_pickup") return "READY FOR PICKUP"
+    if (raw === "out_for_delivery" || raw === "outfordelivery" || raw === "picked_up") {
+      return isTakeawayOrder ? "READY FOR PICKUP" : "OUT FOR DELIVERY"
+    }
+    if (raw === "delivered" || raw === "completed" || raw === "delivered_self") {
+      return isTakeawayOrder ? "PICKED UP" : "DELIVERED"
+    }
+    if (raw.includes("cancel")) return "CANCELLED"
+    return raw.replace(/_/g, " ").toUpperCase()
+  }, [order?.status, order?.fulfillmentType])
 
   const billSummaryDisplayTotal = useMemo(() => {
     const subtotal = Number(order?.subtotal || 0)
     const packagingFee = Number(order?.packagingFee || 0)
+    const deliveryFee = Number(order?.deliveryFee || 0)
     const platformFee = Number(order?.platformFee || 0)
     const gst = Number(order?.gst || 0)
     const discount = Number(order?.discount || 0)
-    return Math.max(0, subtotal + packagingFee + platformFee + gst - discount)
-  }, [order?.subtotal, order?.packagingFee, order?.platformFee, order?.gst, order?.discount])
+    return Math.max(0, subtotal + packagingFee + deliveryFee + platformFee + gst - discount)
+  }, [order?.subtotal, order?.packagingFee, order?.deliveryFee, order?.platformFee, order?.gst, order?.discount])
 
   const refundOverrideReason = useMemo(() => {
     const isOverridden = Boolean(order?.payment?.refund?.isOverridden)
