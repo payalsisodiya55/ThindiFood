@@ -12,6 +12,23 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const isUnpaidRazorpayOrder = (order) => {
+  const method = String(order?.payment?.method || order?.paymentMethod || "").toLowerCase()
+  const paymentStatus = String(order?.payment?.status || "").toLowerCase()
+  const orderStatus = String(order?.orderStatus || order?.status || "").toLowerCase()
+  const paymentId =
+    order?.payment?.razorpay?.paymentId ||
+    order?.payment?.razorpayPaymentId ||
+    order?.razorpayPaymentId
+
+  return (
+    method === "razorpay" &&
+    !paymentId &&
+    ["", "created", "pending"].includes(paymentStatus) &&
+    ["", "created", "pending"].includes(orderStatus)
+  )
+}
+
 
 export default function Orders() {
   const navigate = useNavigate()
@@ -259,7 +276,7 @@ export default function Orders() {
           })))
 
           // Transform API orders to match UI structure
-          const transformedOrders = ordersData.map(order => {
+          const transformedOrders = ordersData.filter((order) => !isUnpaidRazorpayOrder(order)).map(order => {
             const createdAt = order.createdAt ? new Date(order.createdAt) : new Date()
 
             // Check if cancelled by restaurant or user

@@ -2540,7 +2540,17 @@ export async function processDispatchTimeout(orderId, partnerId) {
 // ----- User: list, get, cancel -----
 export async function listOrdersUser(userId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
-  const filter = { userId: new mongoose.Types.ObjectId(userId) };
+  const filter = {
+    userId: new mongoose.Types.ObjectId(userId),
+    $or: [
+      // Hide online checkout attempts until Razorpay payment is completed.
+      { "payment.method": { $ne: "razorpay" } },
+      {
+        "payment.method": "razorpay",
+        "payment.status": { $in: ["paid", "authorized", "captured", "settled"] },
+      },
+    ],
+  };
   const [docs, total] = await Promise.all([
     FoodOrder.find(filter)
       .populate(

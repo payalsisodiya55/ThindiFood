@@ -169,6 +169,34 @@ const formatRestaurantPickupAddress = (restaurant) => {
   return fallbackAddress || "Restaurant Location"
 }
 
+const getRestaurantDisplayName = (restaurant) => {
+  if (!restaurant || typeof restaurant !== "object") return "Restaurant"
+
+  return (
+    restaurant?.restaurantName ||
+    restaurant?.name ||
+    restaurant?.restaurantId?.restaurantName ||
+    restaurant?.restaurantId?.name ||
+    "Restaurant"
+  )
+}
+
+const buildOrderSuccessSnapshot = (order, restaurant) => {
+  const baseOrder = order && typeof order === "object" ? order : {}
+  const snapshotRestaurant = restaurant && typeof restaurant === "object" ? restaurant : {}
+
+  return {
+    ...baseOrder,
+    successRestaurantName:
+      getRestaurantDisplayName(baseOrder) ||
+      getRestaurantDisplayName(snapshotRestaurant),
+    successRestaurantLocation:
+      formatRestaurantPickupAddress(snapshotRestaurant) ||
+      formatRestaurantPickupAddress(baseOrder?.restaurantId) ||
+      "Restaurant Location",
+  }
+}
+
 const DAY_NAMES = [
   "Sunday",
   "Monday",
@@ -1792,6 +1820,15 @@ export default function Cart() {
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"
+  const successRestaurantName =
+    placedOrderSnapshot?.successRestaurantName ||
+    placedOrderSnapshot?.restaurantName ||
+    getRestaurantDisplayName(placedOrderSnapshot?.restaurantId) ||
+    restaurantName
+  const successRestaurantLocation =
+    placedOrderSnapshot?.successRestaurantLocation ||
+    formatRestaurantPickupAddress(placedOrderSnapshot?.restaurantId) ||
+    pickupRestaurantAddress
 
   const isPercentageCoupon = (coupon) => String(coupon?.discountType || "").toLowerCase() === "percentage"
 
@@ -2585,7 +2622,7 @@ export default function Cart() {
       if (selectedPaymentMethod === "cash") {
         toast.success("Order placed with Cash on Delivery")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
-        setPlacedOrderSnapshot(order || null)
+        setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData))
         orderAPI.getOrderDetails.prime?.(orderResponse)
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
@@ -2598,7 +2635,7 @@ export default function Cart() {
       if (selectedPaymentMethod === "wallet") {
         toast.success("Order placed with Wallet payment")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
-        setPlacedOrderSnapshot(order || null)
+        setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData))
         orderAPI.getOrderDetails.prime?.(orderResponse)
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
@@ -2692,7 +2729,7 @@ export default function Cart() {
                 paymentId: verifyResponse.data.data?.payment?.paymentId
               })
               setPlacedOrderId(order._id || order.orderId)
-              setPlacedOrderSnapshot(order || null)
+              setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData))
               orderAPI.getOrderDetails.prime?.(verifyResponse?.data?.data?.order || order)
               setShowOrderSuccess(true)
               window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
@@ -3832,11 +3869,11 @@ export default function Cart() {
                       </svg>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      Pickup at {restaurantName}
+                      Pickup at {successRestaurantName}
                     </h2>
                   </div>
                   <p className="text-gray-500 dark:text-gray-400 text-base">
-                    {pickupRestaurantAddress}
+                    {successRestaurantLocation}
                   </p>
                 </div>
 
