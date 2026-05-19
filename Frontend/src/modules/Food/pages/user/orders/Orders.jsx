@@ -29,6 +29,29 @@ const isUnpaidRazorpayOrder = (order) => {
   )
 }
 
+const normalizeOrderStatus = (value) =>
+  String(value || "").trim().toLowerCase().replace(/\s+/g, "_")
+
+const isDeliveryOrder = (order) =>
+  String(order?.fulfillmentType || order?.orderType || "delivery").toLowerCase() === "delivery"
+
+const isDeliveredDeliveryOrder = (order) => {
+  if (!isDeliveryOrder(order)) return false
+
+  const status = normalizeOrderStatus(order?.status || order?.orderStatus || order?.originalStatus)
+  const deliveryStateStatus = normalizeOrderStatus(order?.deliveryState?.status)
+  const deliveryPhase = normalizeOrderStatus(order?.deliveryState?.currentPhase)
+  const dropOtpVerified = Boolean(order?.deliveryVerification?.dropOtp?.verified)
+
+  return (
+    ["delivered", "completed", "delivered_self"].includes(status) ||
+    ["delivered", "completed"].includes(deliveryStateStatus) ||
+    ["delivered", "completed"].includes(deliveryPhase) ||
+    Boolean(order?.deliveredAt || order?.completedAt || order?.deliveryState?.deliveredAt) ||
+    dropOtpVerified
+  )
+}
+
 
 export default function Orders() {
   const navigate = useNavigate()
@@ -74,7 +97,8 @@ export default function Orders() {
   // Calculate countdown for an order
   const calculateCountdown = (order) => {
     if (!order || 
-        order.status === 'delivered' || 
+        order.status === 'delivered' ||
+        isDeliveredDeliveryOrder(order) ||
         String(order.status).toLowerCase().includes('cancel')) {
       return null
     }
@@ -111,10 +135,11 @@ export default function Orders() {
 
   // Get order status text
   const getOrderStatus = (order) => {
-    const status = String(order.status || '').toLowerCase()
+    if (isDeliveredDeliveryOrder(order)) return 'delivered'
+    const status = normalizeOrderStatus(order.status || order.orderStatus)
     if (!status || status === 'pending' || status === 'created') return 'placed'
-    if (status === 'delivered' || status === 'completed') return 'delivered'
-    if (status === 'out_for_delivery' || status === 'outForDelivery') return 'outForDelivery'
+    if (status === 'delivered' || status === 'completed' || status === 'delivered_self') return 'delivered'
+    if (status === 'out_for_delivery' || status === 'outfordelivery') return 'outForDelivery'
     if (status === 'ready' || status === 'preparing') return 'preparing'
     if (status.includes('cancel')) return 'cancelled'
     if (status === 'confirmed' || status === 'accepted') return 'confirmed'
@@ -147,7 +172,8 @@ export default function Orders() {
         transformedStatus === 'delivered' ||
         transformedStatus === 'completed' ||
         transformedStatus.toLowerCase() === 'delivered' ||
-        transformedStatus.toLowerCase() === 'completed'
+        transformedStatus.toLowerCase() === 'completed' ||
+        isDeliveredDeliveryOrder(order)
 
       const hasRestaurantRating = Number.isFinite(Number(order.restaurantRating))
       const hasRating = hasRestaurantRating
@@ -156,7 +182,9 @@ export default function Orders() {
       const hasShownPopup = shownRatingForOrders.has(orderId)
 
       // Also check if order has deliveredAt timestamp (indicates it was delivered)
-      const hasDeliveredAt = order.deliveredAt !== null && order.deliveredAt !== undefined
+      const hasDeliveredAt =
+        order.deliveredAt !== null &&
+        order.deliveredAt !== undefined
 
       const shouldShow = (isDelivered || hasDeliveredAt) && !hasRating && !hasShownPopup
 
@@ -281,6 +309,12 @@ export default function Orders() {
 
             // Check if cancelled by restaurant or user
             const backendStatus = order.orderStatus || order.status
+            const deliveredAt =
+              order.deliveredAt ||
+              order.completedAt ||
+              order.deliveryState?.deliveredAt ||
+              order.deliveryVerification?.dropOtp?.verifiedAt ||
+              null
             const isCancelled =
               backendStatus === 'cancelled' ||
               backendStatus === 'cancelled_by_user' ||
@@ -297,12 +331,21 @@ export default function Orders() {
             // Get original status from backend before transformation
             const originalStatus = backendStatus
             const restaurantRating = order.ratings?.restaurant?.rating || null
+            const normalizedStatus = isDeliveredDeliveryOrder({
+              ...order,
+              status: backendStatus,
+              deliveredAt,
+            })
+              ? 'delivered'
+              : isRestaurantCancelled
+                ? 'restaurant_cancelled'
+                : getOrderStatus({ ...order, status: backendStatus, deliveredAt })
 
             return {
               id: order._id?.toString() || order.orderId || `ORD-${order._id}`,
               mongoId: order._id,
               orderId: order.orderId || order._id?.toString(), // Keep orderId for display
-              status: isRestaurantCancelled ? 'restaurant_cancelled' : getOrderStatus({ ...order, status: backendStatus }),
+              status: normalizedStatus,
               originalStatus: originalStatus, // Keep original status for reference
               createdAt: createdAt.toISOString(),
               address: order.address || order.deliveryAddress || {},
@@ -343,6 +386,8 @@ export default function Orders() {
               rating: restaurantRating || null,
               review: order.review || null,
               tracking: order.tracking || {},
+              deliveryState: order.deliveryState || null,
+              deliveryVerification: order.deliveryVerification || null,
               cancellationReason: cancellationReason,
               isRestaurantCancelled: isRestaurantCancelled,
               isUserCancelled: isUserCancelled,
@@ -350,7 +395,7 @@ export default function Orders() {
               eta: order.eta || { min: order.estimatedDeliveryTime || 30, max: order.estimatedDeliveryTime || 30 },
               estimatedDeliveryTime: order.estimatedDeliveryTime || 30,
               preparationTime: order.preparationTime || 0,
-              deliveredAt: order.deliveredAt || null,
+              deliveredAt,
               deliveryPartnerId: order.deliveryPartnerId?._id || order.deliveryPartnerId || null,
               deliveryPartnerName: order.deliveryPartnerId?.name || order.deliveryPartnerName || null,
               deliveryPartnerPhone: order.deliveryPartnerId?.phone || order.deliveryPartnerPhone || null,
@@ -748,7 +793,7 @@ Order again from this restaurant in the ${companyName} app.`
               !isCancelled &&
               (order.payment?.status === 'failed')
 
-            const isDelivered = order.status === 'delivered'
+            const isDelivered = order.status === 'delivered' || isDeliveredDeliveryOrder(order)
             const isRestaurantCancelled = order.isRestaurantCancelled || order.status === 'restaurant_cancelled'
             const isUserCancelled = order.isUserCancelled || (isCancelled && order.cancelledBy === 'user')
             const showRefundForCancellation = isRestaurantCancelled && !isCodOrder

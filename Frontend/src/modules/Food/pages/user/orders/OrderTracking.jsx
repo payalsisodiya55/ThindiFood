@@ -605,10 +605,19 @@ function mapOrderToTrackingUiStatus(orderLike) {
   if (!orderLike) return "placed"
   const statusRaw = orderLike.status || orderLike.orderStatus
   const phase = orderLike.deliveryState?.currentPhase
+  const isDeliveryOrder = String(orderLike?.fulfillmentType || "delivery").toLowerCase() === "delivery"
+  const isDropOtpVerified = Boolean(orderLike?.deliveryVerification?.dropOtp?.verified)
 
   // Terminal states handled first
   if (isFoodOrderCancelledStatus(statusRaw)) return "cancelled"
-  if (statusRaw === "delivered" || statusRaw === "completed" || statusRaw === "delivered_self") return "delivered"
+  if (
+    statusRaw === "delivered" ||
+    statusRaw === "completed" ||
+    statusRaw === "delivered_self" ||
+    orderLike?.deliveredAt ||
+    orderLike?.deliveryState?.deliveredAt ||
+    (isDeliveryOrder && isDropOtpVerified)
+  ) return "delivered"
 
   // Live Ride / Phase-based mapping (Highest priority for precision)
   const isRiderAccepted = orderLike.dispatch?.status === "accepted" || orderLike.assignmentInfo?.status === "accepted" || orderLike.deliveryPartner?.status === "accepted";
@@ -1822,12 +1831,12 @@ export default function OrderTracking() {
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     ready: {
-      title: isTakeawayOrder ? "Ready for pickup" : isSelfDeliveryOrder ? "Ready for dispatch" : "Handover in progress",
+      title: isTakeawayOrder ? "Ready for pickup" : "Ready",
       subtitle: isTakeawayOrder
         ? "Show your OTP at the restaurant to collect the order"
         : isSelfDeliveryOrder
-          ? "Restaurant is assigning your delivery boy"
-          : "Rider is picking up your order",
+          ? "Your order is packed and ready to leave the restaurant"
+          : "Your order is ready for the delivery partner pickup",
       color: "bg-[#00c87e]",
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
@@ -1865,8 +1874,14 @@ export default function OrderTracking() {
   const isDeliveredOrder =
     orderStatus === "delivered" ||
     order?.status === "delivered" ||
+    order?.orderStatus === "delivered" ||
     order?.status === "delivered_self" ||
-    Boolean(order?.deliveredAt)
+    order?.orderStatus === "delivered_self" ||
+    Boolean(order?.deliveredAt || order?.deliveryState?.deliveredAt) ||
+    (
+      order?.fulfillmentType === "delivery" &&
+      Boolean(order?.deliveryVerification?.dropOtp?.verified)
+    )
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#0a0a0a]">

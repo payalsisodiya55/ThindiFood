@@ -71,6 +71,9 @@ function getAccessToken(config) {
     const moduleToken = localStorage.getItem(key);
     if (moduleToken) return moduleToken;
 
+    const legacyModuleToken = localStorage.getItem(`auth_${module}`);
+    if (legacyModuleToken) return legacyModuleToken;
+
     // Only the user module still supports the legacy generic token key.
     if (module === "user") {
       return localStorage.getItem("accessToken") || null;
@@ -104,7 +107,38 @@ function clearModuleAuth(module) {
     localStorage.removeItem(`${module}_refreshToken`);
     localStorage.removeItem(`${module}_authenticated`);
     localStorage.removeItem(`${module}_user`);
+    localStorage.removeItem(`auth_${module}`);
   } catch (_) {}
+}
+
+function getCurrentPageModule() {
+  if (typeof window === "undefined") return "user";
+  const path = window.location.pathname.toLowerCase();
+  if (path.startsWith("/food/restaurant") || path.startsWith("/restaurant")) return "restaurant";
+  if (path.startsWith("/food/delivery") || path.startsWith("/delivery")) return "delivery";
+  if (path.startsWith("/admin") || path.startsWith("/food/admin")) return "admin";
+  return "user";
+}
+
+function redirectToModuleLogin(module) {
+  if (typeof window === "undefined") return;
+  const loginPaths = {
+    restaurant: "/food/restaurant/login",
+    delivery: "/delivery/auth",
+    admin: "/admin/auth",
+    user: "/user/auth/login",
+  };
+  const loginPath = loginPaths[module] || loginPaths.user;
+  if (!window.location.pathname.toLowerCase().startsWith(loginPath.toLowerCase())) {
+    window.location.href = loginPath;
+  }
+}
+
+function handleAuthFailure(module) {
+  clearModuleAuth(module);
+  if (getCurrentPageModule() === module) {
+    redirectToModuleLogin(module);
+  }
 }
 
 let isRefreshing = false;
@@ -120,7 +154,7 @@ function onRefreshed(newToken, module) {
 }
 
 function onRefreshFailed(module) {
-  clearModuleAuth(module);
+  handleAuthFailure(module);
   // Fail any queued requests that were waiting for this refresh
   refreshSubscribers.forEach((cb) => cb(null, module));
   refreshSubscribers = [];
@@ -163,7 +197,7 @@ apiClient.interceptors.response.use(
     const module = original.contextModule || getModuleFromUrl(original.url);
     const refreshToken = getRefreshToken(module);
     if (!refreshToken) {
-      clearModuleAuth(module);
+      handleAuthFailure(module);
       return Promise.reject(err);
     }
 

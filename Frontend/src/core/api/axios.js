@@ -17,6 +17,9 @@ const getModuleToken = (module) => {
     if (module === 'admin') {
         return localStorage.getItem('admin_accessToken') || localStorage.getItem('auth_admin') || null;
     }
+    if (module === 'restaurant') {
+        return localStorage.getItem('restaurant_accessToken') || localStorage.getItem('auth_restaurant') || null;
+    }
     if (module === 'seller') {
         return localStorage.getItem('seller_accessToken') || localStorage.getItem('auth_seller') || null;
     }
@@ -33,6 +36,11 @@ const detectRequestModule = (requestUrl = '') => {
         url.includes('/food/admin/') ||
         url.includes('/auth/admin')
     ) return 'admin';
+    if (
+        url.startsWith('/restaurant') ||
+        url.includes('/food/restaurant/') ||
+        url.includes('/auth/restaurant')
+    ) return 'restaurant';
     if (
         url.startsWith('/seller') ||
         url.includes('/food/seller/') ||
@@ -62,7 +70,9 @@ axiosInstance.interceptors.request.use(
         // Determination strategy: 
         // 1. If we are on a module-specific page (e.g. /seller/dashboard), prioritize that module's token
         // This is crucial for shared APIs like /products or /admin/categories
-        if (pagePath.startsWith('/seller')) {
+        if (pagePath.startsWith('/food/restaurant') || pagePath.startsWith('/restaurant')) {
+            token = getModuleToken('restaurant');
+        } else if (pagePath.startsWith('/seller')) {
             token = getModuleToken('seller');
         } else if (pagePath.startsWith('/admin')) {
             token = getModuleToken('admin');
@@ -77,6 +87,7 @@ axiosInstance.interceptors.request.use(
             const requestModule = detectRequestModule(url);
             if (requestModule === 'seller') token = getModuleToken('seller');
             else if (requestModule === 'admin') token = getModuleToken('admin');
+            else if (requestModule === 'restaurant') token = getModuleToken('restaurant');
             else if (requestModule === 'delivery') token = getModuleToken('delivery');
             else if (url.startsWith('/customer') || url.startsWith('/cart') || url.startsWith('/wishlist') || url.startsWith('/categories') || url.startsWith('/products')) {
                 token = getCustomerToken();
@@ -84,7 +95,7 @@ axiosInstance.interceptors.request.use(
         }
 
         // 3. Final default: if we are on a general page and STILL no token, try customer token
-        if (!token && !pagePath.startsWith('/admin') && !pagePath.startsWith('/seller') && !pagePath.startsWith('/delivery')) {
+        if (!token && !pagePath.startsWith('/admin') && !pagePath.startsWith('/seller') && !pagePath.startsWith('/delivery') && !pagePath.startsWith('/food/restaurant') && !pagePath.startsWith('/restaurant')) {
             token = getCustomerToken();
         }
 
@@ -113,7 +124,7 @@ axiosInstance.interceptors.response.use(
 
             // Only reload when we had a token that's now invalid (expired/logged out elsewhere).
             // If no token exists, skip reload to avoid infinite loop on public pages.
-            const hasToken = ['auth_seller', 'seller_accessToken', 'auth_admin', 'admin_accessToken', 'auth_delivery', 'delivery_accessToken', 'auth_customer', 'user_accessToken', 'accessToken', 'token'].some(
+            const hasToken = ['auth_seller', 'seller_accessToken', 'auth_admin', 'admin_accessToken', 'auth_restaurant', 'restaurant_accessToken', 'auth_delivery', 'delivery_accessToken', 'auth_customer', 'user_accessToken', 'accessToken', 'token'].some(
                 (key) => localStorage.getItem(key)
             );
             if (!hasToken) {
@@ -121,7 +132,9 @@ axiosInstance.interceptors.response.use(
             }
             const path = window.location.pathname;
             const requestUrl = String(originalRequest?.url || '');
-            const currentModule = path.startsWith('/seller')
+            const currentModule = path.startsWith('/food/restaurant') || path.startsWith('/restaurant')
+                ? 'restaurant'
+                : path.startsWith('/seller')
                 ? 'seller'
                 : path.startsWith('/admin')
                     ? 'admin'
@@ -139,13 +152,15 @@ axiosInstance.interceptors.response.use(
             const moduleStorageKeys = {
                 seller: ['auth_seller', 'seller_accessToken', 'token'],
                 admin: ['auth_admin', 'admin_accessToken', 'token'],
+                restaurant: ['auth_restaurant', 'restaurant_accessToken', 'restaurant_refreshToken', 'restaurant_authenticated', 'restaurant_user', 'token'],
                 delivery: ['auth_delivery', 'delivery_accessToken', 'token'],
                 customer: ['auth_customer', 'user_accessToken', 'accessToken', 'token'],
             };
             const keysToClear = moduleStorageKeys[currentModule] || ['token'];
             keysToClear.forEach((key) => localStorage.removeItem(key));
 
-            if (currentModule === 'seller') window.location.href = '/seller/auth';
+            if (currentModule === 'restaurant') window.location.href = '/food/restaurant/login';
+            else if (currentModule === 'seller') window.location.href = '/seller/auth';
             else if (currentModule === 'admin') window.location.href = '/admin/auth';
             else if (currentModule === 'delivery') window.location.href = '/delivery/auth';
             else window.location.href = '/login';

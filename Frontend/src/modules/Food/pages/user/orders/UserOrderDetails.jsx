@@ -86,7 +86,9 @@ const formatOrderStatusLabel = (status, isTakeawayOrder = false) => {
   if (normalized === "out_for_delivery" || normalized === "outfordelivery") {
     return isTakeawayOrder ? "Ready for pickup" : "Out for delivery"
   }
-  if (normalized === "ready_for_pickup" || normalized === "ready") return "Ready for pickup"
+  if (normalized === "ready_for_pickup" || normalized === "ready") {
+    return isTakeawayOrder ? "Ready for pickup" : "Ready"
+  }
   if (normalized === "preparing") return "Preparing"
   if (normalized === "confirmed" || normalized === "accepted") return "Confirmed"
   if (normalized === "created" || normalized === "placed" || normalized === "pending") return "Order placed"
@@ -541,7 +543,7 @@ export default function UserOrderDetails() {
     order.tracking?.ready?.timestamp || order.tracking?.ready?.status || order.tracking?.ready_for_pickup?.timestamp
       ? {
           id: "ready",
-          title: "Ready for pickup",
+          title: isTakeawayOrder ? "Ready for pickup" : "Ready",
           timestamp: formatHistoryTimestamp(order.tracking?.ready?.timestamp || order.tracking?.ready_for_pickup?.timestamp),
         }
       : null,
