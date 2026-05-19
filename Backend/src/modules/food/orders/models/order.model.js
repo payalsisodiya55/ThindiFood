@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const orderItemSchema = new mongoose.Schema(
     {
         itemId: { type: String, required: true, trim: true },
+        itemType: { type: String, enum: ['food', 'addon'], default: 'food', trim: true },
         name: { type: String, required: true, trim: true },
         variantId: { type: String, default: '', trim: true },
         variantName: { type: String, default: '', trim: true },

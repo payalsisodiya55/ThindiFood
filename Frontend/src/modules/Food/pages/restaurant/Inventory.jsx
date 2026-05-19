@@ -14,7 +14,8 @@ import {
   ChevronRight,
   X,
   ThumbsUp,
-  Pencil
+  Pencil,
+  Trash2
 } from "lucide-react"
 import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
@@ -917,6 +918,7 @@ export default function Inventory() {
   const [addonImageFile, setAddonImageFile] = useState(null)
   const [addonImagePreview, setAddonImagePreview] = useState("")
   const [savingAddon, setSavingAddon] = useState(false)
+  const [editingAddon, setEditingAddon] = useState(null)
   const [recommendedMap, setRecommendedMap] = useState(() => {
     try {
       if (typeof window === "undefined") return {}
@@ -1192,6 +1194,7 @@ export default function Inventory() {
     setAddonPrice("")
     setAddonImageFile(null)
     setAddonImagePreview("")
+    setEditingAddon(null)
     if (addonImageInputRef.current) {
       addonImageInputRef.current.value = ""
     }
@@ -1234,7 +1237,9 @@ export default function Inventory() {
     }
     setSavingAddon(true)
     try {
-      let imageUrl = ""
+      let imageUrl = addonImagePreview && !addonImagePreview.startsWith("blob:")
+        ? addonImagePreview
+        : ""
       if (addonImageFile) {
         const uploadRes = await uploadAPI.uploadMedia(addonImageFile, { folder: "appzeto/restaurant/addons" })
         imageUrl = uploadRes?.data?.data?.url || uploadRes?.data?.url || ""
@@ -1246,8 +1251,13 @@ export default function Inventory() {
         image: imageUrl,
         images: imageUrl ? [imageUrl] : [],
       }
-      await restaurantAPI.addAddon(payload)
-      toast.success("Add-on submitted to admin for approval")
+      if (editingAddon?.id) {
+        await restaurantAPI.updateAddon(editingAddon.id, { draft: payload })
+        toast.success("Add-on updated and sent to admin for approval")
+      } else {
+        await restaurantAPI.addAddon(payload)
+        toast.success("Add-on submitted to admin for approval")
+      }
       resetAddonForm()
       setIsAddAddonOpen(false)
       fetchAddons(true)
@@ -1266,6 +1276,39 @@ export default function Inventory() {
       }
     } finally {
       setSavingAddon(false)
+    }
+  }
+
+  const handleEditAddon = (addon) => {
+    setEditingAddon(addon)
+    setAddonName(addon?.name || "")
+    setAddonDescription(addon?.description || "")
+    setAddonPrice(addon?.price != null ? String(addon.price) : "")
+    setAddonImageFile(null)
+    setAddonImagePreview(addon?.images?.[0] || addon?.image || "")
+    if (addonImageInputRef.current) {
+      addonImageInputRef.current.value = ""
+    }
+    setIsAddAddonOpen(true)
+  }
+
+  const handleDeleteAddon = async (addon) => {
+    const addonNameLabel = String(addon?.name || "this add-on").trim()
+    if (!window.confirm(`Delete "${addonNameLabel}"? This action cannot be undone.`)) {
+      return
+    }
+
+    try {
+      await restaurantAPI.deleteAddon(addon.id)
+      toast.success("Add-on deleted successfully")
+      fetchAddons(true)
+    } catch (error) {
+      debugError("Error deleting add-on:", error)
+      toast.error(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Failed to delete add-on",
+      )
     }
   }
 
@@ -2161,7 +2204,9 @@ export default function Inventory() {
                 <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Add-on Name *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        {editingAddon ? "Edit Add-on Name *" : "Add-on Name *"}
+                      </label>
                       <input
                         type="text"
                         value={addonName}
@@ -2221,10 +2266,14 @@ export default function Inventory() {
                       >
                         <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
                           <Upload className="h-4 w-4 text-gray-500" />
-                          {addonImageFile?.name || "Upload image"}
+                          {addonImageFile?.name || (editingAddon && addonImagePreview ? "Current image selected" : "Upload image")}
                         </span>
                         <span className="mt-1 block text-xs text-gray-500">
-                          {addonImageFile ? "Image selected successfully" : "Tap to choose 1 image from your device"}
+                          {addonImageFile
+                            ? "Image selected successfully"
+                            : editingAddon
+                              ? "Tap to replace the current image or keep the existing one"
+                              : "Tap to choose 1 image from your device"}
                         </span>
                       </button>
                       <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP, HEIC up to 5MB.</p>
@@ -2248,7 +2297,13 @@ export default function Inventory() {
                         style={{ backgroundColor: RESTAURANT_THEME.brand }}
                       >
                         {savingAddon && <Loader2 className="h-4 w-4 animate-spin" />}
-                        <span>{savingAddon ? "Saving..." : "Submit for approval"}</span>
+                        <span>
+                          {savingAddon
+                            ? "Saving..."
+                            : editingAddon
+                              ? "Update & resubmit"
+                              : "Submit for approval"}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -2321,15 +2376,35 @@ export default function Inventory() {
                               }}
                             />
                           )}
-                          <div className={`flex items-center rounded-full px-2 py-1 ${isToggleDisabled ? "bg-slate-50 opacity-60" : "bg-slate-100"}`}>
-                            <Switch
-                              checked={isAddonLive}
-                              disabled={isToggleDisabled}
-                              onCheckedChange={(checked) =>
-                                handleAddonToggle(addon.id, checked)
-                              }
-                              className="data-[state=checked]:bg-green-600"
-                            />
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleEditAddon(addon)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition-colors hover:bg-slate-50"
+                                aria-label={`Edit ${addon.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteAddon(addon)}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-red-200 bg-white text-red-600 transition-colors hover:bg-red-50"
+                                aria-label={`Delete ${addon.name}`}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className={`flex items-center rounded-full px-2 py-1 ${isToggleDisabled ? "bg-slate-50 opacity-60" : "bg-slate-100"}`}>
+                              <Switch
+                                checked={isAddonLive}
+                                disabled={isToggleDisabled}
+                                onCheckedChange={(checked) =>
+                                  handleAddonToggle(addon.id, checked)
+                                }
+                                className="data-[state=checked]:bg-green-600"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>

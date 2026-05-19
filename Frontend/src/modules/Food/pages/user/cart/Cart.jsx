@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -1265,6 +1265,10 @@ export default function Cart() {
     )
 
     const unavailableItems = cart.filter((item) => {
+      const itemType = String(item?.itemType || "").trim().toLowerCase()
+      if (itemType === "addon" || item?.isAddon === true) {
+        return false
+      }
       const itemId = String(item?.itemId || item?.id || "").trim()
       return itemId && !availableItemIds.has(itemId)
     })
@@ -1498,7 +1502,7 @@ export default function Cart() {
     }
 
     fetchRestaurantData()
-  }, [cart.length, cart[0]?.restaurantId, cart[0]?.restaurant])
+  }, [cart[0]?.restaurantId, cart[0]?.restaurant])
 
   // Fetch approved addons for the restaurant
   useEffect(() => {
@@ -1604,7 +1608,7 @@ export default function Cart() {
     }
 
     fetchAddons()
-  }, [restaurantData, cart.length, loadingRestaurant])
+  }, [restaurantIdForAddons, loadingRestaurant, cart[0]?.restaurantId, cart[0]?.restaurant])
 
   // Fetch coupons for items in cart
   useEffect(() => {
@@ -1911,6 +1915,7 @@ export default function Cart() {
   const buildCalculateOrderPayload = ({ cart, restaurantId, deliveryAddressId, couponCode, fulfillmentMode, deliveryAddress }) => {
     const normalizedItems = cart.map(item => ({
       itemId: String(item.itemId || item.id || ""),
+      itemType: String(item.itemType || (item.isAddon ? "addon" : "food")).toLowerCase() === "addon" ? "addon" : "food",
       name: String(item.name || ""),
       price: Number(item.price) || 0,
       variantId: item.variantId ? String(item.variantId) : undefined,
@@ -2420,6 +2425,7 @@ export default function Cart() {
       // Note: Addons are added as separate cart items when user clicks the + button
       const orderItems = cart.map(item => ({
         itemId: item.itemId || item.id,
+        itemType: String(item.itemType || (item.isAddon ? "addon" : "food")).toLowerCase() === "addon" ? "addon" : "food",
         name: item.name,
         price: item.price,
         variantId: item.variantId || undefined,
@@ -3092,9 +3098,6 @@ export default function Cart() {
               {addons.length > 0 && (
                 <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                   <div className="flex items-center gap-2 md:gap-3 mb-3 md:mb-4">
-                    <div className="w-6 h-6 md:w-8 md:h-8 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center">
-                      <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-[#00c87e]" />
-                    </div>
                     <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Complete your meal with</span>
                   </div>
                   {loadingAddons ? (
@@ -3121,11 +3124,6 @@ export default function Cart() {
                                 e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"
                               }}
                             />
-                            <div className="absolute top-1 md:top-2 left-1 md:left-2">
-                              <div className="w-3.5 h-3.5 md:w-4 md:h-4 bg-white border border-green-600 flex items-center justify-center rounded">
-                                <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-600" />
-                              </div>
-                            </div>
                             <button
                               onClick={() => {
                                 // Use restaurant info from existing cart items to ensure format consistency
@@ -3146,6 +3144,8 @@ export default function Cart() {
 
                                 addToCart({
                                   id: addon.id,
+                                  itemType: "addon",
+                                  isAddon: true,
                                   name: addon.name,
                                   price: addon.price,
                                   image: addon.image || (addon.images && addon.images[0]) || "",

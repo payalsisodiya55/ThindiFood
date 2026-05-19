@@ -3,6 +3,7 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 
 const orderItemSchema = z.object({
     itemId: z.string().min(1, 'Item id required'),
+    itemType: z.enum(['food', 'addon']).optional().default('food'),
     name: z.string().min(1, 'Item name required'),
     variantId: z.string().optional(),
     variantName: z.string().optional(),

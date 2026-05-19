@@ -41,15 +41,20 @@ const defaultCartContext = {
 const CartContext = createContext(defaultCartContext)
 
 const getItemOrderType = (item) => (item?.orderType === "quick" ? "quick" : "food")
+const getCartItemType = (item) =>
+  String(item?.itemType || (item?.isAddon ? "addon" : "food")).toLowerCase() === "addon"
+    ? "addon"
+    : "food"
 
 const normalizeCartData = (rawCart) => {
   if (!Array.isArray(rawCart)) return []
 
-  return rawCart
+  const normalizedItems = rawCart
     .filter((item) => item && typeof item === "object")
     .map((item, index) => {
       const parsedQuantity = Number(item.quantity)
       const parsedPrice = Number(item.price)
+      const normalizedItemType = getCartItemType(item)
       const normalizedRestaurantName =
         typeof item.restaurant === "string"
           ? item.restaurant
@@ -94,7 +99,7 @@ const normalizeCartData = (rawCart) => {
       const lineItemId =
         item.lineItemId ||
         item.cartLineId ||
-        buildCartLineId(baseItemId, variantId)
+        buildCartLineId(baseItemId, variantId, normalizedItemType)
 
       return {
         ...item,
@@ -102,6 +107,8 @@ const normalizeCartData = (rawCart) => {
         lineItemId,
         itemId: String(baseItemId),
         productId: String(baseItemId),
+        itemType: normalizedItemType,
+        isAddon: normalizedItemType === "addon",
         variantId: variantId ? String(variantId) : "",
         variantName,
         variantPrice: Number.isFinite(parsedVariantPrice) ? parsedVariantPrice : 0,
@@ -118,16 +125,31 @@ const normalizeCartData = (rawCart) => {
         imageUrl: normalizedImage,
       }
     })
+
+  const dedupedItems = new Map()
+  normalizedItems.forEach((item) => {
+    const existing = dedupedItems.get(item.id)
+    if (existing) {
+      dedupedItems.set(item.id, {
+        ...existing,
+        quantity: (Number(existing.quantity) || 0) + (Number(item.quantity) || 0),
+      })
+      return
+    }
+    dedupedItems.set(item.id, item)
+  })
+
+  return [...dedupedItems.values()]
 }
 
-const resolveCartEntryId = (items, itemId, variantId = "") => {
+const resolveCartEntryId = (items, itemId, variantId = "", itemType = "food") => {
   const normalizedItemId = String(itemId || "")
   const safeItems = Array.isArray(items) ? items : []
 
   const directMatch = safeItems.find((item) => item.id === normalizedItemId)
   if (directMatch) return directMatch.id
 
-  const preferredId = buildCartLineId(normalizedItemId, variantId)
+  const preferredId = buildCartLineId(normalizedItemId, variantId, itemType)
 
   const exactMatch = safeItems.find((item) => item.id === preferredId)
   if (exactMatch) return exactMatch.id
@@ -176,16 +198,42 @@ export function CartProvider({ children }) {
   }, [cart])
 
   const addToCart = (item, sourcePosition = null) => {
+    const normalizedItemType = getCartItemType(item)
+    const incomingBaseItemId =
+      item?.itemId ||
+      item?.productId ||
+      item?.foodId ||
+      item?.baseItemId ||
+      item?.menuItemId ||
+      item?.id ||
+      item?._id ||
+      ""
+    const incomingVariantId = item?.variantId || item?.variant?._id || item?.variant?.id || ""
+    const incomingLineItemId =
+      item?.lineItemId ||
+      item?.cartLineId ||
+      buildCartLineId(incomingBaseItemId, incomingVariantId, normalizedItemType)
+    const normalizedIncomingItem = {
+      ...item,
+      id: incomingLineItemId,
+      lineItemId: incomingLineItemId,
+      itemId: String(incomingBaseItemId || ""),
+      productId: String(incomingBaseItemId || ""),
+      itemType: normalizedItemType,
+      isAddon: normalizedItemType === "addon",
+      variantId: incomingVariantId ? String(incomingVariantId) : "",
+    }
+
     const safeCart = normalizeCartData(cart)
     if (safeCart.length > 0) {
       const currentOrderType = getItemOrderType(safeCart[0])
-      const nextOrderType = getItemOrderType(item)
+      const nextOrderType = getItemOrderType(normalizedIncomingItem)
 
       if (currentOrderType === nextOrderType) {
         const firstItemRestaurantId = safeCart[0]?.restaurantId
         const firstItemRestaurantName = safeCart[0]?.restaurant
-        const newItemRestaurantId = item?.restaurantId
-        const newItemRestaurantName = item?.restaurant
+        const newItemRestaurantId = normalizedIncomingItem?.restaurantId
+        const newItemRestaurantName = normalizedIncomingItem?.restaurant
         const normalizeName = (name) => (name ? String(name).trim().toLowerCase() : '')
 
         const firstRestaurantNameNormalized = normalizeName(firstItemRestaurantName)
@@ -209,7 +257,7 @@ export function CartProvider({ children }) {
       }
     }
 
-    if (!item?.restaurantId && !item?.restaurant) {
+    if (!normalizedIncomingItem?.restaurantId && !normalizedIncomingItem?.restaurant) {
       return {
         ok: false,
         error: 'Item is missing restaurant information. Please refresh the page.',
@@ -220,15 +268,15 @@ export function CartProvider({ children }) {
     setCart((prev) => {
       const safePrev = normalizeCartData(prev)
       const existingOrderType = getItemOrderType(safePrev[0])
-      const incomingOrderType = getItemOrderType(item)
+      const incomingOrderType = getItemOrderType(normalizedIncomingItem)
 
       // CRITICAL: Validate restaurant consistency
       // If cart already has items, ensure new item belongs to the same restaurant
       if (safePrev.length > 0 && existingOrderType === incomingOrderType) {
         const firstItemRestaurantId = safePrev[0]?.restaurantId;
         const firstItemRestaurantName = safePrev[0]?.restaurant;
-        const newItemRestaurantId = item?.restaurantId;
-        const newItemRestaurantName = item?.restaurant;
+        const newItemRestaurantId = normalizedIncomingItem?.restaurantId;
+        const newItemRestaurantName = normalizedIncomingItem?.restaurant;
         
         // Normalize restaurant names for comparison (trim and case-insensitive)
         const normalizeName = (name) => name ? name.trim().toLowerCase() : '';
@@ -262,13 +310,13 @@ export function CartProvider({ children }) {
         }
       }
       
-      const existing = safePrev.find((i) => i.id === item.id)
+      const existing = safePrev.find((i) => i.id === normalizedIncomingItem.id)
       if (existing) {
         // Set last add event for animation when incrementing existing item
         if (sourcePosition) {
           setLastAddEvent({
             product: {
-              id: item.id,
+              id: normalizedIncomingItem.id,
               name: item.name,
               imageUrl: item.image || item.imageUrl,
             },
@@ -278,23 +326,23 @@ export function CartProvider({ children }) {
           setTimeout(() => setLastAddEvent(null), 1500)
         }
         return safePrev.map((i) =>
-          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.id === normalizedIncomingItem.id ? { ...i, quantity: i.quantity + 1 } : i
         )
       }
       
       // Validate item has required restaurant info
-      if (!item.restaurantId && !item.restaurant) {
-        debugError('❌ Cannot add item: Missing restaurant information!', item);
+      if (!normalizedIncomingItem.restaurantId && !normalizedIncomingItem.restaurant) {
+        debugError('❌ Cannot add item: Missing restaurant information!', normalizedIncomingItem);
         return safePrev;
       }
       
-      const newItem = { ...item, quantity: 1 }
+      const newItem = { ...normalizedIncomingItem, quantity: 1 }
       
       // Set last add event for animation if sourcePosition is provided
       if (sourcePosition) {
         setLastAddEvent({
           product: {
-            id: item.id,
+            id: normalizedIncomingItem.id,
             name: item.name,
             imageUrl: item.image || item.imageUrl,
           },

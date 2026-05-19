@@ -154,7 +154,9 @@ export async function updateRestaurantAddon(restaurantId, addonId, updateDto) {
         set.isAvailable = updateDto.isAvailable !== false;
     }
 
-    if (updateDto?.draft) {
+    const hasDraftUpdate = !!updateDto?.draft;
+
+    if (hasDraftUpdate) {
         const d = updateDto.draft;
         if (d.name !== undefined) {
             const name = String(d.name || '').trim();
@@ -205,6 +207,25 @@ export async function updateRestaurantAddon(restaurantId, addonId, updateDto) {
         { $set: set },
         { new: true }
     ).lean();
+
+    if (updated && hasDraftUpdate) {
+        try {
+            const { notifyAdminsSafely } = await import('../../../../core/notifications/firebase.service.js');
+            void notifyAdminsSafely({
+                title: 'Addon Update Approval Request',
+                body: `Restaurant has updated add-on "${updated?.draft?.name || 'Add-on'}" and resubmitted it for approval.`,
+                data: {
+                    type: 'approval_request',
+                    subType: 'addon',
+                    id: String(updated._id)
+                }
+            });
+        } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error('Failed to notify admins of addon update approval request:', e);
+        }
+    }
+
     return updated ? normalizeAddonDoc(updated) : null;
 }
 

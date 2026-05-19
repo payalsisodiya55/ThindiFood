@@ -5,6 +5,7 @@ import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
+import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
@@ -131,44 +132,83 @@ async function ensureRestaurantIsOrderable(restaurantId, select = "") {
 
 async function ensureFoodItemsAreOrderable(restaurantId, items = []) {
   const normalizedItems = Array.isArray(items) ? items : [];
-  const invalidItemNames = [];
-  const validItemIds = [];
+  const unavailableNames = [];
+  const validFoodIds = [];
+  const validAddonIds = [];
 
   normalizedItems.forEach((item) => {
     const itemId = String(item?.itemId || "").trim();
     if (!itemId) return;
+    const itemType = String(item?.itemType || "food").trim().toLowerCase();
 
     if (!mongoose.isValidObjectId(itemId)) {
-      invalidItemNames.push(String(item?.name || "This item").trim() || "This item");
+      unavailableNames.push(String(item?.name || "This item").trim() || "This item");
       return;
     }
 
-    validItemIds.push(itemId);
+    if (itemType === "addon") {
+      validAddonIds.push(itemId);
+      return;
+    }
+
+    validFoodIds.push(itemId);
   });
 
-  const itemIds = [...new Set(validItemIds)];
+  const foodIds = [...new Set(validFoodIds)];
+  const addonIds = [...new Set(validAddonIds)];
 
-  if (itemIds.length === 0 && invalidItemNames.length === 0) {
+  if (foodIds.length === 0 && addonIds.length === 0 && unavailableNames.length === 0) {
     return;
   }
 
-  const foodDocs = await FoodItem.find({
-    _id: { $in: itemIds },
-    restaurantId,
-  })
-    .select("_id name isAvailable approvalStatus")
-    .lean();
+  const [foodDocs, addonDocs] = await Promise.all([
+    foodIds.length > 0
+      ? FoodItem.find({
+          _id: { $in: foodIds },
+          restaurantId,
+        })
+          .select("_id name isAvailable approvalStatus")
+          .lean()
+      : [],
+    addonIds.length > 0
+      ? FoodAddon.find({
+          _id: { $in: addonIds },
+          restaurantId,
+          isDeleted: { $ne: true },
+        })
+          .select("_id approvalStatus isAvailable published")
+          .lean()
+      : [],
+  ]);
 
   const foodsById = new Map(foodDocs.map((doc) => [String(doc._id), doc]));
-  const unavailableNames = [...invalidItemNames];
+  const addonsById = new Map(addonDocs.map((doc) => [String(doc._id), doc]));
 
   normalizedItems.forEach((item) => {
     const itemId = String(item?.itemId || "").trim();
     if (!itemId) return;
-
-    const foodDoc = foodsById.get(itemId);
+    const itemType = String(item?.itemType || "food").trim().toLowerCase();
     const fallbackName = String(item?.name || "This item").trim() || "This item";
 
+    if (itemType === "addon") {
+      const addonDoc = addonsById.get(itemId);
+      if (!addonDoc) {
+        unavailableNames.push(fallbackName);
+        return;
+      }
+
+      const publishedName = String(addonDoc?.published?.name || fallbackName).trim() || fallbackName;
+      if (
+        addonDoc.isAvailable === false ||
+        addonDoc.approvalStatus !== "approved" ||
+        !addonDoc.published
+      ) {
+        unavailableNames.push(publishedName);
+      }
+      return;
+    }
+
+    const foodDoc = foodsById.get(itemId);
     if (!foodDoc) {
       unavailableNames.push(fallbackName);
       return;

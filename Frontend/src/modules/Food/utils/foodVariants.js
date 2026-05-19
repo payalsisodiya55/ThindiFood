@@ -39,5 +39,8 @@ export const getFoodPriceLabel = (item = {}) => {
   return hasFoodVariants(item) ? `Starting from ₹${Math.round(price)}` : `₹${Math.round(price)}`
 }
 
-export const buildCartLineId = (itemId, variantId = "") =>
-  `${String(itemId || "")}::${String(variantId || "base")}`
+export const buildCartLineId = (itemId, variantId = "", itemType = "food") => {
+  const normalizedItemType = String(itemType || "food").trim().toLowerCase()
+  const suffix = `${String(itemId || "")}::${String(variantId || "base")}`
+  return normalizedItemType === "addon" ? `addon::${suffix}` : suffix
+}
