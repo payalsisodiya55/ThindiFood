@@ -95,7 +95,7 @@ export default function DiningOfferListPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#eef2f6] pb-24 md:pb-8">
+    <div className="min-h-screen bg-[#eef2f6] pb-8">
       <div className="mx-auto max-w-md">
         <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4">
           <div className="flex items-center gap-3">
@@ -234,13 +234,12 @@ export default function DiningOfferListPage() {
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 16 }}
         onClick={() => navigate("/food/restaurant/dining-offers/new")}
-        className="fixed bottom-20 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg md:bottom-6 md:right-6"
+        className="fixed bottom-6 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg md:right-6"
         style={{ backgroundColor: RESTAURANT_THEME.brand }}>
         
         <Plus className="h-6 w-6" />
       </motion.button>
 
-      <BottomNavbar onMenuClick={() => setShowMenu(true)} />
       <MenuOverlay showMenu={showMenu} setShowMenu={setShowMenu} />
     </div>);
 
