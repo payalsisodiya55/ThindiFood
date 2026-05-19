@@ -49,6 +49,22 @@ const getOrderStatus = (order) =>
 const getOrderPhase = (order) =>
   String(order?.deliveryState?.currentPhase || "").toLowerCase();
 
+const getRestaurantDisplayName = (order) =>
+  (
+    order?.restaurantName ||
+    order?.restaurant ||
+    order?.restaurantId?.restaurantName ||
+    order?.restaurantId?.name ||
+    order?.restaurantId?.restaurantName?.english ||
+    order?.restaurantData?.restaurantName ||
+    order?.restaurantData?.name ||
+    order?.restaurantDetails?.restaurantName ||
+    order?.restaurantDetails?.name ||
+    order?.restaurantMeta?.restaurantName ||
+    order?.restaurantMeta?.name ||
+    "Restaurant"
+  );
+
 const ACTIVE_PHASES = new Set([
   "created",
   "confirmed",
@@ -387,8 +403,9 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     return null;
   }
 
-  const restaurantName =
-    activeOrder.restaurant || activeOrder.restaurantName || "Restaurant";
+  const restaurantName = getRestaurantDisplayName(activeOrder);
+  const isTakeawayOrder =
+    String(activeOrder?.fulfillmentType || "").toLowerCase() === "takeaway";
   const readyInMinutes = (() => {
     if (activeOrder?.fulfillmentType !== "takeaway" || !activeOrder?.pickupAt) {
       return null;
@@ -418,9 +435,9 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
       if (activeOrder?.fulfillmentType === "takeaway" && typeof readyInMinutes === "number") {
         return `Ready in ${readyInMinutes} mins`;
       }
-      return "Preparing your order";
-    }
-    if (s === "ready_for_pickup") return "Ready for pickup";
+       return "Preparing your order";
+     }
+     if (s === "ready_for_pickup") return "Ready for pickup";
 
     if (s === "reached_pickup" || p === "at_pickup") return "Ready for your pickup";
     if (s === "picked_up" || p === "en_route_to_delivery") return "Pickup completed";
@@ -473,10 +490,10 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
               className="shadow-lg shadow-red-500/20 rounded-xl px-4 py-2 shrink-0 flex flex-col items-center justify-center border border-red-200"
             >
               <p className="text-orange-50 text-[10px] font-bold uppercase tracking-wider opacity-95 leading-tight mb-[2px]">
-                GO FOR
+                {isTakeawayOrder ? "GO FOR" : "TRACK"}
               </p>
               <p className="text-white text-base md:text-[17px] font-black leading-tight drop-shadow-sm">
-                PICKUP
+                {isTakeawayOrder ? "PICKUP" : "ORDER"}
               </p>
             </div>
           </div>

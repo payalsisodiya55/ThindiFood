@@ -4560,22 +4560,22 @@ function OrderCard({
         </div>
 
         {/* Content */}
-        <div className="flex-1 flex flex-col justify-between min-h-[80px]">
+        <div className="flex-1 min-w-0 flex flex-col justify-between min-h-[80px]">
           {/* Top row */}
-          <div className="flex items-start justify-between gap-2">
-            <div>
+          <div className="flex items-start justify-between gap-2 w-full min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-black leading-tight">
                 Order #{orderId}
               </p>
               {shouldShowCustomerContact && (
-                <div className="mt-1.5 flex flex-col gap-1">
+                <div className="mt-1.5 flex flex-col gap-1 w-full min-w-0">
                   {customerName && (
                     <p className="text-[11px] font-medium text-gray-600 leading-tight">
                       {customerName}
                     </p>
                   )}
                   {(customerPhone || phoneForCall) && (
-                    <div className="mt-1.5 flex items-center justify-center gap-3">
+                    <div className="mt-1.5 flex items-center justify-start gap-2 flex-wrap">
                       {customerPhone && (
                         <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500 leading-none">
                           {customerPhone}
@@ -4585,7 +4585,7 @@ function OrderCard({
                         <a
                           href={`tel:${phoneForCall}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 rounded-full bg-[#00c87e] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm transition-all hover:bg-[#00b874] active:scale-95"
+                          className="inline-flex items-center gap-1.5 rounded-full bg-[#00c87e] px-2.5 py-1 text-[10px] font-bold leading-none text-white shadow-sm transition-all hover:bg-[#00b874] active:scale-95 flex-shrink-0"
                         >
                           <Phone className="h-2.5 w-2.5" />
                           Call
@@ -4600,7 +4600,7 @@ function OrderCard({
               )}
             </div>
 
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-end gap-1 flex-shrink-0">
       <div
         className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${
           isActiveDineIn

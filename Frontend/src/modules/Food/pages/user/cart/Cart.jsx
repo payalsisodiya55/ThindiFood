@@ -181,12 +181,17 @@ const getRestaurantDisplayName = (restaurant) => {
   )
 }
 
-const buildOrderSuccessSnapshot = (order, restaurant) => {
+const buildOrderSuccessSnapshot = (order, restaurant, fallbackFulfillmentType = "") => {
   const baseOrder = order && typeof order === "object" ? order : {}
   const snapshotRestaurant = restaurant && typeof restaurant === "object" ? restaurant : {}
+  const fulfillmentType = String(
+    baseOrder?.fulfillmentType || baseOrder?.orderType || fallbackFulfillmentType || "",
+  ).toLowerCase()
+  const successDeliveryLocation = formatFullAddress(baseOrder?.address)
 
   return {
     ...baseOrder,
+    successFulfillmentType: fulfillmentType || "takeaway",
     successRestaurantName:
       getRestaurantDisplayName(baseOrder) ||
       getRestaurantDisplayName(snapshotRestaurant),
@@ -194,6 +199,7 @@ const buildOrderSuccessSnapshot = (order, restaurant) => {
       formatRestaurantPickupAddress(snapshotRestaurant) ||
       formatRestaurantPickupAddress(baseOrder?.restaurantId) ||
       "Restaurant Location",
+    successDeliveryLocation,
   }
 }
 
@@ -1829,6 +1835,27 @@ export default function Cart() {
     placedOrderSnapshot?.successRestaurantLocation ||
     formatRestaurantPickupAddress(placedOrderSnapshot?.restaurantId) ||
     pickupRestaurantAddress
+  const successFulfillmentType = String(
+    placedOrderSnapshot?.successFulfillmentType ||
+      placedOrderSnapshot?.fulfillmentType ||
+      (fulfillmentMode === "delivery" ? "delivery" : "takeaway"),
+  ).toLowerCase()
+  const successDeliveryLocation =
+    placedOrderSnapshot?.successDeliveryLocation ||
+    formatFullAddress(placedOrderSnapshot?.address) ||
+    formatFullAddress(defaultAddress)
+  const successLocationTitle =
+    successFulfillmentType === "delivery"
+      ? "Delivery Address"
+      : `Pickup at ${successRestaurantName}`
+  const successLocationText =
+    successFulfillmentType === "delivery"
+      ? successDeliveryLocation || "Your address"
+      : successRestaurantLocation
+  const successMessage =
+    successFulfillmentType === "delivery"
+      ? "Your order will be delivered soon"
+      : "Your food will be ready for pickup soon"
 
   const isPercentageCoupon = (coupon) => String(coupon?.discountType || "").toLowerCase() === "percentage"
 
@@ -2622,7 +2649,7 @@ export default function Cart() {
       if (selectedPaymentMethod === "cash") {
         toast.success("Order placed with Cash on Delivery")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
-        setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData))
+        setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData, fulfillmentType))
         orderAPI.getOrderDetails.prime?.(orderResponse)
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
@@ -2635,7 +2662,7 @@ export default function Cart() {
       if (selectedPaymentMethod === "wallet") {
         toast.success("Order placed with Wallet payment")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
-        setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData))
+        setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData, fulfillmentType))
         orderAPI.getOrderDetails.prime?.(orderResponse)
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
@@ -2729,7 +2756,7 @@ export default function Cart() {
                 paymentId: verifyResponse.data.data?.payment?.paymentId
               })
               setPlacedOrderId(order._id || order.orderId)
-              setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData))
+              setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData, fulfillmentType))
               orderAPI.getOrderDetails.prime?.(verifyResponse?.data?.data?.order || order)
               setShowOrderSuccess(true)
               window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
@@ -3869,11 +3896,11 @@ export default function Cart() {
                       </svg>
                     </div>
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      Pickup at {successRestaurantName}
+                      {successLocationTitle}
                     </h2>
                   </div>
                   <p className="text-gray-500 dark:text-gray-400 text-base">
-                    {successRestaurantLocation}
+                    {successLocationText}
                   </p>
                 </div>
 
@@ -3883,7 +3910,7 @@ export default function Cart() {
                   style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
                 >
                   <h3 className="text-3xl font-bold text-[#00c87e] dark:text-red-400 mb-2">Order Placed!</h3>
-                  <p className="text-gray-600 dark:text-gray-300">Your food will be ready for pickup soon</p>
+                  <p className="text-gray-600 dark:text-gray-300">{successMessage}</p>
                 </div>
 
                 {/* Action Button */}
