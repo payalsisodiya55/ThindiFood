@@ -14,14 +14,6 @@ import('./modules/Food/utils/businessSettings.js')
   .then(({ loadBusinessSettings }) => loadBusinessSettings())
   .catch(() => { /* Silently fail — settings load when admin authenticates */ })
 
-// Apply saved theme
-const savedTheme = localStorage.getItem('appTheme') || 'light'
-if (savedTheme === 'dark') {
-  document.documentElement.classList.add('dark')
-} else {
-  document.documentElement.classList.remove('dark')
-}
-
 function isNativeLikeShell() {
   if (typeof window === 'undefined') return false
 

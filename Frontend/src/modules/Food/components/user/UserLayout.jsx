@@ -13,6 +13,9 @@ import BottomNavigation from "./BottomNavigation"
 import DesktopNavbar from "./DesktopNavbar"
 import { useUserNotifications } from "../../hooks/useUserNotifications"
 
+const USER_THEME_STORAGE_KEY = "appTheme"
+const USER_THEME_CHANGE_EVENT = "food-user-theme-change"
+
 // Create SearchOverlay context with default value
 const SearchOverlayContext = createContext({
   isSearchOpen: false,
@@ -108,11 +111,33 @@ function LocationSelectorProvider({ children }) {
 
 export default function UserLayout() {
   const location = useLocation()
+  const [appearance, setAppearance] = useState(() => {
+    if (typeof window === "undefined") return "light"
+    return localStorage.getItem(USER_THEME_STORAGE_KEY) || "light"
+  })
 
   useEffect(() => {
     // Reset scroll to top whenever location changes (pathname, search, or hash)
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
   }, [location.pathname, location.search, location.hash])
+
+  useEffect(() => {
+    document.documentElement.classList.remove("dark")
+
+    const syncAppearance = () => {
+      document.documentElement.classList.remove("dark")
+      setAppearance(localStorage.getItem(USER_THEME_STORAGE_KEY) || "light")
+    }
+
+    window.addEventListener(USER_THEME_CHANGE_EVENT, syncAppearance)
+    window.addEventListener("storage", syncAppearance)
+
+    return () => {
+      document.documentElement.classList.remove("dark")
+      window.removeEventListener(USER_THEME_CHANGE_EVENT, syncAppearance)
+      window.removeEventListener("storage", syncAppearance)
+    }
+  }, [])
 
   useUserNotifications()
 
@@ -144,7 +169,11 @@ export default function UserLayout() {
   const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250"
 
   return (
-    <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200">
+    <div
+      className={`min-h-screen bg-[#f5f5f5] transition-colors duration-200 ${
+        appearance === "dark" ? "dark bg-[#0a0a0a]" : ""
+      }`}
+    >
       <CartProvider>
         <ProfileProvider>
           <OrdersProvider>

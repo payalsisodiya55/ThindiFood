@@ -50,6 +50,8 @@ const debugLog = (...args) => { };
 const debugWarn = (...args) => { };
 const debugError = (...args) => { };
 const USER_SESSION_PREFERENCE_KEYS = ["userVegMode", "food-under-250-filters"];
+const USER_THEME_STORAGE_KEY = "appTheme";
+const USER_THEME_CHANGE_EVENT = "food-user-theme-change";
 const DEFAULT_PROFILE_AVATAR = `data:image/svg+xml;utf8,${encodeURIComponent(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
     <defs>
@@ -89,7 +91,7 @@ export default function Profile() {
   const [vegModeOpen, setVegModeOpen] = useState(false);
   const [tempVegMode, setTempVegMode] = useState(vegMode);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [tempAppearance, setTempAppearance] = useState(localStorage.getItem("appTheme") || "light");
+  const [tempAppearance, setTempAppearance] = useState(localStorage.getItem(USER_THEME_STORAGE_KEY) || "light");
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [deleteAccountConfirmOpen, setDeleteAccountConfirmOpen] = useState(false);
@@ -110,19 +112,13 @@ export default function Profile() {
   // Settings states
   const [appearance, setAppearance] = useState(() => {
     // Load theme from localStorage or default to 'light'
-    return localStorage.getItem("appTheme") || "light";
+    return localStorage.getItem(USER_THEME_STORAGE_KEY) || "light";
   });
 
-  // Apply theme to document
+  // Save user theme and notify the user layout to update its scoped dark mode
   useEffect(() => {
-    const root = document.documentElement;
-    if (appearance === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
-    // Save to localStorage
-    localStorage.setItem("appTheme", appearance);
+    localStorage.setItem(USER_THEME_STORAGE_KEY, appearance);
+    window.dispatchEvent(new Event(USER_THEME_CHANGE_EVENT));
   }, [appearance]);
 
   // Get first letter of name for avatar
