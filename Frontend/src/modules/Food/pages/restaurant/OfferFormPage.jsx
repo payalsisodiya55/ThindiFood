@@ -17,6 +17,14 @@ const toInputDate = (value) => {
   return `${date.getFullYear()}-${month}-${day}`
 }
 
+const getTodayDateString = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 const createInitialForm = () => ({
   title: "",
   products: [],
@@ -174,11 +182,18 @@ export default function OfferFormPage({ mode = "create" }) {
     if (form.perUserRedeemLimit !== "" && (!Number.isFinite(Number(form.perUserRedeemLimit)) || Number(form.perUserRedeemLimit) < 1)) {
       return "Per User Redeem Limit must be at least 1"
     }
+    const todayStr = getTodayDateString()
+    if (!isEditMode && form.startDate && form.startDate < todayStr) {
+      return "Start date cannot be in the past"
+    }
+    if (!isEditMode && form.endDate && form.endDate < todayStr) {
+      return "End date cannot be in the past"
+    }
     if (form.startDate && form.endDate && new Date(form.endDate).getTime() <= new Date(form.startDate).getTime()) {
       return "End date must be after start date"
     }
     return ""
-  }, [form, isPercentage])
+  }, [form, isPercentage, isEditMode])
 
   const handleSubmit = async () => {
     if (validationError || submitting || loadingOffer) return
@@ -450,6 +465,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 <div className="relative">
                   <Input
                     type="date"
+                    min={getTodayDateString()}
                     value={form.startDate}
                     onChange={(e) => setField("startDate", e.target.value)}
                     className="h-12 pr-10"
@@ -464,6 +480,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 <div className="relative">
                   <Input
                     type="date"
+                    min={form.startDate || getTodayDateString()}
                     value={form.endDate}
                     onChange={(e) => setField("endDate", e.target.value)}
                     className="h-12 pr-10"

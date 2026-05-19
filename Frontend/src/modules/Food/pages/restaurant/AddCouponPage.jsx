@@ -38,6 +38,14 @@ const toInputDate = (value) => {
   return `${date.getFullYear()}-${month}-${day}`
 }
 
+const getTodayDateString = () => {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 const mapCouponToForm = (coupon) => ({
   couponCode: String(coupon?.couponCode || ""),
   discountType: coupon?.discountType === "flat-price" ? "flat-price" : "percentage",
@@ -84,11 +92,18 @@ export default function AddCouponPage(props = {}) {
     if (form.perUserLimit !== "" && (!Number.isFinite(Number(form.perUserLimit)) || Number(form.perUserLimit) < 0)) {
       return "Per user limit must be 0 or more"
     }
+    const todayStr = getTodayDateString()
+    if (!isEditMode && form.startDate && form.startDate < todayStr) {
+      return "Start date cannot be in the past"
+    }
+    if (!isEditMode && form.endDate && form.endDate < todayStr) {
+      return "End date cannot be in the past"
+    }
     if (form.startDate && form.endDate && new Date(form.endDate).getTime() <= new Date(form.startDate).getTime()) {
       return "End date must be after start date"
     }
     return ""
-  }, [form, isPercentage])
+  }, [form, isPercentage, isEditMode])
 
   useEffect(() => {
     if (!isEditMode) {
@@ -304,6 +319,7 @@ export default function AddCouponPage(props = {}) {
                 <div className="relative">
                   <Input
                     type="date"
+                    min={getTodayDateString()}
                     value={form.startDate}
                     onChange={(e) => setField("startDate", e.target.value)}
                     className="h-12 pr-10"
@@ -317,6 +333,7 @@ export default function AddCouponPage(props = {}) {
                 <div className="relative">
                   <Input
                     type="date"
+                    min={form.startDate || getTodayDateString()}
                     value={form.endDate}
                     onChange={(e) => setField("endDate", e.target.value)}
                     className="h-12 pr-10"
