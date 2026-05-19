@@ -1198,13 +1198,13 @@ Order again from this restaurant in the ${companyName} app.`
 
       {/* Footer Branding */}
       <div className="flex justify-center mt-8 mb-4">
-        <h1 className="text-4xl font-black text-gray-200 tracking-tighter italic">appzeto</h1>
+        <h1 className="text-4xl font-black text-gray-200 tracking-tighter italic">Taamio</h1>
       </div>
 
       {/* Rating & Feedback Modal */}
       {ratingModal.open && ratingModal.order && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#1a1a1a] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
             {/* Header with gradient */}
             <div 
               style={{ background: `linear-gradient(to right, ${RED}, #00b06f)` }}
@@ -1228,7 +1228,7 @@ Order again from this restaurant in the ${companyName} app.`
 
             <div className="px-6 py-6">
               <div className="mb-6">
-                <p className="text-sm font-semibold text-gray-900 mb-3">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Restaurant rating (out of 5)
                 </p>
                 <div className="flex items-center justify-center gap-2 mb-3">
@@ -1244,7 +1244,7 @@ Order again from this restaurant in the ${companyName} app.`
                         <Star
                           className={`w-10 h-10 transition-all ${isActive
                               ? "text-yellow-400 fill-yellow-400 drop-shadow-lg"
-                              : "text-gray-300 hover:text-yellow-200"
+                              : "text-gray-300 dark:text-gray-600 hover:text-yellow-200"
                             }`}
                         />
                       </button>
@@ -1256,7 +1256,7 @@ Order again from this restaurant in the ${companyName} app.`
                   value={restaurantFeedbackText}
                   onChange={(e) => setRestaurantFeedbackText(e.target.value)}
                   style={{ '--tw-ring-color': RED }}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-[#00c87e] resize-none transition-all"
+                  className="w-full rounded-xl border-2 border-gray-200 dark:border-gray-800 bg-transparent dark:bg-[#0a0a0a] px-4 py-2 text-sm text-gray-800 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:border-[#00c87e] resize-none transition-all"
                   placeholder="Restaurant feedback (optional)"
                 />
               </div>
@@ -1292,16 +1292,16 @@ Order again from this restaurant in the ${companyName} app.`
 
       {showShareModal && sharePayload && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 pt-10 sm:items-center">
-          <div className="w-full max-w-sm rounded-3xl bg-white shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#1a1a1a] shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-5 py-4">
               <div>
-                <h3 className="text-base font-semibold text-gray-900">Share restaurant</h3>
-                <p className="text-xs text-gray-500 mt-0.5">Native share available ho to sab supported apps wahan dikhenge</p>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Share restaurant</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Native share available ho to sab supported apps wahan dikhenge</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowShareModal(false)}
-                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                className="rounded-full p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
                 aria-label="Close share modal"
               >
                 <X className="w-4 h-4" />
@@ -1325,7 +1325,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={() => openShareTarget("whatsapp")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
                   <MessageCircle className="w-5 h-5 text-green-600" />
                   WhatsApp
@@ -1333,7 +1333,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={() => openShareTarget("telegram")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
                   <Send className="w-5 h-5 text-sky-500" />
                   Telegram
@@ -1341,7 +1341,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={() => openShareTarget("email")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
                   <Mail className="w-5 h-5 text-rose-500" />
                   Email
@@ -1349,7 +1349,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={() => openShareTarget("sms")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
                   <MessagesSquare className="w-5 h-5 text-violet-500" />
                   SMS
@@ -1357,7 +1357,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={() => openShareTarget("facebook")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
                   <Share2 className="w-5 h-5 text-blue-600" />
                   Facebook
@@ -1365,15 +1365,15 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={() => openShareTarget("x")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
-                  <Link2 className="w-5 h-5 text-gray-900" />
+                  <Link2 className="w-5 h-5 text-gray-900 dark:text-gray-100" />
                   X
                 </button>
                 <button
                   type="button"
                   onClick={() => openShareTarget("linkedin")}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
                   <Share2 className="w-5 h-5 text-blue-700" />
                   LinkedIn
@@ -1381,9 +1381,9 @@ Order again from this restaurant in the ${companyName} app.`
                 <button
                   type="button"
                   onClick={copyShareLink}
-                  className="rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 flex flex-col items-center gap-2 hover:bg-gray-50"
+                  className="rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 flex flex-col items-center gap-2 hover:bg-gray-50 dark:hover:bg-gray-800 bg-transparent"
                 >
-                  <Copy className="w-5 h-5 text-gray-600" />
+                  <Copy className="w-5 h-5 text-gray-600 dark:text-gray-400" />
                   Copy link
                 </button>
               </div>

@@ -283,10 +283,20 @@ export default function UserOrderDetails() {
   const paymentMethod = order.payment?.method || "Online"
   const isTakeawayOrder = String(order.fulfillmentType || "").toLowerCase() === "takeaway"
   const normalizedOrderStatus = String(order.status || "").trim().toLowerCase()
+  const normalizedOrderWorkflowStatus = String(order.orderStatus || "").trim().toLowerCase()
   const orderStatusLabel = formatOrderStatusLabel(order.status, isTakeawayOrder)
   const deliveryAddress = order.address || order.deliveryAddress || {}
+  const complaintEligibleStatuses = new Set([
+    "delivered",
+    "completed",
+    "delivered_self",
+    "delivered self",
+    "completed_self",
+    "completed self",
+  ])
   const canShowRestaurantComplaint =
-    normalizedOrderStatus === "delivered" || normalizedOrderStatus === "completed"
+    complaintEligibleStatuses.has(normalizedOrderStatus) ||
+    complaintEligibleStatuses.has(normalizedOrderWorkflowStatus)
   const paymentDate = order.createdAt
     ? new Date(order.createdAt).toLocaleString("en-IN", {
       month: "long",

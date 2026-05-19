@@ -214,10 +214,10 @@ const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className="font-medium text-gray-900 truncate">{title}</p>
-      {subtitle && <p className="text-sm text-gray-500 truncate">{subtitle}</p>}
+      <p className="font-medium text-gray-900 dark:text-white truncate">{title}</p>
+      {subtitle && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{subtitle}</p>}
     </div>
-    {rightContent || (showArrow && <ChevronRight className="w-5 h-5 text-gray-400 flex-shrink-0" />)}
+    {rightContent || (showArrow && <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />)}
   </motion.button>
 )
 
@@ -1832,10 +1832,10 @@ export default function OrderTracking() {
   // Loading state (moved after hooks)
   if (loading) {
     return (
-      <AnimatedPage className="min-h-screen bg-gray-50 p-4">
+      <AnimatedPage className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] p-4">
         <div className="max-w-lg mx-auto text-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-600 mx-auto mb-4" />
-          <p className="text-gray-600">Loading order details...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-gray-600 dark:text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading order details...</p>
         </div>
       </AnimatedPage>
     )
@@ -1844,10 +1844,10 @@ export default function OrderTracking() {
   // Error state (moved after hooks)
   if (error || !order) {
     return (
-      <AnimatedPage className="min-h-screen bg-gray-50 p-4">
+      <AnimatedPage className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] p-4">
         <div className="max-w-lg mx-auto text-center py-20">
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-4">Order Not Found</h1>
-          <p className="text-gray-600 mb-6">{error || 'The order you\'re looking for doesn\'t exist.'}</p>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 text-gray-900 dark:text-white">Order Not Found</h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error || 'The order you\'re looking for doesn\'t exist.'}</p>
           <Link to="/user/orders">
             <Button>Back to Orders</Button>
           </Link>
@@ -1989,7 +1989,7 @@ export default function OrderTracking() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 }}
-                className="text-2xl font-bold text-gray-900 mt-6"
+                className="text-2xl font-bold text-gray-900 dark:text-white mt-6"
               >
                 Order Confirmed!
               </motion.h1>
@@ -1997,7 +1997,7 @@ export default function OrderTracking() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.1 }}
-                className="text-gray-600 mt-2"
+                className="text-gray-600 dark:text-gray-400 mt-2"
               >
                 Your order has been placed successfully
               </motion.p>
@@ -2008,7 +2008,7 @@ export default function OrderTracking() {
                 className="mt-8"
               >
                 <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin mx-auto" style={{ borderColor: RED, borderTopColor: "transparent" }} />
-                <p className="text-sm text-gray-500 mt-3">Loading order details...</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-3">Loading order details...</p>
               </motion.div>
             </motion.div>
           </motion.div>
@@ -2102,16 +2102,16 @@ export default function OrderTracking() {
         {/* 1-minute cancellation window after admin acceptance */}
         {customerDeliveryOtp && orderStatus !== 'delivered' && orderStatus !== 'cancelled' && (
           <motion.div
-            className="bg-blue-50 rounded-xl p-4 shadow-sm border border-blue-100"
+            className="bg-blue-50 dark:bg-blue-950/20 rounded-xl p-4 shadow-sm border border-blue-100 dark:border-blue-900/30"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.28 }}
           >
-            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+            <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
               {isSelfDeliveryOrder ? "Delivery OTP" : "Takeaway OTP"}
             </p>
-            <p className="text-2xl font-extrabold text-blue-900 mt-1 tracking-widest">{customerDeliveryOtp}</p>
-            <p className="text-xs text-blue-700 mt-1">
+            <p className="text-2xl font-extrabold text-blue-900 dark:text-blue-300 mt-1 tracking-widest">{customerDeliveryOtp}</p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
               {isSelfDeliveryOrder
                 ? "Share this 4-digit OTP with the delivery boy only after your order reaches you."
                 : "Share this 4-digit OTP with the restaurant at pickup."}
@@ -2121,28 +2121,28 @@ export default function OrderTracking() {
 
         {isSelfDeliveryOrder && order?.selfDeliveryBoy && (
           <motion.div
-            className="bg-white rounded-xl shadow-sm overflow-hidden"
+            className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.29 }}
           >
             <div className="flex items-center gap-3 p-4">
-              <div className="w-12 h-12 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100">
-                <User className="w-5 h-5 text-blue-600" />
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100 dark:border-blue-950/50">
+                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">{order.selfDeliveryBoy.name || "Delivery Boy"}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-semibold text-gray-900 dark:text-white">{order.selfDeliveryBoy.name || "Delivery Boy"}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {order.selfDeliveryBoy.phone || "Contact number will appear here"}
                 </p>
               </div>
               {order.selfDeliveryBoy.phone && (
                 <motion.a
                   href={`tel:${order.selfDeliveryBoy.phone}`}
-                  className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"
+                  className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center"
                   whileTap={{ scale: 0.9 }}
                 >
-                  <Phone className="w-5 h-5 text-blue-600" />
+                  <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                 </motion.a>
               )}
             </div>
@@ -2151,17 +2151,17 @@ export default function OrderTracking() {
 
         {/* Dynamic Status Card */}
         <motion.div
-          className="bg-white rounded-xl p-4 shadow-sm"
+          className="bg-white dark:bg-[#1a1a1a] rounded-xl p-4 shadow-sm border border-transparent dark:border-gray-800"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm border border-gray-100 ${
-              currentStatus.iconType === 'rider' ? 'bg-blue-50' : 
-              currentStatus.iconType === 'cancelled' ? 'bg-red-50' : 
-              currentStatus.iconType === 'delivered' ? 'bg-green-50' : 
-              'bg-red-50'
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm border border-gray-100 dark:border-gray-800 ${
+              currentStatus.iconType === 'rider' ? 'bg-blue-50 dark:bg-blue-950/20' : 
+              currentStatus.iconType === 'cancelled' ? 'bg-red-50 dark:bg-red-950/20' : 
+              currentStatus.iconType === 'delivered' ? 'bg-green-50 dark:bg-green-950/20' : 
+              'bg-red-50 dark:bg-red-950/20'
             }`}>
               {currentStatus.iconType === 'rider' ? (
                 <div 
@@ -2169,11 +2169,11 @@ export default function OrderTracking() {
                   className="w-full h-full" 
                 />
               ) : currentStatus.iconType === 'cancelled' ? (
-                <div className="w-full h-full flex items-center justify-center p-2 text-red-500">
+                <div className="w-full h-full flex items-center justify-center p-2 text-red-500 dark:text-red-400">
                   <X className="w-full h-full" />
                 </div>
               ) : currentStatus.iconType === 'delivered' ? (
-                <div className="w-full h-full flex items-center justify-center p-2 text-green-500">
+                <div className="w-full h-full flex items-center justify-center p-2 text-green-500 dark:text-green-400">
                   <Check className="w-full h-full" />
                 </div>
               ) : (
@@ -2185,21 +2185,21 @@ export default function OrderTracking() {
               )}
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-gray-900 leading-tight">{currentStatus.title}</p>
-              <p className="text-sm text-gray-500 mt-1 leading-snug">{currentStatus.subtitle}</p>
+              <p className="font-semibold text-gray-900 dark:text-white leading-tight">{currentStatus.title}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-snug">{currentStatus.subtitle}</p>
             </div>
           </div>
         </motion.div>
 
         {refundOverrideReason && (
           <motion.div
-            className="bg-amber-50 rounded-xl p-4 shadow-sm border border-amber-200"
+            className="bg-amber-50 dark:bg-amber-950/20 rounded-xl p-4 shadow-sm border border-amber-200 dark:border-amber-900/30"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.34 }}
           >
-            <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Refund Update</p>
-            <p className="text-sm text-amber-900 mt-1 leading-snug">
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Refund Update</p>
+            <p className="text-sm text-amber-900 dark:text-amber-300 mt-1 leading-snug">
               Admin processed refund with override reason: {refundOverrideReason}
             </p>
           </motion.div>
@@ -2208,13 +2208,13 @@ export default function OrderTracking() {
         {/* Delivery Partner Info */}
         {order?.deliveryPartnerId && (
           <motion.div
-            className="bg-white rounded-xl shadow-sm overflow-hidden"
+            className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
           >
-            <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200">
-              <div className="w-12 h-12 rounded-full bg-blue-50 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100 p-1">
+            <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200 dark:border-gray-800">
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100 dark:border-blue-950/50 p-1">
                 {order.deliveryPartner?.avatar ? (
                   <img src={order.deliveryPartner.avatar} alt="Rider" className="w-full h-full object-cover" />
                 ) : (
@@ -2225,15 +2225,15 @@ export default function OrderTracking() {
                 )}
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-900">{order.deliveryPartner?.name || 'Delivery Partner'}</p>
-                <p className="text-sm text-gray-500">Your delivery partner is arriving</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{order.deliveryPartner?.name || 'Delivery Partner'}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Your delivery partner is arriving</p>
               </div>
               <motion.button
-                className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center"
                 onClick={handleCallRider}
                 whileTap={{ scale: 0.9 }}
               >
-                <Phone className="w-5 h-5 text-blue-600" />
+                <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </motion.button>
             </div>
           </motion.div>
@@ -2241,7 +2241,7 @@ export default function OrderTracking() {
 
         {/* Contact & Address Section */}
         <motion.div
-          className="bg-white rounded-xl shadow-sm overflow-hidden"
+          className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
@@ -2299,24 +2299,24 @@ export default function OrderTracking() {
 
         {/* Restaurant Section */}
         <motion.div
-          className="bg-white rounded-xl shadow-sm overflow-hidden"
+          className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75 }}
         >
-          <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200">
-            <div className="w-12 h-12 rounded-full bg-red-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+          <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200 dark:border-gray-800">
+            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/20 overflow-hidden flex items-center justify-center flex-shrink-0">
               <div
                 dangerouslySetInnerHTML={{ __html: SAFE_RESTAURANT_PIN }}
                 className="w-7 h-7 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
               />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-gray-900">{order.restaurant}</p>
-              <p className="text-sm text-gray-500">{order.restaurantAddress || 'Restaurant location'}</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{order.restaurant}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{order.restaurantAddress || 'Restaurant location'}</p>
             </div>
             <motion.button
-              className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center"
+              className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center"
               onClick={handleCallRestaurant}
               whileTap={{ scale: 0.9 }}
             >
@@ -2326,14 +2326,14 @@ export default function OrderTracking() {
 
           {/* Order Items */}
           <div
-            className="p-4 border-b border-dashed border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+            className="p-4 border-b border-dashed border-gray-200 dark:border-gray-800 cursor-pointer hover:bg-gray-50 dark:hover:bg-[#222] transition-colors"
             onClick={() => setShowOrderDetails(true)}
           >
             <div className="flex items-start">
               <div className="flex-1">
                 <div className="mt-2 space-y-1">
                   {order?.items?.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
+                    <div key={index} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
                       <span className={`w-4 h-4 rounded border ${item.isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center`}>
                         <span className={`w-2 h-2 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
                       </span>
@@ -2342,14 +2342,14 @@ export default function OrderTracking() {
                   ))}
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-gray-400" />
+              <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />
             </div>
           </div>
         </motion.div>
 
         {canShowCancelOrder && (
           <motion.div
-            className="bg-white rounded-xl shadow-sm overflow-hidden"
+            className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8 }}
@@ -2367,9 +2367,9 @@ export default function OrderTracking() {
 
       {/* Cancel Order Dialog */}
       <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent className="sm:max-w-xl w-[95%] max-w-[600px]">
+        <DialogContent className="sm:max-w-xl w-[95%] max-w-[600px] bg-white dark:bg-[#1a1a1a] border-none">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-gray-900">
+            <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">
               Cancel Order
             </DialogTitle>
           </DialogHeader>
@@ -2379,7 +2379,7 @@ export default function OrderTracking() {
                 value={cancellationReason}
                 onChange={(e) => setCancellationReason(e.target.value)}
                 placeholder="e.g., Changed my mind, Wrong address, etc."
-                className="w-full min-h-[100px] resize-none border-2 border-gray-300 rounded-lg px-4 py-3 text-sm focus:border-red-500 focus:ring-2 focus:ring-red-200 focus:outline-none transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed disabled:border-gray-200"
+                className="w-full min-h-[100px] resize-none border-2 border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white bg-white dark:bg-[#111111] placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-950 focus:outline-none transition-colors disabled:bg-gray-100 dark:disabled:bg-[#161616] disabled:cursor-not-allowed disabled:border-gray-200 dark:disabled:border-gray-800"
                 disabled={isCancelling}
               />
             </div>
@@ -2429,16 +2429,16 @@ export default function OrderTracking() {
 
       {showShareModal && sharePayload && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-4 pt-10 sm:items-center">
-          <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div className="w-full max-w-sm overflow-hidden rounded-3xl bg-white dark:bg-[#1a1a1a] shadow-2xl border border-transparent dark:border-gray-800">
+            <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 px-5 py-4">
               <div>
-                <h3 className="text-base font-semibold text-gray-900">Share tracking</h3>
-                <p className="mt-0.5 text-xs text-gray-500">Mobile me native share na ho to yahan se app choose kar sakte ho</p>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">Share tracking</h3>
+                <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Mobile me native share na ho to yahan se app choose kar sakte ho</p>
               </div>
               <button
                 type="button"
                 onClick={() => setShowShareModal(false)}
-                className="rounded-full p-2 text-gray-500 hover:bg-gray-100"
+                className="rounded-full p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#222222]"
                 aria-label="Close share modal"
               >
                 <X className="h-4 w-4" />
@@ -2462,7 +2462,7 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={() => openShareTarget("whatsapp")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
                   <MessageCircle className="h-5 w-5 text-green-600" />
                   WhatsApp
@@ -2470,7 +2470,7 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={() => openShareTarget("telegram")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
                   <Send className="h-5 w-5 text-sky-500" />
                   Telegram
@@ -2478,7 +2478,7 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={() => openShareTarget("email")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
                   <Mail className="h-5 w-5 text-rose-500" />
                   Email
@@ -2486,7 +2486,7 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={() => openShareTarget("sms")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
                   <MessagesSquare className="h-5 w-5 text-violet-500" />
                   SMS
@@ -2494,7 +2494,7 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={() => openShareTarget("facebook")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
                   <Share2 className="h-5 w-5 text-blue-600" />
                   Facebook
@@ -2502,15 +2502,15 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={() => openShareTarget("x")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
-                  <Link2 className="h-5 w-5 text-gray-900" />
+                  <Link2 className="h-5 w-5 text-gray-900 dark:text-white" />
                   X
                 </button>
                 <button
                   type="button"
                   onClick={() => openShareTarget("linkedin")}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
                   <Share2 className="h-5 w-5 text-blue-700" />
                   LinkedIn
@@ -2518,9 +2518,9 @@ export default function OrderTracking() {
                 <button
                   type="button"
                   onClick={copyShareLink}
-                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 px-3 py-4 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                  className="flex flex-col items-center gap-2 rounded-2xl border border-gray-200 dark:border-gray-800 px-3 py-4 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#222222]"
                 >
-                  <Copy className="h-5 w-5 text-gray-600" />
+                  <Copy className="h-5 w-5 text-gray-600 dark:text-gray-300" />
                   Copy link
                 </button>
               </div>
@@ -2531,10 +2531,10 @@ export default function OrderTracking() {
 
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white rounded-2xl p-0 overflow-hidden border-none outline-none">
-          <DialogHeader className="p-6 pb-4 border-b border-gray-100 pr-12">
+        <DialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl p-0 overflow-hidden border-none outline-none">
+          <DialogHeader className="p-6 pb-4 border-b border-gray-100 dark:border-gray-800 pr-12">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold text-gray-900">Order Details</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Order Details</DialogTitle>
             </div>
           </DialogHeader>
 
@@ -2543,8 +2543,8 @@ export default function OrderTracking() {
             <div className="flex flex-col gap-1 b">
               <div className="flex items-center gap-4 mt-2">
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Date & Time</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">
                     {order?.createdAt ? new Date(order.createdAt).toLocaleString('en-IN', {
                       day: '2-digit',
                       month: 'short',
@@ -2555,9 +2555,9 @@ export default function OrderTracking() {
                     }) : 'N/A'}
                   </p>
                 </div>
-                <div className="h-8 w-px bg-gray-100" />
+                <div className="h-8 w-px bg-gray-100 dark:bg-gray-800" />
                 <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider">Status</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</p>
                   <span className="text-sm font-bold text-green-600 uppercase">
                     {orderDetailsStatusLabel}
                   </span>
@@ -2567,7 +2567,7 @@ export default function OrderTracking() {
 
             {/* Items Section */}
             <div>
-              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Order Items</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Order Items</p>
               <div className="space-y-4">
                 {order?.items?.map((item, index) => (
                   <div key={index} className="flex items-start justify-between gap-4">
@@ -2576,50 +2576,50 @@ export default function OrderTracking() {
                         <div className={`w-2.5 h-2.5 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
                       </div>
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900 leading-tight">{formatOrderItemLabel(item, { includeVariant: false })}</p>
-                        {item.variantName ? <p className="text-sm text-gray-500 mt-0.5">{item.variantName}</p> : null}
-                        <p className="text-sm text-gray-500 mt-0.5">Quantity: {item.quantity}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white leading-tight">{formatOrderItemLabel(item, { includeVariant: false })}</p>
+                        {item.variantName ? <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{item.variantName}</p> : null}
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Quantity: {item.quantity}</p>
                       </div>
                     </div>
-                    <p className="font-semibold text-gray-900">₹{((item?.price || 0) * (item?.quantity || 0)).toFixed(2)}</p>
+                    <p className="font-semibold text-gray-900 dark:text-white">₹{((item?.price || 0) * (item?.quantity || 0)).toFixed(2)}</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Bill Summary */}
-            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
-              <p className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-1">Bill Summary</p>
+            <div className="bg-gray-50 dark:bg-[#111111] rounded-xl p-4 space-y-3 border border-transparent dark:border-gray-800">
+              <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-1">Bill Summary</p>
               
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Item Total</span>
-                <span className="text-gray-900 font-medium">₹{Number(order?.subtotal || 0).toFixed(2)}</span>
+                <span className="text-gray-600 dark:text-gray-400">Item Total</span>
+                <span className="text-gray-900 dark:text-white font-medium">₹{Number(order?.subtotal || 0).toFixed(2)}</span>
               </div>
 
               {Number(order?.packagingFee) > 0 && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Packaging Charges</span>
-                  <span className="text-gray-900 font-medium">₹{Number(order.packagingFee).toFixed(2)}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Packaging Charges</span>
+                  <span className="text-gray-900 dark:text-white font-medium">₹{Number(order.packagingFee).toFixed(2)}</span>
                 </div>
               )}
 
               {Number(order?.deliveryFee) > 0 && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Delivery Fee</span>
-                  <span className="text-gray-900 font-medium">₹{Number(order.deliveryFee).toFixed(2)}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
+                  <span className="text-gray-900 dark:text-white font-medium">₹{Number(order.deliveryFee).toFixed(2)}</span>
                 </div>
               )}
 
               {Number(order?.platformFee) > 0 && (
                 <div className="flex justify-between items-center text-sm">
-                  <span className="text-gray-600">Platform Fee</span>
-                  <span className="text-gray-900 font-medium">₹{Number(order.platformFee).toFixed(2)}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
+                  <span className="text-gray-900 dark:text-white font-medium">₹{Number(order.platformFee).toFixed(2)}</span>
                 </div>
               )}
 
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Taxes & Charges (GST)</span>
-                <span className="text-gray-900 font-medium">₹{Number(order?.gst || 0).toFixed(2)}</span>
+                <span className="text-gray-600 dark:text-gray-400">Taxes & Charges (GST)</span>
+                <span className="text-gray-900 dark:text-white font-medium">₹{Number(order?.gst || 0).toFixed(2)}</span>
               </div>
 
               {Number(order?.discount) > 0 && (
@@ -2629,34 +2629,34 @@ export default function OrderTracking() {
                 </div>
               )}
 
-              <div className="pt-2 border-t border-gray-200 flex justify-between items-center">
-                <span className="text-base font-bold text-gray-900">Total Amount</span>
-                <span className="text-lg font-bold text-gray-900">₹{billSummaryDisplayTotal.toFixed(2)}</span>
+              <div className="pt-2 border-t border-gray-200 dark:border-gray-800 flex justify-between items-center">
+                <span className="text-base font-bold text-gray-900 dark:text-white">Total Amount</span>
+                <span className="text-lg font-bold text-gray-900 dark:text-white">₹{billSummaryDisplayTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Payment Method */}
             {order?.paymentMethod && (
               <div className="flex items-center justify-between px-1">
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <Shield className="w-4 h-4" />
                   <span className="text-sm font-medium">Payment Method</span>
                 </div>
-                <span className="text-sm font-bold text-gray-900 uppercase tracking-wide">
+                <span className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wide">
                   {order.paymentMethod}
                 </span>
               </div>
             )}
 
             {refundOverrideReason && (
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Refund Override Reason</p>
-                <p className="text-sm text-amber-900 mt-1 leading-snug">{refundOverrideReason}</p>
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-xl p-3">
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Refund Override Reason</p>
+                <p className="text-sm text-amber-900 dark:text-amber-300 mt-1 leading-snug">{refundOverrideReason}</p>
               </div>
             )}
           </div>
 
-          <div className="p-6 border-t border-gray-100">
+          <div className="p-6 border-t border-gray-100 dark:border-gray-800">
             <Button
               onClick={() => setShowOrderDetails(false)}
               className="w-full bg-gray-900 text-white font-bold h-12 rounded-xl"

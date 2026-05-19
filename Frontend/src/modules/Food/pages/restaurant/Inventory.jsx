@@ -34,6 +34,7 @@ const ADDON_FORM_STORAGE_KEY = "restaurant_addon_form_data"
 const INVENTORY_ACTIVE_TAB_KEY = "restaurant_inventory_active_tab"
 const INVENTORY_ADDON_FORM_KEY = "restaurant_inventory_addon_form"
 const INVENTORY_STOCK_RULES_KEY = "restaurant_inventory_stock_rules_v1"
+const INVENTORY_FILTER_HISTORY_KEY = "restaurantInventoryFilterOpen"
 const MIN_SPECIFIC_TIME_HOURS = 1
 const MAX_SPECIFIC_TIME_HOURS = 24
 const MAX_CUSTOM_SCHEDULE_DAYS = 7
@@ -784,6 +785,9 @@ export default function Inventory() {
   })
   const [searchQuery, setSearchQuery] = useState("")
   const [filterOpen, setFilterOpen] = useState(false)
+  const filterOpenRef = useRef(false)
+  const filterHistoryPushedRef = useRef(false)
+  const isClosingFilterViaHistoryRef = useRef(false)
   const [selectedFilter, setSelectedFilter] = useState("all")
   const [isLoading, setIsLoading] = useState(false)
   const [loadingInventory, setLoadingInventory] = useState(false)
@@ -834,6 +838,63 @@ export default function Inventory() {
       return {}
     }
   })
+
+  useEffect(() => {
+    filterOpenRef.current = filterOpen
+  }, [filterOpen])
+
+  const closeFilterSheet = (useHistoryBack = true) => {
+    if (filterHistoryPushedRef.current && useHistoryBack && typeof window !== "undefined") {
+      isClosingFilterViaHistoryRef.current = true
+      window.history.back()
+      return
+    }
+
+    filterHistoryPushedRef.current = false
+    setFilterOpen(false)
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined
+
+    const handlePopState = (event) => {
+      const isInventoryFilterState = Boolean(event.state?.[INVENTORY_FILTER_HISTORY_KEY])
+
+      if (isClosingFilterViaHistoryRef.current) {
+        isClosingFilterViaHistoryRef.current = false
+        filterHistoryPushedRef.current = false
+        setFilterOpen(false)
+        return
+      }
+
+      if (filterOpenRef.current || filterHistoryPushedRef.current || isInventoryFilterState) {
+        filterHistoryPushedRef.current = false
+        setFilterOpen(false)
+      }
+    }
+
+    window.addEventListener("popstate", handlePopState)
+    return () => window.removeEventListener("popstate", handlePopState)
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+
+    if (filterOpen && !filterHistoryPushedRef.current) {
+      window.history.pushState(
+        {
+          ...(window.history.state || {}),
+          [INVENTORY_FILTER_HISTORY_KEY]: true,
+        },
+        "",
+      )
+      filterHistoryPushedRef.current = true
+    }
+
+    if (!filterOpen) {
+      filterOpenRef.current = false
+    }
+  }, [filterOpen])
 
   const categoryRefs = useRef({})
   const addonImageInputRef = useRef(null)
@@ -1533,7 +1594,7 @@ export default function Inventory() {
   // Handle filter apply
   const handleFilterApply = () => {
     setIsLoading(true)
-    setFilterOpen(false)
+    closeFilterSheet()
 
     // Simulate loading
     setTimeout(() => {
@@ -1544,7 +1605,7 @@ export default function Inventory() {
   // Handle filter clear
   const handleFilterClear = () => {
     setSelectedFilter("all")
-    setFilterOpen(false)
+    closeFilterSheet()
   }
 
   // Update menu API when category/item toggles change
@@ -2514,7 +2575,7 @@ export default function Inventory() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               className="fixed inset-0 bg-black/50 z-50"
-              onClick={() => setFilterOpen(false)}
+              onClick={() => closeFilterSheet()}
             />
             <motion.div
               initial={{ y: "100%" }}

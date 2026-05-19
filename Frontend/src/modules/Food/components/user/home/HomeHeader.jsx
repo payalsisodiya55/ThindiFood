@@ -96,34 +96,50 @@ export default function HomeHeader({
   } = useNotificationInbox("user", { limit: 20 });
   const { getCartCount } = useCart();
 
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return localStorage.getItem("appTheme") === "dark";
+  });
+
   useEffect(() => {
-    const sync = () => {
+    const syncNotifications = () => {
       const saved = localStorage.getItem("food_user_notifications");
       setNotifications(saved ? JSON.parse(saved) : []);
     };
-    window.addEventListener("notificationsUpdated", sync);
-    return () => window.removeEventListener("notificationsUpdated", sync);
+    const syncTheme = () => {
+      setIsDark(localStorage.getItem("appTheme") === "dark");
+    };
+    window.addEventListener("notificationsUpdated", syncNotifications);
+    window.addEventListener("food-user-theme-change", syncTheme);
+    window.addEventListener("storage", syncTheme);
+    return () => {
+      window.removeEventListener("notificationsUpdated", syncNotifications);
+      window.removeEventListener("food-user-theme-change", syncTheme);
+      window.removeEventListener("storage", syncTheme);
+    };
   }, []);
 
   const theme = activeTab === "quick" ? quickTheme(quickThemeColor) : foodTheme;
   const isFood = activeTab === "food";
   const useSolidHeader = isFood && hasScrolledPastBanner;
-  const headerTextColor = useSolidHeader ? "#111827" : theme.text;
+  const headerTextColor = useSolidHeader
+    ? (isDark ? "#ffffff" : "#111827")
+    : theme.text;
   const subtitleClassName = useSolidHeader
-    ? "max-w-[190px] truncate text-[11px] font-medium text-gray-600"
+    ? "max-w-[190px] truncate text-[11px] font-medium text-gray-600 dark:text-gray-400"
     : "max-w-[190px] truncate text-[11px] font-medium text-white/75";
   const actionButtonClassName = useSolidHeader
-    ? "relative h-[38px] w-[38px] rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-[0_4px_12px_rgba(15,23,42,0.08)]"
+    ? "relative h-[38px] w-[38px] rounded-full bg-white dark:bg-[#2a2a2a] border border-gray-200 dark:border-gray-800 flex items-center justify-center shadow-[0_4px_12px_rgba(15,23,42,0.08)]"
     : "relative h-[38px] w-[38px] rounded-full bg-black/18 border border-white/18 flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.12)] backdrop-blur-[6px]";
   const actionIconClassName = useSolidHeader
-    ? "h-[18px] w-[18px] text-gray-800"
+    ? "h-[18px] w-[18px] text-gray-800 dark:text-white"
     : "h-[18px] w-[18px] text-white";
   const cartButtonClassName = useSolidHeader
-    ? "relative flex h-[38px] w-[38px] items-center justify-center rounded-full border border-gray-200 bg-white shadow-[0_4px_12px_rgba(15,23,42,0.08)]"
+    ? "relative flex h-[38px] w-[38px] items-center justify-center rounded-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#2a2a2a] shadow-[0_4px_12px_rgba(15,23,42,0.08)]"
     : "relative flex h-[38px] w-[38px] items-center justify-center rounded-full border border-white/18 bg-black/18 shadow-[0_4px_12px_rgba(0,0,0,0.12)] backdrop-blur-[6px]";
   const searchBoxClassName = useSolidHeader
-    ? "flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-[#F3F4F6] border border-gray-200 shadow-[0_4px_12px_rgba(15,23,42,0.06)]"
-    : "flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-white shadow-[0_6px_18px_rgba(15,23,42,0.10)]";
+    ? "flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-[#F3F4F6] dark:bg-[#2a2a2a] border border-gray-200 dark:border-gray-800 shadow-[0_4px_12px_rgba(15,23,42,0.06)]"
+    : "flex-1 rounded-[12px] h-[46px] flex items-center px-3 cursor-pointer relative overflow-hidden bg-white dark:bg-[#1a1a1a] shadow-[0_6px_18px_rgba(15,23,42,0.10)]";
   const locationTitle =
     savedAddressText || location?.area || location?.city || "Select Location";
   const locationSubtitle =
@@ -175,11 +191,11 @@ export default function HomeHeader({
     <motion.div
       className={`relative overflow-hidden transition-all duration-700 ${
         showBanner && isFood ? "min-h-[450px]" : "min-h-[90px]"
-      } ${useSolidHeader ? "border-b border-gray-100" : ""}`}
+      } ${useSolidHeader ? "border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1a1a1a]" : ""}`}
       style={{
         background: isFood
           ? useSolidHeader
-            ? "#ffffff"
+            ? (isDark ? "#1a1a1a" : "#ffffff")
             : "transparent"
           : theme.topBg,
         color: headerTextColor,
@@ -222,7 +238,7 @@ export default function HomeHeader({
           <div
             className={`rounded-none border-none px-3 pt-2 pb-2 ${
               useSolidHeader
-                ? "bg-white shadow-[0_8px_22px_rgba(15,23,42,0.06)]"
+                ? "bg-white dark:bg-[#1a1a1a] shadow-[0_8px_22px_rgba(15,23,42,0.06)]"
                 : "bg-[linear-gradient(180deg,rgba(201,58,49,0.24),rgba(255,230,227,0.16))] shadow-[0_16px_34px_rgba(0,0,0,0.18)] backdrop-blur-[4px]"
             }`}
           >
@@ -269,30 +285,30 @@ export default function HomeHeader({
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-0 overflow-hidden border-none shadow-2xl rounded-2xl mt-2 z-[100]" align="end">
-                  <div className="bg-white">
-                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                      <h3 className="font-bold text-gray-900 flex items-center gap-2">
+                  <div className="bg-white dark:bg-[#1a1a1a]">
+                    <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-gray-50/50 dark:bg-gray-900/50">
+                      <h3 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
                         Notifications
                         {unreadCount > 0 && (
-                          <Badge variant="secondary" className="bg-red-100 text-red-600 border-none text-[10px] h-4">
+                          <Badge variant="secondary" className="bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 border-none text-[10px] h-4">
                             {unreadCount} New
                           </Badge>
                         )}
                       </h3>
-                      <Link to="/food/user/notifications" className="text-xs font-bold text-red-600">
+                      <Link to="/food/user/notifications" className="text-xs font-bold text-red-600 dark:text-red-400">
                         {mergedNotifications.length > 0 ? "View All" : ""}
                       </Link>
                     </div>
                     <div className="max-h-96 overflow-y-auto">
                       {mergedNotifications.length > 0 ? (
                         mergedNotifications.slice(0, 5).map((item) => (
-                          <div key={item.id} className="p-4 flex items-start gap-3 border-b border-gray-50 last:border-0">
-                            <div className="mt-1 p-2 rounded-full bg-red-100/50 text-red-600">
+                          <div key={item.id} className="p-4 flex items-start gap-3 border-b border-gray-50 dark:border-gray-800/60 last:border-0">
+                            <div className="mt-1 p-2 rounded-full bg-red-100/50 dark:bg-red-950/30 text-red-600 dark:text-red-400">
                               <Bell className="h-4 w-4" />
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between gap-2 mb-0.5">
-                                <span className="text-sm font-bold text-gray-900 truncate">{item.title}</span>
+                                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">{item.title}</span>
                                 <div className="flex items-center gap-1">
                                   <span className="text-[10px] text-gray-400 whitespace-nowrap">{item.time}</span>
                                   <button
@@ -308,14 +324,14 @@ export default function HomeHeader({
                                   </button>
                                 </div>
                               </div>
-                              <p className="text-xs text-gray-500 line-clamp-2 leading-relaxed">{item.message}</p>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">{item.message}</p>
                             </div>
                           </div>
                         ))
                       ) : (
                         <div className="p-8 text-center flex flex-col items-center gap-2">
-                          <BellOff className="h-10 w-10 text-gray-200" />
-                          <p className="text-xs text-gray-400 font-medium">All caught up!</p>
+                          <BellOff className="h-10 w-10 text-gray-200 dark:text-gray-700" />
+                          <p className="text-xs text-gray-400 dark:text-gray-500 font-medium">All caught up!</p>
                         </div>
                       )}
                     </div>
