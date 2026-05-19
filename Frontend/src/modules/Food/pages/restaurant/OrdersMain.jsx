@@ -132,6 +132,36 @@ const isScheduledRestaurantOrder = (orderLike) => {
 const getNormalizedRestaurantOrderStatus = (orderLike) =>
   String(orderLike?.status || orderLike?.orderStatus || "").trim().toLowerCase();
 
+const isRestaurantCompletedOrder = (orderLike) => {
+  const normalizedStatus = getNormalizedRestaurantOrderStatus(orderLike);
+  const deliveryStateStatus = String(orderLike?.deliveryState?.status || "")
+    .trim()
+    .toLowerCase();
+  const deliveryPhase = String(orderLike?.deliveryState?.currentPhase || "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    ["delivered", "completed", "delivered_self"].includes(normalizedStatus) ||
+    ["delivered", "completed"].includes(deliveryStateStatus) ||
+    ["delivered", "completed"].includes(deliveryPhase) ||
+    Boolean(
+      orderLike?.deliveredAt ||
+        orderLike?.completedAt ||
+        orderLike?.deliveryState?.deliveredAt ||
+        orderLike?.deliveryVerification?.dropOtp?.verifiedAt,
+    ) ||
+    Boolean(orderLike?.deliveryVerification?.dropOtp?.verified)
+  );
+};
+
+const getCompletedOrderStatusLabel = (statusLike) => {
+  const normalizedStatus = String(statusLike || "").trim().toLowerCase();
+  if (normalizedStatus === "delivered_self") return "Deliver Self";
+  if (normalizedStatus === "completed") return "Completed";
+  return "Delivered";
+};
+
 const isDineInOrderLike = (orderLike) => {
   if (!orderLike) return false;
 
@@ -491,23 +521,41 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
 
         if (response.data?.success && response.data.data?.orders) {
           const completedOrders = response.data.data.orders.filter(
-            (order) =>
-              order.status === "delivered" || order.status === "completed",
+            (order) => isRestaurantCompletedOrder(order),
           );
 
           const transformedOrders = completedOrders.map((order) => ({
             orderId: order.orderId || order._id,
             mongoId: order._id,
-            status: order.status || "delivered",
+            status: getNormalizedRestaurantOrderStatus(order) || "delivered",
             customerName: order.userId?.name || order.customerName || "Customer",
             type: getRestaurantOrderTypeLabel(order),
+            fulfillmentType: order.fulfillmentType || "delivery",
+            deliveryType: order.deliveryType || null,
+            selfDeliveryBoy:
+              order.selfDelivery?.deliveryBoyId &&
+              typeof order.selfDelivery.deliveryBoyId === "object"
+                ? {
+                    id:
+                      order.selfDelivery.deliveryBoyId._id ||
+                      order.selfDelivery.deliveryBoyId.id ||
+                      null,
+                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+                    phone: order.selfDelivery.deliveryBoyId.phone || "",
+                  }
+                : null,
             tableOrToken: null,
             timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
               hour: "2-digit",
               minute: "2-digit",
             }),
             deliveredAt:
-              order.deliveredAt || order.updatedAt || order.createdAt,
+              order.deliveredAt ||
+              order.completedAt ||
+              order.deliveryState?.deliveredAt ||
+              order.deliveryVerification?.dropOtp?.verifiedAt ||
+              order.updatedAt ||
+              order.createdAt,
             itemsSummary: formatOrderItemsSummary(order.items),
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
@@ -590,6 +638,10 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                   minute: "2-digit",
                 })
               : "N/A";
+            const completedStatusLabel = getCompletedOrderStatusLabel(order.status);
+            const showDeliveryBoyName =
+              String(order.fulfillmentType || "").toLowerCase() === "delivery" &&
+              Boolean(order.selfDeliveryBoy?.name);
 
             return (
               <div
@@ -600,7 +652,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                   onClick={() =>
                     onSelectOrder?.({
                       orderId: order.orderId,
-                      status: "Delivered",
+                      status: completedStatusLabel,
                       customerName: order.customerName,
                       type: order.type,
                       tableOrToken: order.tableOrToken,
@@ -640,7 +692,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                       <div className="flex flex-col items-end gap-1">
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border border-green-500 text-green-600">
                           <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                          Delivered
+                          {completedStatusLabel}
                         </span>
                         <span className="text-[11px] text-gray-500 text-right">
                           {deliveredDate}
@@ -663,6 +715,11 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                         <p className="text-[11px] text-gray-500">
                           {order.type}
                         </p>
+                        {showDeliveryBoyName && (
+                          <p className="text-[11px] text-blue-600 font-medium">
+                            Delivery Boy: {order.selfDeliveryBoy.name}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-baseline gap-1">
                         <span className="text-[11px] text-gray-500">
