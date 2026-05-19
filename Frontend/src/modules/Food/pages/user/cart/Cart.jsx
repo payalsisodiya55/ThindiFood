@@ -368,6 +368,22 @@ const isApprovedSelfDeliveryRestaurant = (restaurant) =>
 const canRestaurantAcceptDeliveryOrders = (restaurant) =>
   isApprovedSelfDeliveryRestaurant(restaurant)
 
+const getDeliveryRadiusAvailabilityMessage = (restaurant, addressCoordinates) => {
+  if (!isApprovedSelfDeliveryRestaurant(restaurant)) return ""
+  if (!Array.isArray(addressCoordinates) || addressCoordinates.length < 2) return ""
+
+  const restaurantCoordinates = getRestaurantCoordinates(restaurant)
+  const distanceKm = calculateDistanceKm(addressCoordinates, restaurantCoordinates)
+  const allowedRadiusKm = Math.max(0, Number(restaurant?.selfDelivery?.radius || 0) || 0)
+
+  if (!Number.isFinite(distanceKm) || !(allowedRadiusKm > 0)) return ""
+  if (distanceKm <= allowedRadiusKm) return ""
+
+  const roundedDistance = distanceKm < 10 ? distanceKm.toFixed(1) : distanceKm.toFixed(0)
+  const roundedRadius = allowedRadiusKm < 10 ? allowedRadiusKm.toFixed(1) : allowedRadiusKm.toFixed(0)
+  return `Delivery is available only within ${roundedRadius} km of this restaurant. Your address is ${roundedDistance} km away.`
+}
+
 const TAKEAWAY_ADVANCE_BOOKING_LIMIT_MINUTES = 180
 
 const enrichRestaurantWithOutletTimings = async (restaurant) => {
@@ -673,41 +689,6 @@ export default function Cart() {
         fulfillmentMode === "delivery" && isApprovedSelfDeliveryRestaurant(restaurantData),
     })
   }, [restaurantData, deliveryTimingNow, fulfillmentMode])
-
-  const placeOrderAvailabilityMessage = useMemo(() => {
-    if (!restaurantData || !currentRestaurantAvailability) return ""
-
-    if (currentRestaurantAvailability.isActive === false) {
-      return "This restaurant is currently unavailable for orders."
-    }
-
-    if (currentRestaurantAvailability.isAcceptingOrders === false) {
-      return "This restaurant is not accepting orders right now."
-    }
-
-    if (currentRestaurantAvailability.isOpen === false) {
-      if (fulfillmentMode === "takeaway") {
-        return "This restaurant is currently closed for pickup."
-      }
-      return "This restaurant is currently closed and cannot accept orders."
-    }
-
-    if (
-      fulfillmentMode === "delivery" &&
-      selfDeliveryTimingStatus?.isWithinWindow === false
-    ) {
-      return selfDeliveryTimingStatus.message
-    }
-
-    return ""
-  }, [
-    restaurantData,
-    currentRestaurantAvailability,
-    fulfillmentMode,
-    selfDeliveryTimingStatus,
-  ])
-
-  const isPlaceOrderBlocked = Boolean(placeOrderAvailabilityMessage)
 
   const takeawayScheduleWindow = useMemo(() => {
     if (!isPickupScheduled || !restaurantData) return null
@@ -1070,6 +1051,54 @@ export default function Cart() {
       ? currentLocationAddress || selectedAddress || savedAddress || null
       : selectedAddress || savedAddress || currentLocationAddress || null
   }, [deliveryAddressMode, currentLocationAddress, selectedAddress, savedAddress])
+
+  const deliveryRadiusAvailabilityMessage = useMemo(() => {
+    if (fulfillmentMode !== "delivery") return ""
+    return getDeliveryRadiusAvailabilityMessage(
+      restaurantData,
+      defaultAddress?.location?.coordinates,
+    )
+  }, [fulfillmentMode, restaurantData, defaultAddress?.location?.coordinates])
+
+  const placeOrderAvailabilityMessage = useMemo(() => {
+    if (!restaurantData || !currentRestaurantAvailability) return ""
+
+    if (currentRestaurantAvailability.isActive === false) {
+      return "This restaurant is currently unavailable for orders."
+    }
+
+    if (currentRestaurantAvailability.isAcceptingOrders === false) {
+      return "This restaurant is not accepting orders right now."
+    }
+
+    if (currentRestaurantAvailability.isOpen === false) {
+      if (fulfillmentMode === "takeaway") {
+        return "This restaurant is currently closed for pickup."
+      }
+      return "This restaurant is currently closed and cannot accept orders."
+    }
+
+    if (fulfillmentMode === "delivery" && deliveryRadiusAvailabilityMessage) {
+      return deliveryRadiusAvailabilityMessage
+    }
+
+    if (
+      fulfillmentMode === "delivery" &&
+      selfDeliveryTimingStatus?.isWithinWindow === false
+    ) {
+      return selfDeliveryTimingStatus.message
+    }
+
+    return ""
+  }, [
+    restaurantData,
+    currentRestaurantAvailability,
+    fulfillmentMode,
+    deliveryRadiusAvailabilityMessage,
+    selfDeliveryTimingStatus,
+  ])
+
+  const isPlaceOrderBlocked = Boolean(placeOrderAvailabilityMessage)
 
   const pickupRestaurantAddress = useMemo(() => {
     return formatRestaurantPickupAddress(restaurantData)

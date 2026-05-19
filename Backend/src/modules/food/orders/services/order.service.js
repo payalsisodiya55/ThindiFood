@@ -448,6 +448,17 @@ function getRestaurantCoordinates(restaurant = {}) {
   return null;
 }
 
+function isApprovedRestaurantSelfDelivery(restaurant = {}) {
+  const config = restaurant?.selfDelivery || {};
+  const rawApprovalStatus = String(config.approvalStatus || "none").toLowerCase();
+  const approvalStatus =
+    config.enabled === true && !["pending", "rejected", "approved"].includes(rawApprovalStatus)
+      ? "approved"
+      : rawApprovalStatus;
+
+  return config.enabled === true && approvalStatus === "approved";
+}
+
 async function resolveSelfDeliveryContext(dto, restaurant, subtotal) {
   const globalSettings = await getSelfDeliveryGlobalSettings();
   if (globalSettings.globalEnabled === false) {
@@ -1552,7 +1563,6 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
   const items = Array.isArray(dto.items) ? dto.items : [];
   const fulfillmentType =
     dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery";
-  const deliveryType = dto.deliveryType === "self" ? "self" : "partner";
   const originalSubtotal = roundMoney(
     items.reduce(
       (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),
@@ -1571,6 +1581,12 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
       dto.restaurantId,
       "status location selfDelivery isActive isAcceptingOrders",
     ));
+  const deliveryType =
+    fulfillmentType === "delivery" && isApprovedRestaurantSelfDelivery(restaurant)
+      ? "self"
+      : dto.deliveryType === "self"
+        ? "self"
+        : "partner";
   await ensureFoodItemsAreOrderable(dto.restaurantId, items);
 
   const packagingFee = 0;
@@ -1798,7 +1814,14 @@ export async function createOrder(userId, dto) {
   const dispatchMode = settings?.dispatchMode || "manual";
   const fulfillmentType =
     dto.fulfillmentType === "takeaway" ? "takeaway" : "delivery";
-  const deliveryType = dto.deliveryType === "self" ? "self" : "partner";
+  const deliveryType =
+    orderType === "food" &&
+    fulfillmentType === "delivery" &&
+    isApprovedRestaurantSelfDelivery(restaurant)
+      ? "self"
+      : dto.deliveryType === "self"
+        ? "self"
+        : "partner";
   const prepTimeMinutes = getMaxPreparationTime(dto.items);
   const requestedTakeawayOrderType =
     dto.order_type === "SCHEDULED" || dto.pickupAt ? "SCHEDULED" : "IMMEDIATE";
