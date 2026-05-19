@@ -1,5 +1,8 @@
 import { getOrderQueue } from '../index.js';
+import { config } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
+
+let orderQueueUnavailableLogged = false;
 
 /**
  * Add an order processing job to the queue. No-op if BullMQ is disabled.
@@ -10,7 +13,14 @@ import { logger } from '../../utils/logger.js';
 export const addOrderJob = async (data, options = {}) => {
     const queue = getOrderQueue();
     if (!queue) {
-        logger.warn('BullMQ order queue not available. Job not added.');
+        if (!config.bullmqEnabled || !config.redisEnabled) {
+            if (!orderQueueUnavailableLogged) {
+                orderQueueUnavailableLogged = true;
+                logger.info('BullMQ order queue is disabled by configuration. Order jobs will run inline only.');
+            }
+        } else {
+            logger.warn('BullMQ order queue not available. Job not added.');
+        }
         return null;
     }
     try {

@@ -11,6 +11,7 @@ const generateOtpCode = () => {
 };
 
 const normalizePhoneForOtp = (phone) => String(phone || '').replace(/\D/g, '');
+const normalizeOtpCode = (otp) => String(otp || '').replace(/\D/g, '').slice(0, 6);
 const FIXED_TEST_OTP_MAP = new Map([
     ['9998888777', '1234'],
     ['7223077890', '1234'],
@@ -120,14 +121,14 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
 
     let otp;
     if (shouldUseDefaultOtp) {
-        otp = isFixedTestOtpPhone ? fixedTestOtp : '1234';
+        otp = normalizeOtpCode(isFixedTestOtpPhone ? fixedTestOtp : '1234');
         logger.info(
             isFixedTestOtpPhone
                 ? `Fixed test OTP enabled. OTP is ${otp} for phone ${phone}`
                 : `Default OTP mode enabled. OTP is ${otp} for phone ${phone}`
         );
     } else {
-        otp = generateOtpCode();
+        otp = normalizeOtpCode(generateOtpCode());
         logger.info(`SMS OTP mode enabled. Generated OTP for phone ${phone} will be sent via SMS India Hub if credentials are configured.`);
     }
 
@@ -173,6 +174,7 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
 export const verifyOtp = async (phone, otp) => {
     const phoneCandidates = getPhoneCandidates(phone);
     const record = await FoodOtp.findOne({ phone: { $in: phoneCandidates } });
+    const normalizedOtp = normalizeOtpCode(otp);
     if (!record) {
         return { valid: false, reason: 'OTP not found' };
     }
@@ -185,9 +187,12 @@ export const verifyOtp = async (phone, otp) => {
         return { valid: false, reason: 'Max attempts exceeded' };
     }
 
-    record.attempts += 1;
+    if (!normalizedOtp) {
+        return { valid: false, reason: 'Invalid OTP' };
+    }
 
-    if (record.otp !== otp) {
+    if (normalizeOtpCode(record.otp) !== normalizedOtp) {
+        record.attempts += 1;
         await record.save();
         return { valid: false, reason: 'Invalid OTP' };
     }

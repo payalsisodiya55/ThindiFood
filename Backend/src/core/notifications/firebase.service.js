@@ -32,6 +32,7 @@ const OWNER_APP_PREFIXES = {
 let cachedAccessToken = null;
 let cachedAccessTokenExpiryMs = 0;
 let cachedServiceAccount = null;
+let firebaseConfigMissingLogged = false;
 
 const sanitizeString = (value) => String(value ?? '').trim();
 
@@ -43,6 +44,22 @@ const toBase64Url = (input) =>
         .replace(/=+$/g, '');
 
 const normalizePrivateKey = (key) => String(key || '').replace(/\\n/g, '\n').trim();
+
+const isFirebaseConfigured = () => {
+    const rawJson = sanitizeString(config.firebaseServiceAccount || process.env.FIREBASE_SERVICE_ACCOUNT);
+    if (rawJson) return true;
+
+    const pathValue = sanitizeString(config.firebaseServiceAccountPath || process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+    if (!pathValue) return false;
+
+    return existsSync(resolve(process.cwd(), pathValue));
+};
+
+const logFirebaseDisabledOnce = () => {
+    if (firebaseConfigMissingLogged) return;
+    firebaseConfigMissingLogged = true;
+    logger.info('FCM is disabled because no Firebase service account is configured.');
+};
 
 const getServiceAccountFromEnv = () => {
     if (cachedServiceAccount) return cachedServiceAccount;
@@ -376,6 +393,10 @@ export const sendNotificationToOwner = async ({ ownerType, ownerId, payload, pla
     if (!tokens.length) {
         return { successCount: 0, failureCount: 0, results: [] };
     }
+    if (!isFirebaseConfigured()) {
+        logFirebaseDisabledOnce();
+        return { successCount: 0, failureCount: 0, results: [], skipped: true };
+    }
     try {
         console.log(`[FCM] Sending to ${ownerType}:${ownerId}. Title: "${enrichedPayload.title || 'Data Only'}"`);
         const response = await sendPushNotification(tokens, enrichedPayload);
@@ -402,6 +423,10 @@ export const sendNotificationToOwner = async ({ ownerType, ownerId, payload, pla
         );
         return response;
     } catch (error) {
+        if (String(error?.message || '').includes('Firebase service account is not configured')) {
+            logFirebaseDisabledOnce();
+            return { successCount: 0, failureCount: 0, results: [], skipped: true };
+        }
         logger.warn(`FCM push failed for ${ownerType}:${ownerId}: ${error.message}`);
         return { successCount: 0, failureCount: tokens.length, error: error.message };
     }
