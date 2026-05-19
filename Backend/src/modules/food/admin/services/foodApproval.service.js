@@ -5,6 +5,8 @@ import { FoodAddon } from '../../restaurant/models/foodAddon.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { syncMenuItemApprovalStatus } from '../../restaurant/services/restaurantMenu.service.js';
 import { getFoodDisplayPrice, serializeFoodVariants } from './foodVariant.service.js';
+import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
+import { getIO, rooms } from '../../../../config/socket.js';
 
 const normalizeAllowedZoneIds = (scope = {}) => {
     if (!Array.isArray(scope?.allowedZoneIds) || scope.allowedZoneIds.length === 0) return [];
@@ -175,6 +177,32 @@ export async function approveFoodItem(id) {
     if (updated?.restaurantId) {
         // Single DB update; makes user-facing menu reflect approval immediately.
         await syncMenuItemApprovalStatus(updated.restaurantId, updated._id, 'approved', '');
+        await createInboxNotifications({
+            notifications: [{
+                ownerType: 'RESTAURANT',
+                ownerId: updated.restaurantId,
+                title: 'Dish Approved',
+                message: `Your dish "${updated.name}" has been approved and is now visible to customers.`,
+                category: 'food_approved',
+                source: 'FOOD_APPROVAL',
+                metadata: {
+                    type: 'food_approved',
+                    foodId: String(updated._id),
+                    restaurantId: String(updated.restaurantId)
+                }
+            }]
+        });
+        const io = getIO();
+        if (io) {
+            io.to(rooms.restaurant(updated.restaurantId)).emit('admin_notification', {
+                title: 'Dish Approved',
+                message: `Your dish "${updated.name}" has been approved and is now visible to customers.`,
+                createdAt: new Date().toISOString(),
+                type: 'food_approved',
+                foodId: String(updated._id),
+                restaurantId: String(updated.restaurantId)
+            });
+        }
         
         try {
             const { notifyOwnersSafely } = await import('../../../core/notifications/firebase.service.js');
@@ -213,6 +241,34 @@ export async function rejectFoodItem(id, reason) {
     ).lean();
     if (updated?.restaurantId) {
         await syncMenuItemApprovalStatus(updated.restaurantId, updated._id, 'rejected', r);
+        await createInboxNotifications({
+            notifications: [{
+                ownerType: 'RESTAURANT',
+                ownerId: updated.restaurantId,
+                title: 'Dish Rejected',
+                message: `Your dish "${updated.name}" was rejected. Reason: ${r}`,
+                category: 'food_rejected',
+                source: 'FOOD_APPROVAL',
+                metadata: {
+                    type: 'food_rejected',
+                    foodId: String(updated._id),
+                    restaurantId: String(updated.restaurantId),
+                    reason: r
+                }
+            }]
+        });
+        const io = getIO();
+        if (io) {
+            io.to(rooms.restaurant(updated.restaurantId)).emit('admin_notification', {
+                title: 'Dish Rejected',
+                message: `Your dish "${updated.name}" was rejected. Reason: ${r}`,
+                createdAt: new Date().toISOString(),
+                type: 'food_rejected',
+                foodId: String(updated._id),
+                restaurantId: String(updated.restaurantId),
+                reason: r
+            });
+        }
         
         try {
             const { notifyOwnersSafely } = await import('../../../core/notifications/firebase.service.js');

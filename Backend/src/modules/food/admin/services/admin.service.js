@@ -4037,12 +4037,46 @@ export async function approveRestaurantAddon(addonId) {
 
     if (updated?.restaurantId) {
         try {
+            const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            await createInboxNotifications({
+                notifications: [{
+                    ownerType: 'RESTAURANT',
+                    ownerId: updated.restaurantId,
+                    title: 'Add-on Approved',
+                    message: `Your add-on "${updated.published?.name || 'New Add-on'}" has been approved and is now live.`,
+                    category: 'addon_approved',
+                    source: 'ADDON_APPROVAL',
+                    metadata: {
+                        type: 'addon_approved',
+                        addonId: String(updated._id),
+                        restaurantId: String(updated.restaurantId)
+                    }
+                }]
+            });
+            const io = getIO();
+            if (io) {
+                io.to(rooms.restaurant(updated.restaurantId)).emit('admin_notification', {
+                    title: 'Add-on Approved',
+                    message: `Your add-on "${updated.published?.name || 'New Add-on'}" has been approved and is now live.`,
+                    createdAt: new Date().toISOString(),
+                    type: 'addon_approved',
+                    addonId: String(updated._id),
+                    restaurantId: String(updated.restaurantId)
+                });
+            }
+        } catch (e) {
+            console.error('Failed to create addon approval inbox notification:', e);
+        }
+        try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated.restaurantId }],
                 {
                     title: 'Addon Approved! âœ…',
                     body: `Your addon "${updated.published?.name || 'New Addon'}" has been approved and is now live.`,
+                    title: 'Add-on Rejected',
+                    body: `Your add-on request for "${updated.draft?.name || 'New Add-on'}" was rejected. Reason: ${rejectionReason}`,
                     image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
                     data: {
                         type: 'addon_approved',
@@ -4080,12 +4114,48 @@ export async function rejectRestaurantAddon(addonId, reason) {
 
     if (updated?.restaurantId) {
         try {
+            const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            await createInboxNotifications({
+                notifications: [{
+                    ownerType: 'RESTAURANT',
+                    ownerId: updated.restaurantId,
+                    title: 'Add-on Rejected',
+                    message: `Your add-on request for "${updated.draft?.name || 'New Add-on'}" was rejected. Reason: ${rejectionReason}`,
+                    category: 'addon_rejected',
+                    source: 'ADDON_APPROVAL',
+                    metadata: {
+                        type: 'addon_rejected',
+                        addonId: String(updated._id),
+                        restaurantId: String(updated.restaurantId),
+                        reason: rejectionReason
+                    }
+                }]
+            });
+            const io = getIO();
+            if (io) {
+                io.to(rooms.restaurant(updated.restaurantId)).emit('admin_notification', {
+                    title: 'Add-on Rejected',
+                    message: `Your add-on request for "${updated.draft?.name || 'New Add-on'}" was rejected. Reason: ${rejectionReason}`,
+                    createdAt: new Date().toISOString(),
+                    type: 'addon_rejected',
+                    addonId: String(updated._id),
+                    restaurantId: String(updated.restaurantId),
+                    reason: rejectionReason
+                });
+            }
+        } catch (e) {
+            console.error('Failed to create addon rejection inbox notification:', e);
+        }
+        try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated.restaurantId }],
                 {
                     title: 'Addon Rejected âŒ',
                     body: `Your addon request for "${updated.draft?.name || 'New Addon'}" was rejected. Reason: ${rejectionReason}`,
+                    title: 'Add-on Rejected',
+                    body: `Your add-on request for "${updated.draft?.name || 'New Add-on'}" was rejected. Reason: ${rejectionReason}`,
                     image: 'https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png',
                     data: {
                         type: 'addon_rejected',

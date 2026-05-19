@@ -1192,7 +1192,17 @@ export default function Inventory() {
       fetchAddons(true)
     } catch (error) {
       debugError("Error saving add-on:", error)
-      toast.error(error?.response?.data?.message || "Failed to save add-on")
+      const message = String(
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        ""
+      ).trim()
+      if (message.toLowerCase().includes("same name") || message.toLowerCase().includes("already exists")) {
+        toast.error("Add-on name already exists")
+      } else {
+        toast.error(message || "Failed to save add-on")
+      }
     } finally {
       setSavingAddon(false)
     }
@@ -1201,6 +1211,13 @@ export default function Inventory() {
   // Handle addon toggle
   const handleAddonToggle = async (addonId, isAvailable) => {
     try {
+      const targetAddon = addons.find((addon) => addon.id === addonId)
+      const approvalStatus = String(targetAddon?.approvalStatus || "").toLowerCase()
+      if (approvalStatus !== "approved") {
+        toast.error("Only approved add-ons can be set live")
+        return
+      }
+
       // Update addon availability via API
       await restaurantAPI.updateAddon(addonId, {
         isAvailable: isAvailable
@@ -1403,9 +1420,13 @@ export default function Inventory() {
   }
 
   const filterAddonsList = (items = [], filterValue = "all") => {
+    const isAddonEffectivelyLive = (item) =>
+      String(item?.approvalStatus || "").toLowerCase() === "approved" &&
+      item?.isAvailable !== false
+
     if (filterValue === "all") return items
-    if (filterValue === "available") return items.filter((item) => item.isAvailable !== false)
-    if (filterValue === "unavailable") return items.filter((item) => item.isAvailable === false)
+    if (filterValue === "available") return items.filter((item) => isAddonEffectivelyLive(item))
+    if (filterValue === "unavailable") return items.filter((item) => !isAddonEffectivelyLive(item))
     if (filterValue === "approved") return items.filter((item) => item.approvalStatus === "approved")
     if (filterValue === "pending") return items.filter((item) => item.approvalStatus === "pending")
     if (filterValue === "rejected") return items.filter((item) => item.approvalStatus === "rejected")
@@ -2192,7 +2213,12 @@ export default function Inventory() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {filteredAddons.map((addon) => (
+                  {filteredAddons.map((addon) => {
+                    const isAddonApproved = String(addon.approvalStatus || "").toLowerCase() === "approved"
+                    const isAddonLive = isAddonApproved && addon.isAvailable !== false
+                    const isToggleDisabled = !isAddonApproved
+
+                    return (
                     <div
                       key={addon.id}
                       className="rounded-[28px] border border-white/80 bg-white p-4 shadow-[0_20px_48px_-34px_rgba(15,23,42,0.45)]"
@@ -2202,11 +2228,11 @@ export default function Inventory() {
                           <div className="mb-2 flex items-center gap-2 flex-wrap">
                             <h3 className="text-base font-semibold text-slate-950">{addon.name}</h3>
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              addon.isAvailable !== false
+                              isAddonLive
                                 ? "bg-emerald-50 text-emerald-700"
                                 : "bg-slate-100 text-slate-600"
                             }`}>
-                              {addon.isAvailable !== false ? "Live" : "Paused"}
+                              {isAddonLive ? "Live" : "Paused"}
                             </span>
                             {addon.approvalStatus === 'approved' && (
                               <span className="rounded-full bg-green-100 px-2.5 py-1 text-[11px] font-semibold text-green-800">Approved</span>
@@ -2237,9 +2263,10 @@ export default function Inventory() {
                               }}
                             />
                           )}
-                          <div className="flex items-center rounded-full bg-slate-100 px-2 py-1">
+                          <div className={`flex items-center rounded-full px-2 py-1 ${isToggleDisabled ? "bg-slate-50 opacity-60" : "bg-slate-100"}`}>
                             <Switch
-                              checked={addon.isAvailable !== false}
+                              checked={isAddonLive}
+                              disabled={isToggleDisabled}
                               onCheckedChange={(checked) =>
                                 handleAddonToggle(addon.id, checked)
                               }
@@ -2249,7 +2276,8 @@ export default function Inventory() {
                         </div>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
             </>

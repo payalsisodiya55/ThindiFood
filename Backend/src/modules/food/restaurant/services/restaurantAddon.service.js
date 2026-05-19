@@ -97,7 +97,7 @@ export async function createRestaurantAddon(restaurantId, body) {
         .select('_id')
         .lean();
     if (exists?._id) {
-        throw new ValidationError('Add-on already exists');
+        throw new ValidationError('An add-on with the same name already exists');
     }
 
     const doc = await FoodAddon.create({
@@ -171,7 +171,7 @@ export async function updateRestaurantAddon(restaurantId, addonId, updateDto) {
             })
                 .select('_id')
                 .lean();
-            if (exists?._id) throw new ValidationError('Add-on already exists');
+            if (exists?._id) throw new ValidationError('An add-on with the same name already exists');
 
             set['draft.name'] = name;
         }
