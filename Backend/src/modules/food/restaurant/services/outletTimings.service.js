@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
+import { FoodRestaurant } from '../models/restaurant.model.js';
 
 const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -34,6 +35,57 @@ const defaultTimings = () =>
         closingTime: '22:00'
     }));
 
+const buildTimingsFromRestaurantRegistration = (restaurant) => {
+    const openingTime = normalizeTime(restaurant?.openingTime, '09:00');
+    const closingTime = normalizeTime(restaurant?.closingTime, '22:00');
+    const normalizedOpenDays = new Set(
+        (Array.isArray(restaurant?.openDays) ? restaurant.openDays : [])
+            .map((day) => normalizeDay(day))
+            .filter(Boolean)
+    );
+
+    if (!normalizedOpenDays.size) {
+        return defaultTimings();
+    }
+
+    return DAY_NAMES.map((day) => {
+        const isOpen = normalizedOpenDays.has(day);
+        return {
+            day,
+            isOpen,
+            openingTime: isOpen ? openingTime : '',
+            closingTime: isOpen ? closingTime : ''
+        };
+    });
+};
+
+const isLegacyDefaultTimings = (timings) =>
+    Array.isArray(timings) &&
+    timings.length === DAY_NAMES.length &&
+    DAY_NAMES.every((day) => {
+        const entry = timings.find((item) => normalizeDay(item?.day) === day);
+        return (
+            entry &&
+            entry.isOpen !== false &&
+            normalizeTime(entry?.openingTime, '09:00') === '09:00' &&
+            normalizeTime(entry?.closingTime, '22:00') === '22:00'
+        );
+    });
+
+const registrationDiffersFromLegacyDefault = (restaurant) => {
+    const openingTime = normalizeTime(restaurant?.openingTime, '09:00');
+    const closingTime = normalizeTime(restaurant?.closingTime, '22:00');
+    const normalizedOpenDays = new Set(
+        (Array.isArray(restaurant?.openDays) ? restaurant.openDays : [])
+            .map((day) => normalizeDay(day))
+            .filter(Boolean)
+    );
+
+    if (!normalizedOpenDays.size) return false;
+    if (openingTime !== '09:00' || closingTime !== '22:00') return true;
+    return normalizedOpenDays.size !== DAY_NAMES.length;
+};
+
 const toClientShape = (doc) => {
     const timings = Array.isArray(doc?.timings) ? doc.timings : [];
     const map = {};
@@ -54,7 +106,25 @@ export async function getOutletTimingsForRestaurant(restaurantId) {
         throw new ValidationError('Invalid restaurant id');
     }
     const doc = await FoodRestaurantOutletTimings.findOne({ restaurantId }).select('timings updatedAt').lean();
-    if (!doc) return { outletTimings: toClientShape({ timings: defaultTimings() }) };
+    const restaurant = await FoodRestaurant.findById(restaurantId)
+        .select('openingTime closingTime openDays')
+        .lean();
+    if (!doc) {
+        return {
+            outletTimings: toClientShape({
+                timings: buildTimingsFromRestaurantRegistration(restaurant)
+            })
+        };
+    }
+    if (isLegacyDefaultTimings(doc.timings) && registrationDiffersFromLegacyDefault(restaurant)) {
+        const timings = buildTimingsFromRestaurantRegistration(restaurant);
+        await FoodRestaurantOutletTimings.findOneAndUpdate(
+            { restaurantId },
+            { $set: { timings } },
+            { new: false }
+        );
+        return { outletTimings: toClientShape({ timings }) };
+    }
     return { outletTimings: toClientShape(doc) };
 }
 

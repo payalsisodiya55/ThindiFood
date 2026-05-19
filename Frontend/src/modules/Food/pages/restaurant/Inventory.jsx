@@ -2052,18 +2052,15 @@ export default function Inventory() {
                 )}
               </button>
 
-              {activeTab === "add-ons" && (
-                <button
-                  onClick={() => setIsAddAddonOpen((v) => !v)}
-                  className="h-12 rounded-[20px] px-4 text-sm font-semibold text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.85)] transition-colors hover:opacity-90"
-                  style={{ minWidth: "128px", backgroundColor: RESTAURANT_THEME.brand }}
-                >
-                  {isAddAddonOpen ? "Close" : "Add Add-on"}
-                </button>
-              )}
             </div>
 
-            <div className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+            <div 
+              className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide pb-1"
+              onTouchStart={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onMouseMove={(e) => e.stopPropagation()}
+            >
               {activeFilterOptions.map((option) => {
                 const count = activeTab === "add-ons"
                   ? (addonFilterCounts[option.value] || 0)
@@ -2796,9 +2793,10 @@ export default function Inventory() {
       />
 
 
-      {/* Floating Menu Button & Popup (hidden on Add-ons tab) */}
-      {activeTab !== "add-ons" && (
-        <div className="fixed right-4 bottom-24 z-30 flex flex-col items-end gap-2">
+      {/* Floating Buttons & Menu Popup */}
+      <div className="fixed right-4 bottom-24 z-30 flex flex-col items-end gap-2">
+        {activeTab !== "add-ons" ? (
+          <>
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={() => {
@@ -2828,7 +2826,19 @@ export default function Inventory() {
             </span>
             <span>{isMenuOpen ? "Close" : "Menu"}</span>
           </motion.button>
+          </>
+        ) : (
+          <motion.button
+            whileTap={{ scale: 0.96 }}
+            onClick={() => setIsAddAddonOpen((v) => !v)}
+            className="rounded-full px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(15,23,42,0.85)]"
+            style={{ backgroundColor: RESTAURANT_THEME.brand }}
+          >
+            {isAddAddonOpen ? "Close" : "+ Add Add-on"}
+          </motion.button>
+        )}
 
+        {activeTab !== "add-ons" && (
           <AnimatePresence>
             {isMenuOpen && (
               <>
@@ -2890,8 +2900,8 @@ export default function Inventory() {
               </>
             )}
           </AnimatePresence>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Bottom Navigation */}
       <BottomNavOrders />

@@ -284,6 +284,7 @@ export default function UserOrderDetails() {
   const isTakeawayOrder = String(order.fulfillmentType || "").toLowerCase() === "takeaway"
   const normalizedOrderStatus = String(order.status || "").trim().toLowerCase()
   const orderStatusLabel = formatOrderStatusLabel(order.status, isTakeawayOrder)
+  const deliveryAddress = order.address || order.deliveryAddress || {}
   const canShowRestaurantComplaint =
     normalizedOrderStatus === "delivered" || normalizedOrderStatus === "completed"
   const paymentDate = order.createdAt
@@ -297,8 +298,14 @@ export default function UserOrderDetails() {
     : ""
 
   const addressText =
-    order.address?.formattedAddress ||
-    [order.address?.street, order.address?.city, order.address?.state, order.address?.zipCode]
+    deliveryAddress?.formattedAddress ||
+    [
+      deliveryAddress?.street,
+      deliveryAddress?.additionalDetails,
+      deliveryAddress?.city,
+      deliveryAddress?.state,
+      deliveryAddress?.zipCode,
+    ]
       .filter(Boolean)
       .join(", ")
 

@@ -114,6 +114,50 @@ const timeToMinutes = (value) => {
     return h * 60 + m;
 };
 
+const OUTLET_TIMING_DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+const normalizeOutletTimingDay = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return null;
+    const exact = OUTLET_TIMING_DAY_NAMES.find((day) => day.toLowerCase() === raw.toLowerCase());
+    if (exact) return exact;
+    const abbr = raw.slice(0, 3).toLowerCase();
+    return OUTLET_TIMING_DAY_NAMES.find((day) => day.toLowerCase().startsWith(abbr)) || null;
+};
+
+const buildOutletTimingsFromRegistration = ({ openingTime, closingTime, openDays }) => {
+    const normalizedOpeningTime = normalizeRestaurantTime(openingTime) || '09:00';
+    const normalizedClosingTime = normalizeRestaurantTime(closingTime) || '22:00';
+    const normalizedOpenDays = new Set(
+        (Array.isArray(openDays) ? openDays : [])
+            .map((day) => normalizeOutletTimingDay(day))
+            .filter(Boolean)
+    );
+
+    return OUTLET_TIMING_DAY_NAMES.map((day) => {
+        const isOpen = normalizedOpenDays.size ? normalizedOpenDays.has(day) : true;
+        return {
+            day,
+            isOpen,
+            openingTime: isOpen ? normalizedOpeningTime : '',
+            closingTime: isOpen ? normalizedClosingTime : ''
+        };
+    });
+};
+
+const syncOutletTimingsFromRegistration = async (restaurantId, { openingTime, closingTime, openDays }) => {
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) return;
+    await FoodRestaurantOutletTimings.findOneAndUpdate(
+        { restaurantId },
+        {
+            $set: {
+                timings: buildOutletTimingsFromRegistration({ openingTime, closingTime, openDays })
+            }
+        },
+        { upsert: true, setDefaultsOnInsert: true }
+    );
+};
+
 const parseEstimatedDeliveryMinutes = (value) => {
     const raw = String(value || '').trim();
     if (!raw) return null;
@@ -654,6 +698,12 @@ export const registerRestaurant = async (payload, files) => {
             lastSubmissionType: 'new_registration'
         });
 
+        await syncOutletTimingsFromRegistration(restaurant._id, {
+            openingTime: normalizedOpeningTime,
+            closingTime: normalizedClosingTime,
+            openDays
+        });
+
         try {
             const { FoodAdmin } = await import('../../../../core/admin/admin.model.js');
             const { createInboxNotifications } = await import('../../../../core/notifications/notification.service.js');
@@ -923,6 +973,12 @@ export const resubmitRejectedRestaurant = async (restaurantId, payload, files) =
     if (!doc) {
         throw new ValidationError('Restaurant not found');
     }
+
+    await syncOutletTimingsFromRegistration(restaurantId, {
+        openingTime: normalizedOpeningTime,
+        closingTime: normalizedClosingTime,
+        openDays
+    });
 
     void notifyAdminsAboutRestaurantProfileReview(restaurantId, restaurantName || currentRestaurant.restaurantName || doc.restaurantName);
 

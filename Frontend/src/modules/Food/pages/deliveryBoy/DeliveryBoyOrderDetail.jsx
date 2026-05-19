@@ -239,7 +239,7 @@ export default function DeliveryBoyOrderDetail() {
                       placeholder="0000"
                     />
                     <p className="mt-2 text-xs text-slate-500">
-                      Customer se OTP lo aur yahan enter karo.
+                      Please collect the OTP from the customer and enter it here.
                     </p>
                   </div>
                 ) : null}
