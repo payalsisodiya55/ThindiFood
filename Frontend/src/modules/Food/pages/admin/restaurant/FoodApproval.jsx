@@ -326,7 +326,7 @@ export default function FoodApproval() {
                           <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 font-semibold">
                             {index + 1}
                           </td>
-                          <td className="px-3 py-3 whitespace-nowrap">
+                          <td className="px-3 py-3 whitespace-normal break-words min-w-[180px]">
                             <div className="text-sm">
                               <div className="font-semibold text-gray-900">{request.restaurantName || '-'}</div>
                               <div className="text-gray-500 text-xs">{request.restaurantId || '-'}</div>
@@ -335,7 +335,7 @@ export default function FoodApproval() {
                           <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700">
                             {request.category || '-'}
                           </td>
-                          <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 font-semibold">
+                          <td className="px-3 py-3 whitespace-normal break-words text-sm text-gray-700 font-semibold min-w-[150px]">
                             {request.itemName || '-'}
                           </td>
                           <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 capitalize text-center">

@@ -480,7 +480,7 @@ export default function Category() {
                           <div className="min-w-0">
                             <p className="break-all whitespace-normal text-lg font-semibold leading-6 text-slate-900">{category?.name || "-"}</p>
                             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
-                              <span>{category?.type || "No type"}</span>
+                              <span className="break-all whitespace-normal">{category?.type || "No type"}</span>
                               <span className="text-slate-300">•</span>
                               <span>Items linked: {category?.itemCount || 0}</span>
                             </div>

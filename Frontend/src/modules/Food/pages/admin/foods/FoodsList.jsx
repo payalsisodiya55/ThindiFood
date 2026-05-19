@@ -1003,17 +1003,17 @@ export default function FoodsList() {
                     
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[120px]">
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-slate-900 break-all">{food.name}</span>
+                        <span className="text-sm font-medium text-slate-900">{food.name}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[180px]">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-slate-800">{food.restaurantName || "-"}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-6 py-4 whitespace-normal break-words min-w-[100px]">
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-slate-800">{food.categoryName || "-"}</span>
                       </div>
