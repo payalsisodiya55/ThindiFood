@@ -4,74 +4,106 @@ import api from "@food/api"
 import { API_ENDPOINTS } from "@food/api/config"
 import { Textarea } from "@food/components/ui/textarea"
 import { legalHtmlToPlainText, plainTextToLegalHtml } from "@food/utils/legalContentFormat"
-const debugLog = (...args) => {}
-const debugWarn = (...args) => {}
+
 const debugError = (...args) => {}
 
-
-export default function PrivacyPolicy() {
+export default function PrivacyPolicy({ defaultTab = "user" }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState("edit") // "edit" | "preview"
-  const [privacyData, setPrivacyData] = useState({
-    title: 'Privacy Policy',
-    content: ''
+  const [activeTab, setActiveTab] = useState(defaultTab) // "user" | "restaurant"
+
+  const [userPrivacy, setUserPrivacy] = useState({
+    title: "Privacy Policy",
+    content: ""
   })
 
+  const [restaurantPrivacy, setRestaurantPrivacy] = useState({
+    title: "Restaurant Privacy Policy",
+    content: ""
+  })
+
+  // Sync tab selection if defaultTab prop changes (e.g. via direct routing)
   useEffect(() => {
-    fetchPrivacyData()
+    setActiveTab(defaultTab)
+  }, [defaultTab])
+
+  useEffect(() => {
+    fetchAllPrivacy()
   }, [])
 
-  const fetchPrivacyData = async () => {
+  const fetchAllPrivacy = async () => {
     try {
       setLoading(true)
-      const response = await api.get(API_ENDPOINTS.ADMIN.PRIVACY, { contextModule: "admin" })
-      if (response.data.success) {
-        // Convert HTML to plain text for textarea
-        const content = response.data.data.content || ''
-        const textContent = legalHtmlToPlainText(content)
-        setPrivacyData({
-          ...response.data.data,
-          content: textContent
+      const [userRes, restRes] = await Promise.all([
+        api.get(API_ENDPOINTS.ADMIN.PRIVACY, { contextModule: "admin" }),
+        api.get(API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY, { contextModule: "admin" })
+      ])
+
+      if (userRes.data.success) {
+        setUserPrivacy({
+          ...userRes.data.data,
+          content: legalHtmlToPlainText(userRes.data.data.content || "")
+        })
+      }
+      if (restRes.data.success) {
+        setRestaurantPrivacy({
+          ...restRes.data.data,
+          title: restRes.data.data.title || "Restaurant Privacy Policy",
+          content: legalHtmlToPlainText(restRes.data.data.content || "")
         })
       }
     } catch (error) {
-      debugError('Error fetching privacy data:', error)
-      toast.error('Failed to load privacy policy')
+      debugError("Error fetching privacy data:", error)
+      toast.error("Failed to load privacy policy data")
     } finally {
       setLoading(false)
     }
   }
 
+  const handleContentChange = (val) => {
+    if (activeTab === "user") {
+      setUserPrivacy((prev) => ({ ...prev, content: val }))
+    } else {
+      setRestaurantPrivacy((prev) => ({ ...prev, content: val }))
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    const isActiveUser = activeTab === "user"
+    const currentPrivacy = isActiveUser ? userPrivacy : restaurantPrivacy
+    const endpoint = isActiveUser ? API_ENDPOINTS.ADMIN.PRIVACY : API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY
+    const updateState = isActiveUser ? setUserPrivacy : setRestaurantPrivacy
+
     try {
       setSaving(true)
-      // Convert plain text/markdown to HTML for storage + user rendering
-      const htmlContent = plainTextToLegalHtml(privacyData.content)
-      
+      const htmlContent = plainTextToLegalHtml(currentPrivacy.content)
+
       const response = await api.put(
-        API_ENDPOINTS.ADMIN.PRIVACY,
-        { title: privacyData.title, content: htmlContent },
+        endpoint,
+        { title: currentPrivacy.title, content: htmlContent },
         { contextModule: "admin" }
       )
       if (response.data.success) {
-        toast.success('Privacy policy updated successfully')
-        // Convert HTML to plain text for display in textarea
-        const content = response.data.data.content || ''
+        toast.success(`${isActiveUser ? "User" : "Restaurant"} privacy policy updated successfully`)
+        const content = response.data.data.content || ""
         const textContent = legalHtmlToPlainText(content)
-        setPrivacyData({
+        updateState({
           ...response.data.data,
+          title: response.data.data.title || (isActiveUser ? "Privacy Policy" : "Restaurant Privacy Policy"),
           content: textContent
         })
       }
     } catch (error) {
-      debugError('Error saving privacy policy:', error)
-      toast.error(error.response?.data?.message || 'Failed to save privacy policy')
+      debugError("Error saving privacy policy:", error)
+      toast.error(error.response?.data?.message || "Failed to save privacy policy")
     } finally {
       setSaving(false)
     }
   }
+
+  const activeData = activeTab === "user" ? userPrivacy : restaurantPrivacy
 
   if (loading) {
     return (
@@ -88,12 +120,40 @@ export default function PrivacyPolicy() {
     <div className="h-full overflow-y-auto bg-slate-50 p-4 lg:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Page Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Privacy Policy</h1>
-          <p className="text-sm text-slate-600 mt-1">Manage your Privacy Policy content</p>
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Privacy Policy</h1>
+            <p className="text-sm text-slate-600 mt-1">Manage user and restaurant Privacy Policy content</p>
+          </div>
         </div>
 
-        {/* Text Area */}
+        {/* Unified Tab Switcher */}
+        <div className="flex space-x-1 bg-slate-200/60 p-1 rounded-xl max-w-md mb-6 border border-slate-200/30">
+          <button
+            type="button"
+            onClick={() => setActiveTab("user")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+              activeTab === "user"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
+            }`}
+          >
+            User Privacy
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("restaurant")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+              activeTab === "restaurant"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
+            }`}
+          >
+            Restaurant Privacy
+          </button>
+        </div>
+
+        {/* Text Area / Preview Card */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="text-sm text-slate-600">
@@ -103,14 +163,14 @@ export default function PrivacyPolicy() {
               <button
                 type="button"
                 onClick={() => setViewMode("edit")}
-                className={`px-3 py-1.5 text-sm font-medium ${viewMode === "edit" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                className={`px-3 py-1.5 text-sm font-medium cursor-pointer ${viewMode === "edit" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
               >
                 Edit
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("preview")}
-                className={`px-3 py-1.5 text-sm font-medium ${viewMode === "preview" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
+                className={`px-3 py-1.5 text-sm font-medium cursor-pointer ${viewMode === "preview" ? "bg-slate-900 text-white" : "bg-white text-slate-700 hover:bg-slate-50"}`}
               >
                 Preview
               </button>
@@ -119,17 +179,17 @@ export default function PrivacyPolicy() {
 
           {viewMode === "edit" ? (
             <Textarea
-              value={privacyData.content}
-              onChange={(e) => setPrivacyData(prev => ({ ...prev, content: e.target.value }))}
-              placeholder="Enter privacy policy content..."
+              value={activeData.content}
+              onChange={(e) => handleContentChange(e.target.value)}
+              placeholder={`Enter ${activeTab === "user" ? "user" : "restaurant"} privacy policy content...`}
               className="min-h-[600px] w-full text-sm text-slate-700 leading-relaxed resize-y"
               dir="ltr"
               style={{
-                direction: 'ltr',
-                textAlign: 'left',
-                unicodeBidi: 'bidi-override',
-                width: '100%',
-                maxWidth: '100%'
+                direction: "ltr",
+                textAlign: "left",
+                unicodeBidi: "bidi-override",
+                width: "100%",
+                maxWidth: "100%"
               }}
             />
           ) : (
@@ -142,7 +202,7 @@ export default function PrivacyPolicy() {
                   prose-ul:text-slate-700
                   prose-li:my-1
                   leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: plainTextToLegalHtml(privacyData.content) }}
+                dangerouslySetInnerHTML={{ __html: plainTextToLegalHtml(activeData.content) }}
               />
             </div>
           )}
@@ -154,13 +214,12 @@ export default function PrivacyPolicy() {
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
-            {saving ? 'Saving...' : 'Save Changes'}
+            {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </div>
     </div>
   )
 }
-
