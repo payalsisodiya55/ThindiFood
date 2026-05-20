@@ -22,6 +22,20 @@ const toObjectIdArray = (values) =>
         )
     ).map((value) => new mongoose.Types.ObjectId(value));
 
+const ALLOWED_DINING_MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
+
+const normalizeDiningMealTypes = (values, isEnabled = true) => {
+    if (isEnabled !== true) return [];
+    const normalized = Array.from(
+        new Set(
+            (Array.isArray(values) ? values : [values])
+                .map((value) => String(value || '').trim().toLowerCase())
+                .filter((value) => ALLOWED_DINING_MEAL_TYPES.includes(value))
+        )
+    );
+    return normalized.length > 0 ? normalized : ['lunch', 'dinner'];
+};
+
 async function syncRestaurantDiningSettings(restaurantId, diningDoc) {
     const primaryCategory = diningDoc?.primaryCategoryId
         ? await FoodDiningCategory.findById(diningDoc.primaryCategoryId).select('slug').lean()
@@ -34,7 +48,11 @@ async function syncRestaurantDiningSettings(restaurantId, diningDoc) {
                 diningSettings: {
                     isEnabled: Boolean(diningDoc?.isEnabled),
                     maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || 6),
-                    diningType: primaryCategory?.slug || 'family-dining'
+                    diningType: primaryCategory?.slug || 'family-dining',
+                    mealTypes: normalizeDiningMealTypes(
+                        diningDoc?.mealTypes,
+                        Boolean(diningDoc?.isEnabled)
+                    )
                 }
             }
         },
@@ -156,6 +174,10 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
             maxGuests: restaurant.pendingDiningRequest.isEnabled === true
                 ? Math.max(1, Number(restaurant.pendingDiningRequest.maxGuests) || 6)
                 : 0,
+            mealTypes: normalizeDiningMealTypes(
+                restaurant.pendingDiningRequest.mealTypes,
+                restaurant.pendingDiningRequest.isEnabled === true
+            ),
             categoryIds: Array.isArray(restaurant.pendingDiningRequest.categoryIds)
                 ? restaurant.pendingDiningRequest.categoryIds.map((id) => String(id)).filter(Boolean)
                 : [],
@@ -187,6 +209,10 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
         diningSettings: {
             isEnabled: Boolean(diningDoc?.isEnabled),
             maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || 6),
+            mealTypes: normalizeDiningMealTypes(
+                diningDoc?.mealTypes || restaurant?.diningSettings?.mealTypes,
+                Boolean(diningDoc?.isEnabled)
+            ),
             pureVegRestaurant: diningDoc?.pureVegRestaurant === true || restaurant?.pureVegRestaurant === true,
             diningType: primaryCategory?.slug || restaurant?.diningSettings?.diningType || ''
         }
@@ -296,7 +322,7 @@ export async function listDiningRestaurantsAdmin() {
             .select('restaurantName ownerName ownerPhone profileImage coverImages menuImages location area city status rating pureVegRestaurant diningSettings pendingDiningRequest')
             .lean(),
         FoodDiningRestaurant.find({})
-            .select('restaurantId categoryIds primaryCategoryId isEnabled maxGuests pureVegRestaurant')
+            .select('restaurantId categoryIds primaryCategoryId isEnabled maxGuests mealTypes pureVegRestaurant')
             .lean(),
         FoodDiningCategory.find({}).select('name slug imageUrl').lean(),
         FoodTableSession.aggregate([
@@ -392,6 +418,10 @@ export async function updateDiningRestaurant(restaurantId, body = {}) {
             diningDoc.maxGuests = pendingRequest.isEnabled === true
                 ? Math.max(1, parseInt(pendingRequest.maxGuests, 10) || 6)
                 : 0;
+            diningDoc.mealTypes = normalizeDiningMealTypes(
+                pendingRequest.mealTypes,
+                pendingRequest.isEnabled === true
+            );
             if (typeof diningDoc.pureVegRestaurant !== 'boolean') {
                 diningDoc.pureVegRestaurant = restaurant.pureVegRestaurant === true;
             }
@@ -436,6 +466,12 @@ export async function updateDiningRestaurant(restaurantId, body = {}) {
     }
     if (body.maxGuests !== undefined) {
         diningDoc.maxGuests = Math.max(1, parseInt(body.maxGuests, 10) || 6);
+    }
+    if (body.mealTypes !== undefined) {
+        diningDoc.mealTypes = normalizeDiningMealTypes(
+            body.mealTypes,
+            diningDoc.isEnabled !== false
+        );
     }
     if (body.pureVegRestaurant !== undefined) {
         if (typeof body.pureVegRestaurant === 'boolean') {
@@ -535,6 +571,7 @@ export async function listDiningRestaurantsPublic(query = {}) {
             diningSettings: {
                 isEnabled: true,
                 maxGuests: Math.max(1, Number(doc.maxGuests) || 6),
+                mealTypes: normalizeDiningMealTypes(doc.mealTypes, true),
                 pureVegRestaurant: doc.pureVegRestaurant === true || doc.restaurantId?.pureVegRestaurant === true,
                 diningType: doc.categoryIds?.[0]?.slug || doc.restaurantId?.diningSettings?.diningType || ''
             }

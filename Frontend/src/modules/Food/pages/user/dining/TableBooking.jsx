@@ -12,8 +12,21 @@ import { RED } from "@food/constants/color"
 const BOOKING_DRAFT_KEY = "food_dining_booking_draft_v1"
 const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
 const MEAL_WINDOWS = {
+  breakfast: { start: 7 * 60, end: 11 * 60 + 30, label: "Breakfast" },
   lunch: { start: 12 * 60, end: 16 * 60, label: "Lunch" },
   dinner: { start: 18 * 60, end: 26 * 60, label: "Dinner" },
+}
+const MEAL_SEQUENCE = ["breakfast", "lunch", "dinner"]
+
+const normalizeDiningMealTypes = (mealTypes, isEnabled = true) => {
+  if (isEnabled !== true) return []
+  const selectedSet = new Set(
+    (Array.isArray(mealTypes) ? mealTypes : [mealTypes])
+      .map((value) => String(value || "").trim().toLowerCase())
+      .filter((value) => MEAL_SEQUENCE.includes(value))
+  )
+  const normalized = MEAL_SEQUENCE.filter((mealType) => selectedSet.has(mealType))
+  return normalized.length > 0 ? normalized : ["lunch", "dinner"]
 }
 
 const readStoredGuestCount = (slug) => {
@@ -178,7 +191,7 @@ const getNoSlotsReason = ({ selectedMealPeriod, selectedDate, selectedDayTiming,
 
   if (totalMealSlots.length === 0) {
     if (isSameCalendarDate(selectedDate, new Date())) {
-      return `${MEAL_WINDOWS[selectedMealPeriod]?.label || "Selected"} time is over for today. Please choose Dinner or another date.`
+      return `${MEAL_WINDOWS[selectedMealPeriod]?.label || "Selected"} time is over for today. Please choose another session or date.`
     }
     return `${MEAL_WINDOWS[selectedMealPeriod]?.label || "Selected"} timings are not available for this date.`
   }
@@ -273,12 +286,20 @@ export default function TableBooking() {
     return buildFallbackTiming(restaurant)
   }, [outletTimings, selectedDate, restaurant])
 
+  const availableMealTypes = useMemo(
+    () => normalizeDiningMealTypes(
+      restaurant?.diningSettings?.mealTypes,
+      restaurant?.diningSettings?.isEnabled !== false
+    ),
+    [restaurant]
+  )
+
   const slotsByMeal = useMemo(
-    () => ({
-      lunch: buildSlotsForMeal(selectedDayTiming, "lunch", selectedDate),
-      dinner: buildSlotsForMeal(selectedDayTiming, "dinner", selectedDate),
-    }),
-    [selectedDayTiming, selectedDate]
+    () => availableMealTypes.reduce((acc, mealType) => {
+      acc[mealType] = buildSlotsForMeal(selectedDayTiming, mealType, selectedDate)
+      return acc
+    }, {}),
+    [availableMealTypes, selectedDayTiming, selectedDate]
   )
 
   const unavailableSlotSet = useMemo(
@@ -287,14 +308,21 @@ export default function TableBooking() {
   )
 
   const availableSlotsByMeal = useMemo(
-    () => ({
-      lunch: (slotsByMeal.lunch || []).filter((slot) => !unavailableSlotSet.has(String(slot || "").trim().toLowerCase())),
-      dinner: (slotsByMeal.dinner || []).filter((slot) => !unavailableSlotSet.has(String(slot || "").trim().toLowerCase())),
-    }),
-    [slotsByMeal, unavailableSlotSet]
+    () => availableMealTypes.reduce((acc, mealType) => {
+      acc[mealType] = (slotsByMeal[mealType] || []).filter((slot) => !unavailableSlotSet.has(String(slot || "").trim().toLowerCase()))
+      return acc
+    }, {}),
+    [availableMealTypes, slotsByMeal, unavailableSlotSet]
   )
 
   const filteredSlots = availableSlotsByMeal[selectedMealPeriod] || []
+
+  useEffect(() => {
+    if (availableMealTypes.length === 0) return
+    if (!availableMealTypes.includes(selectedMealPeriod)) {
+      setSelectedMealPeriod(availableMealTypes[0])
+    }
+  }, [availableMealTypes, selectedMealPeriod])
 
   useEffect(() => {
     const restaurantId =
@@ -354,6 +382,14 @@ export default function TableBooking() {
       setSelectedSlot(null)
     }
   }, [filteredSlots, selectedSlot])
+
+  const maxGuestCount = Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6)
+
+  useEffect(() => {
+    if (selectedGuests > maxGuestCount) {
+      setSelectedGuests(maxGuestCount)
+    }
+  }, [maxGuestCount, selectedGuests])
 
   if (loading) return <Loader />
   if (!restaurant) return <div className="p-6 text-center">Restaurant not found</div>
@@ -442,7 +478,7 @@ export default function TableBooking() {
                 onChange={(event) => setSelectedGuests(parseInt(event.target.value, 10))}
                 className="appearance-none rounded-full bg-[#f7f7fb] py-2 pl-4 pr-9 text-sm font-semibold text-[#404040] outline-none"
               >
-                {Array.from({ length: restaurant.diningSettings?.maxGuests || 10 }, (_, index) => index + 1).map((count) => (
+                {Array.from({ length: maxGuestCount }, (_, index) => index + 1).map((count) => (
                   <option key={count} value={count}>
                     {count}
                   </option>
@@ -486,10 +522,8 @@ export default function TableBooking() {
           <h3 className="text-sm font-medium text-[#2f3545]">Select time of day</h3>
 
           <div className="mt-4 flex gap-2">
-            {[
-              { id: "lunch", label: "Lunch" },
-              { id: "dinner", label: "Dinner" },
-            ].map((period) => {
+            {availableMealTypes.map((periodId) => {
+              const period = { id: periodId, label: MEAL_WINDOWS[periodId]?.label || "Dining" }
               const active = selectedMealPeriod === period.id
               return (
                 <button

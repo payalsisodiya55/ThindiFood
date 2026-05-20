@@ -32,6 +32,20 @@ const getPrimaryRestaurantImage = (restaurant, fallback = "") => {
     )
 }
 
+const formatMealTypesLabel = (mealTypes) => {
+    const normalized = Array.from(
+        new Set(
+            (Array.isArray(mealTypes) ? mealTypes : [mealTypes])
+                .map((value) => String(value || "").trim().toLowerCase())
+                .filter(Boolean)
+        )
+    )
+    if (normalized.length === 0) return "Lunch, Dinner"
+    return normalized
+        .map((value) => value.charAt(0).toUpperCase() + value.slice(1))
+        .join(", ")
+}
+
 
 export default function DiningList() {
     const navigate = useNavigate()
@@ -344,7 +358,12 @@ export default function DiningList() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <span className="text-sm text-slate-700">{restaurant.diningSettings?.isEnabled ? (restaurant.diningSettings?.maxGuests || 0) : 0}</span>
+                                                        <div className="space-y-1">
+                                                            <span className="text-sm text-slate-700">{restaurant.diningSettings?.isEnabled ? (restaurant.diningSettings?.maxGuests || 0) : 0}</span>
+                                                            {restaurant.diningSettings?.isEnabled ? (
+                                                                <p className="text-xs text-slate-500">{formatMealTypesLabel(restaurant.diningSettings?.mealTypes)}</p>
+                                                            ) : null}
+                                                        </div>
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         {restaurant.pendingDiningRequest ? (
@@ -354,6 +373,9 @@ export default function DiningList() {
                                                                 </span>
                                                                 <p className="text-xs text-slate-600">
                                                                     {restaurant.pendingDiningRequest?.isEnabled ? "Requested: ON" : "Requested: OFF"} • Guests: {restaurant.pendingDiningRequest?.maxGuests || 0}
+                                                                </p>
+                                                                <p className="text-xs text-slate-500">
+                                                                    Sessions: {formatMealTypesLabel(restaurant.pendingDiningRequest?.mealTypes)}
                                                                 </p>
                                                             </div>
                                                         ) : (

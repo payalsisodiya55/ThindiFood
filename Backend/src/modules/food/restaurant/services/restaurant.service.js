@@ -310,7 +310,11 @@ const toRestaurantProfile = (doc) => {
         diningSettings: {
             isEnabled: doc.diningSettings?.isEnabled !== false,
             maxGuests: Math.max(1, parseInt(doc.diningSettings?.maxGuests, 10) || 6),
-            diningType: String(doc.diningSettings?.diningType || 'family-dining').trim() || 'family-dining'
+            diningType: String(doc.diningSettings?.diningType || 'family-dining').trim() || 'family-dining',
+            mealTypes: normalizeDiningMealTypes(
+                doc.diningSettings?.mealTypes,
+                doc.diningSettings?.isEnabled !== false
+            )
         },
         selfDelivery: serializeSelfDeliveryForPublic(doc),
         isAcceptingOrders: doc.isAcceptingOrders !== false,
@@ -347,15 +351,31 @@ const toObjectIdArray = (values) =>
         )
     ).map((value) => new mongoose.Types.ObjectId(value));
 
+const ALLOWED_DINING_MEAL_TYPES = ['breakfast', 'lunch', 'dinner'];
+
+const normalizeDiningMealTypes = (values, isEnabled = true) => {
+    if (isEnabled !== true) return [];
+    const normalized = Array.from(
+        new Set(
+            (Array.isArray(values) ? values : [values])
+                .map((value) => String(value || '').trim().toLowerCase())
+                .filter((value) => ALLOWED_DINING_MEAL_TYPES.includes(value))
+        )
+    );
+    return normalized.length > 0 ? normalized : ['lunch', 'dinner'];
+};
+
 const normalizePendingDiningRequest = (request) => {
     if (!request || typeof request !== 'object' || !request.requestedAt) return null;
     const categoryIds = Array.isArray(request.categoryIds)
         ? request.categoryIds.map((id) => String(id)).filter(Boolean)
         : [];
     const primaryCategoryId = request.primaryCategoryId ? String(request.primaryCategoryId) : '';
+    const isEnabled = request.isEnabled === true;
     return {
-        isEnabled: request.isEnabled === true,
-        maxGuests: request.isEnabled === true ? Math.max(1, parseInt(request.maxGuests, 10) || 6) : 0,
+        isEnabled,
+        maxGuests: isEnabled ? Math.max(1, parseInt(request.maxGuests, 10) || 6) : 0,
+        mealTypes: normalizeDiningMealTypes(request.mealTypes, isEnabled),
         categoryIds,
         primaryCategoryId: primaryCategoryId || categoryIds[0] || null,
         requestedAt: request.requestedAt,
@@ -1177,6 +1197,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
     const maxGuests = isEnabled
         ? Math.max(1, parseInt(body.maxGuests, 10) || 1)
         : 0;
+    const mealTypes = normalizeDiningMealTypes(body.mealTypes, isEnabled);
     const requestedCategoryIds = isEnabled ? toObjectIdArray(body.categoryIds) : [];
     const validCategories = requestedCategoryIds.length > 0
         ? await FoodDiningCategory.find({ _id: { $in: requestedCategoryIds } }).select('_id').lean()
@@ -1192,6 +1213,9 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
     if (isEnabled && validCategoryIds.length === 0) {
         throw new ValidationError('Select at least one dining category');
     }
+    if (isEnabled && mealTypes.length === 0) {
+        throw new ValidationError('Select at least one dining session');
+    }
 
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
@@ -1200,6 +1224,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
                 pendingDiningRequest: {
                     isEnabled,
                     maxGuests,
+                    mealTypes,
                     categoryIds: validCategoryIds,
                     primaryCategoryId,
                     requestedAt: new Date()

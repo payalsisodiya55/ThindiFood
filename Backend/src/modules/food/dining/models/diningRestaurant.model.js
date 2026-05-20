@@ -28,6 +28,11 @@ const diningRestaurantSchema = new mongoose.Schema(
             default: 6,
             min: 1
         },
+        mealTypes: {
+            type: [String],
+            enum: ['breakfast', 'lunch', 'dinner'],
+            default: ['lunch', 'dinner']
+        },
         pureVegRestaurant: {
             type: Boolean,
             required: true,

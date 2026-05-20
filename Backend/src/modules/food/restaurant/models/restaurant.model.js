@@ -262,10 +262,20 @@ const restaurantSchema = new mongoose.Schema(
       isEnabled: { type: Boolean, default: false },
       maxGuests: { type: Number, default: 6 },
       diningType: { type: String, default: "family-dining" },
+      mealTypes: {
+        type: [String],
+        enum: ["breakfast", "lunch", "dinner"],
+        default: ["lunch", "dinner"],
+      },
     },
     pendingDiningRequest: {
       isEnabled: { type: Boolean, default: undefined },
       maxGuests: { type: Number, default: undefined },
+      mealTypes: {
+        type: [String],
+        enum: ["breakfast", "lunch", "dinner"],
+        default: undefined,
+      },
       categoryIds: [
         {
           type: mongoose.Schema.Types.ObjectId,

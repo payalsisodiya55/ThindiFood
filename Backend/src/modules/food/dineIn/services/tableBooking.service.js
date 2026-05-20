@@ -8,6 +8,7 @@ import { logger } from '../../../../utils/logger.js';
 import { getOutletTimingsForRestaurant } from '../../restaurant/services/outletTimings.service.js';
 
 const MEAL_WINDOWS = {
+    breakfast: { start: 7 * 60, end: 11 * 60 + 30 },
     lunch: { start: 12 * 60, end: 16 * 60 },
     dinner: { start: 18 * 60, end: 26 * 60 },
 };
@@ -65,7 +66,7 @@ const formatMinutesToLabel = (minutes) => {
 
 const normalizeMealType = (value) => {
     const mealType = String(value || '').trim().toLowerCase();
-    return mealType === 'lunch' || mealType === 'dinner' ? mealType : null;
+    return ['breakfast', 'lunch', 'dinner'].includes(mealType) ? mealType : null;
 };
 
 const normalizeDateOnly = (value) => {
@@ -134,6 +135,7 @@ async function sweepNoShowReservations(filters = {}) {
 
 const getMealTypeForMinutes = (minutes) => {
     if (!Number.isFinite(minutes)) return null;
+    if (minutes >= MEAL_WINDOWS.breakfast.start && minutes <= MEAL_WINDOWS.breakfast.end) return 'breakfast';
     if (minutes >= MEAL_WINDOWS.lunch.start && minutes <= MEAL_WINDOWS.lunch.end) return 'lunch';
     if (minutes >= MEAL_WINDOWS.dinner.start) return 'dinner';
     return null;
@@ -158,7 +160,7 @@ const validateAndNormalizeBookingSlot = async (restaurantId, bookingDate, rawTim
 
     const derivedMealType = getMealTypeForMinutes(slotMinutes);
     if (!derivedMealType) {
-        throw new Error('Please select a valid lunch or dinner time slot');
+        throw new Error('Please select a valid breakfast, lunch, or dinner time slot');
     }
 
     if (requestedMealType && requestedMealType !== derivedMealType) {

@@ -24,6 +24,23 @@ import { Button } from "@food/components/ui/button"
 import { toast } from "sonner"
 
 const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
+const DINING_MEAL_LABELS = {
+  breakfast: "Breakfast",
+  lunch: "Lunch",
+  dinner: "Dinner",
+}
+
+const normalizeDiningMealTypes = (mealTypes, isEnabled = true) => {
+  if (isEnabled !== true) return []
+  const normalized = Array.from(
+    new Set(
+      (Array.isArray(mealTypes) ? mealTypes : [mealTypes])
+        .map((value) => String(value || "").trim().toLowerCase())
+        .filter((value) => Object.prototype.hasOwnProperty.call(DINING_MEAL_LABELS, value))
+    )
+  )
+  return normalized.length > 0 ? normalized : ["lunch", "dinner"]
+}
 
 const formatAddress = (restaurant) =>
   restaurant?.location?.formattedAddress ||
@@ -50,9 +67,14 @@ const buildImageList = (restaurant) => {
 
 const buildFacilities = (restaurant) => {
   const facilities = []
+  const diningMeals = normalizeDiningMealTypes(
+    restaurant?.diningSettings?.mealTypes,
+    restaurant?.diningSettings?.isEnabled !== false
+  )
 
-  if (restaurant?.diningSettings?.tableBookingEnabled !== false) facilities.push("Dinner")
-  if (restaurant?.isAcceptingOrders !== false) facilities.push("Lunch")
+  diningMeals.forEach((mealType) => {
+    facilities.push(DINING_MEAL_LABELS[mealType])
+  })
   if (restaurant?.diningSettings?.homeDeliveryAvailable || restaurant?.homeDeliveryAvailable) facilities.push("Home delivery")
   if (restaurant?.diningSettings?.takeawayAvailable || restaurant?.takeawayAvailable) facilities.push("Takeaway available")
   if (restaurant?.diningSettings?.vegOnly || restaurant?.vegOnly) facilities.push("Vegetarian only")
@@ -60,7 +82,7 @@ const buildFacilities = (restaurant) => {
 
   return facilities.length > 0
     ? facilities
-    : ["Dinner", "Lunch", "Home delivery", "Takeaway available", "Vegetarian only", "Less noisy"]
+    : ["Lunch", "Dinner", "Home delivery", "Takeaway available", "Vegetarian only", "Less noisy"]
 }
 
 const buildFeaturedSections = (menuSections) =>
@@ -174,6 +196,13 @@ export default function DiningRestaurantDetails() {
     fetchRestaurantData()
   }, [location.state?.restaurant, slug])
 
+  useEffect(() => {
+    const maxGuestCount = Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6)
+    if (selectedGuests > maxGuestCount) {
+      setSelectedGuests(maxGuestCount)
+    }
+  }, [restaurant, selectedGuests])
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb]">
@@ -210,6 +239,7 @@ export default function DiningRestaurantDetails() {
   const openingTime = formatTimeLabel(restaurant?.openingTime || restaurant?.diningSettings?.openingTime || "12:00")
   const closingTime = formatTimeLabel(restaurant?.closingTime || restaurant?.diningSettings?.closingTime || "23:59")
   const isDiningEnabled = restaurant?.diningSettings?.isEnabled !== false
+  const maxGuestCount = Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6)
   const offerHeadline = getOfferHeadline(diningOffer)
   const offerDescription = String(diningOffer?.description || "").trim()
   const offerMinBillAmount = Number(diningOffer?.minBillAmount || 0)
@@ -628,7 +658,7 @@ export default function DiningRestaurantDetails() {
             </div>
 
             <div className="grid grid-cols-4 gap-3">
-              {Array.from({ length: Math.min(restaurant?.diningSettings?.maxGuests || 6, 8) }, (_, index) => index + 1).map((count) => (
+              {Array.from({ length: maxGuestCount }, (_, index) => index + 1).map((count) => (
                 <button
                   key={`sheet-${count}`}
                   onClick={() => setSelectedGuests(count)}

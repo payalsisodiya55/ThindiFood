@@ -111,6 +111,24 @@ const getDisplayStatus = (status) => {
     return normalized.replaceAll("_", " ")
 }
 
+const DINING_MEAL_OPTIONS = [
+    { id: "breakfast", label: "Breakfast" },
+    { id: "lunch", label: "Lunch" },
+    { id: "dinner", label: "Dinner" },
+]
+
+const normalizeDiningMealTypes = (mealTypes, isEnabled = true) => {
+    if (isEnabled !== true) return []
+    const normalized = Array.from(
+        new Set(
+            (Array.isArray(mealTypes) ? mealTypes : [mealTypes])
+                .map((value) => String(value || "").trim().toLowerCase())
+                .filter((value) => DINING_MEAL_OPTIONS.some((item) => item.id === value))
+        )
+    )
+    return normalized.length > 0 ? normalized : ["lunch", "dinner"]
+}
+
 export default function DiningReservations() {
     const [bookings, setBookings] = useState([])
     const [loading, setLoading] = useState(true)
@@ -129,6 +147,7 @@ export default function DiningReservations() {
     const [activeView, setActiveView] = useState("priority")
     const [diningEnabled, setDiningEnabled] = useState(false)
     const [maxGuestsLimit, setMaxGuestsLimit] = useState(6)
+    const [selectedMealTypes, setSelectedMealTypes] = useState(["lunch", "dinner"])
     const [selectedDiningCategoryIds, setSelectedDiningCategoryIds] = useState([])
     const [diningCategories, setDiningCategories] = useState([])
     const [savingDiningSettings, setSavingDiningSettings] = useState(false)
@@ -153,6 +172,7 @@ export default function DiningReservations() {
                 ? Math.max(1, parseInt(draftDiningState?.maxGuests, 10) || 6)
                 : 0
         )
+        setSelectedMealTypes(normalizeDiningMealTypes(draftDiningState?.mealTypes, isDiningOn))
         setSelectedDiningCategoryIds(
             isDiningOn && Array.isArray(draftDiningState?.categoryIds) && draftDiningState.categoryIds.length > 0
                 ? draftDiningState.categoryIds.map(String)
@@ -284,9 +304,14 @@ export default function DiningReservations() {
     const handleSaveDiningSettings = async () => {
         if (!restaurant || savingDiningSettings) return
         const parsedLimit = diningEnabled ? parseInt(maxGuestsLimit, 10) : 0
-        if (diningEnabled && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 20)) {
-            setDiningSettingsError("Please enter a guest limit between 1 and 20")
-            toast.error("Invalid guest limit (Min: 1, Max: 20)")
+        if (diningEnabled && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 99)) {
+            setDiningSettingsError("Please enter a valid sitting capacity between 1 and 99")
+            toast.error("Invalid sitting capacity")
+            return
+        }
+        if (diningEnabled && selectedMealTypes.length === 0) {
+            setDiningSettingsError("Select at least one dining session.")
+            toast.error("Select at least one dining session")
             return
         }
         if (diningEnabled && selectedDiningCategoryIds.length === 0) {
@@ -301,6 +326,7 @@ export default function DiningReservations() {
             const response = await restaurantAPI.updateDiningSettings({
                 isEnabled: Boolean(diningEnabled),
                 maxGuests: diningEnabled ? parsedLimit : 0,
+                mealTypes: diningEnabled ? selectedMealTypes : [],
                 categoryIds: diningEnabled ? selectedDiningCategoryIds : [],
                 primaryCategoryId: diningEnabled ? selectedDiningCategoryIds[0] : null,
             })
@@ -413,9 +439,11 @@ export default function DiningReservations() {
                             setDiningEnabled((prev) => {
                                 const nextValue = !prev
                                 if (!nextValue) {
+                                    setSelectedMealTypes([])
                                     setSelectedDiningCategoryIds([])
                                     setMaxGuestsLimit(0)
                                 } else {
+                                    setSelectedMealTypes((current) => normalizeDiningMealTypes(current, true))
                                     setMaxGuestsLimit((current) => Math.max(1, parseInt(current, 10) || 6))
                                 }
                                 return nextValue
@@ -428,7 +456,7 @@ export default function DiningReservations() {
                 </div>
 
                 <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm">
-                    <span className="text-sm font-semibold text-slate-700">Customer limit</span>
+                    <span className="text-sm font-semibold text-slate-700">Max sitting capacity</span>
                     <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 shadow-inner">
                         <button
                             type="button"
@@ -454,7 +482,7 @@ export default function DiningReservations() {
                         <button
                             type="button"
                             disabled={!diningEnabled}
-                            onClick={() => setMaxGuestsLimit((prev) => Math.min(20, (parseInt(prev, 10) || 0) + 1))}
+                            onClick={() => setMaxGuestsLimit((prev) => Math.min(99, (parseInt(prev, 10) || 0) + 1))}
                             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <ChevronUp className="h-3.5 w-3.5" />
@@ -463,9 +491,45 @@ export default function DiningReservations() {
                 </div>
             </div>
 
-            {diningEnabled && parseInt(maxGuestsLimit, 10) > 20 && (
-                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Limit cannot exceed 20 guests</p>
-            )}
+            <p className={`mt-3 text-xs font-semibold flex items-center gap-1.5 transition-colors ${diningEnabled ? "text-slate-500" : "text-slate-400"}`}>
+                <Info className="h-4 w-4 text-emerald-500" />
+                Note: Max sitting capacity defines the maximum number of guests that can be accommodated at a single table.
+            </p>
+
+            <div className="mt-5 rounded-[26px] border border-slate-200 bg-white p-4 sm:p-5">
+                <div className="mb-4">
+                    <h3 className="text-base font-black text-slate-900">Meal sessions</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-500">Select what you offer for table reservations.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-3">
+                    {DINING_MEAL_OPTIONS.map((meal) => {
+                        const active = selectedMealTypes.includes(meal.id)
+                        return (
+                            <button
+                                key={meal.id}
+                                type="button"
+                                disabled={!diningEnabled}
+                                onClick={() => {
+                                    if (!diningEnabled) return
+                                    setSelectedMealTypes((prev) =>
+                                        prev.includes(meal.id)
+                                            ? prev.filter((item) => item !== meal.id)
+                                            : [...prev, meal.id]
+                                    )
+                                }}
+                                className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                                    active
+                                        ? "border-slate-900 bg-slate-900 text-white"
+                                        : "border-slate-200 bg-slate-50 text-slate-700"
+                                } ${!diningEnabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                            >
+                                {meal.label}
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
 
             <div className="mt-5 rounded-[26px] border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
                 <div className="mb-4">

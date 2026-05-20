@@ -18,6 +18,7 @@ const DineInTableManagement = () => {
     const [loading, setLoading] = useState(true);
     const [tables, setTables] = useState([]);
     const [restaurantId, setRestaurantId] = useState(null);
+    const [restaurantMaxCapacity, setRestaurantMaxCapacity] = useState(4);
     const [showAddModal, setShowAddModal] = useState(false);
     const [addingTable, setAddingTable] = useState(false);
     const [editingTable, setEditingTable] = useState(null);
@@ -28,13 +29,11 @@ const DineInTableManagement = () => {
     // Form state
     const [newTable, setNewTable] = useState({
         tableNumber: "",
-        tableLabel: "",
-        capacity: "4"
+        tableLabel: ""
     });
     const [editTableForm, setEditTableForm] = useState({
         tableNumber: "",
-        tableLabel: "",
-        capacity: "4"
+        tableLabel: ""
     });
 
     useEffect(() => {
@@ -56,6 +55,15 @@ const DineInTableManagement = () => {
             
             if (!rId) throw new Error("Could not find restaurant profile");
             setRestaurantId(rId);
+            const maxCapacity = Math.max(
+                1,
+                Number(
+                    restaurant?.diningSettings?.maxGuests ||
+                    restaurant?.pendingDiningRequest?.maxGuests ||
+                    4
+                ) || 4
+            );
+            setRestaurantMaxCapacity(maxCapacity);
 
             // 2. Fetch tables
             const tableRes = await dineInAPI.listTables(rId);
@@ -68,6 +76,9 @@ const DineInTableManagement = () => {
             setLoading(false);
         }
     };
+
+    const resolveTableCapacity = (fallbackValue = 4) =>
+        Math.max(1, Number(restaurantMaxCapacity || fallbackValue || 4) || 4);
 
     const handleAddTable = async (e) => {
         e.preventDefault();
@@ -88,13 +99,13 @@ const DineInTableManagement = () => {
                 restaurantId,
                 ...newTable,
                 tableNumber: normalizedTableNumber,
-                capacity: Number(newTable.capacity || 1),
+                capacity: resolveTableCapacity(4),
             });
 
             if (res.data?.success) {
                 toast.success("Table added successfully!");
                 setShowAddModal(false);
-                setNewTable({ tableNumber: "", tableLabel: "", capacity: 4 });
+                setNewTable({ tableNumber: "", tableLabel: "" });
                 fetchInitialData();
             } else {
                 toast.error(res.data?.message || "Failed to add table");
@@ -111,14 +122,13 @@ const DineInTableManagement = () => {
         setEditTableForm({
             tableNumber: String(table?.tableNumber || ""),
             tableLabel: String(table?.tableLabel || ""),
-            capacity: String(table?.capacity || "4"),
         });
     };
 
     const closeEditModal = () => {
         if (savingEdit) return;
         setEditingTable(null);
-        setEditTableForm({ tableNumber: "", tableLabel: "", capacity: "4" });
+        setEditTableForm({ tableNumber: "", tableLabel: "" });
     };
 
     const handleEditTable = async (e) => {
@@ -136,13 +146,13 @@ const DineInTableManagement = () => {
             const res = await dineInAPI.updateTable(editingTable._id, {
                 tableNumber: normalizedTableNumber,
                 tableLabel: editTableForm.tableLabel,
-                capacity: Number(editTableForm.capacity || 1),
+                capacity: resolveTableCapacity(editingTable?.capacity || 4),
             });
 
             if (res.data?.success) {
                 toast.success("Table updated successfully!");
                 setEditingTable(null);
-                setEditTableForm({ tableNumber: "", tableLabel: "", capacity: "4" });
+                setEditTableForm({ tableNumber: "", tableLabel: "" });
                 fetchInitialData();
             } else {
                 toast.error(res.data?.message || "Failed to update table");
@@ -231,7 +241,6 @@ const DineInTableManagement = () => {
     const openQrPreview = async (table, autoPrint = false) => {
         const tableNumber = toSafeText(table?.tableNumber || "");
         const tableLabel = toSafeText(table?.tableLabel || "Table");
-        const capacity = toSafeText(table?.capacity || "");
         const qrTarget = toSafeText(table?.qrCodeUrl || "");
 
         // Generate QR as inline data URL (no external API needed)
@@ -275,7 +284,7 @@ const DineInTableManagement = () => {
                 <div class="wrap">
                     <div class="card">
                         <h1 class="title">Table #${tableNumber}</h1>
-                        <p class="sub">${tableLabel} ${capacity ? `| Capacity: ${capacity}` : ""}</p>
+                        <p class="sub">${tableLabel}</p>
                         <div class="qr-box">
                             <img id="qrImage" class="qr" src="${qrDataUrl}" alt="Table QR" />
                         </div>
@@ -435,7 +444,7 @@ const DineInTableManagement = () => {
                             <div className="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-widest pt-4 border-t border-gray-100">
                                 <div className="flex items-center gap-1.5">
                                     <Users className="w-3.5 h-3.5" />
-                                    <span>Cap: {table.capacity}</span>
+                                    <span>QR Ready</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <button
@@ -534,26 +543,6 @@ const DineInTableManagement = () => {
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Seating Capacity</label>
-                                        <input 
-                                            required
-                                            min="1"
-                                            max="99"
-                                            type="number" 
-                                            value={newTable.capacity}
-                                            onChange={(e) => {
-                                                let val = e.target.value.replace(/\D/g, "");
-                                                if (val.length > 1 && val.startsWith("0")) val = val.replace(/^0+/, "");
-                                                if (val.length > 2) val = val.slice(0, 2);
-                                                setNewTable({...newTable, capacity: val});
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
-                                            }}
-                                            className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
-                                        />
-                                    </div>
                                 </div>
 
                                 <Button 
@@ -624,26 +613,6 @@ const DineInTableManagement = () => {
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Seating Capacity</label>
-                                        <input
-                                            required
-                                            min="1"
-                                            max="99"
-                                            type="number"
-                                            value={editTableForm.capacity}
-                                            onChange={(e) => {
-                                                let val = e.target.value.replace(/\D/g, "");
-                                                if (val.length > 1 && val.startsWith("0")) val = val.replace(/^0+/, "");
-                                                if (val.length > 2) val = val.slice(0, 2);
-                                                setEditTableForm({ ...editTableForm, capacity: val });
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
-                                            }}
-                                            className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold focus:ring-2 focus:ring-[#00c87e]/20"
-                                        />
-                                    </div>
                                 </div>
 
                                 <Button
@@ -696,9 +665,6 @@ const DineInTableManagement = () => {
                                             <p className="text-sm font-semibold text-gray-500">
                                                 {tablePendingDelete.tableLabel || "Standard Table"}
                                             </p>
-                                        </div>
-                                        <div className="rounded-2xl bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-500 shadow-sm">
-                                            Cap {tablePendingDelete.capacity}
                                         </div>
                                     </div>
                                 </div>
