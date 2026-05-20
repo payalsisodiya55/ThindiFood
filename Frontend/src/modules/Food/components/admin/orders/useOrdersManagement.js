@@ -388,24 +388,44 @@ export function useOrdersManagement(orders, statusKey, title) {
         order.tax ??
         order.pricing?.tax
       )
+      const platformFee = toNumber(
+        order.platformFee ??
+        order.platformCharge ??
+        order.pricing?.platformFee ??
+        order.pricing?.platformCharge ??
+        order.adminChargesRecoverableBreakdown?.platformFee
+      )
       const discountBreakdown = getDiscountBreakdown(order)
       const discountAmount = discountBreakdown.totalDiscount
-      const computedTotal = subtotal + deliveryFee + taxAmount - discountAmount
+      const computedTotal = subtotal + deliveryFee + taxAmount + platformFee - discountAmount
       const totalAmount = toNumber(
         order.totalAmount ??
         order.pricing?.total ??
         computedTotal
       )
       const paymentType = order.paymentType || order.payment?.method || order.paymentMethod || "N/A"
-      const deliveryPartnerName = formatDisplayText(
+      const deliveryType = formatDisplayText(order.deliveryType)
+      const isSelfDelivery = String(deliveryType).toLowerCase().includes("self") || String(order.orderStatus || order.status).toLowerCase().includes("self")
+      const isDeliveryOrder =
+        String(deliveryType).toLowerCase().includes("delivery") ||
+        String(order.fulfillmentType || "").toLowerCase() === "delivery"
+
+      let deliveryPartnerName = formatDisplayText(
         order.deliveryPartnerName ||
         order.deliveryBoyName ||
+        order.selfDelivery?.deliveryBoyId?.name ||
+        order.selfDelivery?.deliveryBoyId?.username ||
         order.deliveryPartnerId?.name ||
         order.dispatch?.deliveryPartnerId?.name,
       )
+      if (isSelfDelivery && deliveryPartnerName === "N/A") {
+        deliveryPartnerName = "Self Delivery"
+      }
+
       const deliveryPartnerPhone = formatDisplayText(
         order.deliveryPartnerPhone ||
         order.deliveryBoyNumber ||
+        order.selfDelivery?.deliveryBoyId?.phone ||
         order.deliveryPartnerId?.phone ||
         order.dispatch?.deliveryPartnerId?.phone,
       )
@@ -418,7 +438,6 @@ export function useOrdersManagement(orders, statusKey, title) {
       const customerName = formatDisplayText(order.customerName)
       const customerPhone = formatDisplayText(order.customerPhone)
       const restaurantName = formatDisplayText(order.restaurant)
-      const deliveryType = formatDisplayText(order.deliveryType)
       const deliveryAddress = formatOrderAddress(order.address || order.customerAddress || order.deliveryAddress)
       const itemCount = items.reduce((sum, item) => sum + toNumber(item?.quantity || 1), 0) || items.length
 
@@ -506,16 +525,19 @@ export function useOrdersManagement(orders, statusKey, title) {
         { label: "Phone", value: customerPhone },
         { label: "Address", value: deliveryAddress },
       ])
-      const restaurantCardHeight = drawInfoCard("Restaurant", 76, 53, 58, [
+      const restaurantCardX = isDeliveryOrder ? 76 : 138
+      const restaurantCardHeight = drawInfoCard("Restaurant", restaurantCardX, 53, 58, [
         { label: "Name", value: restaurantName },
         { label: "Delivery", value: deliveryType },
         { label: "Items", value: `${itemCount} item${itemCount === 1 ? "" : "s"}` },
       ], [37, 99, 235])
-      const deliveryCardHeight = drawInfoCard("Delivery Partner", 138, 53, 58, [
-        { label: "Name", value: deliveryPartnerName },
-        { label: "Phone", value: deliveryPartnerPhone },
-        { label: "Payment", value: paymentType },
-      ], [249, 115, 22])
+      const deliveryCardHeight = isDeliveryOrder
+        ? drawInfoCard("Delivery Partner", 138, 53, 58, [
+          { label: "Name", value: deliveryPartnerName },
+          { label: "Phone", value: deliveryPartnerPhone },
+          { label: "Payment", value: paymentType },
+        ], [249, 115, 22])
+        : 0
 
       const infoCardsBottomY = 53 + Math.max(customerCardHeight, restaurantCardHeight, deliveryCardHeight)
 
@@ -588,22 +610,25 @@ export function useOrdersManagement(orders, statusKey, title) {
         margin: { left: 14, right: 14 },
       })
 
+      const summaryRows = [
+        ["Subtotal", formatMoney(subtotal)],
+        ...(isDeliveryOrder ? [["Delivery Fee", formatMoney(deliveryFee)]] : []),
+        ["Tax", formatMoney(taxAmount)],
+        ["Platform Fee", formatMoney(platformFee)],
+        ["Platform Coupon", `- ${formatMoney(discountBreakdown.platformCouponDiscount)}`],
+        ["Restaurant Coupon", `- ${formatMoney(discountBreakdown.restaurantCouponDiscount)}`],
+        ["Restaurant Offer", `- ${formatMoney(discountBreakdown.restaurantOfferDiscount)}`],
+        ["Total Discount", `- ${formatMoney(discountAmount)}`],
+        ["Grand Total", formatMoney(totalAmount)],
+      ]
       const summaryStartY = (doc.lastAutoTable?.finalY || 130) + 10
+      const summaryBoxHeight = Math.max(86, summaryRows.length * 7 + 18)
       doc.setDrawColor(226, 232, 240)
       doc.setFillColor(248, 250, 252)
-      doc.roundedRect(pageWidth - 92, summaryStartY - 5, 78, 35, 2, 2, "FD")
+      doc.roundedRect(pageWidth - 92, summaryStartY - 5, 78, summaryBoxHeight, 2, 2, "FD")
       autoTable(doc, {
         startY: summaryStartY,
-        body: [
-          ["Subtotal", formatMoney(subtotal)],
-          ["Delivery Fee", formatMoney(deliveryFee)],
-          ["Tax", formatMoney(taxAmount)],
-          ["Platform Coupon", `- ${formatMoney(discountBreakdown.platformCouponDiscount)}`],
-          ["Restaurant Coupon", `- ${formatMoney(discountBreakdown.restaurantCouponDiscount)}`],
-          ["Restaurant Offer", `- ${formatMoney(discountBreakdown.restaurantOfferDiscount)}`],
-          ["Total Discount", `- ${formatMoney(discountAmount)}`],
-          ["Grand Total", formatMoney(totalAmount)],
-        ],
+        body: summaryRows,
         theme: "plain",
         styles: {
           fontSize: 10,
@@ -616,7 +641,7 @@ export function useOrdersManagement(orders, statusKey, title) {
         },
         margin: { left: pageWidth - 88 },
         didParseCell: (hookData) => {
-          if (hookData.row.index === 4) {
+          if (hookData.row.index === summaryRows.length - 1) {
             hookData.cell.styles.fontStyle = "bold"
             hookData.cell.styles.fontSize = 11
             hookData.cell.styles.textColor = [15, 118, 110]

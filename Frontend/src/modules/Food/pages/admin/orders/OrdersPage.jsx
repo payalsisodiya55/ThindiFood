@@ -583,7 +583,14 @@ export default function OrdersPage({ statusKey = "all" }) {
       const pricing = order.pricing || {};
       const subtotal = Number(pricing.subtotal || 0);
       const deliveryFee = Number(pricing.deliveryFee || 0);
-      const platformFee = Number(pricing.platformFee || 0);
+      const platformFee = Number(
+        pricing.platformFee ??
+        pricing.platformCharge ??
+        order.platformFee ??
+        order.platformCharge ??
+        order.adminChargesRecoverableBreakdown?.platformFee ??
+        0
+      );
       const taxAmount = Number(pricing.tax || 0);
       const platformCouponDiscount = Number(order.platformCouponDiscount ?? pricing.platformCouponDiscount ?? 0);
       const restaurantCouponDiscount = Number(order.restaurantCouponDiscount ?? pricing.restaurantCouponDiscount ?? 0);
@@ -671,12 +678,18 @@ export default function OrdersPage({ statusKey = "all" }) {
       }
 
       const dp = order.dispatch?.deliveryPartnerId;
+      const selfDeliveryPartner = order.selfDelivery?.deliveryBoyId;
       const deliveryPartnerName =
       order.deliveryPartnerName ||
+      order.deliveryBoyName ||
+      selfDeliveryPartner?.name ||
+      selfDeliveryPartner?.username ||
       dp?.name ||
       "";
       const deliveryPartnerPhone =
       order.deliveryPartnerPhone ||
+      order.deliveryBoyNumber ||
+      selfDeliveryPartner?.phone ||
       dp?.phone ||
       "";
 

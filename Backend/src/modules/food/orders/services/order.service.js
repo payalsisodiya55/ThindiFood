@@ -4350,6 +4350,7 @@ export async function listOrdersAdmin(query, adminScope = {}) {
       .populate("userId", "name phone email")
       .populate("restaurantId", "restaurantName area city ownerPhone")
       .populate("dispatch.deliveryPartnerId", "name phone")
+      .populate("selfDelivery.deliveryBoyId", "name phone username")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
