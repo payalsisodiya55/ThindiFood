@@ -14,6 +14,7 @@ import { FoodRestaurantWallet } from '../models/restaurantWallet.model.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodRestaurantSupportTicket } from '../models/supportTicket.model.js';
 import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
+import { FoodDiningCategory } from '../../dining/models/diningCategory.model.js';
 import { FoodDiningRestaurant } from '../../dining/models/diningRestaurant.model.js';
 import { FoodRestaurantTable } from '../../dineIn/models/restaurantTable.model.js';
 import { FoodDiningOffer } from '../../dineIn/models/diningOffer.model.js';
@@ -336,6 +337,46 @@ const toFiniteNumber = (value) => {
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 const normalizeCuisine = (value) => String(value || '').trim().slice(0, 80);
+
+const toObjectIdArray = (values) =>
+    Array.from(
+        new Set(
+            (Array.isArray(values) ? values : [values])
+                .map((value) => String(value || '').trim())
+                .filter((value) => mongoose.Types.ObjectId.isValid(value))
+        )
+    ).map((value) => new mongoose.Types.ObjectId(value));
+
+const normalizePendingDiningRequest = (request) => {
+    if (!request || typeof request !== 'object' || !request.requestedAt) return null;
+    const categoryIds = Array.isArray(request.categoryIds)
+        ? request.categoryIds.map((id) => String(id)).filter(Boolean)
+        : [];
+    const primaryCategoryId = request.primaryCategoryId ? String(request.primaryCategoryId) : '';
+    return {
+        isEnabled: request.isEnabled === true,
+        maxGuests: request.isEnabled === true ? Math.max(1, parseInt(request.maxGuests, 10) || 6) : 0,
+        categoryIds,
+        primaryCategoryId: primaryCategoryId || categoryIds[0] || null,
+        requestedAt: request.requestedAt,
+    };
+};
+
+const enrichRestaurantProfileWithDining = async (profile, restaurantDoc) => {
+    if (!profile?._id || !restaurantDoc) return profile;
+    const diningDoc = await FoodDiningRestaurant.findOne({ restaurantId: profile._id })
+        .select('categoryIds primaryCategoryId')
+        .lean();
+
+    return {
+        ...profile,
+        diningCategoryIds: Array.isArray(diningDoc?.categoryIds)
+            ? diningDoc.categoryIds.map((id) => String(id)).filter(Boolean)
+            : [],
+        diningPrimaryCategoryId: diningDoc?.primaryCategoryId ? String(diningDoc.primaryCategoryId) : null,
+        pendingDiningRequest: normalizePendingDiningRequest(restaurantDoc.pendingDiningRequest),
+    };
+};
 
 const parseSortBy = (value) => {
     const v = String(value || '').trim();
@@ -1036,6 +1077,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'offer',
                 'estimatedDeliveryTimeMinutes',
                 'diningSettings',
+                'pendingDiningRequest',
                 'selfDelivery',
                 'isAcceptingOrders',
                 'status',
@@ -1051,7 +1093,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
         .populate('locationChangeRequest.previousZoneId', 'name zoneName serviceLocation')
         .populate('locationChangeRequest.nextZoneId', 'name zoneName serviceLocation')
         .lean();
-    return toRestaurantProfile(doc);
+    return enrichRestaurantProfileWithDining(toRestaurantProfile(doc), doc);
 };
 
 export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingOrders) => {
@@ -1112,17 +1154,12 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
     }
 
     const currentRestaurant = await FoodRestaurant.findById(restaurantId)
-        .select('diningSettings status')
+        .select('diningSettings pendingDiningRequest status')
         .lean();
 
     if (!currentRestaurant) {
         throw new ValidationError('Restaurant not found');
     }
-
-    const currentDiningSettings =
-        currentRestaurant.diningSettings && typeof currentRestaurant.diningSettings === 'object'
-            ? currentRestaurant.diningSettings
-            : {};
 
     const parseBoolean = (value, fallback = false) => {
         if (value === undefined || value === null) return Boolean(fallback);
@@ -1133,22 +1170,39 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
         return Boolean(fallback);
     };
 
-    const maxGuests = Math.max(
-        1,
-        parseInt(body.maxGuests ?? currentDiningSettings.maxGuests ?? 6, 10) || 6
+    const isEnabled = parseBoolean(
+        body.isEnabled,
+        currentRestaurant?.pendingDiningRequest?.isEnabled ?? currentRestaurant?.diningSettings?.isEnabled
     );
-    const diningType =
-        String(body.diningType ?? currentDiningSettings.diningType ?? 'family-dining').trim() ||
-        'family-dining';
+    const maxGuests = isEnabled
+        ? Math.max(1, parseInt(body.maxGuests, 10) || 1)
+        : 0;
+    const requestedCategoryIds = isEnabled ? toObjectIdArray(body.categoryIds) : [];
+    const validCategories = requestedCategoryIds.length > 0
+        ? await FoodDiningCategory.find({ _id: { $in: requestedCategoryIds } }).select('_id').lean()
+        : [];
+    const validCategoryIds = validCategories.map((category) => category._id);
+    const requestedPrimaryCategoryId = mongoose.Types.ObjectId.isValid(body.primaryCategoryId)
+        ? String(body.primaryCategoryId)
+        : '';
+    const primaryCategoryId = isEnabled
+        ? (validCategoryIds.find((categoryId) => String(categoryId) === requestedPrimaryCategoryId) || validCategoryIds[0] || null)
+        : null;
+
+    if (isEnabled && validCategoryIds.length === 0) {
+        throw new ValidationError('Select at least one dining category');
+    }
 
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
         {
             $set: {
-                diningSettings: {
-                    isEnabled: parseBoolean(body.isEnabled, currentDiningSettings.isEnabled),
+                pendingDiningRequest: {
+                    isEnabled,
                     maxGuests,
-                    diningType
+                    categoryIds: validCategoryIds,
+                    primaryCategoryId,
+                    requestedAt: new Date()
                 }
             }
         },
@@ -1186,6 +1240,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
                 'estimatedDeliveryTime',
                 'estimatedDeliveryTimeMinutes',
                 'diningSettings',
+                'pendingDiningRequest',
                 'selfDelivery',
                 'isAcceptingOrders',
                 'status',
@@ -1195,7 +1250,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
         }
     ).lean();
 
-    return toRestaurantProfile(doc);
+    return enrichRestaurantProfileWithDining(toRestaurantProfile(doc), doc);
 };
 
 export const updateRestaurantProfile = async (restaurantId, body = {}) => {

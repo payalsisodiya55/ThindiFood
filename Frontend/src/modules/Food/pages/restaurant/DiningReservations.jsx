@@ -16,6 +16,13 @@ const getRestaurantFromResponse = (response) =>
     response?.data?.data ||
     null
 
+const getDiningCategoriesFromResponse = (response) => {
+    const payload = response?.data?.data
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.categories)) return payload.categories
+    return []
+}
+
 const normalizeImageEntry = (entry) => {
     if (!entry) return null
     if (typeof entry === "string") {
@@ -122,6 +129,8 @@ export default function DiningReservations() {
     const [activeView, setActiveView] = useState("priority")
     const [diningEnabled, setDiningEnabled] = useState(false)
     const [maxGuestsLimit, setMaxGuestsLimit] = useState(6)
+    const [selectedDiningCategoryIds, setSelectedDiningCategoryIds] = useState([])
+    const [diningCategories, setDiningCategories] = useState([])
     const [savingDiningSettings, setSavingDiningSettings] = useState(false)
     const [diningSettingsMessage, setDiningSettingsMessage] = useState("")
     const [diningSettingsError, setDiningSettingsError] = useState("")
@@ -136,16 +145,31 @@ export default function DiningReservations() {
         setRestaurantPhotos(coverImages)
         setRestaurantPhoto(coverImages[0]?.url || profileImage)
         setMenuPhotos(getMenuImages(restaurantData))
-        setDiningEnabled(Boolean(restaurantData?.diningSettings?.isEnabled))
-        setMaxGuestsLimit(parseInt(restaurantData?.diningSettings?.maxGuests, 10) || 6)
+        const draftDiningState = restaurantData?.pendingDiningRequest || restaurantData?.diningSettings || {}
+        const isDiningOn = Boolean(draftDiningState?.isEnabled)
+        setDiningEnabled(isDiningOn)
+        setMaxGuestsLimit(
+            isDiningOn
+                ? Math.max(1, parseInt(draftDiningState?.maxGuests, 10) || 6)
+                : 0
+        )
+        setSelectedDiningCategoryIds(
+            isDiningOn && Array.isArray(draftDiningState?.categoryIds) && draftDiningState.categoryIds.length > 0
+                ? draftDiningState.categoryIds.map(String)
+                : Array.isArray(restaurantData?.diningCategoryIds)
+                    ? restaurantData.diningCategoryIds.map(String)
+                    : []
+        )
     }
 
     useEffect(() => {
         const fetchAll = async () => {
             try {
                 const resResponse = await restaurantAPI.getCurrentRestaurant()
+                const diningCategoriesResponse = await diningAPI.getCategories()
                 if (resResponse.data.success) {
                     const resData = getRestaurantFromResponse(resResponse)
+                    setDiningCategories(getDiningCategoriesFromResponse(diningCategoriesResponse))
                     const restaurantId = resData?._id || resData?.id
                     if (restaurantId) {
                         syncRestaurantMediaState(resData)
@@ -259,25 +283,34 @@ export default function DiningReservations() {
 
     const handleSaveDiningSettings = async () => {
         if (!restaurant || savingDiningSettings) return
-        const parsedLimit = parseInt(maxGuestsLimit, 10)
-        if (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 20) {
+        const parsedLimit = diningEnabled ? parseInt(maxGuestsLimit, 10) : 0
+        if (diningEnabled && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 20)) {
             setDiningSettingsError("Please enter a guest limit between 1 and 20")
             toast.error("Invalid guest limit (Min: 1, Max: 20)")
             return
         }
+        if (diningEnabled && selectedDiningCategoryIds.length === 0) {
+            setDiningSettingsError("Select at least one dining category.")
+            toast.error("Select at least one dining category")
+            return
+        }
         setSavingDiningSettings(true)
+        setDiningSettingsError("")
+        setDiningSettingsMessage("")
         try {
             const response = await restaurantAPI.updateDiningSettings({
-                ...(restaurant?.diningSettings || {}),
                 isEnabled: Boolean(diningEnabled),
-                maxGuests: parsedLimit,
+                maxGuests: diningEnabled ? parsedLimit : 0,
+                categoryIds: diningEnabled ? selectedDiningCategoryIds : [],
+                primaryCategoryId: diningEnabled ? selectedDiningCategoryIds[0] : null,
             })
             syncRestaurantMediaState(getRestaurantFromResponse(response))
-            setDiningSettingsMessage("Dining settings saved successfully.")
-            toast.success("Dining settings updated")
+            setDiningSettingsMessage("Dining request sent to admin. Changes will apply after approval.")
+            toast.success("Dining request sent for approval")
         } catch (error) {
-            setDiningSettingsError("Failed to save dining settings.")
-            toast.error("Failed to save dining settings")
+            const message = error?.response?.data?.message || "Failed to submit dining request."
+            setDiningSettingsError(message)
+            toast.error(message)
         } finally {
             setSavingDiningSettings(false)
         }
@@ -342,6 +375,174 @@ export default function DiningReservations() {
     }, [sortedBookings, searchTerm, activeView])
 
     const newRequestsCount = useMemo(() => bookings.filter(b => isNewRequest(b)).length, [bookings])
+
+    const diningControlsSection = (
+        <section className="bg-white p-5 sm:p-6 rounded-[28px] shadow-sm border border-slate-100">
+            <div className="mb-5">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-300">Dining Controls</p>
+                <h2 className="mt-2 max-w-xl text-[27px] leading-8 font-black text-slate-900 tracking-tight">Manage dining availability and booking limit</h2>
+                <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">Save your dining changes as an approval request. They will go live for customers only after admin approval.</p>
+            </div>
+
+            {(diningSettingsMessage || diningSettingsError) && (
+                <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                    diningSettingsError
+                        ? "border-rose-100 bg-rose-50 text-rose-600"
+                        : "border-emerald-100 bg-emerald-50 text-emerald-700"
+                }`}>
+                    {diningSettingsError || diningSettingsMessage}
+                </div>
+            )}
+
+            {restaurant?.pendingDiningRequest?.requestedAt && (
+                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                    A dining update request is currently pending admin approval.
+                </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm">
+                    <span className={`h-2.5 w-2.5 rounded-full ${diningEnabled ? "bg-emerald-500" : "bg-rose-500"}`} />
+                    <span className="text-sm font-semibold text-slate-700">{diningEnabled ? "Dining enabled" : "Dining paused"}</span>
+                </div>
+
+                <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm">
+                    <span className="text-sm font-semibold text-slate-700">Turn dining on/off</span>
+                    <button
+                        onClick={() => {
+                            setDiningEnabled((prev) => {
+                                const nextValue = !prev
+                                if (!nextValue) {
+                                    setSelectedDiningCategoryIds([])
+                                    setMaxGuestsLimit(0)
+                                } else {
+                                    setMaxGuestsLimit((current) => Math.max(1, parseInt(current, 10) || 6))
+                                }
+                                return nextValue
+                            })
+                        }}
+                        className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${diningEnabled ? "bg-emerald-500" : "bg-slate-300"}`}
+                    >
+                        <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${diningEnabled ? "translate-x-6" : "translate-x-1"}`} />
+                    </button>
+                </div>
+
+                <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm">
+                    <span className="text-sm font-semibold text-slate-700">Customer limit</span>
+                    <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-1 shadow-inner">
+                        <button
+                            type="button"
+                            disabled={!diningEnabled}
+                            onClick={() => setMaxGuestsLimit((prev) => Math.max(1, (parseInt(prev, 10) || 1) - 1))}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <ChevronDown className="h-3.5 w-3.5" />
+                        </button>
+                        <input
+                            type="number"
+                            value={maxGuestsLimit}
+                            min={diningEnabled ? "1" : "0"}
+                            disabled={!diningEnabled}
+                            onInput={(e) => {
+                                if (e.target.value.length > 2) {
+                                    e.target.value = e.target.value.slice(0, 2)
+                                }
+                            }}
+                            onChange={(e) => setMaxGuestsLimit(e.target.value)}
+                            className={`w-14 bg-transparent text-center text-base font-black text-slate-900 outline-none ${!diningEnabled ? "cursor-not-allowed text-slate-400" : ""}`}
+                        />
+                        <button
+                            type="button"
+                            disabled={!diningEnabled}
+                            onClick={() => setMaxGuestsLimit((prev) => Math.min(20, (parseInt(prev, 10) || 0) + 1))}
+                            className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                            <ChevronUp className="h-3.5 w-3.5" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {diningEnabled && parseInt(maxGuestsLimit, 10) > 20 && (
+                <p className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-rose-500">Limit cannot exceed 20 guests</p>
+            )}
+
+            <div className="mt-5 rounded-[26px] border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
+                <div className="mb-4">
+                    <div className="flex items-center gap-2 text-slate-900">
+                        <Sparkles className="h-4 w-4 text-emerald-500" />
+                        <h3 className="text-base font-black">Dining categories</h3>
+                    </div>
+                    <p className="mt-1 text-xs font-medium text-slate-500">Choose one or multiple categories for this request.</p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {diningCategories.map((category) => {
+                        const categoryId = String(category?._id || "")
+                        const isSelected = selectedDiningCategoryIds.includes(categoryId)
+                        const imageUrl = String(category?.imageUrl || "").trim()
+
+                        return (
+                            <button
+                                key={categoryId}
+                                type="button"
+                                disabled={!diningEnabled}
+                                onClick={() => {
+                                    if (!diningEnabled) return
+                                    setSelectedDiningCategoryIds((prev) =>
+                                        prev.includes(categoryId)
+                                            ? prev.filter((id) => id !== categoryId)
+                                            : [...prev, categoryId]
+                                    )
+                                }}
+                                className={`group relative overflow-hidden rounded-[24px] border text-left transition-all ${
+                                    isSelected
+                                        ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-200"
+                                        : "border-slate-200 bg-white text-slate-900 shadow-sm"
+                                } ${!diningEnabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"}`}
+                            >
+                                <div className={`relative ${imageUrl ? "h-28" : "h-24"} overflow-hidden ${isSelected ? "bg-slate-800" : "bg-slate-100"}`}>
+                                    {imageUrl ? (
+                                        <img src={imageUrl} alt={category?.name || "Dining category"} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                                    ) : (
+                                        <div className="flex h-full w-full items-center justify-center">
+                                            <Sparkles className={`h-8 w-8 ${isSelected ? "text-white/70" : "text-slate-300"}`} />
+                                        </div>
+                                    )}
+                                    {isSelected && (
+                                        <span className="absolute right-3 top-3 rounded-full bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-900">
+                                            Selected
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="p-4">
+                                    <p className={`text-base font-black ${isSelected ? "text-white" : "text-slate-900"}`}>{category?.name || "Category"}</p>
+                                    <p className={`mt-1 text-xs font-medium ${isSelected ? "text-white/80" : "text-slate-500"}`}>
+                                        {isSelected ? "Included in this request" : "Tap to include"}
+                                    </p>
+                                </div>
+                            </button>
+                        )
+                    })}
+                </div>
+
+                {diningCategories.length === 0 && (
+                    <p className="rounded-2xl bg-white px-4 py-6 text-center text-xs font-medium text-slate-500">No dining categories available right now.</p>
+                )}
+            </div>
+
+            <div className="mt-5 flex justify-end">
+                <button
+                    onClick={handleSaveDiningSettings}
+                    disabled={savingDiningSettings}
+                    className="w-full rounded-full bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition-colors hover:bg-slate-800 disabled:opacity-50 sm:w-auto sm:min-w-56"
+                >
+                    {savingDiningSettings ? "Sending request..." : "Save settings"}
+                </button>
+            </div>
+        </section>
+    )
 
     if (loading) return <Loader />
 
@@ -411,6 +612,8 @@ export default function DiningReservations() {
                                 </div>
                             </div>
                         </div>
+
+                        {diningControlsSection}
 
                         <div className="space-y-4">
                             <div className="flex items-center justify-between">
@@ -540,81 +743,6 @@ export default function DiningReservations() {
                     </div>
                 ) : (
                     <div className="space-y-8">
-                        <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-                            <div className="flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Dining Settings</h2>
-                                    <p className="text-slate-500 font-medium mt-1">Configure how guests book tables at your restaurant</p>
-                                </div>
-                                <button
-                                    onClick={handleSaveDiningSettings}
-                                    disabled={savingDiningSettings}
-                                    className="px-6 py-2.5 bg-slate-900 text-white text-sm font-bold rounded-xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 disabled:opacity-50 cursor-pointer"
-                                >
-                                    {savingDiningSettings ? "Saving..." : "Save Changes"}
-                                </button>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <div className="flex items-center gap-3">
-                                            <div className="bg-blue-600 p-2 rounded-lg text-white"><Calendar className="w-4 h-4" /></div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 text-sm">Accept Reservations</p>
-                                                <p className="text-[11px] text-slate-500 font-medium">Enable/disable online table bookings</p>
-                                            </div>
-                                        </div>
-                                        <button
-                                            onClick={() => setDiningEnabled(!diningEnabled)}
-                                            className={`w-12 h-6 rounded-full transition-all relative cursor-pointer ${diningEnabled ? "bg-emerald-500" : "bg-slate-200"}`}
-                                        >
-                                            <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${diningEnabled ? "right-1" : "left-1"}`} />
-                                        </button>
-                                    </div>
-
-                                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <div className="flex items-center gap-3 mb-4">
-                                            <div className="bg-orange-500 p-2 rounded-lg text-white"><Users className="w-4 h-4" /></div>
-                                            <div>
-                                                <p className="font-bold text-slate-900 text-sm">Customer Limit</p>
-                                                <p className="text-[11px] text-slate-500 font-medium">Maximum guests per reservation (Max: 20)</p>
-                                            </div>
-                                        </div>
-                                        <div className="relative group">
-                                            <input
-                                                type="number"
-                                                value={maxGuestsLimit}
-                                                onInput={(e) => {
-                                                    if (e.target.value.length > 2) {
-                                                        e.target.value = e.target.value.slice(0, 2);
-                                                    }
-                                                }}
-                                                onChange={(e) => setMaxGuestsLimit(e.target.value)}
-                                                className={`w-full pl-4 pr-12 py-3 bg-white border-2 rounded-xl text-lg font-black focus:ring-4 transition-all outline-none ${
-                                                    (parseInt(maxGuestsLimit, 10) > 20 || parseInt(maxGuestsLimit, 10) < 1) 
-                                                    ? "border-rose-500 focus:border-rose-600 focus:ring-rose-500/10" 
-                                                    : "border-slate-100 focus:border-blue-500/20 focus:ring-blue-500/5"
-                                                }`}
-                                            />
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
-                                                <button onClick={() => setMaxGuestsLimit(prev => Math.min(20, (parseInt(prev, 10) || 0) + 1))} className="p-1 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"><ChevronUp className="w-3 h-3" /></button>
-                                                <button onClick={() => setMaxGuestsLimit(prev => Math.max(1, (parseInt(prev, 10) || 0) - 1))} className="p-1 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"><ChevronDown className="w-3 h-3" /></button>
-                                            </div>
-                                        </div>
-                                        {parseInt(maxGuestsLimit, 10) > 20 && <p className="text-[10px] text-rose-500 font-black uppercase mt-2 ml-1">Limit cannot exceed 20 guests</p>}
-                                    </div>
-                                </div>
-                                <div className="bg-blue-50/50 p-6 rounded-2xl border border-blue-100 flex items-start gap-4">
-                                    <Info className="w-5 h-5 text-blue-600 mt-0.5" />
-                                    <div>
-                                        <h4 className="font-bold text-blue-900 text-sm">Why this limit matters?</h4>
-                                        <p className="text-xs text-blue-700/70 font-medium mt-1 leading-relaxed">Setting a realistic guest limit helps manage your floor space effectively and prevents large unmanaged groups from disrupting your service flow.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
                         <section className="space-y-6">
                             <div className="flex items-end justify-between px-2">
                                 <div>

@@ -263,6 +263,25 @@ const restaurantSchema = new mongoose.Schema(
       maxGuests: { type: Number, default: 6 },
       diningType: { type: String, default: "family-dining" },
     },
+    pendingDiningRequest: {
+      isEnabled: { type: Boolean, default: undefined },
+      maxGuests: { type: Number, default: undefined },
+      categoryIds: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "FoodDiningCategory",
+        },
+      ],
+      primaryCategoryId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "FoodDiningCategory",
+        default: null,
+      },
+      requestedAt: {
+        type: Date,
+        default: null,
+      },
+    },
     selfDelivery: {
       enabled: { type: Boolean, default: false },
       radius: { type: Number, default: 3, min: 0 },

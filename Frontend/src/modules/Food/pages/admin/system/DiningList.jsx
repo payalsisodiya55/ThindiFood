@@ -4,6 +4,7 @@ import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, Sta
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
+import { toast } from "sonner"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -43,55 +44,56 @@ export default function DiningList() {
     const [error, setError] = useState(null)
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingRestaurant, setEditingRestaurant] = useState(null)
+    const [actionLoadingId, setActionLoadingId] = useState("")
 
-    // Fetch restaurants from backend API
-    useEffect(() => {
-        const fetchRestaurants = async () => {
-            try {
-                setLoading(true)
-                setError(null)
+    const refreshRestaurants = async () => {
+        try {
+            setLoading(true)
+            setError(null)
 
-                const response = await adminAPI.getDiningRestaurants()
+            const response = await adminAPI.getDiningRestaurants()
 
-                if (response.data && response.data.success && response.data.data) {
-                    const restaurantsData = response.data.data.restaurants || []
+            if (response.data && response.data.success && response.data.data) {
+                const restaurantsData = response.data.data.restaurants || []
 
-                    const mappedRestaurants = restaurantsData.map((restaurant, index) => ({
-                        id: restaurant._id || restaurant.id || index + 1,
-                        _id: restaurant._id,
-                        name: restaurant.name || restaurant.restaurantName || "N/A",
-                        ownerName: restaurant.ownerName || "N/A",
-                        ownerPhone: restaurant.ownerPhone || "N/A",
-                        zone: restaurant.zone || "N/A",
-                        status: restaurant.status === "approved" || restaurant.isActive === true,
-                        rating: restaurant.rating || 0,
-                        logo: getPrimaryRestaurantImage(restaurant, "https://via.placeholder.com/40"),
-                        categories: Array.isArray(restaurant.categories) ? restaurant.categories : [],
-                        categoryIds: Array.isArray(restaurant.categoryIds) ? restaurant.categoryIds : [],
-                        primaryCategoryId: restaurant.primaryCategoryId || null,
-                        diningSettings: restaurant.diningSettings || { isEnabled: false, maxGuests: 6, diningType: "" },
-                        diningStats: {
-                            totalOrders: Number(restaurant?.diningStats?.totalOrders || 0),
-                            totalRevenue: Number(restaurant?.diningStats?.totalRevenue || 0),
-                            activeSessions: Number(restaurant?.diningStats?.activeSessions || 0),
-                        },
-                        originalData: restaurant,
-                    }))
+                const mappedRestaurants = restaurantsData.map((restaurant, index) => ({
+                    id: restaurant._id || restaurant.id || index + 1,
+                    _id: restaurant._id,
+                    name: restaurant.name || restaurant.restaurantName || "N/A",
+                    ownerName: restaurant.ownerName || "N/A",
+                    ownerPhone: restaurant.ownerPhone || "N/A",
+                    zone: restaurant.zone || "N/A",
+                    status: restaurant.status === "approved" || restaurant.isActive === true,
+                    rating: restaurant.rating || 0,
+                    logo: getPrimaryRestaurantImage(restaurant, "https://via.placeholder.com/40"),
+                    categories: Array.isArray(restaurant.categories) ? restaurant.categories : [],
+                    categoryIds: Array.isArray(restaurant.categoryIds) ? restaurant.categoryIds : [],
+                    primaryCategoryId: restaurant.primaryCategoryId || null,
+                    pendingDiningRequest: restaurant.pendingDiningRequest || null,
+                    diningSettings: restaurant.diningSettings || { isEnabled: false, maxGuests: 6, diningType: "" },
+                    diningStats: {
+                        totalOrders: Number(restaurant?.diningStats?.totalOrders || 0),
+                        totalRevenue: Number(restaurant?.diningStats?.totalRevenue || 0),
+                        activeSessions: Number(restaurant?.diningStats?.activeSessions || 0),
+                    },
+                    originalData: restaurant,
+                }))
 
-                    setRestaurants(mappedRestaurants)
-                } else {
-                    setRestaurants([])
-                }
-            } catch (err) {
-                debugError("Error fetching restaurants:", err)
-                setError(err.message || "Failed to fetch restaurants")
+                setRestaurants(mappedRestaurants)
+            } else {
                 setRestaurants([])
-            } finally {
-                setLoading(false)
             }
+        } catch (err) {
+            debugError("Error fetching restaurants:", err)
+            setError(err.message || "Failed to fetch restaurants")
+            setRestaurants([])
+        } finally {
+            setLoading(false)
         }
+    }
 
-        fetchRestaurants()
+    useEffect(() => {
+        refreshRestaurants()
     }, [])
 
     // Fetch categories
@@ -160,58 +162,18 @@ export default function DiningList() {
         )
     }
 
-    const handleDiningToggle = async (restaurant) => {
-        const newStatus = !restaurant.diningSettings?.isEnabled
-        try {
-            // Optimistic update
-            setRestaurants(prev => prev.map(r =>
-                r.id === restaurant.id
-                    ? { ...r, diningSettings: { ...r.diningSettings, isEnabled: newStatus } }
-                    : r
-            ))
-
-            await adminAPI.updateRestaurantDiningSettings(restaurant._id, {
-                isEnabled: newStatus,
-                maxGuests: restaurant.diningSettings?.maxGuests || 6,
-                categoryIds: restaurant.categoryIds || [],
-                primaryCategoryId: restaurant.primaryCategoryId || restaurant.categoryIds?.[0] || null,
-            })
-            // Could show success toast here
-        } catch (error) {
-            debugError("Failed to update dining settings", error)
-            // Revert on error
-            setRestaurants(prev => prev.map(r =>
-                r.id === restaurant.id
-                    ? { ...r, diningSettings: { ...r.diningSettings, isEnabled: !newStatus } }
-                    : r
-            ))
-        }
-    }
-
-    const handleMaxGuestsUpdate = async (restaurant, newValue) => {
-        const guests = parseInt(newValue)
-        if (isNaN(guests) || guests < 1) return
-
-        // Prevent unnecessary API calls
-        if (guests === restaurant.diningSettings?.maxGuests) return
+    const handlePendingRequestAction = async (restaurant, approvalAction) => {
+        if (!restaurant?._id) return
 
         try {
-            // Optimistic update
-            setRestaurants(prev => prev.map(r =>
-                r.id === restaurant.id
-                    ? { ...r, diningSettings: { ...r.diningSettings, maxGuests: guests } }
-                    : r
-            ))
-
-            await adminAPI.updateRestaurantDiningSettings(restaurant._id, {
-                isEnabled: restaurant.diningSettings?.isEnabled === true,
-                maxGuests: guests,
-                categoryIds: restaurant.categoryIds || [],
-                primaryCategoryId: restaurant.primaryCategoryId || restaurant.categoryIds?.[0] || null,
-            })
+            setActionLoadingId(`${restaurant._id}:${approvalAction}`)
+            await adminAPI.updateRestaurantDiningSettings(restaurant._id, { approvalAction })
+            await refreshRestaurants()
+            toast.success(`Dining request ${approvalAction === "approve" ? "approved" : "rejected"} successfully`)
         } catch (error) {
-            debugError("Failed to update max guests", error)
-            // Revert would require tracking previous value better
+            toast.error(error?.response?.data?.message || `Failed to ${approvalAction} dining request`)
+        } finally {
+            setActionLoadingId("")
         }
     }
 
@@ -320,6 +282,7 @@ export default function DiningList() {
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Zone</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Dining</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Guests</th>
+                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Pending Request</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Rating</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Orders</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Revenue</th>
@@ -331,7 +294,7 @@ export default function DiningList() {
                                     <tbody className="bg-white divide-y divide-slate-100">
                                         {filteredRestaurants.length === 0 ? (
                                             <tr>
-                                                <td colSpan={11} className="px-6 py-20 text-center">
+                                                <td colSpan={12} className="px-6 py-20 text-center">
                                                     <div className="flex flex-col items-center justify-center">
                                                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                                                             <Search className="w-8 h-8 text-slate-300" />
@@ -372,29 +335,30 @@ export default function DiningList() {
                                                         <span className="text-sm text-slate-700">{restaurant.zone}</span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <button
-                                                            onClick={() => handleDiningToggle(restaurant)}
-                                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${restaurant.diningSettings?.isEnabled ? 'bg-blue-600' : 'bg-slate-200'}`}
-                                                        >
-                                                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition duration-200 ease-in-out ${restaurant.diningSettings?.isEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                                        </button>
+                                                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                                            restaurant.diningSettings?.isEnabled
+                                                                ? "bg-emerald-100 text-emerald-700"
+                                                                : "bg-rose-100 text-rose-700"
+                                                        }`}>
+                                                            {restaurant.diningSettings?.isEnabled ? "ON" : "OFF"}
+                                                        </span>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="number"
-                                                                min="1"
-                                                                max="100"
-                                                                defaultValue={restaurant.diningSettings?.maxGuests || 6}
-                                                                onBlur={(e) => handleMaxGuestsUpdate(restaurant, e.target.value)}
-                                                                onKeyDown={(e) => {
-                                                                    if (e.key === 'Enter') {
-                                                                        e.currentTarget.blur()
-                                                                    }
-                                                                }}
-                                                                className="w-16 px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-center"
-                                                            />
-                                                        </div>
+                                                        <span className="text-sm text-slate-700">{restaurant.diningSettings?.isEnabled ? (restaurant.diningSettings?.maxGuests || 0) : 0}</span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {restaurant.pendingDiningRequest ? (
+                                                            <div className="space-y-1">
+                                                                <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">
+                                                                    Pending approval
+                                                                </span>
+                                                                <p className="text-xs text-slate-600">
+                                                                    {restaurant.pendingDiningRequest?.isEnabled ? "Requested: ON" : "Requested: OFF"} • Guests: {restaurant.pendingDiningRequest?.maxGuests || 0}
+                                                                </p>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-sm text-slate-400">No pending request</span>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className="text-sm text-yellow-500 font-medium">{renderStars(restaurant.rating)}</span>
@@ -414,15 +378,24 @@ export default function DiningList() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingRestaurant({ ...restaurant })
-                                                                setIsEditModalOpen(true)
-                                                            }}
-                                                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
-                                                        >
-                                                            <Settings className="w-4 h-4" />
-                                                        </button>
+                                                        {restaurant.pendingDiningRequest && (
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button
+                                                                    onClick={() => handlePendingRequestAction(restaurant, "approve")}
+                                                                    disabled={actionLoadingId === `${restaurant._id}:approve`}
+                                                                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                                                >
+                                                                    {actionLoadingId === `${restaurant._id}:approve` ? "Approving..." : "Approve"}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handlePendingRequestAction(restaurant, "reject")}
+                                                                    disabled={actionLoadingId === `${restaurant._id}:reject`}
+                                                                    className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 disabled:opacity-50"
+                                                                >
+                                                                    {actionLoadingId === `${restaurant._id}:reject` ? "Rejecting..." : "Reject"}
+                                                                </button>
+                                                            </div>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))

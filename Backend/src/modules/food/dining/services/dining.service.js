@@ -150,6 +150,21 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
 
     const primaryCategoryId = diningDoc?.primaryCategoryId ? String(diningDoc.primaryCategoryId) : '';
     const primaryCategory = categories.find((category) => String(category._id) === primaryCategoryId) || categories[0] || null;
+    const pendingDiningRequest = restaurant?.pendingDiningRequest && restaurant.pendingDiningRequest.requestedAt
+        ? {
+            isEnabled: restaurant.pendingDiningRequest.isEnabled === true,
+            maxGuests: restaurant.pendingDiningRequest.isEnabled === true
+                ? Math.max(1, Number(restaurant.pendingDiningRequest.maxGuests) || 6)
+                : 0,
+            categoryIds: Array.isArray(restaurant.pendingDiningRequest.categoryIds)
+                ? restaurant.pendingDiningRequest.categoryIds.map((id) => String(id)).filter(Boolean)
+                : [],
+            primaryCategoryId: restaurant.pendingDiningRequest.primaryCategoryId
+                ? String(restaurant.pendingDiningRequest.primaryCategoryId)
+                : null,
+            requestedAt: restaurant.pendingDiningRequest.requestedAt
+        }
+        : null;
 
     return {
         _id: restaurant._id,
@@ -168,6 +183,7 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
         categories,
         categoryIds,
         primaryCategoryId: primaryCategory?._id || null,
+        pendingDiningRequest,
         diningSettings: {
             isEnabled: Boolean(diningDoc?.isEnabled),
             maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || 6),
@@ -277,7 +293,7 @@ export async function listDiningRestaurantsAdmin() {
     const [restaurants, diningDocs, categories, paidSessionAgg, activeSessionAgg] = await Promise.all([
         FoodRestaurant.find({})
             .sort({ createdAt: -1 })
-            .select('restaurantName ownerName ownerPhone profileImage coverImages menuImages location area city status rating pureVegRestaurant diningSettings')
+            .select('restaurantName ownerName ownerPhone profileImage coverImages menuImages location area city status rating pureVegRestaurant diningSettings pendingDiningRequest')
             .lean(),
         FoodDiningRestaurant.find({})
             .select('restaurantId categoryIds primaryCategoryId isEnabled maxGuests pureVegRestaurant')
@@ -340,8 +356,60 @@ export async function listDiningRestaurantsAdmin() {
 export async function updateDiningRestaurant(restaurantId, body = {}) {
     if (!mongoose.Types.ObjectId.isValid(restaurantId)) return null;
 
-    const restaurant = await FoodRestaurant.findById(restaurantId).lean();
+    const restaurant = await FoodRestaurant.findById(restaurantId);
     if (!restaurant) return null;
+
+    const approvalAction = String(body.approvalAction || '').trim().toLowerCase();
+    if (approvalAction) {
+        if (!['approve', 'reject'].includes(approvalAction)) {
+            throw new ValidationError('Invalid approval action');
+        }
+
+        const pendingRequest = restaurant.pendingDiningRequest;
+        if (!pendingRequest?.requestedAt) {
+            throw new ValidationError('No pending dining request found');
+        }
+
+        if (approvalAction === 'approve') {
+            let diningDoc = await FoodDiningRestaurant.findOne({ restaurantId });
+            if (!diningDoc) {
+                diningDoc = new FoodDiningRestaurant({
+                    restaurantId,
+                    pureVegRestaurant: restaurant.pureVegRestaurant === true
+                });
+            }
+
+            const categoryIds = Array.isArray(pendingRequest.categoryIds)
+                ? pendingRequest.categoryIds.filter((value) => mongoose.Types.ObjectId.isValid(value))
+                : [];
+
+            diningDoc.categoryIds = categoryIds;
+            diningDoc.primaryCategoryId = pendingRequest.primaryCategoryId
+                && categoryIds.some((categoryId) => String(categoryId) === String(pendingRequest.primaryCategoryId))
+                ? pendingRequest.primaryCategoryId
+                : (categoryIds[0] || null);
+            diningDoc.isEnabled = pendingRequest.isEnabled === true;
+            diningDoc.maxGuests = pendingRequest.isEnabled === true
+                ? Math.max(1, parseInt(pendingRequest.maxGuests, 10) || 6)
+                : 0;
+            if (typeof diningDoc.pureVegRestaurant !== 'boolean') {
+                diningDoc.pureVegRestaurant = restaurant.pureVegRestaurant === true;
+            }
+
+            await diningDoc.save();
+            await syncCategoryRestaurantLinks(restaurant._id, categoryIds);
+            await syncRestaurantDiningSettings(restaurant._id, diningDoc);
+        }
+
+        restaurant.pendingDiningRequest = null;
+        await restaurant.save();
+
+        const categories = await FoodDiningCategory.find({}).select('name slug imageUrl').lean();
+        const categoriesById = new Map(categories.map((category) => [String(category._id), category]));
+        const latestDiningDoc = await FoodDiningRestaurant.findOne({ restaurantId }).lean();
+
+        return mapDiningRestaurant(restaurant.toObject(), latestDiningDoc, categoriesById);
+    }
 
     let diningDoc = await FoodDiningRestaurant.findOne({ restaurantId });
     if (!diningDoc) {
@@ -405,7 +473,7 @@ export async function updateDiningRestaurant(restaurantId, body = {}) {
     const categories = await FoodDiningCategory.find({}).select('name slug imageUrl').lean();
     const categoriesById = new Map(categories.map((category) => [String(category._id), category]));
 
-    return mapDiningRestaurant(restaurant, diningDoc.toObject(), categoriesById);
+    return mapDiningRestaurant(restaurant.toObject(), diningDoc.toObject(), categoriesById);
 }
 
 export async function listDiningCategoriesPublic() {

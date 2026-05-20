@@ -83,7 +83,7 @@ export const updateCurrentRestaurantDiningSettingsController = async (req, res, 
     try {
         const restaurantId = req.user?.userId;
         const restaurant = await updateCurrentRestaurantDiningSettings(restaurantId, req.body || {});
-        return sendResponse(res, 200, 'Dining settings updated successfully', { restaurant });
+        return sendResponse(res, 200, 'Dining request sent to admin for approval.', { restaurant });
     } catch (error) {
         next(error);
     }
