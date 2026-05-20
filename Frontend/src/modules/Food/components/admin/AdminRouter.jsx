@@ -257,6 +257,8 @@ export default function AdminRouter() {
             <Route path="pages-social-media/privacy" element={<PrivacyPolicy />} />
             <Route path="pages-social-media/restaurant-terms" element={<TermsAndCondition defaultTab="restaurant" />} />
             <Route path="pages-social-media/restaurant-privacy" element={<PrivacyPolicy defaultTab="restaurant" />} />
+            <Route path="pages-social-media/delivery-terms" element={<TermsAndCondition defaultTab="delivery" />} />
+            <Route path="pages-social-media/delivery-privacy" element={<PrivacyPolicy defaultTab="delivery" />} />
             <Route path="pages-social-media/about" element={<AboutUs />} />
             <Route path="pages-social-media/refund" element={<RefundPolicy />} />
             <Route path="pages-social-media/shipping" element={<ShippingPolicy />} />

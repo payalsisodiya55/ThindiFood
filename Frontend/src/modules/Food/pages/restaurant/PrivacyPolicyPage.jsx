@@ -2,21 +2,33 @@ import { motion } from "framer-motion"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 import api, { API_ENDPOINTS } from "@food/api"
 
 export default function PrivacyPolicyPage() {
   const goBack = useRestaurantBackNavigation()
+  const [searchParams] = useSearchParams()
+  const isDelivery = searchParams.get("role") === "delivery"
+
   const [loading, setLoading] = useState(true)
-  const [privacyData, setPrivacyData] = useState({ title: "Privacy Policy", content: "", updatedAt: "" })
+  const [privacyData, setPrivacyData] = useState({
+    title: isDelivery ? "Delivery Privacy Policy" : "Restaurant Privacy Policy",
+    content: "",
+    updatedAt: ""
+  })
 
   useEffect(() => {
     const fetchPrivacy = async () => {
       try {
-        const response = await api.get(API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY_PUBLIC)
+        const endpoint = isDelivery
+          ? API_ENDPOINTS.ADMIN.DELIVERY_PRIVACY_PUBLIC
+          : API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY_PUBLIC
+
+        const response = await api.get(endpoint)
         if (response?.data?.success) {
           const payload = response?.data?.data || {}
           setPrivacyData({
-            title: payload?.title || "Restaurant Privacy Policy",
+            title: payload?.title || (isDelivery ? "Delivery Privacy Policy" : "Restaurant Privacy Policy"),
             content: payload?.content || "",
             updatedAt: payload?.updatedAt || ""
           })
@@ -28,7 +40,7 @@ export default function PrivacyPolicyPage() {
     }
 
     fetchPrivacy()
-  }, [])
+  }, [isDelivery])
 
   return (
     <div className="min-h-screen bg-[#f8fafc] overflow-x-hidden pb-10">
@@ -36,7 +48,7 @@ export default function PrivacyPolicyPage() {
       <div className="fixed top-0 left-0 right-0 bg-[#00c87e] border-b border-[#00c87e] px-4 py-3 z-50 flex items-center gap-3">
         <button 
           onClick={goBack}
-          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-white" />
         </button>
@@ -52,7 +64,7 @@ export default function PrivacyPolicyPage() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6"
         >
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">{privacyData.title || "Restaurant Privacy Policy"}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{privacyData.title}</h2>
             <p className="text-sm text-gray-600">
               Last updated: {(privacyData.updatedAt ? new Date(privacyData.updatedAt) : new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>

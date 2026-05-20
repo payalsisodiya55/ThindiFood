@@ -338,7 +338,7 @@ export default function RestaurantLogin() {
               By logging in, you agree to our <br />
               <button
                 type="button"
-                onClick={() => navigate("/food/restaurant/terms")}
+                onClick={() => navigate(`/food/restaurant/terms${selectedRole === "delivery" ? "?role=delivery" : ""}`)}
                 className="bg-transparent border-0 p-0 text-[#00c87e] font-bold hover:underline cursor-pointer"
               >
                 Terms & Conditions
@@ -346,7 +346,7 @@ export default function RestaurantLogin() {
               and{" "}
               <button
                 type="button"
-                onClick={() => navigate("/food/restaurant/privacy")}
+                onClick={() => navigate(`/food/restaurant/privacy${selectedRole === "delivery" ? "?role=delivery" : ""}`)}
                 className="bg-transparent border-0 p-0 text-[#00c87e] font-bold hover:underline cursor-pointer"
               >
                 Privacy Policy

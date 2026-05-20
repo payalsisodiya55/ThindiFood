@@ -11,7 +11,7 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState("edit") // "edit" | "preview"
-  const [activeTab, setActiveTab] = useState(defaultTab) // "user" | "restaurant"
+  const [activeTab, setActiveTab] = useState(defaultTab) // "user" | "restaurant" | "delivery"
 
   const [userPrivacy, setUserPrivacy] = useState({
     title: "Privacy Policy",
@@ -20,6 +20,11 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
 
   const [restaurantPrivacy, setRestaurantPrivacy] = useState({
     title: "Restaurant Privacy Policy",
+    content: ""
+  })
+
+  const [deliveryPrivacy, setDeliveryPrivacy] = useState({
+    title: "Delivery Privacy Policy",
     content: ""
   })
 
@@ -35,27 +40,37 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
   const fetchAllPrivacy = async () => {
     try {
       setLoading(true)
-      const [userRes, restRes] = await Promise.all([
+      const [userResult, restResult, delivResult] = await Promise.allSettled([
         api.get(API_ENDPOINTS.ADMIN.PRIVACY, { contextModule: "admin" }),
-        api.get(API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY, { contextModule: "admin" })
+        api.get(API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY, { contextModule: "admin" }),
+        api.get(API_ENDPOINTS.ADMIN.DELIVERY_PRIVACY, { contextModule: "admin" })
       ])
 
-      if (userRes.data.success) {
+      if (userResult.status === "fulfilled" && userResult.value.data.success) {
+        const data = userResult.value.data.data
         setUserPrivacy({
-          ...userRes.data.data,
-          content: legalHtmlToPlainText(userRes.data.data.content || "")
+          ...data,
+          content: legalHtmlToPlainText(data.content || "")
         })
       }
-      if (restRes.data.success) {
+      if (restResult.status === "fulfilled" && restResult.value.data.success) {
+        const data = restResult.value.data.data
         setRestaurantPrivacy({
-          ...restRes.data.data,
-          title: restRes.data.data.title || "Restaurant Privacy Policy",
-          content: legalHtmlToPlainText(restRes.data.data.content || "")
+          ...data,
+          title: data.title || "Restaurant Privacy Policy",
+          content: legalHtmlToPlainText(data.content || "")
+        })
+      }
+      if (delivResult.status === "fulfilled" && delivResult.value.data.success) {
+        const data = delivResult.value.data.data
+        setDeliveryPrivacy({
+          ...data,
+          title: data.title || "Delivery Privacy Policy",
+          content: legalHtmlToPlainText(data.content || "")
         })
       }
     } catch (error) {
       debugError("Error fetching privacy data:", error)
-      toast.error("Failed to load privacy policy data")
     } finally {
       setLoading(false)
     }
@@ -64,17 +79,33 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
   const handleContentChange = (val) => {
     if (activeTab === "user") {
       setUserPrivacy((prev) => ({ ...prev, content: val }))
-    } else {
+    } else if (activeTab === "restaurant") {
       setRestaurantPrivacy((prev) => ({ ...prev, content: val }))
+    } else {
+      setDeliveryPrivacy((prev) => ({ ...prev, content: val }))
     }
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    const isActiveUser = activeTab === "user"
-    const currentPrivacy = isActiveUser ? userPrivacy : restaurantPrivacy
-    const endpoint = isActiveUser ? API_ENDPOINTS.ADMIN.PRIVACY : API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY
-    const updateState = isActiveUser ? setUserPrivacy : setRestaurantPrivacy
+    
+    let currentPrivacy, endpoint, updateState, label;
+    if (activeTab === "user") {
+      currentPrivacy = userPrivacy;
+      endpoint = API_ENDPOINTS.ADMIN.PRIVACY;
+      updateState = setUserPrivacy;
+      label = "User";
+    } else if (activeTab === "restaurant") {
+      currentPrivacy = restaurantPrivacy;
+      endpoint = API_ENDPOINTS.ADMIN.RESTAURANT_PRIVACY;
+      updateState = setRestaurantPrivacy;
+      label = "Restaurant";
+    } else {
+      currentPrivacy = deliveryPrivacy;
+      endpoint = API_ENDPOINTS.ADMIN.DELIVERY_PRIVACY;
+      updateState = setDeliveryPrivacy;
+      label = "Delivery";
+    }
 
     try {
       setSaving(true)
@@ -86,12 +117,12 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
         { contextModule: "admin" }
       )
       if (response.data.success) {
-        toast.success(`${isActiveUser ? "User" : "Restaurant"} privacy policy updated successfully`)
+        toast.success(`${label} privacy policy updated successfully`)
         const content = response.data.data.content || ""
         const textContent = legalHtmlToPlainText(content)
         updateState({
           ...response.data.data,
-          title: response.data.data.title || (isActiveUser ? "Privacy Policy" : "Restaurant Privacy Policy"),
+          title: response.data.data.title || `${label} Privacy Policy`,
           content: textContent
         })
       }
@@ -103,7 +134,7 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
     }
   }
 
-  const activeData = activeTab === "user" ? userPrivacy : restaurantPrivacy
+  const activeData = activeTab === "user" ? userPrivacy : activeTab === "restaurant" ? restaurantPrivacy : deliveryPrivacy
 
   if (loading) {
     return (
@@ -123,12 +154,12 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Privacy Policy</h1>
-            <p className="text-sm text-slate-600 mt-1">Manage user and restaurant Privacy Policy content</p>
+            <p className="text-sm text-slate-600 mt-1">Manage user, restaurant, and delivery Privacy Policy content</p>
           </div>
         </div>
 
         {/* Unified Tab Switcher */}
-        <div className="flex space-x-1 bg-slate-200/60 p-1 rounded-xl max-w-md mb-6 border border-slate-200/30">
+        <div className="flex space-x-1 bg-slate-200/60 p-1 rounded-xl max-w-lg mb-6 border border-slate-200/30">
           <button
             type="button"
             onClick={() => setActiveTab("user")}
@@ -150,6 +181,17 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
             }`}
           >
             Restaurant Privacy
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("delivery")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+              activeTab === "delivery"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
+            }`}
+          >
+            Delivery Privacy
           </button>
         </div>
 
@@ -181,7 +223,7 @@ export default function PrivacyPolicy({ defaultTab = "user" }) {
             <Textarea
               value={activeData.content}
               onChange={(e) => handleContentChange(e.target.value)}
-              placeholder={`Enter ${activeTab === "user" ? "user" : "restaurant"} privacy policy content...`}
+              placeholder={`Enter ${activeTab === "user" ? "user" : activeTab === "restaurant" ? "restaurant" : "delivery"} privacy policy content...`}
               className="min-h-[600px] w-full text-sm text-slate-700 leading-relaxed resize-y"
               dir="ltr"
               style={{

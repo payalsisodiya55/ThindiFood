@@ -2,21 +2,33 @@ import { motion } from "framer-motion"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { useEffect, useState } from "react"
 import { ArrowLeft } from "lucide-react"
+import { useSearchParams } from "react-router-dom"
 import api, { API_ENDPOINTS } from "@food/api"
 
 export default function TermsAndConditionsPage() {
   const goBack = useRestaurantBackNavigation()
+  const [searchParams] = useSearchParams()
+  const isDelivery = searchParams.get("role") === "delivery"
+
   const [loading, setLoading] = useState(true)
-  const [termsData, setTermsData] = useState({ title: "Terms and Conditions", content: "", updatedAt: "" })
+  const [termsData, setTermsData] = useState({
+    title: isDelivery ? "Delivery Terms & Conditions" : "Restaurant Terms & Conditions",
+    content: "",
+    updatedAt: ""
+  })
 
   useEffect(() => {
     const fetchTerms = async () => {
       try {
-        const response = await api.get(API_ENDPOINTS.ADMIN.RESTAURANT_TERMS_PUBLIC)
+        const endpoint = isDelivery
+          ? API_ENDPOINTS.ADMIN.DELIVERY_TERMS_PUBLIC
+          : API_ENDPOINTS.ADMIN.RESTAURANT_TERMS_PUBLIC
+
+        const response = await api.get(endpoint)
         if (response?.data?.success) {
           const payload = response?.data?.data || {}
           setTermsData({
-            title: payload?.title || "Restaurant Terms and Conditions",
+            title: payload?.title || (isDelivery ? "Delivery Terms & Conditions" : "Restaurant Terms & Conditions"),
             content: payload?.content || "",
             updatedAt: payload?.updatedAt || ""
           })
@@ -28,7 +40,7 @@ export default function TermsAndConditionsPage() {
     }
 
     fetchTerms()
-  }, [])
+  }, [isDelivery])
 
   return (
     <div className="min-h-screen bg-[#f8fafc] overflow-x-hidden pb-10">
@@ -36,7 +48,7 @@ export default function TermsAndConditionsPage() {
       <div className="fixed top-0 left-0 right-0 bg-[#00c87e] border-b border-[#00c87e] px-4 py-3 z-50 flex items-center gap-3">
         <button 
           onClick={goBack}
-          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+          className="p-1.5 hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-5 h-5 text-white" />
         </button>
@@ -52,7 +64,7 @@ export default function TermsAndConditionsPage() {
           className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-6"
         >
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">{termsData.title || "Restaurant Terms and Conditions"}</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{termsData.title}</h2>
             <p className="text-sm text-gray-600">
               Last updated: {(termsData.updatedAt ? new Date(termsData.updatedAt) : new Date()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
