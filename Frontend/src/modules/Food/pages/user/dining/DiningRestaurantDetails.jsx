@@ -205,7 +205,7 @@ export default function DiningRestaurantDetails() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb]">
+      <div className="flex min-h-screen items-center justify-center bg-[#f6f7fb] dark:bg-[#0a0a0a]">
         <Loader2 className="h-8 w-8 animate-spin" style={{ color: RED }} />
       </div>
     )
@@ -213,8 +213,8 @@ export default function DiningRestaurantDetails() {
 
   if (error || !restaurant) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f6f7fb] px-4 text-center">
-        <h2 className="text-2xl font-bold text-[#23180f]">Restaurant not found</h2>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f6f7fb] dark:bg-[#0a0a0a] px-4 text-center">
+        <h2 className="text-2xl font-bold text-[#23180f] dark:text-white">Restaurant not found</h2>
         <Button onClick={goBack} variant="outline" style={{ borderColor: RED, color: RED }}>
           Go Back
         </Button>
@@ -335,8 +335,8 @@ export default function DiningRestaurantDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f6f7fb] pb-28">
-      <section className="mx-auto max-w-md bg-[#f6f7fb]">
+    <div className="min-h-screen bg-[#f6f7fb] dark:bg-[#0a0a0a] pb-28">
+      <section className="mx-auto max-w-md bg-[#f6f7fb] dark:bg-[#0a0a0a]">
         <div className="relative h-[392px] overflow-hidden">
           {heroImage ? (
             <img src={heroImage} alt={restaurantName} className="h-full w-full object-cover" />
@@ -387,58 +387,58 @@ export default function DiningRestaurantDetails() {
                 </div>
               </div>
 
-              <div className="mb-1 shrink-0 rounded-[18px] bg-white px-3 py-2 text-center text-[#1f2328] shadow-xl">
+              <div className="mb-1 shrink-0 rounded-[18px] bg-white dark:bg-[#1a1a1a] px-3 py-2 text-center text-[#1f2328] dark:text-white shadow-xl">
                 <div className="flex items-center justify-center gap-1 text-[31px] font-black leading-none">
                   <span>{rating}</span>
                   <span className="text-[18px] text-[#18b54f]">★</span>
                 </div>
-                <p className="mt-1 text-[13px] leading-4 text-[#6e7481]">{reviewCount} Reviews</p>
+                <p className="mt-1 text-[13px] leading-4 text-[#6e7481] dark:text-[#a0a5b1]">{reviewCount} Reviews</p>
               </div>
             </div>
           </div>
         </div>
 
-          <div className="px-3 pb-1 pt-3">
-            <div className="grid grid-cols-[1.62fr_0.72fr_0.72fr] gap-2.5">
-              <button
-                onClick={handleOpenBookingSheet}
-                disabled={!isDiningEnabled}
-                className={`flex h-[52px] items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
-                  isDiningEnabled
-                    ? "border-[#f1ebee] bg-white text-[#2b2118]"
-                    : "cursor-not-allowed border-[#f2d7da] bg-[#fff5f6] text-[#c06a79] opacity-80"
-                }`}
-              >
+        <div className="px-3 pb-1 pt-3">
+          <div className="grid grid-cols-[1.62fr_0.72fr_0.72fr] gap-2.5">
+            <button
+              onClick={handleOpenBookingSheet}
+              disabled={!isDiningEnabled}
+              className={`flex h-[52px] items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
+                isDiningEnabled
+                  ? "border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] text-[#2b2118] dark:text-white"
+                  : "cursor-not-allowed border-[#f2d7da] dark:border-red-950 bg-[#fff5f6] dark:bg-[#201012] text-[#c06a79] dark:text-[#a04a55] opacity-80"
+              }`}
+            >
               <Ticket className="h-[15px] w-[15px]" style={{ color: RED }} />
               <span>{isDiningEnabled ? "Book a table" : "Dining paused"}</span>
-              </button>
-              <button className="flex h-[52px] items-center justify-center rounded-full border border-[#f1ebee] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]" style={{ color: RED }}>
-                <Tag className="h-[15px] w-[15px]" />
-              </button>
-              <button className="flex h-[52px] items-center justify-center rounded-full border border-[#f1ebee] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)]" style={{ color: RED }}>
-                <Clock3 className="h-[15px] w-[15px]" />
-              </button>
-            </div>
+            </button>
+            <button className="flex h-[52px] items-center justify-center rounded-full border border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] shadow-[0_10px_24px_rgba(15,23,42,0.05)]" style={{ color: RED }}>
+              <Tag className="h-[15px] w-[15px]" />
+            </button>
+            <button className="flex h-[52px] items-center justify-center rounded-full border border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] shadow-[0_10px_24px_rgba(15,23,42,0.05)]" style={{ color: RED }}>
+              <Clock3 className="h-[15px] w-[15px]" />
+            </button>
+          </div>
 
-            {!isDiningEnabled && (
-              <div className="mt-3 rounded-[18px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-                Dining bookings are currently turned off by the restaurant.
-              </div>
-            )}
+          {!isDiningEnabled && (
+            <div className="mt-3 rounded-[18px] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-800 dark:text-red-300">
+              Dining bookings are currently turned off by the restaurant.
+            </div>
+          )}
 
           {diningOffer && (
-            <div className="mt-4 overflow-hidden rounded-[18px] px-4 py-4 shadow-[0_8px_24px_rgba(226,40,27,0.12)]" style={{ background: `linear-gradient(180deg, ${RED}15, ${RED}05)` }}>
+            <div className="mt-4 overflow-hidden rounded-[18px] px-4 py-4 shadow-[0_8px_24px_rgba(226,40,27,0.12)] dark:border dark:border-red-950/50" style={{ background: `linear-gradient(180deg, ${RED}15, ${RED}05)` }}>
               <div className="flex items-center justify-between gap-3">
-                <div className="rounded-full bg-red-100 p-2 text-red-600">
+                <div className="rounded-full bg-red-100 dark:bg-red-950/40 p-2 text-red-600 dark:text-red-400">
                   <Percent className="h-5 w-5" />
                 </div>
                 <div className="flex-1 text-center">
-                  <p className="text-[33px] font-black leading-none tracking-[-0.04em] text-red-900">{offerHeadline}</p>
-                  <p className="mt-1 text-[14px] font-medium text-red-800">
+                  <p className="text-[33px] font-black leading-none tracking-[-0.04em] text-red-900 dark:text-red-300">{offerHeadline}</p>
+                  <p className="mt-1 text-[14px] font-medium text-red-800 dark:text-red-400">
                     {offerDescription || (offerMinBillAmount > 0 ? `on bills above ${"\u20B9"}${offerMinBillAmount}` : "on your dining bill")}
                   </p>
                 </div>
-                <div className="rounded-full bg-red-100 p-2 text-red-600">
+                <div className="rounded-full bg-red-100 dark:bg-red-950/40 p-2 text-red-600 dark:text-red-400">
                   <Percent className="h-5 w-5" />
                 </div>
               </div>
@@ -447,7 +447,7 @@ export default function DiningRestaurantDetails() {
         </div>
       </section>
 
-      <div className="sticky top-0 z-30 border-b border-[#ececf3] bg-white/95 backdrop-blur-xl">
+      <div className="sticky top-0 z-30 border-b border-[#ececf3] dark:border-[#222222] bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl">
         <div className="mx-auto max-w-md px-3 pb-3 pt-3">
           <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {topTabs.map((tab) => (
@@ -459,8 +459,8 @@ export default function DiningRestaurantDetails() {
                 }}
                 className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
                   activeTab === tab.id
-                    ? "bg-white text-[#2a2018]"
-                    : "border-[#ece9e1] bg-[#fafafa] text-[#8b8881]"
+                    ? "bg-white dark:bg-[#1a1a1a] text-[#2a2018] dark:text-white"
+                    : "border-[#ece9e1] dark:border-[#222222] bg-[#fafafa] dark:bg-[#151515] text-[#8b8881] dark:text-[#a0a0a0]"
                 }`}
                 style={activeTab === tab.id ? { borderColor: RED } : {}}
               >
@@ -474,7 +474,7 @@ export default function DiningRestaurantDetails() {
       <div className="mx-auto max-w-md px-4 pt-4">
         <section id="restaurant-prebook">
           <div>
-            <h2 className="text-[29px] font-black leading-none text-[#23180f]">Pre-book offers</h2>
+            <h2 className="text-[29px] font-black leading-none text-[#23180f] dark:text-white">Pre-book offers</h2>
             <p className="mt-1 text-[15px]" style={{ color: RED }}>Limited slots with extra offers</p>
           </div>
 
@@ -498,20 +498,20 @@ export default function DiningRestaurantDetails() {
               </div>
             </div>
           ) : (
-            <div className="mt-3 rounded-[18px] border border-[#efe4dc] bg-white px-4 py-4 text-[14px] text-[#7f6f63]">
+            <div className="mt-3 rounded-[18px] border border-[#efe4dc] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] px-4 py-4 text-[14px] text-[#7f6f63] dark:text-[#a0a0a0]">
               No active dining offers right now.
             </div>
           )}
         </section>
 
-        <section id="restaurant-menu" className="mt-5 border-t border-[#e8e8ef] pt-4">
+        <section id="restaurant-menu" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
           <div className="flex items-end justify-between gap-3">
             <div>
-              <h2 className="text-[28px] font-black leading-none text-[#23180f]">Menu</h2>
+              <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">Menu</h2>
               <p className="mt-2 text-[13px] text-gray-400">Last updated a month ago</p>
             </div>
             {featuredSections.length > 0 ? (
-              <div className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+              <div className="rounded-full bg-gray-100 dark:bg-[#222222] px-3 py-1 text-xs font-semibold text-gray-600 dark:text-[#a0a0a0]">
                 {featuredSections.length} dishes
               </div>
             ) : null}
@@ -519,52 +519,52 @@ export default function DiningRestaurantDetails() {
 
           {featuredSections.length > 0 ? (
             <div className="mt-4 grid grid-cols-2 gap-3">
-            {featuredSections.map((section, index) => (
-              <div key={section.id} className="overflow-hidden rounded-[18px] border border-[#ede8dd] bg-white">
-                <div className="aspect-[0.88] bg-[#f7f1e7]">
-                  {menuPreviewImages[index] ? (
-                    <img src={menuPreviewImages[index]} alt={section.title} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#fff3e0,#f3eadf)] text-sm font-medium text-[#a28868]">
-                      Menu preview
-                    </div>
-                  )}
+              {featuredSections.map((section, index) => (
+                <div key={section.id} className="overflow-hidden rounded-[18px] border border-[#ede8dd] dark:border-[#222222] bg-white dark:bg-[#1a1a1a]">
+                  <div className="aspect-[0.88] bg-[#f7f1e7] dark:bg-[#202020]">
+                    {menuPreviewImages[index] ? (
+                      <img src={menuPreviewImages[index]} alt={section.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#fff3e0,#f3eadf)] dark:bg-none text-sm font-medium text-[#a28868] dark:text-[#8a7050]">
+                        Menu preview
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-2 pb-3 pt-2 text-center">
+                    <p className="text-[16px] font-medium leading-tight text-[#2b2218] dark:text-white">{section.title}</p>
+                    {section.pages > 0 ? <p className="mt-1 text-[12px] text-[#7f7a73] dark:text-[#a0a0a0]">{section.pages} pages</p> : null}
+                  </div>
                 </div>
-                <div className="px-2 pb-3 pt-2 text-center">
-                  <p className="text-[16px] font-medium leading-tight text-[#2b2218]">{section.title}</p>
-                  {section.pages > 0 ? <p className="mt-1 text-[12px] text-[#7f7a73]">{section.pages} pages</p> : null}
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
           ) : null}
         </section>
 
-        <section id="restaurant-photos" className="mt-5 border-t border-[#e8e8ef] pt-4">
-          <h2 className="text-[28px] font-black leading-none text-[#23180f]">Photos</h2>
+        <section id="restaurant-photos" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
+          <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">Photos</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             {(imageGallery.length > 0 ? imageGallery.slice(0, 4) : menuPreviewImages.slice(0, 2)).map((image, index) => (
               <div
                 key={`${image || "placeholder"}-${index}`}
-                className={`overflow-hidden rounded-[18px] bg-[#f6efe4] ${
+                className={`overflow-hidden rounded-[18px] bg-[#f6efe4] dark:bg-[#222222] ${
                   index === 0 ? "col-span-2 aspect-[1.72]" : "aspect-[1.08]"
                 }`}
               >
                 {image ? (
                   <img src={image} alt={`${restaurantName} ${index + 1}`} className="h-full w-full object-cover" />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-sm text-[#a28868]">Photo coming soon</div>
+                  <div className="flex h-full items-center justify-center text-sm text-[#a28868] dark:text-[#8a7050]">Photo coming soon</div>
                 )}
               </div>
             ))}
           </div>
         </section>
 
-        <section id="restaurant-about" className="mt-5 border-t border-[#e8e8ef] pt-4">
-          <h2 className="text-[28px] font-black leading-none text-[#23180f]">About the restaurant</h2>
+        <section id="restaurant-about" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
+          <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">About the restaurant</h2>
 
-          <div className="mt-4 rounded-[18px] border border-[#ececf4] bg-[#fafbff] p-4">
-            <div className="space-y-4 text-[14px] text-[#5f6474]">
+          <div className="mt-4 rounded-[18px] border border-[#ececf4] dark:border-[#222222] bg-[#fafbff] dark:bg-[#121212] p-4">
+            <div className="space-y-4 text-[14px] text-[#5f6474] dark:text-[#a0a5b8]">
               {costForTwo ? (
                 <div className="flex items-start gap-3">
                   <IndianRupee className="mt-0.5 h-4 w-4 shrink-0 text-gray-400" />
@@ -574,7 +574,7 @@ export default function DiningRestaurantDetails() {
 
               {cuisines ? (
                 <div className="flex items-start gap-3">
-                  <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-[#8a8f9d]" />
+                  <div className="mt-[7px] h-2 w-2 shrink-0 rounded-full bg-[#8a8f9d] dark:bg-[#5a5f6d]" />
                   <p>{cuisines}</p>
                 </div>
               ) : null}
@@ -585,14 +585,14 @@ export default function DiningRestaurantDetails() {
               </div>
             </div>
 
-            <div className="mt-5 border-t border-[#e8e8ef] pt-4">
-              <h3 className="text-[20px] font-semibold text-[#23180f]">Featured In</h3>
-              <div className="mt-3 overflow-hidden rounded-[16px] bg-white shadow-sm">
-                <div className="aspect-[1.2] bg-[#efe8df]">
+            <div className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
+              <h3 className="text-[20px] font-semibold text-[#23180f] dark:text-white">Featured In</h3>
+              <div className="mt-3 overflow-hidden rounded-[16px] bg-white dark:bg-[#1a1a1a] shadow-sm">
+                <div className="aspect-[1.2] bg-[#efe8df] dark:bg-[#222222]">
                   {heroImage ? (
                     <img src={heroImage} alt={restaurantName} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-[#a28868]">Featured image</div>
+                    <div className="flex h-full items-center justify-center text-sm text-[#a28868] dark:text-[#8a7050]">Featured image</div>
                   )}
                 </div>
                 <div className="-mt-14 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.72))] p-3 pt-10 text-sm font-medium text-white">
@@ -601,12 +601,12 @@ export default function DiningRestaurantDetails() {
               </div>
             </div>
 
-            <div className="mt-5 border-t border-[#e8e8ef] pt-4">
-              <h3 className="text-[20px] font-semibold text-[#23180f]">Facilities</h3>
+            <div className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
+              <h3 className="text-[20px] font-semibold text-[#23180f] dark:text-white">Facilities</h3>
               <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
                 {facilities.slice(0, 6).map((facility) => (
-                  <div key={facility} className="flex items-center gap-2 text-[14px] text-[#5f6474]">
-                    <span className="inline-block h-[7px] w-[7px] rounded-full border border-[#8a8f9d]" />
+                  <div key={facility} className="flex items-center gap-2 text-[14px] text-[#5f6474] dark:text-[#a0a5b8]">
+                    <span className="inline-block h-[7px] w-[7px] rounded-full border border-[#8a8f9d] dark:border-[#5a5f6d]" />
                     <span>{facility}</span>
                   </div>
                 ))}
@@ -616,15 +616,15 @@ export default function DiningRestaurantDetails() {
         </section>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#ebe5da] bg-white/95 p-4 backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#ebe5da] dark:border-[#222222] bg-white/95 dark:bg-[#0a0a0a]/95 p-4 backdrop-blur-xl">
         <div className="mx-auto max-w-md">
           <Button
             onClick={handleOpenBookingSheet}
             disabled={!isDiningEnabled}
             className={`h-12 w-full rounded-2xl border text-[17px] font-medium transition-colors ${
               isDiningEnabled
-                ? "bg-white hover:bg-red-50"
-                : "cursor-not-allowed border-red-100 bg-red-50 text-red-300 opacity-80"
+                ? "bg-white dark:bg-[#1a1a1a] hover:bg-red-50 dark:hover:bg-red-950/20"
+                : "cursor-not-allowed border-red-100 dark:border-red-950 bg-red-50 dark:bg-red-950/20 text-red-300 dark:text-red-800 opacity-80"
             }`}
             style={isDiningEnabled ? { borderColor: RED, color: RED } : {}}
           >
@@ -641,17 +641,17 @@ export default function DiningRestaurantDetails() {
             onClick={() => setIsBookingSheetOpen(false)}
           />
 
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-[28px] bg-white px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)]">
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-[#e7e5e4]" />
+          <div className="absolute bottom-0 left-0 right-0 rounded-t-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)]">
+            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-[#e7e5e4] dark:bg-[#333333]" />
 
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-xl font-black text-[#23180f]">Select number of guests</h3>
-                <p className="mt-1 text-sm text-[#7b6651]">Choose how many people will be joining.</p>
+                <h3 className="text-xl font-black text-[#23180f] dark:text-white">Select number of guests</h3>
+                <p className="mt-1 text-sm text-[#7b6651] dark:text-[#a09080]">Choose how many people will be joining.</p>
               </div>
               <button
                 onClick={() => setIsBookingSheetOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5f5f5] text-[#5b5b5b]"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5f5f5] dark:bg-[#2b2b2b] text-[#5b5b5b] dark:text-[#a0a0a0]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -664,8 +664,8 @@ export default function DiningRestaurantDetails() {
                   onClick={() => setSelectedGuests(count)}
                   className={`rounded-2xl border px-3 py-4 text-sm font-bold transition-colors ${
                     selectedGuests === count
-                      ? "bg-red-50"
-                      : "border-[#ece7de] bg-white text-[#23180f]"
+                      ? "bg-red-50 dark:bg-[#2d1215]"
+                      : "border-[#ece7de] dark:border-[#2b2b2b] bg-white dark:bg-[#252525] text-[#23180f] dark:text-white"
                   }`}
                   style={selectedGuests === count ? { borderColor: RED, color: RED } : {}}
                 >

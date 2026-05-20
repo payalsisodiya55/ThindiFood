@@ -442,41 +442,41 @@ export default function TableBooking() {
   }
 
   return (
-    <AnimatedPage className="min-h-screen bg-[#f5f6fb] pb-40">
-      <div className="relative overflow-hidden px-4 pb-10 pt-5" style={{ background: `linear-gradient(to b, ${RED}20, ${RED}10, #f5f6fb)` }}>
-        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)]" />
+    <AnimatedPage className="min-h-screen bg-[#f5f6fb] dark:bg-[#0a0a0a] pb-40">
+      <div className="relative overflow-hidden px-4 pb-10 pt-5 bg-gradient-to-b from-red-500/20 via-red-500/10 to-[#f5f6fb] dark:to-[#0a0a0a]">
+        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.15),transparent_65%)]" />
 
         <div className="relative z-10">
           <button
             onClick={goBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#383838] shadow-sm"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-[#1a1a1a] text-[#383838] dark:text-white shadow-sm"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
 
           <div className="mt-6 text-center">
-            <h1 className="text-[30px] font-black tracking-tight text-[#25314a]">Book a table</h1>
-            <p className="mt-1 text-sm font-medium text-[#636363]">{restaurant.name || restaurant.restaurantName}</p>
+            <h1 className="text-[30px] font-black tracking-tight text-[#25314a] dark:text-white">Book a table</h1>
+            <p className="mt-1 text-sm font-medium text-[#636363] dark:text-[#a0a5b5]">{restaurant.name || restaurant.restaurantName}</p>
           </div>
         </div>
       </div>
 
       <div className="mx-auto -mt-4 max-w-md space-y-4 px-4">
         {!isDiningEnabled && (
-          <section className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-            <p className="text-sm font-semibold text-red-900">Dining bookings are paused by this restaurant.</p>
-            <p className="mt-1 text-xs text-red-800">You can still view details, but new table bookings are disabled right now.</p>
+          <section className="rounded-[22px] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
+            <p className="text-sm font-semibold text-red-900 dark:text-red-300">Dining bookings are paused by this restaurant.</p>
+            <p className="mt-1 text-xs text-red-800 dark:text-red-400">You can still view details, but new table bookings are disabled right now.</p>
           </section>
         )}
 
-        <section className="rounded-[22px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
+        <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-[#2f3545]">Select number of guests</span>
+            <span className="text-sm font-medium text-[#2f3545] dark:text-white">Select number of guests</span>
             <div className="relative">
               <select
                 value={selectedGuests}
                 onChange={(event) => setSelectedGuests(parseInt(event.target.value, 10))}
-                className="appearance-none rounded-full bg-[#f7f7fb] py-2 pl-4 pr-9 text-sm font-semibold text-[#404040] outline-none"
+                className="appearance-none rounded-full bg-[#f7f7fb] dark:bg-[#252525] py-2 pl-4 pr-9 text-sm font-semibold text-[#404040] dark:text-white outline-none"
               >
                 {Array.from({ length: maxGuestCount }, (_, index) => index + 1).map((count) => (
                   <option key={count} value={count}>
@@ -489,8 +489,8 @@ export default function TableBooking() {
           </div>
         </section>
 
-        <section className="rounded-[22px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-          <h3 className="text-sm font-medium text-[#2f3545]">Select date</h3>
+        <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
+          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select date</h3>
 
           <div className="mt-4 grid grid-cols-3 gap-3">
             {dates.slice(0, 3).map((date, index) => {
@@ -501,15 +501,15 @@ export default function TableBooking() {
                   onClick={() => setSelectedDate(date)}
                   className={`rounded-[18px] border px-3 py-4 text-center transition-colors ${
                     active
-                      ? "bg-red-50"
-                      : "border-[#ececf2] bg-white"
+                      ? "bg-red-50 dark:bg-[#2d1215] border-red-500"
+                      : "border-[#ececf2] dark:border-[#2b2b2b] bg-white dark:bg-[#222222]"
                   }`}
                   style={active ? { borderColor: RED } : {}}
                 >
-                  <span className="block text-sm font-medium text-[#444b5f]">
+                  <span className="block text-sm font-medium text-[#444b5f] dark:text-white">
                     {index === 0 ? "Today" : index === 1 ? "Tomorrow" : date.toLocaleDateString("en-IN", { weekday: "long" })}
                   </span>
-                  <span className="mt-1 block text-sm text-[#7b8191]">
+                  <span className="mt-1 block text-sm text-[#7b8191] dark:text-[#a0a5b8]">
                     {date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                   </span>
                 </button>
@@ -518,8 +518,8 @@ export default function TableBooking() {
           </div>
         </section>
 
-        <section className="rounded-[22px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-          <h3 className="text-sm font-medium text-[#2f3545]">Select time of day</h3>
+        <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
+          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select time of day</h3>
 
           <div className="mt-4 flex gap-2">
             {availableMealTypes.map((periodId) => {
@@ -531,8 +531,8 @@ export default function TableBooking() {
                   onClick={() => setSelectedMealPeriod(period.id)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                     active
-                      ? "bg-white"
-                      : "border-[#ececf2] bg-[#fafafc] text-[#666f82]"
+                      ? "bg-white dark:bg-[#252525] text-red-500"
+                      : "border-[#ececf2] dark:border-[#2b2b2b] bg-[#fafafc] dark:bg-[#202020] text-[#666f82] dark:text-[#a0a5b8]"
                   }`}
                   style={active ? { borderColor: RED, color: RED } : {}}
                 >
@@ -544,11 +544,11 @@ export default function TableBooking() {
 
           <div className="mt-4 grid grid-cols-3 gap-3">
             {availabilityLoading ? (
-              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] px-4 py-8 text-center text-sm text-[#7c8394]">
+              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] dark:border-[#333333] px-4 py-8 text-center text-sm text-[#7c8394] dark:text-[#a0a0a0]">
                 Loading available slots...
               </div>
             ) : filteredSlots.length === 0 ? (
-              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] px-4 py-8 text-center text-sm text-[#7c8394]">
+              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] dark:border-[#333333] px-4 py-8 text-center text-sm text-[#7c8394] dark:text-[#a0a0a0]">
                 {noSlotsReason || `No ${selectedMealPeriod} slots available for the selected date.`}
               </div>
             ) : (
@@ -560,12 +560,12 @@ export default function TableBooking() {
                     onClick={() => setSelectedSlot(slot)}
                     className={`rounded-[16px] border px-3 py-4 text-center transition-colors ${
                       active
-                        ? "bg-red-50"
-                        : "border-[#ececf2] bg-white"
+                        ? "bg-red-50 dark:bg-[#2d1215] border-red-500"
+                        : "border-[#ececf2] dark:border-[#2b2b2b] bg-white dark:bg-[#222222]"
                     }`}
                     style={active ? { borderColor: RED } : {}}
                   >
-                    <span className="block text-sm font-medium text-[#334155]">{slot}</span>
+                    <span className="block text-sm font-medium text-[#334155] dark:text-white">{slot}</span>
                     <span className="mt-1 block text-xs font-medium" style={{ color: RED }}>
                       {getOfferLabel(selectedMealPeriod)}
                     </span>
@@ -576,14 +576,14 @@ export default function TableBooking() {
           </div>
         </section>
 
-        <section className="rounded-[18px] bg-white px-4 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-          <p className="text-sm text-[#6f7687]">
+        <section className="rounded-[18px] bg-white dark:bg-[#1a1a1a] px-4 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.05)] dark:border dark:border-[#222222]">
+          <p className="text-sm text-[#6f7687] dark:text-[#a0a5b8]">
             Select your preferred time slot to view available booking options
           </p>
         </section>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-[#e6e7ef] bg-[#f5f6fb]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-[#e6e7ef] dark:border-[#222222] bg-[#f5f6fb]/95 dark:bg-[#0a0a0a]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
         <div className="mx-auto max-w-md">
           <Button
             disabled={!canProceed}
@@ -591,7 +591,7 @@ export default function TableBooking() {
             className={`h-14 w-full rounded-2xl text-lg font-bold transition-colors ${
               canProceed
                 ? "text-white opacity-100 hover:opacity-90"
-                : "bg-gray-300 text-white/95"
+                : "bg-gray-300 dark:bg-[#222222] text-white/95 dark:text-gray-600"
             }`}
             style={canProceed ? { backgroundColor: RED } : {}}
           >
