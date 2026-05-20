@@ -1,8 +1,9 @@
-import { Suspense, lazy } from "react"
+import { Suspense, lazy, useState, useEffect } from "react"
 import { Routes, Route, Navigate } from "react-router-dom"
 import ProtectedRoute from "@food/components/ProtectedRoute"
 import Loader from "@food/components/Loader"
 import { getCurrentUser } from "@food/utils/auth"
+import OfflineScreen from "./OfflineScreen"
 
 // Lazy Loading Components
 const AllOrdersPage = lazy(() => import("@food/pages/restaurant/AllOrdersPage"))
@@ -82,6 +83,25 @@ const restaurantRoute = (element) => (
 )
 
 export default function RestaurantRouter() {
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
+  }, [])
+
+  if (isOffline) {
+    return <OfflineScreen onRetry={() => setIsOffline(false)} />
+  }
+
   return (
     <Suspense fallback={<Loader />}>
       <Routes>
