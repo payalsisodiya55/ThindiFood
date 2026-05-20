@@ -217,7 +217,7 @@ const buildPrimaryAddressFromParts = (addr = {}, formattedAddress = "") => {
       addr.state_district,
       "india",
     ]
-      .map((part) => part.toLowerCase())
+      .map((part) => normalizeAddressPart(part).toLowerCase())
       .filter(Boolean),
   )
 

@@ -75,7 +75,7 @@ const buildStreetFromAddressParts = (address = {}, formattedAddress = "") => {
       address.state_district,
       "india",
     ]
-      .map((part) => part.toLowerCase())
+      .map((part) => normalizeAddressPart(part).toLowerCase())
       .filter(Boolean),
   )
 
