@@ -8,6 +8,7 @@ export async function getPublicReferralSettingsController(req, res, next) {
         const payload = settings
             ? {
                 referralRewardUser: Number(settings.referralRewardUser) || 0,
+                refereeRewardUser: Number(settings.refereeRewardUser) || 0,
                 referralRewardDelivery: Number(settings.referralRewardDelivery) || 0,
                 referralLimitUser: Number(settings.referralLimitUser) || 0,
                 referralLimitDelivery: Number(settings.referralLimitDelivery) || 0

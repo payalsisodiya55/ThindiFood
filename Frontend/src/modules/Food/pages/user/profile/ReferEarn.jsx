@@ -36,6 +36,7 @@ export default function ReferEarn() {
     referralCount: 0,
     totalReferralEarnings: 0,
     rewardAmount: 0,
+    refereeRewardAmount: 0,
     totalInvited: 0,
     creditedCount: 0,
     pendingCount: 0,
@@ -56,6 +57,7 @@ export default function ReferEarn() {
             referralCount: Number(nextStats.referralCount) || 0,
             totalReferralEarnings: Number(nextStats.totalReferralEarnings) || 0,
             rewardAmount: Number(nextStats.rewardAmount) || 0,
+            refereeRewardAmount: Number(nextStats.refereeRewardAmount) || 0,
             totalInvited: Number(nextStats.totalInvited) || 0,
             creditedCount: Number(nextStats.creditedCount) || 0,
             pendingCount: Number(nextStats.pendingCount) || 0,
@@ -79,15 +81,19 @@ export default function ReferEarn() {
     };
   }, []);
 
-  const refId = userProfile?._id || userProfile?.id || userProfile?.referralCode || "";
+  const refId = userProfile?.referralCode || userProfile?._id || userProfile?.id || "";
   const referralLink = refId
     ? `${window.location.origin}/food/user/auth/login?ref=${encodeURIComponent(String(refId))}`
     : "";
 
   const shareText = useMemo(() => {
-    const rewardText = stats.rewardAmount > 0 ? `\u20B9${stats.rewardAmount}` : "rewards";
-    return `Join ${companyName} and earn ${rewardText}.`;
-  }, [companyName, stats.rewardAmount]);
+    const inviterText = stats.rewardAmount > 0 ? `I get \u20B9${stats.rewardAmount}` : "I get rewards";
+    const friendText =
+      stats.refereeRewardAmount > 0
+        ? `you get \u20B9${stats.refereeRewardAmount}`
+        : "you get signup rewards";
+    return `Join ${companyName} with my referral link. ${inviterText} and ${friendText}.`;
+  }, [companyName, stats.refereeRewardAmount, stats.rewardAmount]);
 
   const handleShare = async () => {
     if (!referralLink) {
@@ -137,15 +143,16 @@ export default function ReferEarn() {
             </p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-3">
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Reward per invite</p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">You earn per invite</p>
                 <p className="text-lg font-bold" style={{ color: RED }}>{"\u20B9"}{stats.rewardAmount}</p>
               </div>
               <div className="rounded-xl bg-gray-50 dark:bg-gray-800/50 p-3">
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Referral earnings</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                  {"\u20B9"}{stats.totalReferralEarnings}
-                </p>
+                <p className="text-[11px] text-gray-500 dark:text-gray-400">Friend gets on signup</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{"\u20B9"}{stats.refereeRewardAmount}</p>
               </div>
+            </div>
+            <div className="mt-2 rounded-xl bg-gray-50 p-3 text-xs text-gray-600 dark:bg-gray-800/50 dark:text-gray-300">
+              Referral earnings credited till now: <span className="font-semibold text-gray-900 dark:text-white">{"\u20B9"}{stats.totalReferralEarnings}</span>
             </div>
             <Button
               type="button"
