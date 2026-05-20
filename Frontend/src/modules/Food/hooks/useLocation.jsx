@@ -33,6 +33,18 @@ let globalReverseGeocodeLastSuccess = null
 const AUTO_START_LIVE_WATCH = false
 
 const normalizeAddressPart = (value) => String(value || "").trim()
+const isAdministrativeAddressPart = (value) => {
+  const normalized = normalizeAddressPart(value).toLowerCase()
+  if (!normalized) return false
+  return (
+    normalized.includes("tahsil") ||
+    normalized.includes("tehsil") ||
+    normalized.includes("taluka") ||
+    normalized.includes("district") ||
+    normalized.includes("division") ||
+    normalized.endsWith(" city")
+  )
+}
 
 const dedupeAddressParts = (parts = []) =>
   Array.from(
@@ -52,7 +64,17 @@ const buildStreetFromAddressParts = (address = {}, formattedAddress = "") => {
   const country = normalizeAddressPart(address.country || address.countryName)
 
   const genericParts = new Set(
-    [city, state, postcode, country, "india"]
+    [
+      city,
+      state,
+      postcode,
+      country,
+      address.county,
+      address.municipality,
+      address.city_district,
+      address.state_district,
+      "india",
+    ]
       .map((part) => part.toLowerCase())
       .filter(Boolean),
   )
@@ -84,12 +106,15 @@ const buildStreetFromAddressParts = (address = {}, formattedAddress = "") => {
     const normalized = part.toLowerCase()
     return (
       !genericParts.has(normalized) &&
+      !isAdministrativeAddressPart(part) &&
       !/^\d{5,6}$/.test(part) &&
       normalized !== "india"
     )
   })
 
-  const combined = dedupeAddressParts([...priorityParts, ...formattedParts])
+  const combined = dedupeAddressParts([...priorityParts, ...formattedParts]).filter(
+    (part) => !isAdministrativeAddressPart(part),
+  )
   return combined.slice(0, 3).join(", ") || formattedParts[0] || priorityParts[0] || ""
 }
 
@@ -1008,12 +1033,12 @@ export function useLocation() {
               if (showLoading) setLoading(false)
               setError(null)
 
+              resolve(finalLoc)
               if (updateDB) {
-                await updateLocationInDB(finalLoc).catch(err => {
+                void updateLocationInDB(finalLoc).catch(err => {
                   debugWarn("Failed to update location in DB:", err)
                 })
               }
-              resolve(finalLoc)
             } catch (err) {
               debugError("? Error processing location:", err)
               // Try one more time with direct reverse geocode as last resort
@@ -1041,8 +1066,8 @@ export function useLocation() {
                   setPermissionGranted(true)
                   if (showLoading) setLoading(false)
                   setError(null)
-                  if (updateDB) await updateLocationInDB(lastResortLoc).catch(() => { })
                   resolve(lastResortLoc)
+                  if (updateDB) void updateLocationInDB(lastResortLoc).catch(() => { })
                   return
                 } else {
                   debugWarn("?? Last resort geocoding returned invalid data:", lastResortAddr)

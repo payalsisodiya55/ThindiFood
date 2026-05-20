@@ -16,6 +16,7 @@ import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+const DEFAULT_MAP_POSITION = [20.5937, 78.9629]
 
 // Enable Maps if API Key is available, otherwise fallback to coordinates-only mode
 const MAPS_ENABLED = !!import.meta.env.VITE_GOOGLE_MAPS_API_KEY
@@ -98,6 +99,94 @@ const persistSelectedLocation = (locationData) => {
 }
 
 const normalizeAddressPart = (value) => String(value || "").trim()
+const isAdministrativeAddressPart = (value) => {
+  const normalized = normalizeAddressPart(value).toLowerCase()
+  if (!normalized) return false
+  return (
+    normalized.includes("tahsil") ||
+    normalized.includes("tehsil") ||
+    normalized.includes("taluka") ||
+    normalized.includes("district") ||
+    normalized.includes("division") ||
+    normalized.endsWith(" city")
+  )
+}
+
+const getFreshSystemLocation = () =>
+  new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Geolocation is not supported"))
+      return
+    }
+
+    const preferredAccuracyInMeters = 200
+    const minimumAcceptedAccuracyInMeters = 5000
+    let bestPosition = null
+    let settled = false
+    let watchId = null
+
+    const finish = (position) => {
+      if (settled) return
+      settled = true
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      if (!position?.coords) {
+        reject(new Error("Unable to get current location"))
+        return
+      }
+
+      resolve({
+        latitude: Number(position.coords.latitude),
+        longitude: Number(position.coords.longitude),
+        accuracy: Number(position.coords.accuracy) || null,
+        city: "",
+        state: "",
+        area: "",
+        address: "",
+        formattedAddress: "",
+      })
+    }
+
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId)
+      reject(error || new Error("Unable to get current location"))
+    }
+
+    const timeoutId = setTimeout(() => {
+      if (bestPosition) {
+        finish(bestPosition)
+        return
+      }
+      fail(new Error("Location request timed out"))
+    }, 5000)
+
+    watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        const nextAccuracy = Number(position?.coords?.accuracy) || Number.POSITIVE_INFINITY
+        const bestAccuracy =
+          Number(bestPosition?.coords?.accuracy) || Number.POSITIVE_INFINITY
+
+        if (!bestPosition || nextAccuracy < bestAccuracy) {
+          bestPosition = position
+        }
+
+        if (nextAccuracy <= preferredAccuracyInMeters) {
+          clearTimeout(timeoutId)
+          finish(position)
+        }
+      },
+      (error) => {
+        clearTimeout(timeoutId)
+        fail(error)
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      },
+    )
+  })
 
 const dedupeAddressParts = (parts = []) =>
   Array.from(
@@ -117,7 +206,17 @@ const buildPrimaryAddressFromParts = (addr = {}, formattedAddress = "") => {
   const country = normalizeAddressPart(addr.country)
 
   const genericParts = new Set(
-    [city, state, postcode, country, "india"]
+    [
+      city,
+      state,
+      postcode,
+      country,
+      addr.county,
+      addr.municipality,
+      addr.city_district,
+      addr.state_district,
+      "india",
+    ]
       .map((part) => part.toLowerCase())
       .filter(Boolean),
   )
@@ -148,12 +247,15 @@ const buildPrimaryAddressFromParts = (addr = {}, formattedAddress = "") => {
     const normalized = part.toLowerCase()
     return (
       !genericParts.has(normalized) &&
+      !isAdministrativeAddressPart(part) &&
       !/^\d{5,6}$/.test(part) &&
       normalized !== "india"
     )
   })
 
-  const combined = dedupeAddressParts([...priorityParts, ...formattedParts])
+  const combined = dedupeAddressParts([...priorityParts, ...formattedParts]).filter(
+    (part) => !isAdministrativeAddressPart(part),
+  )
   return combined.slice(0, 3).join(", ") || formattedParts[0] || priorityParts[0] || ""
 }
 
@@ -240,10 +342,10 @@ const chooseBetterResolvedLocation = (currentValue, nextValue) => {
 export default function AddressSelectorPage() {
   const navigate = useNavigate()
   const goBack = useAppBackNavigation()
-  const { location, loading, requestLocation } = useGeoLocation()
+  const { location } = useGeoLocation()
   const { addresses = [], addAddress, updateAddress, setDefaultAddress, userProfile } = useProfile()
   const [showAddressForm, setShowAddressForm] = useState(false)
-  const [mapPosition, setMapPosition] = useState([22.7196, 75.8577]) // Default Indore coordinates [lat, lng]
+  const [mapPosition, setMapPosition] = useState(DEFAULT_MAP_POSITION)
   const [addressFormData, setAddressFormData] = useState({
     street: "",
     city: "",
@@ -261,6 +363,13 @@ export default function AddressSelectorPage() {
   const userLocationMarkerRef = useRef(null) // Blue dot marker for user location
   const blueDotCircleRef = useRef(null) // Accuracy circle for Google Maps
   const [currentAddress, setCurrentAddress] = useState("")
+  const [showDetectedCurrentAddress, setShowDetectedCurrentAddress] = useState(() => {
+    try {
+      return localStorage.getItem("deliveryAddressMode") === "current"
+    } catch {
+      return false
+    }
+  })
   const [addressAutocompleteValue, setAddressAutocompleteValue] = useState("")
   const [keywordAddressSuggestions, setKeywordAddressSuggestions] = useState([])
   const [isKeywordSearching, setIsKeywordSearching] = useState(false)
@@ -330,8 +439,8 @@ export default function AddressSelectorPage() {
     const t = setTimeout(async () => {
       try {
         setIsKeywordSearching(true)
-        const refLat = location?.latitude ?? 22.7196
-        const refLng = location?.longitude ?? 75.8577
+        const refLat = location?.latitude ?? DEFAULT_MAP_POSITION[0]
+        const refLng = location?.longitude ?? DEFAULT_MAP_POSITION[1]
         const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=10&q=${encodeURIComponent(q)}`
         const res = await fetch(url, { headers: { Accept: "application/json" } })
         const json = await res.json()
@@ -420,7 +529,9 @@ export default function AddressSelectorPage() {
     reverseGeocodeRequestIdRef.current += 1
     setMapPosition([location.latitude, location.longitude])
     skipIdleReverseGeocodeRef.current = true
-    setCurrentAddress(location.formattedAddress || location.address || "")
+    if (showDetectedCurrentAddress) {
+      setCurrentAddress(location.formattedAddress || location.address || "")
+    }
     setAddressFormData((prev) => ({
       ...prev,
       street:
@@ -444,7 +555,7 @@ export default function AddressSelectorPage() {
       googleMapRef.current.setCenter({ lat: location.latitude, lng: location.longitude })
       googleMapRef.current.setZoom(17)
     }
-  }, [showAddressForm, location])
+  }, [showAddressForm, location, showDetectedCurrentAddress])
 
   const applyResolvedLocationToForm = useCallback((resolvedLocation) => {
     if (!resolvedLocation) return
@@ -532,15 +643,24 @@ export default function AddressSelectorPage() {
     return bestLocation
   }, [])
 
-  const handleUseCurrentLocation = async () => {
+  const handleUseCurrentLocation = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
     try {
       toast.loading("Getting location...", { id: "geo" })
-      const loc = await requestLocation(true, true)
+      setShowDetectedCurrentAddress(true)
+      setCurrentAddress("")
+      try {
+        localStorage.removeItem("userLocation")
+      } catch {
+        // Ignore storage clear errors.
+      }
+
+      const loc = await getFreshSystemLocation()
+
       if (loc?.latitude) {
         reverseGeocodeRequestIdRef.current += 1
         const newPos = [loc.latitude, loc.longitude]
         setMapPosition(newPos)
-        applyResolvedLocationToForm(loc)
          
         // Explicitly pan the map to center the user location
         if (googleMapRef.current) {
@@ -549,17 +669,37 @@ export default function AddressSelectorPage() {
           googleMapRef.current.setZoom(17)
         }
 
-        const resolvedLocation = await reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
-        const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
-        applyResolvedLocationToForm(finalLocation)
-        persistSelectedLocation(finalLocation)
-        
+        if (showAddressForm) {
+            toast.success("Map centered to your location", { id: "geo" })
+            reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
+              .then((resolvedLocation) => {
+                const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
+                applyResolvedLocationToForm(finalLocation)
+              })
+              .catch((error) => {
+                debugWarn("Reverse geocode failed:", error)
+              })
+            return
+        }
+
+        persistSelectedLocation(loc)
         try { localStorage.setItem("deliveryAddressMode", "current") } catch {}
         toast.success("Location updated", { id: "geo" })
-        // Removed handleBack() to prevent unwanted redirection
+        handleBack()
+
+        reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
+          .then((resolvedLocation) => {
+            const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
+            persistSelectedLocation(finalLocation)
+          })
+          .catch((error) => {
+            debugWarn("Background reverse geocode failed:", error)
+          })
+        return
       }
-    } catch (e) {
       toast.error("Failed to get location", { id: "geo" })
+    } catch (e) {
+      toast.error(e?.message || "Failed to get location", { id: "geo" })
     }
   }
 
