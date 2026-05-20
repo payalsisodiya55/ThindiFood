@@ -119,8 +119,8 @@ const getFreshSystemLocation = () =>
       return
     }
 
-    const preferredAccuracyInMeters = 200
-    const minimumAcceptedAccuracyInMeters = 5000
+    const preferredAccuracyInMeters = 5000 // Return instantly on first fix
+    const minimumAcceptedAccuracyInMeters = 10000
     let bestPosition = null
     let settled = false
     let watchId = null
@@ -603,36 +603,32 @@ export default function AddressSelectorPage() {
       }
     }
 
+
+
     if (bestLocation?.formattedAddress && countAddressSegments(bestLocation.formattedAddress) >= 4) {
       return bestLocation
     }
 
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`
-      const response = await fetch(url, {
-        headers: {
-          "Accept-Language": "en",
-          "User-Agent": "AppZeto-Food-App",
-        },
-      })
+      const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      const response = await fetch(url)
       const json = await response.json()
-      if (json?.address) {
-        const addr = json.address
+      if (json && (json.city || json.locality)) {
+        const city = normalizeAddressPart(json.city || json.locality)
+        const principalSubdivision = normalizeAddressPart(json.principalSubdivision)
         const fallbackLocation = {
           latitude: lat,
           longitude: lng,
-          street: buildPrimaryAddressFromParts(addr, json.display_name),
-          streetNumber: normalizeAddressPart(addr.house_number),
-          area: normalizeAddressPart(addr.suburb || addr.neighbourhood || addr.residential),
-          city: normalizeAddressPart(
-            addr.city || addr.town || addr.village || addr.municipality || addr.county,
-          ),
-          state: normalizeAddressPart(addr.state),
-          postalCode: normalizeAddressPart(addr.postcode),
-          zipCode: normalizeAddressPart(addr.postcode),
-          country: normalizeAddressPart(addr.country),
-          address: buildPrimaryAddressFromParts(addr, json.display_name) || normalizeAddressPart(json.display_name),
-          formattedAddress: normalizeAddressPart(json.display_name),
+          street: normalizeAddressPart(json.locality),
+          streetNumber: "",
+          area: normalizeAddressPart(json.locality),
+          city: city,
+          state: principalSubdivision,
+          postalCode: "",
+          zipCode: "",
+          country: normalizeAddressPart(json.countryName),
+          address: city,
+          formattedAddress: `${city}, ${principalSubdivision}`,
         }
         bestLocation = chooseBetterResolvedLocation(bestLocation, fallbackLocation)
       }
@@ -669,32 +665,19 @@ export default function AddressSelectorPage() {
           googleMapRef.current.setZoom(17)
         }
 
-        if (showAddressForm) {
-            toast.success("Map centered to your location", { id: "geo" })
-            reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
-              .then((resolvedLocation) => {
-                const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
-                applyResolvedLocationToForm(finalLocation)
-              })
-              .catch((error) => {
-                debugWarn("Reverse geocode failed:", error)
-              })
-            return
+        try {
+          // Wait for reverse geocoding so the user sees the loading state
+          const resolvedLocation = await reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
+          const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
+          persistSelectedLocation(finalLocation)
+        } catch (error) {
+          debugWarn("Reverse geocode failed:", error)
+          persistSelectedLocation(loc)
         }
 
-        persistSelectedLocation(loc)
         try { localStorage.setItem("deliveryAddressMode", "current") } catch {}
         toast.success("Location updated", { id: "geo" })
-        handleBack()
-
-        reverseGeocodeCoordinate(loc.latitude, loc.longitude, loc)
-          .then((resolvedLocation) => {
-            const finalLocation = chooseBetterResolvedLocation(loc, resolvedLocation) || loc
-            persistSelectedLocation(finalLocation)
-          })
-          .catch((error) => {
-            debugWarn("Background reverse geocode failed:", error)
-          })
+        navigate("/food/user", { replace: true })
         return
       }
       toast.error("Failed to get location", { id: "geo" })
