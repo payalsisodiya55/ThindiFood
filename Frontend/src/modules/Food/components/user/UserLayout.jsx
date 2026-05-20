@@ -122,12 +122,17 @@ export default function UserLayout() {
   }, [location.pathname, location.search, location.hash])
 
   useEffect(() => {
-    document.documentElement.classList.remove("dark")
-
     const syncAppearance = () => {
-      document.documentElement.classList.remove("dark")
-      setAppearance(localStorage.getItem(USER_THEME_STORAGE_KEY) || "light")
+      const currentTheme = localStorage.getItem(USER_THEME_STORAGE_KEY) || "light"
+      setAppearance(currentTheme)
+      if (currentTheme === "dark") {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
     }
+
+    syncAppearance()
 
     window.addEventListener(USER_THEME_CHANGE_EVENT, syncAppearance)
     window.addEventListener("storage", syncAppearance)

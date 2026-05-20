@@ -2527,7 +2527,7 @@ export default function Home() {
     return (
       <section className="space-y-4 sm:space-y-6 pt-4 pb-2">
         <div className="px-5 flex items-center justify-between">
-          <h2 className="text-[20px] sm:text-[22px] font-[900] text-gray-900 tracking-tight leading-none italic uppercase">
+          <h2 className="text-[20px] sm:text-[22px] font-[900] text-gray-900 dark:text-white tracking-tight leading-none italic uppercase">
             Cravings for you!
           </h2>
           <div className="h-1 w-12 bg-[#00c87e] rounded-full opacity-60"></div>
@@ -3695,9 +3695,9 @@ export default function Home() {
                   stiffness: 300,
                   mass: 0.8,
                 }}
-                className="fixed inset-0 z-[9999] flex dark:bg-[#lalala] dark:text-white items-center justify-center p-4"
+                className="fixed inset-0 z-[9999] flex dark:bg-[#1a1a1a] dark:text-white items-center justify-center p-4"
                 onClick={(e) => e.stopPropagation()}>
-                <div className="bg-white dark:bg-[#lalala] dark:text-white rounded-2xl shadow-2xl w-[85%] max-w-sm p-6">
+                <div className="bg-white dark:bg-[#1a1a1a] dark:text-white rounded-2xl shadow-2xl w-[85%] max-w-sm p-6">
                   {/* Warning Icon */}
                   <div className="flex justify-center mb-4">
                     <div className="w-20 h-20 rounded-full bg-pink-100 flex items-center justify-center">
@@ -3709,12 +3709,12 @@ export default function Home() {
                   </div>
 
                   {/* Title */}
-                  <h2 className="text-2xl font-bold text-gray-900  text-center mb-2">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
                     Switch off Veg Mode?
                   </h2>
 
                   {/* Description */}
-                  <p className="text-gray-600 text-center mb-6 text-sm">
+                  <p className="text-gray-600 dark:text-gray-300 text-center mb-6 text-sm">
                     You'll see all restaurants, including those serving non-veg
                     dishes
                   </p>
@@ -3744,7 +3744,7 @@ export default function Home() {
                         setVegModeContext(true);
                         // prevVegMode stays true (from before), which is correct
                       }}
-                      className="w-full text-gray-900 font-normal py-1 text-center rounded-xl hover:bg-gray-200 transition-colors text-base">
+                      className="w-full text-gray-900 dark:text-white font-normal py-1 text-center rounded-xl hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors text-base">
                       Keep using this mode
                     </button>
                   </div>
