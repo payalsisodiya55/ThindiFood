@@ -356,7 +356,7 @@ export default function RegularOrderReport() {
     switch (format) {
       case "csv": exportReportsToCSV(filteredOrders, headers, "regular_order_report"); break
       case "excel": exportReportsToExcel(filteredOrders, headers, "regular_order_report"); break
-      case "pdf": exportReportsToPDF(filteredOrders, headers, "regular_order_report", "Regular Order Report"); break
+      case "pdf": exportReportsToPDF(filteredOrders, headers, "regular_order_report", "Regular Order Report", "landscape"); break
       case "json": exportReportsToJSON(filteredOrders, "regular_order_report"); break
     }
   }

@@ -2,6 +2,8 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+import { downloadPDF } from "@food/utils/pdfExportHelper"
+
 // Export utility functions for deliveryman data
 export const exportDeliverymenToCSV = (deliverymen, filename = "deliverymen") => {
   const headers = ["SI", "Name", "Contact", "Zone", "Total Orders", "Availability Status"]
@@ -214,55 +216,17 @@ export const exportReviewsToExcel = (reviews, filename = "deliveryman_reviews") 
 
 export const exportReviewsToPDF = (reviews, filename = "deliveryman_reviews") => {
   const headers = ["SI", "Deliveryman", "Customer", "Review", "Rating"]
+  const bodyRows = reviews.map((review) => [
+    review.sl,
+    review.deliveryman,
+    review.customer,
+    review.review,
+    review.rating
+  ])
   
-  let htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Deliveryman Reviews Report</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 10px; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        h1 { text-align: center; }
-      </style>
-    </head>
-    <body>
-      <h1>Deliveryman Reviews Report</h1>
-      <p>Generated on: ${new Date().toLocaleString()}</p>
-      <table>
-        <thead>
-          <tr>
-            ${headers.map(h => `<th>${h}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${reviews.map(review => `
-            <tr>
-              <td>${review.sl}</td>
-              <td>${review.deliveryman}</td>
-              <td>${review.customer}</td>
-              <td>${review.review}</td>
-              <td>${review.rating}</td>
-            </tr>
-          `).join("")}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `
-  
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  downloadPDF("Deliveryman Reviews Report", headers, bodyRows, filename)
 }
+
 
 export const exportReviewsToJSON = (reviews, filename = "deliveryman_reviews") => {
   const jsonContent = JSON.stringify(reviews, null, 2)
@@ -318,8 +282,8 @@ const formatBonusForExport = (transaction) => {
   if (transaction.bonus) {
     // Remove all superscript/special characters and unwanted text
     let cleaned = transaction.bonus.toString()
-      .replace(/¹/g, '') // Remove superscript 1
-      .replace(/[¹²³45678?°]/g, '') // Remove all superscript numbers
+      .replace(/ï¿½/g, '') // Remove superscript 1
+      .replace(/[ï¿½ï¿½ï¿½45678?ï¿½]/g, '') // Remove all superscript numbers
       .replace(/[\u2070-\u207F\u2080-\u208F]/g, '') // Remove all superscript Unicode ranges
       .replace(/[^\d.-]/g, '') // Keep only digits, dots, and minus signs
       .trim()

@@ -1,4 +1,6 @@
 // Export utility functions for reports
+import { downloadPDF } from "@food/utils/pdfExportHelper"
+
 export const exportReportsToCSV = (data, headers, filename = "report") => {
   const rows = data.map((item, index) => {
     return headers.map(header => {
@@ -49,54 +51,16 @@ export const exportReportsToExcel = (data, headers, filename = "report") => {
   document.body.removeChild(link)
 }
 
-export const exportReportsToPDF = (data, headers, filename = "report", title = "Report") => {
+export const exportReportsToPDF = (data, headers, filename = "report", title = "Report", orientation = "portrait") => {
   const headerRow = headers.map(h => typeof h === 'string' ? h : h.label)
+  const bodyRows = data.map(item => {
+    return headers.map(header => {
+      const value = item[header.key] || item[header] || ""
+      return typeof value === 'object' ? JSON.stringify(value) : String(value)
+    })
+  })
   
-  let htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>${title}</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; font-size: 10px; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        h1 { text-align: center; }
-      </style>
-    </head>
-    <body>
-      <h1>${title}</h1>
-      <p>Generated on: ${new Date().toLocaleString()}</p>
-      <table>
-        <thead>
-          <tr>
-            ${headerRow.map(h => `<th>${h}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${data.map(item => {
-            const cells = headers.map(header => {
-              const value = item[header.key] || item[header] || ""
-              return `<td>${String(value)}</td>`
-            })
-            return `<tr>${cells.join("")}</tr>`
-          }).join("")}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `
-  
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  downloadPDF(title, headerRow, bodyRows, filename, orientation)
 }
 
 export const exportReportsToJSON = (data, filename = "report") => {
@@ -213,66 +177,27 @@ export const exportTransactionReportToExcel = (transactions, filename = "transac
 }
 
 export const exportTransactionReportToPDF = (transactions, filename = "transaction_report") => {
-  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Total Discount", "Platform Coupon", "Restaurant Coupon", "Restaurant Offer", "VAT/Tax", "Delivery Charge", "Platform Fee", "Order Amount"]
+  const headers = ["SI", "Order ID", "Restaurant", "Customer Name", "Total Item Amount", "Total Discount", "Platform Coupon", "Restaurant Coupon", "Restaurant Offer", "VAT/Tax", "Platform Fee", "Order Amount"]
   
-  let htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Transaction Report</title>
-      <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 8px; }
-        th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        th { background-color: #f2f2f2; font-weight: bold; }
-        tr:nth-child(even) { background-color: #f9f9f9; }
-        h1 { text-align: center; }
-      </style>
-    </head>
-    <body>
-      <h1>Transaction Report</h1>
-      <p>Generated on: ${new Date().toLocaleString()}</p>
-      <table>
-        <thead>
-          <tr>
-            ${headers.map(h => `<th>${h}</th>`).join("")}
-          </tr>
-        </thead>
-        <tbody>
-          ${transactions.map((transaction, index) => {
-            const discountBreakdown = getTransactionDiscountBreakdown(transaction)
-            return `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${transaction.orderId}</td>
-              <td>${transaction.restaurant}</td>
-              <td>${transaction.customerName}</td>
-              <td>₹${transaction.totalItemAmount.toFixed(2)}</td>
-              <td>₹${discountBreakdown.totalDiscount.toFixed(2)}</td>
-              <td>₹${discountBreakdown.platformCouponDiscount.toFixed(2)}</td>
-              <td>₹${discountBreakdown.restaurantCouponDiscount.toFixed(2)}</td>
-              <td>₹${discountBreakdown.restaurantOfferDiscount.toFixed(2)}</td>
-              <td>₹${transaction.vatTax.toFixed(2)}</td>
-              <td>₹${transaction.deliveryCharge.toFixed(2)}</td>
-              <td>₹${Number(transaction.platformFee || 0).toFixed(2)}</td>
-              <td>₹${transaction.orderAmount.toFixed(2)}</td>
-            </tr>
-          `
-          }).join("")}
-        </tbody>
-      </table>
-    </body>
-    </html>
-  `
+  const bodyRows = transactions.map((transaction, index) => {
+    const discountBreakdown = getTransactionDiscountBreakdown(transaction)
+    return [
+      index + 1,
+      transaction.orderId,
+      transaction.restaurant,
+      transaction.customerName,
+      `Rs. ${transaction.totalItemAmount.toFixed(2)}`,
+      `Rs. ${discountBreakdown.totalDiscount.toFixed(2)}`,
+      `Rs. ${discountBreakdown.platformCouponDiscount.toFixed(2)}`,
+      `Rs. ${discountBreakdown.restaurantCouponDiscount.toFixed(2)}`,
+      `Rs. ${discountBreakdown.restaurantOfferDiscount.toFixed(2)}`,
+      `Rs. ${transaction.vatTax.toFixed(2)}`,
+      `Rs. ${Number(transaction.platformFee || 0).toFixed(2)}`,
+      `Rs. ${transaction.orderAmount.toFixed(2)}`,
+    ]
+  })
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  downloadPDF("Transaction Report", headers, bodyRows, filename, "landscape")
 }
 
 export const exportTransactionReportToJSON = (transactions, filename = "transaction_report") => {
