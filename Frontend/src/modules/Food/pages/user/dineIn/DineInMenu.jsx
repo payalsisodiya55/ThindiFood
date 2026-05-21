@@ -63,7 +63,6 @@ const DineInMenu = () => {
 
     // Filter states
     const [searchQuery, setSearchQuery] = useState("");
-    const [vegOnly, setVegOnly] = useState(false);
 
     useEffect(() => {
         if (!sessionId) {
@@ -248,18 +247,24 @@ const DineInMenu = () => {
         return menuSections.map(section => {
             const items = (section.items || []).filter(item => {
                 const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-                const matchesVeg = !vegOnly || (item.isVeg || item.foodType === 'Veg');
-                return matchesSearch && matchesVeg;
+                return matchesSearch;
             });
             return { ...section, items };
         }).filter(section => section.items.length > 0);
-    }, [menuSections, searchQuery, vegOnly]);
+    }, [menuSections, searchQuery]);
 
     const runningPayableTotal = useMemo(() => {
         const snapshotTotal = Number(sessionData?.billingSnapshot?.summary?.totalAmount || 0);
         if (snapshotTotal > 0) return snapshotTotal;
         return Number(sessionData?.totalAmount || 0);
     }, [sessionData]);
+
+    const hasPlacedOrder = useMemo(() => {
+        const activeOrders = Array.isArray(sessionData?.orders)
+            ? sessionData.orders.filter((order) => String(order?.status || "").toLowerCase() !== "cancelled")
+            : [];
+        return activeOrders.length > 0 || runningPayableTotal > 0;
+    }, [sessionData, runningPayableTotal]);
 
     const roundBillPreview = useMemo(() => {
         const snapshot = sessionData?.billingSnapshot || {};
@@ -384,16 +389,6 @@ const DineInMenu = () => {
                             className="w-full bg-gray-100 border-none rounded-xl py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[#00c87e]/20"
                         />
                     </div>
-                    <button 
-                        onClick={() => setVegOnly(!vegOnly)}
-                        className={`px-3 py-2 rounded-xl border text-xs font-bold transition-all ${
-                            vegOnly 
-                            ? 'bg-green-50 border-[#00c87e] text-[#00c87e]' 
-                            : 'bg-white border-gray-200 text-gray-500'
-                        }`}
-                    >
-                        Veg
-                    </button>
                 </div>
             </div>
 
@@ -407,13 +402,15 @@ const DineInMenu = () => {
                                 <h3 className="text-3xl font-black">{RUPEE_SYMBOL}{runningPayableTotal}</h3>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                <Button 
-                                    onClick={() => navigate(`/user/dine-in/bill?sessionId=${sessionId}`)}
-                                    variant="ghost" 
-                                    className="bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-bold"
-                                >
-                                    View Bill
-                                </Button>
+                                {hasPlacedOrder && (
+                                    <Button 
+                                        onClick={() => navigate(`/user/dine-in/bill?sessionId=${sessionId}`)}
+                                        variant="ghost" 
+                                        className="bg-white/20 hover:bg-white/30 text-white rounded-2xl text-xs font-bold"
+                                    >
+                                        View Bill
+                                    </Button>
+                                )}
                                 {canCloseEmptySession && (
                                     <button
                                         type="button"

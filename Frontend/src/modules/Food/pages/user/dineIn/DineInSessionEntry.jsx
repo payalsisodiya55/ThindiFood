@@ -6,6 +6,30 @@ import AnimatedPage from "@food/components/user/AnimatedPage";
 import { useProfile } from "@food/context/ProfileContext";
 import { dineInAPI } from "@food/api";
 
+const getQrErrorMessage = (error) => {
+  const status = Number(error?.response?.status || 0);
+  const message = String(
+    error?.response?.data?.message ||
+      error?.message ||
+      "",
+  ).toLowerCase();
+
+  if (
+    status === 404 ||
+    message.includes("table not found") ||
+    message.includes("session not found") ||
+    message.includes("invalid qr")
+  ) {
+    return "Please scan the correct table QR.";
+  }
+
+  if (message.includes("occupied")) {
+    return "This table is already occupied. Please scan the correct QR or ask the restaurant team.";
+  }
+
+  return "Failed to start dine-in session. Please scan the correct QR.";
+};
+
 export default function DineInSessionEntry() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -51,11 +75,7 @@ export default function DineInSessionEntry() {
         localStorage.setItem("activeDineInSessionId", sessionId);
         navigate(`/user/dine-in/menu?sessionId=${sessionId}`, { replace: true });
       } catch (err) {
-        setError(
-          err?.response?.data?.message ||
-            err?.message ||
-            "Failed to start dine-in session."
-        );
+        setError(getQrErrorMessage(err));
       } finally {
         setLoading(false);
       }
@@ -97,4 +117,3 @@ export default function DineInSessionEntry() {
     </AnimatedPage>
   );
 }
-

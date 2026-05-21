@@ -104,6 +104,7 @@ const getBookingGuestPhone = (booking) =>
 
 function BookingDetailsModal({ booking, onClose, onCancel }) {
   const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(String(booking?.status || "").toUpperCase())
+  const isCheckedIn = String(booking?.status || "").toUpperCase() === "CHECKED_IN"
   const rawRest = booking.restaurantId && typeof booking.restaurantId === 'object' ? booking.restaurantId : (booking.restaurantRef || booking.restaurant || {})
   const restaurantName = rawRest.restaurantName || rawRest.name || "Restaurant"
   const restaurantAddress = formatAddress(rawRest)
@@ -179,6 +180,14 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
         </div>
 
         <div className="p-5 pt-0 space-y-3">
+          {isCheckedIn && (
+            <Button
+              onClick={() => window.location.assign("/user/dine-in/scan")}
+              className="w-full h-12 rounded-2xl text-white font-bold bg-blue-600 hover:bg-blue-700"
+            >
+              Scan QR
+            </Button>
+          )}
           {canCancel && (
             <Button
               onClick={() => onCancel(booking)}
@@ -336,6 +345,21 @@ export default function DiningCategory() {
 
     fetchRestaurants()
   }, [category, location?.city])
+
+  useEffect(() => {
+    const shouldLockScroll = Boolean(bookingDetails || bookingToCancel)
+    if (!shouldLockScroll) return undefined
+
+    const previousOverflow = document.body.style.overflow
+    const previousTouchAction = document.body.style.touchAction
+    document.body.style.overflow = "hidden"
+    document.body.style.touchAction = "none"
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.body.style.touchAction = previousTouchAction
+    }
+  }, [bookingDetails, bookingToCancel])
 
   const cityName = location?.city || "Select location"
   const heading = useMemo(() => formatCategoryHeading(category), [category])
@@ -550,13 +574,29 @@ export default function DiningCategory() {
 
                       <div className="flex items-center justify-between border-t border-dashed border-[#ead7c0] pt-4 dark:border-gray-700">
                         <div className="text-sm font-semibold text-[#4c3b2c] dark:text-gray-200">{restaurant.price}</div>
-                        <div 
-                          className="inline-flex items-center gap-2 text-sm font-bold cursor-pointer hover:opacity-80" 
-                          style={{ color: RED }}
-                          onClick={isBookings ? (e) => handleViewDetails(e, restaurant) : undefined}
-                        >
-                          {isBookings ? <Bookmark className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
-                          <span>{isBookings ? "View details" : "Menu & booking"}</span>
+                        <div className="flex items-center gap-3">
+                          {isBookings && String(restaurant.status || "").toUpperCase() === "CHECKED_IN" && (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                navigate("/user/dine-in/scan")
+                              }}
+                              className="inline-flex items-center gap-2 text-sm font-bold hover:opacity-80 text-blue-600"
+                            >
+                              <BadgePercent className="h-4 w-4" />
+                              <span>Scan QR</span>
+                            </button>
+                          )}
+                          <div 
+                            className="inline-flex items-center gap-2 text-sm font-bold cursor-pointer hover:opacity-80" 
+                            style={{ color: RED }}
+                            onClick={isBookings ? (e) => handleViewDetails(e, restaurant) : undefined}
+                          >
+                            {isBookings ? <Bookmark className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
+                            <span>{isBookings ? "View details" : "Menu & booking"}</span>
+                          </div>
                         </div>
                       </div>
                     </CardContent>

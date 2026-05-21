@@ -33,10 +33,10 @@ const QRLanding = () => {
                 if (res.data?.success) {
                     setTableInfo(res.data.data);
                 } else {
-                    setError(res.data?.message || "Table not found");
+                    setError("Please scan the correct table QR.");
                 }
             } catch (err) {
-                setError("Failed to fetch table information. Please try again.");
+                setError("Please scan the correct table QR.");
             } finally {
                 setLoading(false);
             }

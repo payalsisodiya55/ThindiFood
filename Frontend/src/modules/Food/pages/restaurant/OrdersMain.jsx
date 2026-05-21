@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   checkOnboardingStatus,
   isRestaurantOnboardingComplete,
@@ -1071,6 +1071,49 @@ function TableBookings() {
     };
   }, []);
 
+  const handleBookingStatusUpdate = async (bookingId, nextStatus) => {
+    if (!bookingId) return;
+
+    try {
+      let response = null;
+      if (nextStatus === "CONFIRMED") {
+        response = await dineInAPI.acceptBooking(bookingId);
+      } else if (nextStatus === "DECLINED") {
+        response = await dineInAPI.declineBooking(bookingId);
+      } else if (nextStatus === "CHECKED_IN") {
+        response = await dineInAPI.checkInBooking(bookingId);
+      }
+
+      if (!response?.data?.success) {
+        toast.error("Failed to update booking");
+        return;
+      }
+
+      setBookings((prev) =>
+        prev.map((booking) =>
+          String(booking?._id || booking?.id || "") === String(bookingId)
+            ? {
+                ...booking,
+                status: nextStatus,
+              }
+            : booking,
+        ),
+      );
+
+      if (nextStatus === "CHECKED_IN") {
+        toast.success("Guest checked in successfully");
+      } else if (nextStatus === "CONFIRMED") {
+        toast.success("Booking accepted");
+      } else {
+        toast.success("Booking declined");
+      }
+    } catch (error) {
+      toast.error(
+        error?.response?.data?.message || "Failed to update booking",
+      );
+    }
+  };
+
   if (loading)
     return (
       <div className="text-center py-10 text-gray-400">Loading bookings...</div>
@@ -1142,6 +1185,36 @@ function TableBookings() {
                   </p>
                 </div>
               )}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {["PENDING"].includes(String(booking?.status || "").toUpperCase()) && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleBookingStatusUpdate(booking._id || booking.id, "CONFIRMED")}
+                      className="flex-1 min-w-[110px] rounded-xl bg-emerald-600 py-2.5 text-xs font-black uppercase text-white"
+                    >
+                      Accept
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBookingStatusUpdate(booking._id || booking.id, "DECLINED")}
+                      className="flex-1 min-w-[110px] rounded-xl bg-slate-100 py-2.5 text-xs font-black uppercase text-slate-700"
+                    >
+                      Decline
+                    </button>
+                  </>
+                )}
+                {["CONFIRMED", "ACCEPTED"].includes(String(booking?.status || "").toUpperCase()) && (
+                  <button
+                    type="button"
+                    onClick={() => handleBookingStatusUpdate(booking._id || booking.id, "CHECKED_IN")}
+                    className="flex-1 min-w-[110px] rounded-xl bg-orange-600 py-2.5 text-xs font-black uppercase text-white"
+                  >
+                    Check-in
+                  </button>
+                )}
+              </div>
                   </>
                 );
               })()}
@@ -1694,7 +1767,10 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
 
 export default function OrdersMain() {
   const navigate = useNavigate();
-  const [activeFilter, setActiveFilter] = useState("all");
+  const location = useLocation();
+  const [activeFilter, setActiveFilter] = useState(
+    () => location.state?.initialFilter || "all",
+  );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -2771,7 +2847,7 @@ export default function OrdersMain() {
     }
 
     handleCloseBookingPopup();
-    navigate("/restaurant/reservations");
+    navigate("/food/restaurant", { state: { initialFilter: "table-booking" } });
   };
 
   const handleDeclineBooking = async () => {
