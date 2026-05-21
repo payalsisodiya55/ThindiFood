@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@food/components/ui/card"
 import {
@@ -25,6 +25,8 @@ import {
 } from "recharts"
 import { Activity, ArrowUpRight, ShoppingBag, CreditCard, Truck, Receipt, DollarSign, Store, UserCheck, Package, UserCircle, CheckCircle, Plus, XCircle, Clock } from "lucide-react"
 import { adminAPI } from "@food/api"
+import { useAuth } from "@/core/context/AuthContext"
+import { canAccessAdminPath } from "@food/utils/adminPermissions"
 const debugLog = () => {}
 const debugError = () => {}
 
@@ -39,6 +41,7 @@ function formatCurrency(amount, options = {}) {
 
 export default function AdminHome() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [selectedZone, setSelectedZone] = useState("all")
   const [selectedPeriod, setSelectedPeriod] = useState("overall")
   const [isLoading, setIsLoading] = useState(true)
@@ -165,6 +168,18 @@ export default function AdminHome() {
     `GST: ${formatCurrency(gstTotal)}`,
   ].join(" + ")
 
+  const orderRouteMap = useMemo(() => ({
+    Delivered: "/admin/food/orders/delivered",
+    Cancelled: "/admin/food/orders/canceled",
+    Refunded: "/admin/food/orders/refunded",
+    Pending: "/admin/food/orders/pending",
+  }), [])
+
+  const navigateIfAllowed = (path) => {
+    if (!path || !canAccessAdminPath(user, path)) return
+    navigate(path)
+  }
+
   return (
     <div className="px-4 pb-10 lg:px-6 pt-4">
       <div className="relative overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-[0_30px_120px_-60px_rgba(0,0,0,0.28)]">
@@ -217,6 +232,7 @@ export default function AdminHome() {
         <div className="space-y-6 px-6 py-6">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/transaction-report")}
               title="Gross revenue"
               value={formatCurrency(revenueTotal)}
               helper={`${periodLabel} transaction volume`}
@@ -225,6 +241,7 @@ export default function AdminHome() {
               path="/admin/food/transaction-report"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/restaurants/commission")}
               title="Commission earned"
               value={formatCurrency(commissionTotal)}
               helper={`${periodLabel} restaurant cut`}
@@ -233,6 +250,7 @@ export default function AdminHome() {
               path="/admin/food/restaurants/commission"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/orders/processing")}
               title="Orders processed"
               value={activeOrdersTotal.toLocaleString("en-IN")}
               helper="Orders currently being processed"
@@ -241,6 +259,7 @@ export default function AdminHome() {
               path="/admin/food/orders/processing"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/fee-settings")}
               title="Platform fee"
               value={formatCurrency(platformFeeTotal)}
               helper={`Platform service fees: ${periodLabel}`}
@@ -249,6 +268,7 @@ export default function AdminHome() {
               path="/admin/food/fee-settings"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/transaction-report")}
               title="Delivery fee"
               value={formatCurrency(deliveryFeeTotal)}
               helper={`Total delivery fees: ${periodLabel}`}
@@ -257,6 +277,7 @@ export default function AdminHome() {
               path="/admin/food/transaction-report"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/tax-report")}
               title="GST"
               value={formatCurrency(gstTotal)}
               helper={`Total tax collected: ${periodLabel}`}
@@ -265,6 +286,7 @@ export default function AdminHome() {
               path="/admin/food/tax-report"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/transaction-report")}
               title="Platform Total"
               value={formatCurrency(totalAdminEarnings, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               helper={totalRevenueHelper}
@@ -273,6 +295,7 @@ export default function AdminHome() {
               path="/admin/food/transaction-report"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/restaurants")}
               title="Total restaurants"
               value={totalRestaurants.toLocaleString("en-IN")}
               helper="Approved restaurants"
@@ -281,6 +304,7 @@ export default function AdminHome() {
               path="/admin/food/restaurants"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/restaurants/joining-request")}
               title="Restaurant request pending"
               value={pendingRestaurantRequests.toLocaleString("en-IN")}
               helper="Awaiting approval"
@@ -289,6 +313,7 @@ export default function AdminHome() {
               path="/admin/food/restaurants/joining-request"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/foods")}
               title="Total foods"
               value={totalFoods.toLocaleString("en-IN")}
               helper="Approved menu items"
@@ -297,6 +322,7 @@ export default function AdminHome() {
               path="/admin/food/foods"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/addons")}
               title="Total addons"
               value={totalAddons.toLocaleString("en-IN")}
               helper="Approved addon items"
@@ -305,6 +331,7 @@ export default function AdminHome() {
               path="/admin/food/addons"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/customers")}
               title="Total customers"
               value={totalCustomers.toLocaleString("en-IN")}
               helper="Registered users"
@@ -313,6 +340,7 @@ export default function AdminHome() {
               path="/admin/food/customers"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/orders/pending")}
               title="Pending orders"
               value={pendingOrders.toLocaleString("en-IN")}
               helper="Orders awaiting processing"
@@ -321,6 +349,7 @@ export default function AdminHome() {
               path="/admin/food/orders/pending"
             />
             <MetricCard
+              canAccessPath={canAccessAdminPath(user, "/admin/food/orders/delivered")}
               title="Completed orders"
               value={completedOrders.toLocaleString("en-IN")}
               helper="Successfully delivered"
@@ -429,18 +458,16 @@ export default function AdminHome() {
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {orderStats.map((item) => (
+                    (() => {
+                      const targetPath = orderRouteMap[item.label] || "/admin/food/orders/all"
+                      const canOpen = canAccessAdminPath(user, targetPath)
+                      return (
                     <div
                       key={item.label}
-                    onClick={() => {
-                        const routes = {
-                          'Delivered': '/admin/food/orders/delivered',
-                          'Cancelled': '/admin/food/orders/canceled',
-                          'Refunded': '/admin/food/orders/refunded',
-                          'Pending': '/admin/food/orders/pending'
-                        }
-                        navigate(routes[item.label] || '/admin/food/orders/all')
-                      }}
-                      className="flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2 cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-all group"
+                    onClick={() => navigateIfAllowed(targetPath)}
+                      className={`flex items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2 transition-all group ${
+                        canOpen ? "cursor-pointer hover:bg-neutral-50 hover:border-neutral-300" : "cursor-not-allowed opacity-60"
+                      }`}
                     >
                       <div className="flex items-center gap-2">
                         <span className="h-2.5 w-2.5 rounded-full transition-transform group-hover:scale-125" style={{ background: item.color }} />
@@ -448,6 +475,8 @@ export default function AdminHome() {
                       </div>
                       <p className="text-sm font-semibold text-neutral-900">{item.value}</p>
                     </div>
+                      )
+                    })()
                   ))}
                 </div>
               </CardContent>
@@ -559,18 +588,16 @@ export default function AdminHome() {
               </CardHeader>
               <CardContent className="grid gap-3 pt-4">
                 {orderStats.map((item) => (
+                  (() => {
+                    const targetPath = orderRouteMap[item.label] || "/admin/food/orders/all"
+                    const canOpen = canAccessAdminPath(user, targetPath)
+                    return (
                   <div
                     key={item.label}
-                    onClick={() => {
-                      const routes = {
-                        'Delivered': '/admin/food/orders/delivered',
-                        'Cancelled': '/admin/food/orders/canceled',
-                        'Refunded': '/admin/food/orders/refunded',
-                        'Pending': '/admin/food/orders/pending'
-                      }
-                      navigate(routes[item.label] || '/admin/food/orders/all')
-                    }}
-                    className="flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 cursor-pointer hover:bg-neutral-100 transition-colors group"
+                    onClick={() => navigateIfAllowed(targetPath)}
+                    className={`flex items-center justify-between rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-3 transition-colors group ${
+                      canOpen ? "cursor-pointer hover:bg-neutral-100" : "cursor-not-allowed opacity-60"
+                    }`}
                   >
                     <div className="flex items-center gap-3">
                       <span
@@ -586,6 +613,8 @@ export default function AdminHome() {
                     </div>
                     <p className="text-sm font-semibold text-neutral-900">{item.value}</p>
                   </div>
+                    )
+                  })()
                 ))}
               </CardContent>
             </Card>
@@ -596,12 +625,16 @@ export default function AdminHome() {
   )
 }
 
-function MetricCard({ title, value, helper, icon, accent, path }) {
+function MetricCard({ title, value, helper, icon, accent, path, canAccessPath = true }) {
   const navigate = useNavigate()
   return (
     <Card
-      className="group relative overflow-hidden border-neutral-200 bg-white p-0 cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
-      onClick={() => path && navigate(path)}
+      className={`group relative overflow-hidden border-neutral-200 bg-white p-0 transition-all duration-300 ${
+        canAccessPath
+          ? "cursor-pointer hover:shadow-xl hover:-translate-y-1 active:scale-[0.98]"
+          : "cursor-not-allowed opacity-60"
+      }`}
+      onClick={() => canAccessPath && path && navigate(path)}
     >
       <CardContent className="relative flex flex-col gap-2 px-4 pb-4 pt-4 h-full">
         <div className={`absolute inset-0 opacity-40 transition-opacity duration-300 group-hover:opacity-60 ${accent}`} />

@@ -52,6 +52,7 @@ import { cn } from "@food/utils/utils"
 import { Input } from "@food/components/ui/input"
 import { adminSidebarMenu } from "@food/utils/adminSidebarMenu"
 import { quickAdminSidebarMenu } from "@food/utils/quickAdminSidebarMenu"
+import { canAccessAdminPermission, getAllowedSidebarPermissions, isSuperAdminUser } from "@food/utils/adminPermissions"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { adminAPI } from "@food/api"
 import quickSpicyLogo from "@food/assets/quicky-spicy-logo.png"
@@ -298,14 +299,9 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     }
   }, [user])
 
-  const isSuperAdmin = String(effectiveAdminUser?.adminType || "").toUpperCase() === "SUPERADMIN"
+  const isSuperAdmin = isSuperAdminUser(effectiveAdminUser)
   const allowedSidebarPermissions = useMemo(() => {
-    if (!Array.isArray(effectiveAdminUser?.sidebarPermissions)) return new Set()
-    return new Set(
-      effectiveAdminUser.sidebarPermissions
-        .map((item) => String(item || "").trim())
-        .filter(Boolean)
-    )
+    return getAllowedSidebarPermissions(effectiveAdminUser)
   }, [effectiveAdminUser])
 
   const filteredByAccessMenuData = useMemo(() => {
@@ -314,9 +310,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
     if (isLoading && !effectiveAdminUser) return []
 
     const canAccess = (item) => {
-      if (!item?.permissionKey) return true
-      if (item.permissionKey === "superadmin") return false
-      return allowedSidebarPermissions.has(item.permissionKey)
+      return canAccessAdminPermission(effectiveAdminUser, item?.permissionKey)
     }
 
     return activeMenuData

@@ -88,6 +88,14 @@ export default function ManageAdmins() {
     return ADMIN_SIDEBAR_ACCESS_OPTIONS;
   }, [form.adminType]);
 
+  const zoneLabelMap = useMemo(() => {
+    const entries = zones.map((zone) => [
+      normalizeZoneId(zone),
+      zone?.serviceLocation || zone?.zoneName || zone?.name || normalizeZoneId(zone)
+    ])
+    return new Map(entries.filter(([key]) => key))
+  }, [zones]);
+
   const togglePermission = (key) => {
     setForm((prev) => ({
       ...prev,
@@ -304,7 +312,10 @@ export default function ManageAdmins() {
                   const adminId = String(admin?._id || admin?.id || "");
                   const zoneText = admin?.adminType === "SUPERADMIN" || admin?.zoneAccess === "all" ?
                   "All zones" :
-                  (admin?.zoneIds || []).map((zone) => zone?.serviceLocation || zone?.zoneName || zone?.name || normalizeZoneId(zone)).join(", ");
+                  (admin?.zoneIds || []).map((zone) => {
+                    const zoneId = normalizeZoneId(zone);
+                    return zone?.serviceLocation || zone?.zoneName || zone?.name || zoneLabelMap.get(zoneId) || zoneId;
+                  }).join(", ");
                   const accessText = admin?.adminType === "SUPERADMIN" ?
                   "Full access" :
                   (admin?.sidebarPermissions || []).map((key) => ADMIN_ACCESS_LABEL_MAP[key] || key).join(", ");
