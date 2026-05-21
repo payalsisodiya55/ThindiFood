@@ -43,6 +43,9 @@ const debugWarn = (...args) => {};
 const debugError = (...args) => {};
 
 const STORAGE_KEY = "restaurant_online_status";
+const ORDER_POPUP_SOUND_MUTED_KEY = "restaurant_order_popup_sound_muted";
+const ORDER_POPUP_TIMER_KEY_PREFIX = "restaurant_order_popup_timer";
+const ORDER_ACCEPT_WINDOW_SECONDS = 240;
 
 // Top filter tabs
 const filterTabs = [
@@ -490,6 +493,74 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     closeReason: session?.closeReason || "",
   };
 };
+
+const getPopupTimerStorageKey = (orderLike) => {
+  const orderKey = String(
+    orderLike?.orderMongoId || orderLike?.orderId || orderLike?._id || orderLike?.id || "",
+  ).trim();
+  return orderKey ? `${ORDER_POPUP_TIMER_KEY_PREFIX}:${orderKey}` : null;
+};
+
+const getPopupOrderAnchorTimestamp = (orderLike) => {
+  const candidates = [
+    orderLike?.createdAt,
+    orderLike?.updatedAt,
+    orderLike?.scheduledAt,
+  ];
+
+  for (const value of candidates) {
+    const timestamp = new Date(value || "").getTime();
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      return timestamp;
+    }
+  }
+
+  return null;
+};
+
+const readStoredPopupTimerAnchor = (orderLike) => {
+  if (typeof window === "undefined") return null;
+  const storageKey = getPopupTimerStorageKey(orderLike);
+  if (!storageKey) return null;
+  const value = Number(window.localStorage.getItem(storageKey));
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
+
+const persistPopupTimerAnchor = (orderLike, anchorTimestamp) => {
+  if (typeof window === "undefined") return;
+  const storageKey = getPopupTimerStorageKey(orderLike);
+  if (!storageKey) return;
+  window.localStorage.setItem(storageKey, String(anchorTimestamp));
+};
+
+const clearStoredPopupTimerAnchor = (orderLike) => {
+  if (typeof window === "undefined") return;
+  const storageKey = getPopupTimerStorageKey(orderLike);
+  if (!storageKey) return;
+  window.localStorage.removeItem(storageKey);
+};
+
+const resolvePopupTimerAnchor = (orderLike) => {
+  const storedAnchor = readStoredPopupTimerAnchor(orderLike);
+  if (storedAnchor) return storedAnchor;
+
+  const orderAnchor = getPopupOrderAnchorTimestamp(orderLike);
+  const resolvedAnchor = orderAnchor || Date.now();
+  persistPopupTimerAnchor(orderLike, resolvedAnchor);
+  return resolvedAnchor;
+};
+
+const getRemainingPopupCountdown = (orderLike) => {
+  const anchorTimestamp = resolvePopupTimerAnchor(orderLike);
+  const elapsedSeconds = Math.max(0, Math.floor((Date.now() - anchorTimestamp) / 1000));
+  return Math.max(0, ORDER_ACCEPT_WINDOW_SECONDS - elapsedSeconds);
+};
+
+const formatPdfCurrency = (amount) =>
+  `Rs. ${Number(amount || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 
 const getSessionBookingLinkKey = (sessionLike) => {
   const rawBooking =
@@ -1919,8 +1990,11 @@ export default function OrdersMain() {
     };
   }, [showNewOrderPopup]);
   const [popupOrder, setPopupOrder] = useState(null); // Store order for popup (from Socket.IO or API)
-  const [isMuted, setIsMuted] = useState(false);
-  const [countdown, setCountdown] = useState(240); // 4 minutes in seconds
+  const [isMuted, setIsMuted] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(ORDER_POPUP_SOUND_MUTED_KEY) === "true";
+  });
+  const [countdown, setCountdown] = useState(ORDER_ACCEPT_WINDOW_SECONDS);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(true);
   const [showRejectPopup, setShowRejectPopup] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -2089,6 +2163,7 @@ export default function OrdersMain() {
     newClosedSession,
     clearNewClosedSession,
     isConnected,
+    playNotificationSound,
     stopNotificationSound,
     setNotificationSoundMuted,
   } = useRestaurantNotifications();
@@ -2270,7 +2345,7 @@ export default function OrdersMain() {
         markOrderAsShown(newOrder);
         setPopupOrder(normalizedIncomingOrder);
         setShowNewOrderPopup(true);
-        setCountdown(240); // Reset countdown to 4 minutes
+        setCountdown(getRemainingPopupCountdown(normalizedIncomingOrder));
         requestOrdersRefresh();
       }
 
@@ -2330,8 +2405,9 @@ export default function OrdersMain() {
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
+    clearStoredPopupTimerAnchor(activePopupOrder);
     clearNewOrder();
-    setCountdown(240);
+    setCountdown(ORDER_ACCEPT_WINDOW_SECONDS);
     setAcceptSwipeProgress(0);
     setIsAcceptingOrder(false);
 
@@ -2450,8 +2526,18 @@ export default function OrdersMain() {
     }
   };
 
+  const resetAcceptSwipeState = () => {
+    acceptSwipeActiveRef.current = false;
+    acceptSwipeStartXRef.current = 0;
+    setAcceptSwipeProgress(0);
+    setIsAcceptingOrder(false);
+  };
+
   useEffect(() => {
     setNotificationSoundMuted?.(isMuted);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(ORDER_POPUP_SOUND_MUTED_KEY, String(isMuted));
+    }
     if (isMuted) {
       stopOrderAlertSound();
     }
@@ -2557,7 +2643,7 @@ export default function OrdersMain() {
             markOrderAsShown({ orderId, _id: orderToPopup._id });
             setPopupOrder(orderForPopup);
             setShowNewOrderPopup(true);
-            setCountdown(240);
+            setCountdown(getRemainingPopupCountdown(orderForPopup));
           }
         }
       } catch (error) {
@@ -2574,34 +2660,36 @@ export default function OrdersMain() {
     return () => clearInterval(intervalId);
   }, [ordersRefreshToken]);
 
-  // Keep the local popup audio fully stopped. Real-time order sound is managed
-  // centrally by useRestaurantNotifications so we don't end up with two
-  // independent audio loops fighting each other.
+  // Keep local popup audio disabled. Real-time order sound is managed by
+  // useRestaurantNotifications so we don't end up with duplicate loops.
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.loop = false;
-      audioRef.current.muted = true;
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.muted = isMuted;
     }
   }, [showNewOrderPopup, isMuted]);
 
   // Countdown timer
   useEffect(() => {
-    if (showNewOrderPopup && countdown > 0) {
-      const timer = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(timer);
-    }
-  }, [showNewOrderPopup, countdown]);
+    if (!showNewOrderPopup) return undefined;
+
+    const activeOrder = popupOrder || newOrder;
+    if (!activeOrder) return undefined;
+
+    const updateCountdown = () => {
+      setCountdown(getRemainingPopupCountdown(activeOrder));
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [showNewOrderPopup, popupOrder, newOrder]);
 
   useEffect(() => {
     if (!showNewOrderPopup) {
-      setAcceptSwipeProgress(0);
-      setIsAcceptingOrder(false);
-      acceptSwipeActiveRef.current = false;
-      acceptSwipeStartXRef.current = 0;
+      resetAcceptSwipeState();
     }
   }, [showNewOrderPopup]);
 
@@ -2783,10 +2871,10 @@ export default function OrdersMain() {
 
     setShowNewOrderPopup(false);
     setPopupOrder(null);
+    clearStoredPopupTimerAnchor(orderToAccept);
     clearNewOrder();
-    setCountdown(240);
-    setAcceptSwipeProgress(0);
-    setIsAcceptingOrder(false);
+    setCountdown(ORDER_ACCEPT_WINDOW_SECONDS);
+    resetAcceptSwipeState();
     requestOrdersRefresh();
 
     // Note: PreparingOrders component will automatically refresh orders via its own useEffect
@@ -2836,9 +2924,10 @@ export default function OrdersMain() {
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
+    clearStoredPopupTimerAnchor(orderToReject);
     clearNewOrder();
     setRejectReason("");
-    setCountdown(240);
+    setCountdown(ORDER_ACCEPT_WINDOW_SECONDS);
     requestOrdersRefresh();
   };
 
@@ -2846,9 +2935,10 @@ export default function OrdersMain() {
     setShowRejectPopup(false);
     setShowNewOrderPopup(false);
     setPopupOrder(null);
+    clearStoredPopupTimerAnchor(popupOrder || newOrder);
     clearNewOrder();
     setRejectReason("");
-    setCountdown(240);
+    setCountdown(ORDER_ACCEPT_WINDOW_SECONDS);
   };
 
   // Handle cancel order (for preparing orders)
@@ -2978,31 +3068,212 @@ export default function OrdersMain() {
 
   // Toggle mute
   const toggleMute = () => {
+    resetAcceptSwipeState();
+    const activeOrder = popupOrder || newOrder;
     const nextMuted = !isMuted;
     setIsMuted(nextMuted);
     if (audioRef.current) {
       if (nextMuted) {
+        audioRef.current.muted = true;
         audioRef.current.pause();
         audioRef.current.currentTime = 0;
-      } else if (showNewOrderPopup) {
+      } else {
         audioRef.current.muted = false;
         audioRef.current.volume = 1;
         audioRef.current.currentTime = 0;
-        audioRef.current
-          .play()
-          .catch((err) => debugLog("Audio play failed:", err));
       }
+    }
+
+    if (!nextMuted && showNewOrderPopup && activeOrder) {
+      playNotificationSound?.(activeOrder);
     }
   };
 
   // Handle PDF download
   const handlePrint = async () => {
-    if (!newOrder) {
+    resetAcceptSwipeState();
+
+    const orderToPrint = popupOrder || newOrder;
+    if (!orderToPrint) {
       debugWarn("No order data available for PDF generation");
       return;
     }
 
     try {
+      {
+        const doc = new jsPDF({ unit: "mm", format: "a4" });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const left = 16;
+        const contentWidth = pageWidth - left * 2;
+        const itemsTotal = Array.isArray(orderToPrint.items)
+          ? orderToPrint.items.reduce((sum, item) => {
+              const price = Number(item?.price || 0);
+              const quantity = Number(item?.quantity || 1);
+              return sum + price * quantity;
+            }, 0)
+          : 0;
+
+        const orderDate = orderToPrint.createdAt
+          ? new Date(orderToPrint.createdAt).toLocaleString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : new Date().toLocaleString("en-GB");
+
+        const addressText = [
+          orderToPrint.customerAddress?.street,
+          orderToPrint.customerAddress?.area,
+          orderToPrint.customerAddress?.city,
+          orderToPrint.customerAddress?.state,
+          orderToPrint.customerAddress?.pincode,
+        ]
+          .filter(Boolean)
+          .join(", ");
+
+        doc.setFillColor(15, 23, 42);
+        doc.roundedRect(left, 12, contentWidth, 26, 4, 4, "F");
+        doc.setTextColor(255, 255, 255);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(20);
+        doc.text("Order Receipt", left + 6, 23);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        doc.text(orderToPrint.restaurantName || "Restaurant", left + 6, 31);
+
+        let yPos = 48;
+        doc.setTextColor(17, 24, 39);
+        doc.setDrawColor(226, 232, 240);
+        doc.setFillColor(248, 250, 252);
+        doc.roundedRect(left, yPos, contentWidth, 34, 3, 3, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text("Order details", left + 4, yPos + 7);
+        doc.setFont("helvetica", "normal");
+        doc.text(`Order ID: ${orderToPrint.orderId || "N/A"}`, left + 4, yPos + 15);
+        doc.text(`Date: ${orderDate}`, left + 4, yPos + 22);
+        doc.text(
+          `Payment: ${String(orderToPrint.paymentMethod || orderToPrint.payment?.method || "Pending")}`,
+          left + 4,
+          yPos + 29,
+        );
+
+        if (addressText) {
+          yPos += 42;
+          doc.setFont("helvetica", "bold");
+          doc.text("Delivery address", left, yPos);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9.5);
+          const addressLines = doc.splitTextToSize(addressText, contentWidth);
+          doc.text(addressLines, left, yPos + 6);
+          yPos += 6 + addressLines.length * 5 + 4;
+        } else {
+          yPos += 42;
+        }
+
+        const tableData = (orderToPrint.items || []).map((item) => {
+          const quantity = Number(item?.quantity || 1);
+          const price = Number(item?.price || 0);
+          return [
+            formatOrderItemLabel(item),
+            quantity,
+            formatPdfCurrency(price),
+            formatPdfCurrency(price * quantity),
+          ];
+        });
+
+        autoTable(doc, {
+          startY: yPos,
+          margin: { left, right: left },
+          head: [["Item", "Qty", "Price", "Total"]],
+          body: tableData.length ? tableData : [["No items", "-", "-", "-"]],
+          theme: "grid",
+          styles: {
+            fontSize: 9.5,
+            cellPadding: 3,
+            textColor: [31, 41, 55],
+            lineColor: [226, 232, 240],
+          },
+          headStyles: {
+            fillColor: [17, 24, 39],
+            textColor: [255, 255, 255],
+            fontStyle: "bold",
+          },
+          alternateRowStyles: {
+            fillColor: [248, 250, 252],
+          },
+          columnStyles: {
+            0: { cellWidth: 88 },
+            1: { cellWidth: 20, halign: "center" },
+            2: { cellWidth: 36, halign: "right" },
+            3: { cellWidth: 36, halign: "right" },
+          },
+        });
+
+        yPos = doc.lastAutoTable.finalY + 8;
+        doc.setFillColor(240, 253, 244);
+        doc.setDrawColor(134, 239, 172);
+        doc.roundedRect(left, yPos, contentWidth, 24, 3, 3, "FD");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.text("Bill summary", left + 4, yPos + 7);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.text(`Items total: ${formatPdfCurrency(itemsTotal)}`, left + 4, yPos + 14);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Grand total: ${formatPdfCurrency(orderToPrint.total || itemsTotal)}`, left + 4, yPos + 20);
+
+        yPos += 34;
+        const infoLines = [
+          `Payment status: ${orderToPrint.status === "confirmed" ? "Paid" : "Pending"}`,
+          orderToPrint.estimatedDeliveryTime
+            ? `Estimated delivery: ${orderToPrint.estimatedDeliveryTime} minutes`
+            : null,
+          orderToPrint.sendCutlery === false ? "Cutlery: Do not send" : "Cutlery: Send requested",
+          orderToPrint.note ? `Note: ${orderToPrint.note}` : null,
+        ].filter(Boolean);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9.5);
+        infoLines.forEach((line) => {
+          const wrapped = doc.splitTextToSize(line, contentWidth);
+          doc.text(wrapped, left, yPos);
+          yPos += wrapped.length * 5 + 2;
+        });
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(left, pageHeight - 16, pageWidth - left, pageHeight - 16);
+        doc.setFont("helvetica", "italic");
+        doc.setFontSize(8.5);
+        doc.text(`Generated on ${new Date().toLocaleString("en-GB")}`, pageWidth / 2, pageHeight - 10, {
+          align: "center",
+        });
+
+        const fileName = `Order-${orderToPrint.orderId || "Receipt"}-${Date.now()}.pdf`;
+        const pdfBlob = doc.output("blob");
+        const pdfUrl = URL.createObjectURL(pdfBlob);
+        const link = document.createElement("a");
+        link.href = pdfUrl;
+        link.download = fileName;
+        link.rel = "noopener";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
+
+        if (!isMuted && showNewOrderPopup && orderToPrint) {
+          window.setTimeout(() => {
+            playNotificationSound?.(orderToPrint);
+          }, 150);
+        }
+
+        debugLog("? PDF generated successfully:", fileName);
+        return;
+      }
+
       // Create new PDF document
       const doc = new jsPDF();
 
@@ -3151,12 +3422,22 @@ export default function OrdersMain() {
 
       // Download PDF
       const fileName = `Order-${orderToPrint.orderId || "Receipt"}-${Date.now()}.pdf`;
-      doc.save(fileName);
+      const pdfBlob = doc.output("blob");
+
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.download = fileName;
+      link.rel = "noopener";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(pdfUrl), 1000);
 
       debugLog("? PDF generated successfully:", fileName);
     } catch (error) {
       debugError("? Error generating PDF:", error);
-      alert("Failed to generate PDF. Please try again.");
+      toast.error("Failed to generate PDF. Please try again.");
     }
   };
 
@@ -3635,12 +3916,16 @@ export default function OrdersMain() {
                   </div>
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={handlePrint}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       aria-label="Print">
                       <Printer className="w-5 h-5 text-gray-700" />
                     </button>
                     <button
+                      type="button"
+                      onPointerDown={(e) => e.stopPropagation()}
                       onClick={toggleMute}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                       aria-label={isMuted ? "Unmute" : "Mute"}>
@@ -4048,7 +4333,7 @@ export default function OrdersMain() {
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-blue-600"
                         initial={{ width: "100%" }}
-                        animate={{ width: `${(countdown / 240) * 100}%` }}
+                        animate={{ width: `${(countdown / ORDER_ACCEPT_WINDOW_SECONDS) * 100}%` }}
                         transition={{ duration: 1, ease: "linear" }}
                       />
                       <div className="absolute inset-0 flex items-center justify-center px-16">

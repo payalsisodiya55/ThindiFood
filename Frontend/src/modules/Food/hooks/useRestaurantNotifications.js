@@ -1113,7 +1113,6 @@ export const useRestaurantNotifications = () => {
     soundMutedRef.current = Boolean(muted);
     if (soundMutedRef.current) {
       stopAlertLoop();
-      activeOrderRef.current = null;
     }
   };
 
@@ -1154,5 +1153,4 @@ export const useRestaurantNotifications = () => {
     setNotificationSoundMuted
   };
 };
-
 
