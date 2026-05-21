@@ -161,8 +161,8 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
             approvalStatus: 'approved',
             status: 'active',
             $and: [
-                { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
-                { $or: [{ endDate: null }, { endDate: { $gte: now } }] }
+                { $or: [{ startDate: { $exists: false } }, { startDate: null }, { startDate: { $lte: now } }] },
+                { $or: [{ endDate: { $exists: false } }, { endDate: null }, { endDate: { $gte: now } }] }
             ]
         }).lean()
     ]);

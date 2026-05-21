@@ -2181,6 +2181,7 @@ export const listPublicOffers = async () => {
             id: String(o._id),
             offerId: String(o._id),
             couponCode: o.couponCode,
+            fundedBy: o.fundedBy === 'restaurant' || (!o.fundedBy && o.restaurantId) ? 'restaurant' : 'platform',
             title,
             discountType: o.discountType,
             discountValue: o.discountValue,

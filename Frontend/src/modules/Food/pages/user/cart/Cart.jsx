@@ -470,7 +470,7 @@ export default function Cart() {
     );
   }
 
-  const { cart, updateQuantity, addToCart, getCartCount, clearCart, cleanCartForRestaurant } = cartContext;
+  const { cart, updateQuantity, addToCart, getCartCount, clearCart, cleanCartForRestaurant, replaceCart } = cartContext;
   const hasQuickItems = cart.some((item) => (item?.orderType || "food") === "quick")
   const hasFoodItems = cart.some((item) => (item?.orderType || "food") === "food")
   if (hasQuickItems && hasFoodItems) {
@@ -1285,6 +1285,58 @@ export default function Cart() {
     }
   }
 
+  useEffect(() => {
+    let cancelled = false
+
+    const enrichCartOffersFromLiveMenu = async () => {
+      const lookupId = restaurantData?._id || restaurantData?.restaurantId || cart[0]?.restaurantId
+      if (!lookupId || cart.length === 0 || typeof replaceCart !== "function") return
+
+      try {
+        const menuResponse = await restaurantAPI.getMenuByRestaurantId(lookupId, { noCache: true })
+        const menu = getMenuFromResponse(menuResponse)
+        const liveItems = flattenMenuItems(menu)
+        if (cancelled || liveItems.length === 0) return
+
+        const liveItemsById = new Map(
+          liveItems
+            .map((item) => [String(item?.id || item?._id || "").trim(), item])
+            .filter(([id]) => Boolean(id)),
+        )
+
+        let changed = false
+        const nextCart = cart.map((cartItem) => {
+          const itemType = String(cartItem?.itemType || "").trim().toLowerCase()
+          if (itemType === "addon" || cartItem?.isAddon === true) return cartItem
+
+          const cartItemId = String(cartItem?.itemId || cartItem?.id || "").trim()
+          const liveItem = liveItemsById.get(cartItemId)
+          if (!liveItem) return cartItem
+
+          const liveOffer = liveItem.offer || null
+          if (JSON.stringify(cartItem.offer || null) === JSON.stringify(liveOffer)) {
+            return cartItem
+          }
+
+          changed = true
+          return { ...cartItem, offer: liveOffer }
+        })
+
+        if (!cancelled && changed) {
+          replaceCart(nextCart)
+        }
+      } catch (error) {
+        debugWarn("Unable to refresh cart offers from live menu", error)
+      }
+    }
+
+    enrichCartOffersFromLiveMenu()
+
+    return () => {
+      cancelled = true
+    }
+  }, [restaurantData?._id, restaurantData?.restaurantId, cartItemIdsKey])
+
   // Stable restaurant ID for addons fetch (memoized to prevent dependency array issues)
   // Prefer restaurantData IDs (more reliable) over slug from cart
   const restaurantIdForAddons = useMemo(() => {
@@ -1669,6 +1721,8 @@ export default function Cart() {
                   discountedPrice: coupon.discountedPrice,
                   customerGroup: coupon.customerGroup || "all",
                   isGlobalCoupon: Boolean(coupon.isGlobalCoupon),
+                  fundedBy: coupon.fundedBy === "restaurant" ? "restaurant" : "platform",
+                  couponType: coupon.couponType || (coupon.fundedBy === "restaurant" ? "restaurant" : "admin"),
                   itemId: couponItemId,
                   itemName: cartItem.name,
                 })
@@ -1711,11 +1765,21 @@ export default function Cart() {
         )
 
         if (response?.data?.success && response?.data?.data?.pricing) {
-          setPricing(response.data.data.pricing)
+          const pricingData = response.data.data.pricing
+          const conflictMessage = getPricingDiscountConflictMessage(pricingData)
+          setPricing(pricingData)
+
+          if (conflictMessage && (appliedCoupon || couponCode)) {
+            setAppliedCoupon(null)
+            setCouponCode("")
+            setManualCouponCode("")
+            showRestaurantOfferCouponConflict(conflictMessage)
+            return
+          }
 
           // Update applied coupon if backend returns one
-          if (response.data.data.pricing.appliedCoupon && !appliedCoupon) {
-            const coupon = availableCoupons.find(c => c.code === response.data.data.pricing.appliedCoupon.code)
+          if (pricingData.appliedCoupon && !appliedCoupon) {
+            const coupon = availableCoupons.find(c => c.code === pricingData.appliedCoupon.code)
             if (coupon) {
               setAppliedCoupon(coupon)
             }
@@ -1912,6 +1976,57 @@ export default function Cart() {
     return <Icon className={className} />
   }
 
+  const getOfferSummaryText = (offer) => {
+    if (!offer) return ""
+    const discountType = String(offer.discountType || "").toLowerCase()
+    const value = Number(offer.discountValue || 0)
+    if (discountType === "percentage") return `${value}% OFF`
+    if (value > 0) return `${RUPEE_SYMBOL}${value} OFF`
+    return String(offer.title || "").trim()
+  }
+
+  const restaurantOfferInfo = useMemo(() => {
+    const itemOffer = cart.find((item) => item?.offer)?.offer || null
+    const itemOfferText = getOfferSummaryText(itemOffer)
+    const restaurantOfferText =
+      itemOfferText ||
+      String(restaurantData?.offer || restaurantData?.offerText || "").trim()
+
+    if (!restaurantOfferText) return null
+
+    const appliedAmount = Number(pricing?.restaurantOfferDiscount || pricing?.restaurantDiscount || 0)
+    return {
+      text: restaurantOfferText,
+      appliedAmount,
+      replacedByCoupon: Boolean(appliedCoupon) && appliedAmount <= 0,
+    }
+  }, [
+    cartItemIdsKey,
+    cart.map((item) => JSON.stringify(item?.offer || null)).join("|"),
+    restaurantData?.offer,
+    restaurantData?.offerText,
+    pricing?.restaurantOfferDiscount,
+    pricing?.restaurantDiscount,
+    appliedCoupon,
+  ])
+
+  const getPricingDiscountConflictMessage = (pricingData) => {
+    const conflict = pricingData?.validationErrors?.find(
+      (entry) => entry?.type === "DISCOUNT_COMBINATION_CONFLICT",
+    )
+    return conflict?.message || ""
+  }
+
+  const hasActiveRestaurantOfferDiscount = (pricingData = pricing) =>
+    Number(pricingData?.restaurantOfferDiscount || pricingData?.restaurantDiscount || 0) > 0
+
+  const showRestaurantOfferCouponConflict = (message) => {
+    toast.error(
+      message ||
+        "This coupon cannot be used with an active restaurant offer. Remove the offered item from your cart or continue with the restaurant offer.",
+    )
+  }
+
   const buildCalculateOrderPayload = ({ cart, restaurantId, deliveryAddressId, couponCode, fulfillmentMode, deliveryAddress }) => {
     const normalizedItems = cart.map(item => ({
       itemId: String(item.itemId || item.id || ""),
@@ -1924,7 +2039,8 @@ export default function Cart() {
       quantity: Number(item.quantity) || 1,
       image: item.image,
       description: item.description,
-      isVeg: item.isVeg !== false
+      isVeg: item.isVeg !== false,
+      offer: item.offer || null,
     }))
 
     const normalizedDeliveryAddressId =
@@ -2199,6 +2315,7 @@ export default function Cart() {
         )
 
         const pricingData = response?.data?.data?.pricing
+        const conflictMessage = getPricingDiscountConflictMessage(pricingData)
         if (!pricingData || !pricingData.appliedCoupon) {
           toast.error("Coupon not applicable")
           return
@@ -2435,7 +2552,8 @@ export default function Cart() {
         image: item.image || "",
         description: item.description || "",
         isVeg: item.isVeg !== false,
-        preparationTime: item.preparationTime
+        preparationTime: item.preparationTime,
+        offer: item.offer || null,
       }))
 
       debugLog("?? Order items to send:", orderItems)
@@ -3039,6 +3157,14 @@ export default function Cart() {
                           {item.variantName ? (
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variantName}</p>
                           ) : null}
+                          {item.offer ? (
+                            <div className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[#00c87e]/20 bg-[#00c87e]/10 px-2 py-0.5 text-[10px] font-bold text-[#00c87e]">
+                              <Tag className="h-2.5 w-2.5" />
+                              {String(item.offer.discountType).toLowerCase() === "percentage"
+                                ? `${Number(item.offer.discountValue || 0)}% OFF`
+                                : `${RUPEE_SYMBOL}${Number(item.offer.discountValue || 0)} OFF`}
+                            </div>
+                          ) : null}
                         </div>
 
                         <div className="flex items-center gap-3 md:gap-4">
@@ -3172,6 +3298,35 @@ export default function Cart() {
                 </div>
               )}
 
+              {/* Restaurant Offer Section */}
+              {restaurantOfferInfo && (
+                <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#00c87e]/20 shadow-sm">
+                  <div className="px-4 py-3 md:px-6 md:py-4 flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#00c87e]/10 text-[#00c87e]">
+                      <Tag className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                        Restaurant offer: {restaurantOfferInfo.text}
+                      </p>
+                      {restaurantOfferInfo.replacedByCoupon ? (
+                        <p className="mt-0.5 text-xs font-medium text-amber-600">
+                          Coupon applied, so this restaurant offer has been removed.
+                        </p>
+                      ) : restaurantOfferInfo.appliedAmount > 0 ? (
+                        <p className="mt-0.5 text-xs font-medium text-[#00c87e]">
+                          Applied automatically. You saved {RUPEE_SYMBOL}{restaurantOfferInfo.appliedAmount.toFixed(0)}.
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-xs font-medium text-gray-500">
+                          This offer will apply automatically if eligible.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Coupon Section */}
               <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-slate-100 dark:border-gray-800 shadow-sm flex flex-col">
                 {/* Applied Coupon View */}
@@ -3203,6 +3358,8 @@ export default function Cart() {
                               <p className="text-[11px] text-[#00c87e] mb-1">First-time users only</p>
                             ) : subtotal < availableCoupons[0].minOrder ? (
                               <p className="text-xs text-blue-600 font-medium mb-1">Add items worth {RUPEE_SYMBOL}{(availableCoupons[0].minOrder - subtotal).toFixed(0)} more to unlock</p>
+                            ) : hasActiveRestaurantOfferDiscount() ? (
+                              <p className="text-xs text-amber-600 font-medium mb-1">Applying this coupon will replace the restaurant offer.</p>
                             ) : null}
 
                             {availableCoupons.length > 1 && (
@@ -3258,6 +3415,8 @@ export default function Cart() {
                                   <p className="text-[11px] text-[#00c87e] mb-1">First-time users only</p>
                                 ) : subtotal < coupon.minOrder ? (
                                   <p className="text-xs text-blue-600 font-medium mb-1 line-clamp-1">Add items worth {RUPEE_SYMBOL}{(coupon.minOrder - subtotal).toFixed(0)} more to unlock</p>
+                                ) : hasActiveRestaurantOfferDiscount() ? (
+                                  <p className="text-xs text-amber-600 font-medium mb-1 line-clamp-1">Applying this coupon will replace the restaurant offer.</p>
                                 ) : (
                                   <p className="text-xs text-gray-500 mb-1 line-clamp-1">{coupon.description}</p>
                                 )}

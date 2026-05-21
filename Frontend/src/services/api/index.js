@@ -1287,6 +1287,8 @@ export const restaurantAPI = {
           const isPct = o.discountType === "percentage";
           return {
             couponCode: o.couponCode,
+            fundedBy: o.fundedBy === "restaurant" || (!o.fundedBy && o.restaurantId) ? "restaurant" : "platform",
+            couponType: o.fundedBy === "restaurant" || (!o.fundedBy && o.restaurantId) ? "restaurant" : "admin",
             discountType: o.discountType,
             discountValue: Number(o.discountValue) || 0,
             discountPercentage: isPct ? Number(o.discountValue) || 0 : 0,

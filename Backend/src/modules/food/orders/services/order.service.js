@@ -48,6 +48,8 @@ import {
 
 const ORDER_ID_PREFIX = "FOD-";
 const ORDER_ID_LENGTH = 6;
+const DISCOUNT_COMBINATION_CONFLICT_MESSAGE =
+  "This coupon cannot be used with an active restaurant offer. Remove the offered item from your cart or continue with the restaurant offer.";
 const SCHEDULED_TAKEAWAY_POLL_MS = 60 * 1000;
 const STALE_ORDER_RECOVERY_POLL_MS = 15 * 60 * 1000;
 const STALE_ORDER_TIMEOUTS_MS = {
@@ -1396,6 +1398,17 @@ function roundMoney(value) {
   return Math.round(n);
 }
 
+function emptyCouponBreakdown(codeRaw = "") {
+  return {
+    codeRaw,
+    couponDiscount: 0,
+    platformCouponDiscount: 0,
+    restaurantCouponDiscount: 0,
+    couponFundingType: "none",
+    appliedCoupon: null,
+  };
+}
+
 async function resolveCouponBreakdown({
   userId,
   restaurantId,
@@ -1405,26 +1418,12 @@ async function resolveCouponBreakdown({
 }) {
   const codeRaw = couponCode ? String(couponCode).trim().toUpperCase() : "";
   if (!codeRaw) {
-    return {
-      codeRaw,
-      couponDiscount: 0,
-      platformCouponDiscount: 0,
-      restaurantCouponDiscount: 0,
-      couponFundingType: "none",
-      appliedCoupon: null,
-    };
+    return emptyCouponBreakdown(codeRaw);
   }
 
   const offer = await FoodOffer.findOne({ couponCode: codeRaw }).lean();
   if (!offer) {
-    return {
-      codeRaw,
-      couponDiscount: 0,
-      platformCouponDiscount: 0,
-      restaurantCouponDiscount: 0,
-      couponFundingType: "none",
-      appliedCoupon: null,
-    };
+    return emptyCouponBreakdown(codeRaw);
   }
 
   const statusOk = offer.status === "active";
@@ -1479,14 +1478,7 @@ async function resolveCouponBreakdown({
     firstOrderOk;
 
   if (!allowed) {
-    return {
-      codeRaw,
-      couponDiscount: 0,
-      platformCouponDiscount: 0,
-      restaurantCouponDiscount: 0,
-      couponFundingType: "none",
-      appliedCoupon: null,
-    };
+    return emptyCouponBreakdown(codeRaw);
   }
 
   let couponDiscount = 0;
@@ -1536,8 +1528,8 @@ async function resolveRestaurantOfferBreakdown({
       approvalStatus: "approved",
       status: "active",
       $and: [
-        { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
-        { $or: [{ endDate: null }, { endDate: { $gte: now } }] },
+        { $or: [{ startDate: { $exists: false } }, { startDate: null }, { startDate: { $lte: now } }] },
+        { $or: [{ endDate: { $exists: false } }, { endDate: null }, { endDate: { $gte: now } }] },
       ],
     }).lean();
 
@@ -1545,13 +1537,12 @@ async function resolveRestaurantOfferBreakdown({
       `Found ${restaurantOffers.length} active restaurant offers for restaurant ${restaurantId}`,
     );
 
-    if (restaurantOffers.length > 0) {
-      items.forEach((item) => {
+    items.forEach((item) => {
         const itemOffer = restaurantOffers.find((o) =>
           o.products?.some(
             (p) => String(p.productId) === String(item.itemId || item.id),
           ),
-        );
+        ) || item.offer || null;
 
         if (!itemOffer) return;
 
@@ -1589,7 +1580,6 @@ async function resolveRestaurantOfferBreakdown({
 
         restaurantOfferDiscount += roundMoney(itemLevelDiscount);
       });
-    }
   } catch (err) {
     logger.error(`Error calculating restaurant product offers: ${err.message}`);
   }
@@ -1646,29 +1636,28 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
       ? Math.round(originalSubtotal * (gstRate / 100))
       : 0;
 
-  const couponPromise = resolveCouponBreakdown({
+  const couponBreakdown = await resolveCouponBreakdown({
     userId,
     restaurantId: dto.restaurantId,
     originalSubtotal,
     couponCode: dto.couponCode,
     now,
   });
-  const restaurantOfferPromise = resolveRestaurantOfferBreakdown({
-    restaurantId: dto.restaurantId,
-    items,
-    now,
-    validationErrors,
-  });
-
-  const [couponBreakdown, restaurantOfferBreakdown] = await Promise.all([
-    couponPromise,
-    restaurantOfferPromise,
-  ]);
+  const restaurantOfferBreakdown =
+    couponBreakdown.couponDiscount > 0
+      ? { restaurantOfferDiscount: 0 }
+      : await resolveRestaurantOfferBreakdown({
+          restaurantId: dto.restaurantId,
+          items,
+          now,
+          validationErrors,
+        });
 
   const restaurantOfferDiscount = Math.min(
     originalSubtotal,
     roundMoney(restaurantOfferBreakdown.restaurantOfferDiscount),
   );
+  const effectiveCouponBreakdown = couponBreakdown;
   const offerAdjustedSubtotal = Math.max(
     0,
     roundMoney(originalSubtotal - restaurantOfferDiscount),
@@ -1681,7 +1670,7 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
     });
 
   const commissionBaseAmount = offerAdjustedSubtotal;
-  const couponDiscount = roundMoney(couponBreakdown.couponDiscount);
+  const couponDiscount = roundMoney(effectiveCouponBreakdown.couponDiscount);
   const finalDiscount = roundMoney(couponDiscount + restaurantOfferDiscount);
   const total = Math.max(
     0,
@@ -1707,7 +1696,7 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
   const finalRestaurantPayout = Math.max(
     0,
     roundMoney(
-      restaurantPayoutBeforeCoupon - couponBreakdown.restaurantCouponDiscount,
+      restaurantPayoutBeforeCoupon - effectiveCouponBreakdown.restaurantCouponDiscount,
     ),
   );
 
@@ -1727,24 +1716,24 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
       couponDiscount,
       restaurantDiscount: restaurantOfferDiscount,
       platformCouponDiscount: roundMoney(
-        couponBreakdown.platformCouponDiscount,
+        effectiveCouponBreakdown.platformCouponDiscount,
       ),
       restaurantCouponDiscount: roundMoney(
-        couponBreakdown.restaurantCouponDiscount,
+        effectiveCouponBreakdown.restaurantCouponDiscount,
       ),
       restaurantOfferDiscount,
-      couponFundingType: couponBreakdown.couponFundingType,
-      fundingType: deriveFundingType(couponBreakdown.couponFundingType, {
-        platformCouponDiscount: couponBreakdown.platformCouponDiscount,
-        restaurantCouponDiscount: couponBreakdown.restaurantCouponDiscount,
+      couponFundingType: effectiveCouponBreakdown.couponFundingType,
+      fundingType: deriveFundingType(effectiveCouponBreakdown.couponFundingType, {
+        platformCouponDiscount: effectiveCouponBreakdown.platformCouponDiscount,
+        restaurantCouponDiscount: effectiveCouponBreakdown.restaurantCouponDiscount,
         restaurantOfferDiscount,
       }),
       payoutAdjustments: {
         platformCouponDiscount: roundMoney(
-          couponBreakdown.platformCouponDiscount,
+          effectiveCouponBreakdown.platformCouponDiscount,
         ),
         restaurantCouponDiscount: roundMoney(
-          couponBreakdown.restaurantCouponDiscount,
+          effectiveCouponBreakdown.restaurantCouponDiscount,
         ),
         restaurantOfferDiscount,
         commission: roundMoney(restaurantCommission),
@@ -1752,17 +1741,17 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
       },
       total,
       currency: "INR",
-      couponCode: couponBreakdown.appliedCoupon?.code || couponBreakdown.codeRaw || null,
-      appliedCoupon: couponBreakdown.appliedCoupon,
+      couponCode: effectiveCouponBreakdown.appliedCoupon?.code || null,
+      appliedCoupon: effectiveCouponBreakdown.appliedCoupon,
       validationErrors,
     },
     settlement: {
       customerPayable: total,
       restaurantPayout: finalRestaurantPayout,
       restaurantPayoutBeforeCoupon,
-      platformCouponDiscount: roundMoney(couponBreakdown.platformCouponDiscount),
+      platformCouponDiscount: roundMoney(effectiveCouponBreakdown.platformCouponDiscount),
       restaurantCouponDiscount: roundMoney(
-        couponBreakdown.restaurantCouponDiscount,
+        effectiveCouponBreakdown.restaurantCouponDiscount,
       ),
       restaurantOfferDiscount,
       commissionAmount: roundMoney(restaurantCommission),
@@ -2071,6 +2060,27 @@ export async function createOrder(userId, dto) {
           normalizedPricing.restaurantCommission -
           normalizedPricing.restaurantCouponDiscount,
       ),
+    );
+  }
+
+  const hasRestaurantOfferDiscount =
+    normalizedPricing.restaurantOfferDiscount > 0 ||
+    normalizedPricing.restaurantDiscount > 0;
+  const hasPlatformCouponDiscount = normalizedPricing.platformCouponDiscount > 0;
+  const hasRestaurantCouponDiscount = normalizedPricing.restaurantCouponDiscount > 0;
+  const hasCouponDiscount =
+    normalizedPricing.couponDiscount > 0 ||
+    hasPlatformCouponDiscount ||
+    hasRestaurantCouponDiscount ||
+    Boolean(normalizedPricing.appliedCoupon);
+
+  if (hasRestaurantOfferDiscount && hasCouponDiscount) {
+    throw new ValidationError(DISCOUNT_COMBINATION_CONFLICT_MESSAGE);
+  }
+
+  if (hasPlatformCouponDiscount && hasRestaurantCouponDiscount) {
+    throw new ValidationError(
+      "Admin coupons and restaurant coupons cannot be used together. Please keep only one coupon applied.",
     );
   }
 
