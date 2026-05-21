@@ -434,10 +434,29 @@ const getDineInItemsSummary = (session) => {
   return formatOrderItemsSummary(items);
 };
 
+const getDineInPrimaryItem = (session, latestRound = null) => {
+  const latestRoundItems = Array.isArray(latestRound?.items) ? latestRound.items : [];
+  const rounds = Array.isArray(session?.orders) ? session.orders : [];
+  const allItems = rounds.flatMap((round) => (Array.isArray(round?.items) ? round.items : []));
+  return latestRoundItems.find(Boolean) || allItems.find(Boolean) || null;
+};
+
+const getDineInPrimaryItemImage = (itemLike) =>
+  itemLike?.image ||
+  itemLike?.itemId?.image ||
+  itemLike?.itemId?.draft?.image ||
+  "";
+
+const getDineInPrimaryItemName = (itemLike) =>
+  itemLike?.name ||
+  itemLike?.itemId?.name ||
+  "Dine-In";
+
 const transformDineInSessionForList = (session, tableLike = null) => {
   if (!session?._id) return null;
 
   const latestRound = getDineInSessionLatestRound(session);
+  const primaryItem = getDineInPrimaryItem(session, latestRound);
   const sessionStatus = String(session?.status || "").toLowerCase();
   const closureType = String(session?.closureType || "").toUpperCase();
   const isEmptyCancelled = closureType === "EMPTY_CANCELLED";
@@ -483,8 +502,8 @@ const transformDineInSessionForList = (session, tableLike = null) => {
       isClosedSession
         ? getDineInItemsSummary(session)
         : formatOrderItemsSummary(latestRound?.items || []) || "Active Session",
-    photoUrl: null,
-    photoAlt: "Dine-In",
+    photoUrl: getDineInPrimaryItemImage(primaryItem) || null,
+    photoAlt: getDineInPrimaryItemName(primaryItem),
     sortTimestamp: new Date(displayTimeSource || Date.now()).getTime(),
     deliveredAt: session?.closedAt || session?.paidAt || session?.updatedAt || session?.createdAt,
     amount: Number(session?.totalAmount || 0),
@@ -1463,6 +1482,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                   if (sessionStatus !== "active") return null;
                   const rounds = Array.isArray(session.orders) ? session.orders : [];
                   const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                  const primaryItem = getDineInPrimaryItem(session, latestRound);
                   const latestStatus = String(latestRound?.status || "").toLowerCase();
                   const displayStatus =
                     latestStatus === "received" ? "active" : latestStatus || "active";
@@ -1480,8 +1500,8 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                       minute: "2-digit",
                     }),
                     itemsSummary: formatOrderItemsSummary(latestRound?.items || []) || "Active Session",
-                    photoUrl: null,
-                    photoAlt: "Dine-In",
+                    photoUrl: getDineInPrimaryItemImage(primaryItem) || null,
+                    photoAlt: getDineInPrimaryItemName(primaryItem),
                     sortTimestamp: new Date(session.updatedAt || session.createdAt).getTime(),
                   };
                 })
@@ -5017,10 +5037,12 @@ function OrderCard({
     typeof onAssignBoy === "function";
   const canVerifyOtp =
     isReady && typeof onVerifyOtp === "function" && !isSelfDeliveryOrder;
+  const isFinalizedDineInStatus =
+    isDineIn && ["completed", "cancelled", "canceled"].includes(normalizedStatus);
   const hasLiveDineInRound =
     isDineIn &&
     !["", "no items", "active session"].includes(String(itemsSummary || "").trim().toLowerCase()) &&
-    !["active", "received", "created", "confirmed", "pending"].includes(normalizedStatus);
+    !["active", "received", "created", "confirmed", "pending", "completed", "cancelled", "canceled"].includes(normalizedStatus);
   const phoneForCall = normalizePhoneForCall(customerPhone);
   const shouldShowCustomerContact =
     Boolean(customerName || phoneForCall) &&
@@ -5141,7 +5163,7 @@ function OrderCard({
         />
         {isActiveDineIn ? "DINE-IN ACTIVE" : statusLabel}
       </div>
-              {hasLiveDineInRound && typeof onSelect === "function" && (
+              {hasLiveDineInRound && !isFinalizedDineInStatus && typeof onSelect === "function" && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -5381,6 +5403,7 @@ function PreparingOrders({
                     if (sessionStatus !== "active") return null;
                     const rounds = Array.isArray(session.orders) ? session.orders : [];
                     const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                    const primaryItem = getDineInPrimaryItem(session, latestRound);
                     const latestStatus = String(latestRound?.status || "").toLowerCase();
                     if (latestStatus !== "preparing") return null;
 
@@ -5400,8 +5423,8 @@ function PreparingOrders({
                       preparingTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()),
                       sortTimestamp: new Date(latestRound?.preparingAt || latestRound?.updatedAt || latestRound?.createdAt || Date.now()).getTime(),
                       itemsSummary: formatOrderItemsSummary(latestRound?.items || []),
-                      photoUrl: null,
-                      photoAlt: "Dine-In",
+                      photoUrl: getDineInPrimaryItemImage(primaryItem) || null,
+                      photoAlt: getDineInPrimaryItemName(primaryItem),
                       deliveryPartnerId: null,
                       dispatchStatus: null,
                       paymentMethod: null,
@@ -5774,6 +5797,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                     if (sessionStatus !== "active") return null;
                     const rounds = Array.isArray(session.orders) ? session.orders : [];
                     const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
+                    const primaryItem = getDineInPrimaryItem(session, latestRound);
                     const latestStatus = String(latestRound?.status || "").toLowerCase();
                     if (latestStatus !== "ready") return null;
 
@@ -5792,8 +5816,8 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                       sortTimestamp: new Date(latestRound?.createdAt || session.createdAt).getTime(),
                       eta: null,
                       itemsSummary: formatOrderItemsSummary(latestRound?.items || []),
-                      photoUrl: null,
-                      photoAlt: "Dine-In",
+                      photoUrl: getDineInPrimaryItemImage(primaryItem) || null,
+                      photoAlt: getDineInPrimaryItemName(primaryItem),
                       paymentMethod: null,
                       deliveryPartnerId: null,
                       dispatchStatus: null,

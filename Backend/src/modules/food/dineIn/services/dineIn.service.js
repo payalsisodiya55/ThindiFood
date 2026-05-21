@@ -458,7 +458,13 @@ export async function getSessionById(sessionId) {
     }
 
     const session = await FoodTableSession.findById(sessionId)
-        .populate('orders')
+        .populate({
+            path: 'orders',
+            populate: {
+                path: 'items.itemId',
+                select: 'name image'
+            }
+        })
         .populate('userId', 'name phone email')
         .lean();
 
@@ -1362,7 +1368,13 @@ export async function listRestaurantSessions(restaurantId, filters = {}) {
     const limit = Math.min(Math.max(Number(filters?.limit) || 50, 1), 200);
 
     return FoodTableSession.find(query)
-        .populate('orders')
+        .populate({
+            path: 'orders',
+            populate: {
+                path: 'items.itemId',
+                select: 'name image'
+            }
+        })
         .populate('userId', 'name phone email')
         .sort({ updatedAt: -1, createdAt: -1 })
         .limit(limit)
