@@ -20,6 +20,7 @@ import {
     verifyPaymentSignature,
 } from '../../orders/helpers/razorpay.helper.js';
 import { upsertDiningTransactionSnapshot } from './diningTransactionSnapshot.service.js';
+import { getOutletTimingsForRestaurant } from '../../restaurant/services/outletTimings.service.js';
 
 const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
 // Half-up rupee rounding:
@@ -35,6 +36,57 @@ const createHttpError = (message, statusCode = 400) => {
 };
 const FINALIZED_SESSION_STATUSES = new Set(['completed', 'cancelled', 'expired']);
 const isSessionFinalized = (statusLike) => FINALIZED_SESSION_STATUSES.has(String(statusLike || '').toLowerCase());
+
+const parseTimeToMinutes = (timeValue) => {
+    const match = String(timeValue || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return null;
+    const hour = Number(match[1]);
+    const minute = Number(match[2]);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+        return null;
+    }
+    return hour * 60 + minute;
+};
+
+const isWithinTimeWindow = (nowMinutes, openingMinutes, closingMinutes) => {
+    if (openingMinutes === null || closingMinutes === null) return true;
+    if (openingMinutes === closingMinutes) return true;
+    if (closingMinutes > openingMinutes) {
+        return nowMinutes >= openingMinutes && nowMinutes <= closingMinutes;
+    }
+    return nowMinutes >= openingMinutes || nowMinutes <= closingMinutes;
+};
+
+const getDayName = (date = new Date()) => date.toLocaleDateString('en-US', { weekday: 'long' });
+
+async function assertRestaurantCanAcceptDineInOrders(restaurantId) {
+    const restaurant = await FoodRestaurant.findById(restaurantId)
+        .select('status isActive isAcceptingOrders restaurantName')
+        .lean();
+
+    if (!restaurant || restaurant.status !== 'approved' || restaurant.isActive === false) {
+        throw createHttpError('Restaurant is currently offline and cannot accept dine-in orders', 409);
+    }
+
+    if (restaurant.isAcceptingOrders === false) {
+        throw createHttpError('Restaurant is currently offline and cannot accept dine-in orders', 409);
+    }
+
+    const { outletTimings } = await getOutletTimingsForRestaurant(restaurantId);
+    const todayTiming = outletTimings?.[getDayName(new Date())];
+    if (todayTiming?.isOpen === false) {
+        throw createHttpError('Restaurant is closed today and cannot accept dine-in orders', 409);
+    }
+
+    const openingMinutes = parseTimeToMinutes(todayTiming?.openingTime);
+    const closingMinutes = parseTimeToMinutes(todayTiming?.closingTime);
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    if (!isWithinTimeWindow(nowMinutes, openingMinutes, closingMinutes)) {
+        throw createHttpError('Restaurant is currently closed and cannot accept dine-in orders', 409);
+    }
+}
 
 const getOwnedSessionForUser = async (sessionId, userId) => {
     if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
@@ -388,6 +440,8 @@ export async function getTableInfo(restaurantId, tableNumber) {
 export async function createTableSession(data) {
     const { restaurantId, tableNumber, userId } = data;
 
+    await assertRestaurantCanAcceptDineInOrders(restaurantId);
+
     // 1. Validate Table
     let table = await FoodRestaurantTable.findOne({ restaurantId, tableNumber });
     if (!table) {
@@ -491,6 +545,8 @@ export async function placeOrder(sessionId, userId, orderData) {
     if (session.status !== 'active') {
         throw createHttpError('This session is no longer active and cannot accept new orders', 409);
     }
+
+    await assertRestaurantCanAcceptDineInOrders(session.restaurantId);
 
     // Block new orders if bill has been finalized for settlement.
     if (

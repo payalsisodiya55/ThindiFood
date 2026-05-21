@@ -5,6 +5,7 @@ import { FoodDiningCategory } from '../models/diningCategory.model.js';
 import { FoodDiningRestaurant } from '../models/diningRestaurant.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodTableSession } from '../../dineIn/models/tableSession.model.js';
+import { getOutletTimingsForRestaurant } from '../../restaurant/services/outletTimings.service.js';
 
 const slugify = (value) =>
     String(value || '')
@@ -123,14 +124,13 @@ async function buildRestaurantZoneMatch(zoneIdRaw) {
         return null;
     }
 
-    const zoneClauses = [{ zoneId: new mongoose.Types.ObjectId(trimmedZoneId) }];
     const zoneDoc = await FoodZone.findOne({ _id: trimmedZoneId, isActive: true }).lean();
     const polygon = zoneToPolygon(zoneDoc);
     if (polygon) {
-        zoneClauses.push({ location: { $geoWithin: { $geometry: polygon } } });
+        return { location: { $geoWithin: { $geometry: polygon } } };
     }
 
-    return { $or: zoneClauses };
+    return { zoneId: new mongoose.Types.ObjectId(trimmedZoneId) };
 }
 
 function getRestaurantImage(restaurant) {
@@ -556,13 +556,13 @@ export async function listDiningRestaurantsPublic(query = {}) {
     const diningDocs = await FoodDiningRestaurant.find(filter)
         .populate({
             path: 'restaurantId',
-            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo',
+            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages cuisines location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays outletTimings deliveryTimings selfDelivery isActive isAcceptingOrders costForTwo',
             match: restaurantMatch
         })
         .populate('categoryIds', 'name slug imageUrl')
         .lean();
 
-    return diningDocs
+    const mappedRestaurants = diningDocs
         .filter((doc) => doc.restaurantId)
         .map((doc) => ({
             ...doc.restaurantId,
@@ -576,4 +576,13 @@ export async function listDiningRestaurantsPublic(query = {}) {
                 diningType: doc.categoryIds?.[0]?.slug || doc.restaurantId?.diningSettings?.diningType || ''
             }
         }));
+
+    return Promise.all(mappedRestaurants.map(async (restaurant) => {
+        try {
+            const { outletTimings } = await getOutletTimingsForRestaurant(restaurant._id);
+            return { ...restaurant, outletTimings };
+        } catch {
+            return restaurant;
+        }
+    }));
 }

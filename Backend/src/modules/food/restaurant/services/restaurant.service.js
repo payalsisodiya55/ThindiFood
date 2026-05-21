@@ -293,6 +293,7 @@ const toRestaurantProfile = (doc) => {
         pureVegRestaurant: Boolean(doc.pureVegRestaurant),
         zoneId: doc.zoneId ? String(doc.zoneId?._id || doc.zoneId) : '',
         zoneName: doc.zoneId?.name || doc.zoneId?.zoneName || doc.zoneId?.serviceLocation || '',
+        takeawayCodEnabled: doc.zoneId?.takeawayCodEnabled !== false,
         profileImage: doc.profileImage ? { url: doc.profileImage } : null,
         menuImages,
         coverImages,
@@ -331,6 +332,28 @@ const toRestaurantProfile = (doc) => {
         rating: normalizeRatingValue(doc.rating),
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
     };
+};
+
+const buildZoneSettingsMap = async (zoneIds = []) => {
+    const uniqueZoneIds = [...new Set(zoneIds.map((id) => String(id || '').trim()).filter(Boolean))];
+    if (!uniqueZoneIds.length) return new Map();
+
+    const zones = await FoodZone.find({
+        _id: { $in: uniqueZoneIds.map((id) => new mongoose.Types.ObjectId(id)) },
+        isActive: true
+    })
+        .select('name zoneName serviceLocation takeawayCodEnabled')
+        .lean();
+
+    return new Map(
+        zones.map((zone) => [
+            String(zone._id),
+            {
+                zoneName: zone.name || zone.zoneName || zone.serviceLocation || '',
+                takeawayCodEnabled: zone.takeawayCodEnabled !== false
+            }
+        ])
+    );
 };
 
 const toFiniteNumber = (value) => {
@@ -2063,6 +2086,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         FoodRestaurant.countDocuments(filter)
     ]);
 
+    const zoneSettingsMap = await buildZoneSettingsMap((restaurantsRaw || []).map((r) => r.zoneId));
     const restaurants = (restaurantsRaw || []).map((r) => ({
         ...r,
         // Frontend user app expects `name` and often checks `profileImage.url`
@@ -2073,6 +2097,7 @@ export const listApprovedRestaurants = async (query = {}) => {
         totalRatings: normalizeTotalRatingsValue(r.totalRatings),
         profileImage: r.profileImage ? { url: r.profileImage } : null,
         coverImages: Array.isArray(r.coverImages) ? r.coverImages : [],
+        takeawayCodEnabled: zoneSettingsMap.get(String(r.zoneId || ''))?.takeawayCodEnabled !== false,
         openingTime: r.openingTime || null,
         closingTime: r.closingTime || null,
         openDays: Array.isArray(r.openDays) ? r.openDays : [],
@@ -2104,8 +2129,12 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
 
         const doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
         if (!doc) return null;
+        const zoneSettingsMap = await buildZoneSettingsMap([doc.zoneId]);
+        const zoneSettings = zoneSettingsMap.get(String(doc.zoneId || '')) || null;
         return {
             ...doc,
+            takeawayCodEnabled: zoneSettings?.takeawayCodEnabled !== false,
+            zoneName: zoneSettings?.zoneName || '',
             selfDelivery: serializeSelfDeliveryForPublic(doc),
             rating: normalizeRatingValue(doc.rating),
             totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
@@ -2133,8 +2162,12 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
         ]
     }).lean();
     if (!doc) return null;
+    const zoneSettingsMap = await buildZoneSettingsMap([doc.zoneId]);
+    const zoneSettings = zoneSettingsMap.get(String(doc.zoneId || '')) || null;
     return {
         ...doc,
+        takeawayCodEnabled: zoneSettings?.takeawayCodEnabled !== false,
+        zoneName: zoneSettings?.zoneName || '',
         selfDelivery: serializeSelfDeliveryForPublic(doc),
         rating: normalizeRatingValue(doc.rating),
         totalRatings: normalizeTotalRatingsValue(doc.totalRatings)

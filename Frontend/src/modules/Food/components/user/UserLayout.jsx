@@ -11,6 +11,7 @@ const debugError = (...args) => {}
 import SearchOverlay from "./SearchOverlay"
 import BottomNavigation from "./BottomNavigation"
 import DesktopNavbar from "./DesktopNavbar"
+import GlobalReviewPrompt from "./GlobalReviewPrompt"
 import { useUserNotifications } from "../../hooks/useUserNotifications"
 
 const USER_THEME_STORAGE_KEY = "appTheme"
@@ -190,6 +191,7 @@ export default function UserLayout() {
                     {showBottomNav && <DesktopNavbar showLogo={!isUnder250} />}
                   </div>
                   <LocationPrompt />
+                  <GlobalReviewPrompt />
                   <main className={showBottomNav ? "md:pt-40" : ""}>
                     <Outlet />
                   </main>

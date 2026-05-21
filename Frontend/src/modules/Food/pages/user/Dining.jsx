@@ -146,7 +146,7 @@ export default function Dining() {
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
-  const { zoneId } = useZone(location)
+  const { zoneId, loading: zoneLoading, isOutOfService } = useZone(location)
   const { addFavorite, removeFavorite, isFavorite } = useProfile()
 
   const [categories, setCategories] = useState([])
@@ -205,16 +205,15 @@ export default function Dining() {
     const fetchDiningData = async () => {
       try {
         setLoading(true)
-        const restaurantParams = {}
-        if (zoneId) {
-          restaurantParams.zoneId = zoneId
-        } else if (location?.city) {
-          restaurantParams.city = location.city
-        }
+        const hasCoordinates = Number.isFinite(Number(location?.latitude)) && Number.isFinite(Number(location?.longitude))
+        const shouldFetchRestaurants = Boolean(zoneId) && !isOutOfService
+        const restaurantParams = shouldFetchRestaurants ? { zoneId, _ts: Date.now() } : null
         const [bannerResponse, cats, rests] = await Promise.all([
           diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
-          diningAPI.getRestaurants(restaurantParams),
+          shouldFetchRestaurants
+            ? diningAPI.getRestaurants(restaurantParams)
+            : Promise.resolve({ data: { success: true, data: [] } }),
         ])
 
         const heroBanners = Array.isArray(bannerResponse?.data?.data?.banners)
@@ -236,6 +235,10 @@ export default function Dining() {
         setDiningHeroBanners(heroBanners)
         setCategories(cats?.data?.success ? (cats.data.data || []) : [])
         setRestaurantList(rests?.data?.success ? (rests.data.data || []) : [])
+
+        if (hasCoordinates && zoneLoading) {
+          setRestaurantList([])
+        }
       } catch (error) {
         debugError("Failed to fetch dining data", error)
         setDiningHeroBanners([])
@@ -246,7 +249,7 @@ export default function Dining() {
       }
     }
     fetchDiningData()
-  }, [location?.city, zoneId])
+  }, [isOutOfService, location?.latitude, location?.longitude, zoneId, zoneLoading])
 
   useEffect(() => {
     if (placeholders.length <= 1) return undefined
@@ -304,6 +307,16 @@ export default function Dining() {
           featuredDish: String(restaurant?.featuredDish || "Chef's special").trim(),
           featuredPrice: Number(restaurant?.featuredPrice || 0),
           rating: Number(restaurant?.rating || restaurant?.avgRating || 0),
+          outletTimings: restaurant?.outletTimings || restaurant?.restaurant?.outletTimings || null,
+          deliveryTimings: restaurant?.deliveryTimings || restaurant?.restaurant?.deliveryTimings || null,
+          selfDelivery: restaurant?.selfDelivery || restaurant?.restaurant?.selfDelivery || null,
+          openingTime: restaurant?.openingTime || restaurant?.restaurant?.openingTime || null,
+          closingTime: restaurant?.closingTime || restaurant?.restaurant?.closingTime || null,
+          openDays: Array.isArray(restaurant?.openDays)
+            ? restaurant.openDays
+            : (Array.isArray(restaurant?.restaurant?.openDays) ? restaurant.restaurant.openDays : []),
+          isActive: restaurant?.isActive !== false && restaurant?.restaurant?.isActive !== false,
+          isAcceptingOrders: restaurant?.isAcceptingOrders !== false && restaurant?.restaurant?.isAcceptingOrders !== false,
           deliveryTime: String(
             restaurant?.estimatedDeliveryTime ||
             restaurant?.deliveryTime ||
@@ -352,23 +365,13 @@ export default function Dining() {
   }, [safeCategories, categoryRestaurantKeys])
 
   const nearbyPopularRestaurants = useMemo(() => {
-    const within10Km = normalizedRestaurantList
-      .filter((restaurant) => Number.isFinite(restaurant.distanceValue) && restaurant.distanceValue <= 10)
-      .sort((a, b) => {
-        const aOpen = getRestaurantAvailabilityStatus(a, new Date(availabilityTick))?.isOpen !== false
-        const bOpen = getRestaurantAvailabilityStatus(b, new Date(availabilityTick))?.isOpen !== false
-        if (aOpen !== bOpen) return aOpen ? -1 : 1
-        return a.distanceValue - b.distanceValue
-      })
-
-    return within10Km.length > 0
-      ? within10Km
-      : [...normalizedRestaurantList].sort((a, b) => {
-          const aOpen = getRestaurantAvailabilityStatus(a, new Date(availabilityTick))?.isOpen !== false
-          const bOpen = getRestaurantAvailabilityStatus(b, new Date(availabilityTick))?.isOpen !== false
-          if (aOpen !== bOpen) return aOpen ? -1 : 1
-          return a.distanceValue - b.distanceValue
-        })
+    return [...normalizedRestaurantList].sort((a, b) => {
+      const aOpen = getRestaurantAvailabilityStatus(a, new Date(availabilityTick))?.isOpen !== false
+      const bOpen = getRestaurantAvailabilityStatus(b, new Date(availabilityTick))?.isOpen !== false
+      if (aOpen !== bOpen) return aOpen ? -1 : 1
+      return (Number.isFinite(a.distanceValue) ? a.distanceValue : Number.MAX_SAFE_INTEGER) -
+        (Number.isFinite(b.distanceValue) ? b.distanceValue : Number.MAX_SAFE_INTEGER)
+    })
   }, [availabilityTick, normalizedRestaurantList])
 
   const toggleFilter = (filterId) => {
@@ -757,7 +760,7 @@ export default function Dining() {
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4 px-1">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                Popular Restaurants Within 10km
+                Popular Restaurants in Your Zone
               </h3>
               <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
                 {filteredRestaurants.length} nearby places
@@ -837,7 +840,7 @@ export default function Dining() {
             </div>
           ) : filteredRestaurants.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#1a1a1a] px-6 py-12 text-center text-sm font-medium text-gray-500">
-              No popular dining restaurants were found within 10 km for the current location.
+              No dining restaurants were found in your current zone.
             </div>
           ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">

@@ -1132,7 +1132,9 @@ export default function Cart() {
     : currentLocation
   const { zoneId, zone, refreshZone } = useZone(zoneLocation) // Prefer selected/saved address zone
   const defaultPayment = getDefaultPaymentMethod()
-  const isTakeawayCodEnabled = zone?.takeawayCodEnabled === true
+  const isTakeawayCodEnabled =
+    restaurantData?.takeawayCodEnabled === true ||
+    (restaurantData?.takeawayCodEnabled == null && zone?.takeawayCodEnabled === true)
 
   useEffect(() => {
     // Sync delivery mode from overlay/localStorage changes.
@@ -1901,9 +1903,9 @@ export default function Cart() {
       disabledText: 'Low Balance'
     },
     ...(isTakeawayCodEnabled
-      ? [{
+        ? [{
           id: 'cash',
-          name: fulfillmentMode === "delivery" ? 'Cash on Delivery' : 'Pay at Pickup',
+          name: fulfillmentMode === "delivery" ? 'Cash on Delivery' : 'Pay at Restaurant',
           description: fulfillmentMode === "delivery" ? 'Pay when your order arrives' : 'Pay at the restaurant counter',
           icon: <Banknote className="w-5 h-5" />,
           color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
@@ -1919,7 +1921,7 @@ export default function Cart() {
         ? "Online Payment"
         : fulfillmentMode === "delivery"
           ? "Cash on Delivery"
-          : "Pay at Pickup"
+          : "Pay at Restaurant"
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || cart[0]?.restaurant || "Restaurant"

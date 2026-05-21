@@ -13,6 +13,7 @@ import { dineInAPI, restaurantAPI, diningAPI } from "@food/api";
 import { useProfile } from "@food/context/ProfileContext";
 import AnimatedPage from "@food/components/user/AnimatedPage";
 import OptimizedImage from "@food/components/OptimizedImage";
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
 import { toast } from "sonner";
 
 const RUPEE_SYMBOL = "\u20B9";
@@ -113,16 +114,23 @@ const DineInMenu = () => {
 
             // 2. Fetch Restaurant & Menu
             const rId = session.restaurantId._id || session.restaurantId;
-            const [rRes, mRes, aRes, billRes, offerRes] = await Promise.all([
+            const [rRes, mRes, aRes, billRes, offerRes, outletTimingRes] = await Promise.all([
                 restaurantAPI.getRestaurantById(rId),
                 restaurantAPI.getMenuByRestaurantId(rId),
                 restaurantAPI.getAddonsByRestaurantId(rId).catch(() => null),
                 dineInAPI.getSessionBill(sessionId).catch(() => null),
                 diningAPI.getRestaurantOverallOffer(rId).catch(() => null),
+                restaurantAPI.getOutletTimingsByRestaurantId(rId, { noCache: true }).catch(() => null),
             ]);
 
             if (rRes.data?.success) {
-                setRestaurant(resolveRestaurantPayload(rRes) || null);
+                const resolvedRestaurant = resolveRestaurantPayload(rRes) || null;
+                const outletTimings =
+                    outletTimingRes?.data?.data?.outletTimings ||
+                    outletTimingRes?.data?.outletTimings ||
+                    resolvedRestaurant?.outletTimings ||
+                    null;
+                setRestaurant(resolvedRestaurant ? { ...resolvedRestaurant, outletTimings } : null);
             }
             if (mRes.data?.success) {
                 const rawSections = mRes.data.data.menu?.sections || [];
@@ -149,6 +157,10 @@ const DineInMenu = () => {
     };
 
     const updateRoundCart = (item, delta) => {
+        if (!isRestaurantAvailableForDining) {
+            toast.error("Restaurant is currently closed or offline.");
+            return;
+        }
         const itemId = item._id || item.id || item.itemId;
         if (!itemId) return;
         setRoundCart(prev => {
@@ -188,6 +200,10 @@ const DineInMenu = () => {
 
     const handlePlaceOrderRound = async () => {
         if (cartItems.length === 0) return;
+        if (!isRestaurantAvailableForDining) {
+            toast.error("Restaurant is currently closed or offline.");
+            return;
+        }
 
         try {
             setPlacingOrder(true);
@@ -334,6 +350,8 @@ const DineInMenu = () => {
     const restaurantAddress =
         formatRestaurantAddress(restaurant) ||
         formatRestaurantAddress(sessionRestaurant);
+    const restaurantAvailability = getRestaurantAvailabilityStatus(restaurant || sessionRestaurant, new Date());
+    const isRestaurantAvailableForDining = restaurantAvailability.isOpen === true;
 
     return (
         <AnimatedPage className="min-h-screen bg-[#fafafa] pb-32">
@@ -359,6 +377,11 @@ const DineInMenu = () => {
                         {sessionData?.bookingId && (
                             <span className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 bg-green-50 border border-green-200 text-green-700 text-[9px] font-black uppercase tracking-widest rounded-full">
                                 ✓ Booking Confirmed
+                            </span>
+                        )}
+                        {!isRestaurantAvailableForDining && (
+                            <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-gray-100 border border-gray-200 text-gray-600 text-[9px] font-black uppercase tracking-widest rounded-full">
+                                Closed / Offline
                             </span>
                         )}
                     </div>
@@ -541,8 +564,9 @@ const DineInMenu = () => {
                                                     </div>
                                                 ) : (
                                                     <Button 
+                                                        disabled={!isRestaurantAvailableForDining}
                                                         onClick={() => updateRoundCart(item, 1)}
-                                                        className="w-full bg-white hover:bg-[#00c87e] hover:text-white border border-[#00c87e] text-[#00c87e] font-black text-xs py-2 shadow-lg rounded-xl uppercase tracking-wider transition-all"
+                                                        className="w-full bg-white hover:bg-[#00c87e] hover:text-white border border-[#00c87e] text-[#00c87e] font-black text-xs py-2 shadow-lg rounded-xl uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-white"
                                                     >
                                                         Add
                                                     </Button>
@@ -623,8 +647,9 @@ const DineInMenu = () => {
                                                     </div>
                                                 ) : (
                                                     <Button
+                                                        disabled={!isRestaurantAvailableForDining}
                                                         onClick={() => updateRoundCart(addonItem, 1)}
-                                                        className="w-full bg-white hover:bg-[#00c87e] hover:text-white border border-[#00c87e] text-[#00c87e] font-black text-xs py-2 shadow-lg rounded-xl uppercase tracking-wider transition-all"
+                                                        className="w-full bg-white hover:bg-[#00c87e] hover:text-white border border-[#00c87e] text-[#00c87e] font-black text-xs py-2 shadow-lg rounded-xl uppercase tracking-wider transition-all disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400 disabled:hover:bg-white"
                                                     >
                                                         Add
                                                     </Button>
@@ -739,7 +764,7 @@ const DineInMenu = () => {
                                 </div>
 
                                 <Button
-                                    disabled={placingOrder}
+                                    disabled={placingOrder || !isRestaurantAvailableForDining}
                                     onClick={handlePlaceOrderRound}
                                     className="w-full py-8 rounded-3xl bg-[#00c87e] hover:bg-[#00b06f] text-white text-xl font-black shadow-xl shadow-green-100 flex items-center justify-center gap-3"
                                 >

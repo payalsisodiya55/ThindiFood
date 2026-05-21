@@ -14,9 +14,68 @@ import { initRazorpayPayment } from "@food/utils/razorpay";
 import { getCompanyNameAsync } from "@food/utils/businessSettings";
 
 const RUPEE_SYMBOL = "\u20B9";
+const DINING_REVIEW_STORAGE_KEY = "shownDiningReviewSessions";
+const DINING_REVIEW_PENDING_STORAGE_KEY = "pendingDiningReviewSessions";
 
 // Counter payment timeout in milliseconds (15 minutes)
 const COUNTER_PAYMENT_TIMEOUT_MS = 15 * 60 * 1000;
+
+const readStoredList = (key) => {
+    try {
+        const value = JSON.parse(localStorage.getItem(key) || "[]");
+        return Array.isArray(value) ? value : [];
+    } catch {
+        return [];
+    }
+};
+
+const rememberPendingDiningReview = (sessionId) => {
+    const sessionKey = String(sessionId || "").trim();
+    if (!sessionKey) return;
+
+    try {
+        const pending = new Set(readStoredList(DINING_REVIEW_PENDING_STORAGE_KEY).map((id) => String(id || "").trim()).filter(Boolean));
+        pending.add(sessionKey);
+        localStorage.setItem(DINING_REVIEW_PENDING_STORAGE_KEY, JSON.stringify(Array.from(pending)));
+    } catch {
+        // ignore storage failures
+    }
+};
+
+const removePendingDiningReview = (sessionId) => {
+    const sessionKey = String(sessionId || "").trim();
+    if (!sessionKey) return;
+
+    try {
+        const pending = readStoredList(DINING_REVIEW_PENDING_STORAGE_KEY)
+            .filter((id) => String(id || "").trim() !== sessionKey);
+        localStorage.setItem(DINING_REVIEW_PENDING_STORAGE_KEY, JSON.stringify(pending));
+    } catch {
+        // ignore storage failures
+    }
+};
+
+const markDiningReviewPromptShown = (sessionId) => {
+    const sessionKey = String(sessionId || "").trim();
+    if (!sessionKey) return;
+
+    try {
+        const shown = new Set(readStoredList(DINING_REVIEW_STORAGE_KEY).map((id) => String(id || "").trim()).filter(Boolean));
+        shown.add(sessionKey);
+        localStorage.setItem(DINING_REVIEW_STORAGE_KEY, JSON.stringify(Array.from(shown)));
+        removePendingDiningReview(sessionKey);
+    } catch {
+        // ignore storage failures
+    }
+};
+
+const hasDiningReviewPromptShown = (sessionId) => {
+    const sessionKey = String(sessionId || "").trim();
+    if (!sessionKey) return false;
+
+    return readStoredList(DINING_REVIEW_STORAGE_KEY)
+        .some((id) => String(id || "").trim() === sessionKey);
+};
 
 const DineInBill = () => {
     const [searchParams] = useSearchParams();
@@ -71,7 +130,15 @@ const DineInBill = () => {
                 const isPaidAndCompleted =
                     data?.isPaid === true &&
                     String(data?.status || "").toLowerCase() === "completed";
-                if (openReview && isPaidAndCompleted && !hasReview) {
+                const shouldRequestReview = isPaidAndCompleted && !hasReview;
+                const shouldOpenReviewHere =
+                    shouldRequestReview &&
+                    (openReview || String(data?.paymentStatus || "").toUpperCase() === "PAID");
+                if (!shouldOpenReviewHere && shouldRequestReview && !hasDiningReviewPromptShown(sessionId)) {
+                    rememberPendingDiningReview(sessionId);
+                }
+                if (shouldOpenReviewHere) {
+                    markDiningReviewPromptShown(sessionId);
                     setShowReviewModal(true);
                     setSelectedDiningRating(null);
                     setDiningFeedbackText("");
@@ -153,6 +220,7 @@ const DineInBill = () => {
 
                         if (verifyRes?.data?.success) {
                             toast.success("Payment successful!");
+                            rememberPendingDiningReview(sessionId);
                             localStorage.removeItem("activeDineInSessionId");
                             await fetchBill({ openReview: true, showSuccessState: true });
                             return;
@@ -217,6 +285,7 @@ const DineInBill = () => {
                     clearInterval(countdownIntervalRef.current);
                     setCounterPaymentCompleted(true);
                     toast.success("Payment confirmed! Thank you for dining with us. 🎉");
+                    rememberPendingDiningReview(sessionId);
                     localStorage.removeItem("activeDineInSessionId");
                     await fetchBill({ openReview: true, showSuccessState: true });
                 }
@@ -286,6 +355,8 @@ const DineInBill = () => {
                 },
             }));
             toast.success("Thanks for rating your dining experience!");
+            removePendingDiningReview(sessionId);
+            markDiningReviewPromptShown(sessionId);
             handleCloseReviewModal();
         } catch (err) {
             toast.error(err?.response?.data?.message || "Failed to submit dining review");

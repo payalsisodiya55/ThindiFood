@@ -140,6 +140,9 @@ export function useZone(location) {
       // Only detect zone if coordinates changed significantly
       if (coordsChanged) {
         prevCoordsRef.current = { latitude: lat, longitude: lng }
+        setZoneStatus("loading")
+        setZoneId(null)
+        setZone(null)
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current)
         }

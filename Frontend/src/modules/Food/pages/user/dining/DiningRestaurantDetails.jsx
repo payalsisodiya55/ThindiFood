@@ -20,6 +20,7 @@ import {
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { toast } from "sonner"
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 
 const BOOKING_GUESTS_PREF_KEY = "food_dining_selected_guests_v1"
 const DINING_MEAL_LABELS = {
@@ -366,7 +367,14 @@ export default function DiningRestaurantDetails() {
   const { timing: todayOutletTiming } = getTodayOutletTiming(outletTimings)
   const openingTime = formatTimeLabel(todayOutletTiming?.openingTime || restaurant?.openingTime || restaurant?.diningSettings?.openingTime || "")
   const closingTime = formatTimeLabel(todayOutletTiming?.closingTime || restaurant?.closingTime || restaurant?.diningSettings?.closingTime || "")
-  const isOpenNow = todayOutletTiming ? isRestaurantOpenForTiming(todayOutletTiming) : restaurant?.availability?.isOpen === true
+  const availabilityStatus = getRestaurantAvailabilityStatus(
+    {
+      ...restaurant,
+      outletTimings,
+    },
+    new Date(),
+  )
+  const isOpenNow = availabilityStatus.isOpen === true
   const timingLabel =
     todayOutletTiming?.isOpen === false
       ? "Closed today"
@@ -374,6 +382,7 @@ export default function DiningRestaurantDetails() {
         ? `${openingTime} to ${closingTime}`
         : "Timing unavailable"
   const isDiningEnabled = restaurant?.diningSettings?.isEnabled !== false
+  const isDiningAvailable = isDiningEnabled && isOpenNow
   const maxGuestCount = Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6)
   const offerHeadline = getOfferHeadline(diningOffer)
   const offerDescription = String(diningOffer?.description || "").trim()
@@ -435,7 +444,7 @@ export default function DiningRestaurantDetails() {
   }
 
   const handleContinueBooking = () => {
-    if (!isDiningEnabled) return
+    if (!isDiningAvailable) return
     setIsBookingSheetOpen(false)
 
     try {
@@ -455,7 +464,14 @@ export default function DiningRestaurantDetails() {
   }
 
   const handleOpenBookingSheet = () => {
-    if (!isDiningEnabled) return
+    if (!isDiningAvailable) {
+      toast.error(
+        !isDiningEnabled
+          ? "Dining is paused for this restaurant."
+          : "Restaurant is currently closed or offline.",
+      )
+      return
+    }
 
     if (!isModuleAuthenticated("user")) {
       toast.error("Please login to book your seat.")
@@ -535,21 +551,23 @@ export default function DiningRestaurantDetails() {
           <div className="grid grid-cols-1 gap-2.5">
             <button
               onClick={handleOpenBookingSheet}
-              disabled={!isDiningEnabled}
+              disabled={!isDiningAvailable}
               className={`flex h-[52px] items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
-                isDiningEnabled
+                isDiningAvailable
                   ? "border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] text-[#2b2118] dark:text-white"
                   : "cursor-not-allowed border-[#f2d7da] dark:border-red-950 bg-[#fff5f6] dark:bg-[#201012] text-[#c06a79] dark:text-[#a04a55] opacity-80"
               }`}
             >
               <Ticket className="h-[15px] w-[15px]" style={{ color: RED }} />
-              <span>{isDiningEnabled ? "Book a table" : "Dining paused"}</span>
+              <span>{isDiningAvailable ? "Book a table" : isDiningEnabled ? "Closed" : "Dining paused"}</span>
             </button>
           </div>
 
-          {!isDiningEnabled && (
+          {!isDiningAvailable && (
             <div className="mt-3 rounded-[18px] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 px-4 py-3 text-sm text-red-800 dark:text-red-300">
-              Dining bookings are currently turned off by the restaurant.
+              {isDiningEnabled
+                ? "This restaurant is currently closed or offline. Dining bookings are unavailable right now."
+                : "Dining bookings are currently turned off by the restaurant."}
             </div>
           )}
 
@@ -614,7 +632,7 @@ export default function DiningRestaurantDetails() {
                 </div>
                 <button
                   onClick={handleOpenBookingSheet}
-                  disabled={!isDiningEnabled}
+                  disabled={!isDiningAvailable}
                   className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm disabled:opacity-60"
                 >
                   Book now
@@ -721,15 +739,15 @@ export default function DiningRestaurantDetails() {
         <div className="mx-auto max-w-md">
           <Button
             onClick={handleOpenBookingSheet}
-            disabled={!isDiningEnabled}
+            disabled={!isDiningAvailable}
             className={`h-12 w-full rounded-2xl border text-[17px] font-medium transition-colors ${
-              isDiningEnabled
+              isDiningAvailable
                 ? "bg-white dark:bg-[#1a1a1a] hover:bg-red-50 dark:hover:bg-red-950/20"
                 : "cursor-not-allowed border-red-100 dark:border-red-950 bg-red-50 dark:bg-red-950/20 text-red-300 dark:text-red-800 opacity-80"
             }`}
-            style={isDiningEnabled ? { borderColor: RED, color: RED } : {}}
+            style={isDiningAvailable ? { borderColor: RED, color: RED } : {}}
           >
-            {isDiningEnabled ? "Book a table" : "Dining paused"}
+            {isDiningAvailable ? "Book a table" : isDiningEnabled ? "Closed" : "Dining paused"}
           </Button>
         </div>
       </div>
