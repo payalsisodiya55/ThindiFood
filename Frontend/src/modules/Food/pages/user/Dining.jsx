@@ -7,10 +7,12 @@ import { Card, CardContent } from "@food/components/ui/card"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { useSearchOverlay, useLocationSelector } from "@food/components/user/UserLayout"
 import { useLocation as useLocationHook } from "@food/hooks/useLocation"
+import { useZone } from "@food/hooks/useZone"
 import { useProfile } from "@food/context/ProfileContext"
 import { diningAPI, dineInAPI } from "@food/api"
 import OptimizedImage from "@food/components/OptimizedImage"
 import HomeHeader from "@food/components/user/home/HomeHeader"
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import { RED } from "../../constants/color"
 
 const debugLog = (...args) => {}
@@ -133,6 +135,7 @@ export default function Dining() {
   const navigate = useNavigate()
   const [heroSearch, setHeroSearch] = useState("")
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const [availabilityTick] = useState(Date.now())
   const [activeFilters, setActiveFilters] = useState(new Set())
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [activeFilterTab, setActiveFilterTab] = useState('sort')
@@ -143,6 +146,7 @@ export default function Dining() {
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
+  const { zoneId } = useZone(location)
   const { addFavorite, removeFavorite, isFavorite } = useProfile()
 
   const [categories, setCategories] = useState([])
@@ -201,10 +205,16 @@ export default function Dining() {
     const fetchDiningData = async () => {
       try {
         setLoading(true)
+        const restaurantParams = {}
+        if (zoneId) {
+          restaurantParams.zoneId = zoneId
+        } else if (location?.city) {
+          restaurantParams.city = location.city
+        }
         const [bannerResponse, cats, rests] = await Promise.all([
           diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
-          diningAPI.getRestaurants(location?.city ? { city: location.city } : {}),
+          diningAPI.getRestaurants(restaurantParams),
         ])
 
         const heroBanners = Array.isArray(bannerResponse?.data?.data?.banners)
@@ -236,7 +246,7 @@ export default function Dining() {
       }
     }
     fetchDiningData()
-  }, [location?.city])
+  }, [location?.city, zoneId])
 
   useEffect(() => {
     if (placeholders.length <= 1) return undefined
@@ -344,10 +354,22 @@ export default function Dining() {
   const nearbyPopularRestaurants = useMemo(() => {
     const within10Km = normalizedRestaurantList
       .filter((restaurant) => Number.isFinite(restaurant.distanceValue) && restaurant.distanceValue <= 10)
-      .sort((a, b) => a.distanceValue - b.distanceValue)
+      .sort((a, b) => {
+        const aOpen = getRestaurantAvailabilityStatus(a, new Date(availabilityTick))?.isOpen !== false
+        const bOpen = getRestaurantAvailabilityStatus(b, new Date(availabilityTick))?.isOpen !== false
+        if (aOpen !== bOpen) return aOpen ? -1 : 1
+        return a.distanceValue - b.distanceValue
+      })
 
-    return within10Km.length > 0 ? within10Km : normalizedRestaurantList
-  }, [normalizedRestaurantList])
+    return within10Km.length > 0
+      ? within10Km
+      : [...normalizedRestaurantList].sort((a, b) => {
+          const aOpen = getRestaurantAvailabilityStatus(a, new Date(availabilityTick))?.isOpen !== false
+          const bOpen = getRestaurantAvailabilityStatus(b, new Date(availabilityTick))?.isOpen !== false
+          if (aOpen !== bOpen) return aOpen ? -1 : 1
+          return a.distanceValue - b.distanceValue
+        })
+  }, [availabilityTick, normalizedRestaurantList])
 
   const toggleFilter = (filterId) => {
     setActiveFilters(prev => {
@@ -824,6 +846,10 @@ export default function Dining() {
               const restaurantSlug = restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "-")
               const diningDetailPath = `/food/user/dining/${restaurant.diningType || "dining"}/${restaurantSlug}`
               const favorite = isFavorite(restaurantSlug)
+              const availability = getRestaurantAvailabilityStatus(
+                restaurant,
+                new Date(availabilityTick),
+              )
 
               const handleToggleFavorite = (e) => {
                 e.preventDefault()
@@ -886,7 +912,7 @@ export default function Dining() {
                       state={{ restaurant }}
                       className="h-full flex"
                     >
-                      <Card className="overflow-hidden gap-0 cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md transition-all duration-500 py-0 rounded-2xl h-full flex flex-col w-full relative">
+                      <Card className={`overflow-hidden gap-0 cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md transition-all duration-500 py-0 rounded-2xl h-full flex flex-col w-full relative ${!availability.isOpen ? "grayscale opacity-70" : ""}`}>
                         {/* Image Section */}
                         <div className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-2xl flex-shrink-0">
                           <motion.div
@@ -1023,6 +1049,18 @@ export default function Dining() {
                               </motion.div>
                             </div>
 
+                            <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-500 text-white"}`}>
+                                {availability.isOpen ? "Open" : "Closed"}
+                              </span>
+                              {availability.isOpen && availability.closingCountdownLabel && (
+                                <span className="flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                  <Timer className="h-3 w-3 flex-shrink-0" strokeWidth={2.2} />
+                                  {availability.closingCountdownLabel}
+                                </span>
+                              )}
+                            </div>
+
                             {/* Delivery Time & Distance */}
                             <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mb-2">
                               <Clock className="h-4 w-4" strokeWidth={1.5} />
@@ -1057,6 +1095,10 @@ export default function Dining() {
               const restaurantSlug = restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "-")
               const diningDetailPath = `/food/user/dining/${restaurant.diningType || "dining"}/${restaurantSlug}`
               const favorite = isFavorite(restaurantSlug)
+              const availability = getRestaurantAvailabilityStatus(
+                restaurant,
+                new Date(availabilityTick),
+              )
 
               const handleToggleFavorite = (e) => {
                 e.preventDefault()
@@ -1119,7 +1161,7 @@ export default function Dining() {
                       state={{ restaurant }}
                       className="h-full flex"
                     >
-                      <Card className="overflow-hidden cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md transition-all duration-500 py-0 rounded-2xl h-full flex flex-col w-full relative">
+                      <Card className={`overflow-hidden cursor-pointer border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md transition-all duration-500 py-0 rounded-2xl h-full flex flex-col w-full relative ${!availability.isOpen ? "grayscale opacity-70" : ""}`}>
                         {/* Image Section */}
                         <div className="relative h-48 sm:h-56 md:h-60 lg:h-64 xl:h-72 w-full overflow-hidden rounded-t-2xl flex-shrink-0">
                           <motion.div
@@ -1217,6 +1259,18 @@ export default function Dining() {
                               <span className="text-sm font-bold">{restaurant.rating}</span>
                               <Star className="h-3 w-3 fill-white text-white" />
                             </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-500 text-white"}`}>
+                              {availability.isOpen ? "Open" : "Closed"}
+                            </span>
+                            {availability.isOpen && availability.closingCountdownLabel && (
+                              <span className="flex items-center gap-0.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                                <Timer className="h-3 w-3 flex-shrink-0" strokeWidth={2.2} />
+                                {availability.closingCountdownLabel}
+                              </span>
+                            )}
                           </div>
 
                           {/* Delivery Time & Distance */}
