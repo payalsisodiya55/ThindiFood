@@ -8,7 +8,7 @@ import { FoodDiningRestaurantCommission } from '../../admin/models/diningRestaur
 import { FoodDiningFeeSettings } from '../../admin/models/diningFeeSettings.model.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { findAcceptedBooking, linkBookingToSession } from './tableBooking.service.js';
-import { getBestApplicableDiningOffer, getDisplayDiningOfferForRestaurant } from './diningOffer.service.js';
+import { consumeDiningOfferUsage, getBestApplicableDiningOffer, getDisplayDiningOfferForRestaurant } from './diningOffer.service.js';
 import { creditWallet, debitWallet } from '../../../../core/payments/wallet.service.js';
 import { Transaction } from '../../../../core/payments/models/transaction.model.js';
 import { calculateWalletSettlement, deriveFundingType } from '../../orders/services/settlement-calculator.service.js';
@@ -123,7 +123,7 @@ const getFeeSettings = async () => {
     };
 };
 
-const buildBillingSnapshot = async (session) => {
+const buildBillingSnapshot = async (session, options = {}) => {
     const subtotal = roundMoney(session?.subtotal || 0);
     const feeSettings = await getFeeSettings();
     const gstRate = Number(feeSettings?.gstRate || 0);
@@ -133,6 +133,8 @@ const buildBillingSnapshot = async (session) => {
     const applicableOffer = await getBestApplicableDiningOffer({
         restaurantId: session.restaurantId,
         subtotal,
+        userId: session?.userId || null,
+        excludeOfferIds: options?.excludeOfferIds || [],
     });
     const offerDiscount = roundMoney(applicableOffer?.discountAmount || 0);
     const payableSubtotal = roundMoney(Math.max(0, subtotal - offerDiscount));
@@ -971,7 +973,18 @@ export async function closeSession(sessionId, paymentData) {
     }
 
     const now = new Date();
-    const billingSnapshot = await buildBillingSnapshot(session);
+    let billingSnapshot = await buildBillingSnapshot(session);
+    if (billingSnapshot?.appliedOffer?.id) {
+        const consumed = await consumeDiningOfferUsage({
+            offerId: billingSnapshot.appliedOffer.id,
+            userId: session?.userId || null,
+        });
+        if (!consumed) {
+            billingSnapshot = await buildBillingSnapshot(session, {
+                excludeOfferIds: [billingSnapshot.appliedOffer.id],
+            });
+        }
+    }
     const settlementPaymentMode = session.paymentMode === 'COUNTER' ? 'counter' : 'online';
     let walletSettlement = null;
     try {

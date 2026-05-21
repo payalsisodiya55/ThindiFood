@@ -11,6 +11,8 @@ const initialForm = {
   discountValue: "",
   maxDiscount: "",
   minBillAmount: "",
+  usageLimit: "",
+  perUserLimit: "",
   startDate: "",
   endDate: ""
 };
@@ -26,6 +28,19 @@ const getDiscountLabel = (offer) => {
   if (offer.discountType === "flat") return `Rs ${Number(offer.discountValue || 0)}`;
   const maxDiscount = offer.maxDiscount != null ? ` (up to Rs ${Number(offer.maxDiscount)})` : "";
   return `${Number(offer.discountValue || 0)}%${maxDiscount}`;
+};
+
+const getUsageLabel = (offer) => {
+  const usedCount = Number(
+    offer?.usedCount ??
+    offer?.usageCount ??
+    offer?.redeemedCount ??
+    offer?.redemptionCount ??
+    0
+  );
+  const usageLimit = offer?.usageLimit ?? offer?.maxUsage ?? offer?.redeemLimit;
+  const normalizedLimit = Number(usageLimit || 0) > 0 ? Number(usageLimit) : "∞";
+  return `${usedCount} / ${normalizedLimit}`;
 };
 
 export default function DiningOfferManagement() {
@@ -92,6 +107,8 @@ export default function DiningOfferManagement() {
       discountValue: String(Number(offer.discountValue || 0)),
       maxDiscount: offer.maxDiscount != null ? String(Number(offer.maxDiscount || 0)) : "",
       minBillAmount: String(Number(offer.minBillAmount || 0)),
+      usageLimit: offer.usageLimit != null ? String(Number(offer.usageLimit || 0)) : "",
+      perUserLimit: offer.perUserLimit != null ? String(Number(offer.perUserLimit || 0)) : "",
       startDate: offer.startDate ? String(offer.startDate).slice(0, 10) : "",
       endDate: offer.endDate ? String(offer.endDate).slice(0, 10) : ""
     });
@@ -102,6 +119,14 @@ export default function DiningOfferManagement() {
       toast.error("Restaurant, title and discount value are required");
       return;
     }
+    if (formData.usageLimit !== "" && (!Number.isInteger(Number(formData.usageLimit)) || Number(formData.usageLimit) < 1)) {
+      toast.error("Global usage limit must be at least 1");
+      return;
+    }
+    if (formData.perUserLimit !== "" && (!Number.isInteger(Number(formData.perUserLimit)) || Number(formData.perUserLimit) < 1)) {
+      toast.error("Per user limit must be at least 1");
+      return;
+    }
     try {
       setSaving(true);
       const applyToAllRestaurants = formData.restaurantId === "ALL_RESTAURANTS";
@@ -110,7 +135,9 @@ export default function DiningOfferManagement() {
         restaurantId: formData.restaurantId,
         discountValue: Number(formData.discountValue),
         maxDiscount: formData.discountType === "percentage" && formData.maxDiscount !== "" ? Number(formData.maxDiscount) : null,
-        minBillAmount: formData.minBillAmount !== "" ? Number(formData.minBillAmount) : 0
+        minBillAmount: formData.minBillAmount !== "" ? Number(formData.minBillAmount) : 0,
+        usageLimit: formData.usageLimit !== "" ? Number(formData.usageLimit) : null,
+        perUserLimit: formData.perUserLimit !== "" ? Number(formData.perUserLimit) : null
       };
 
       if (isEditing) {
@@ -302,6 +329,26 @@ export default function DiningOfferManagement() {
             
           </div>
           <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-700 ml-1">Usage Limit (global)</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.usageLimit}
+              onChange={(e) => setFormData((prev) => ({ ...prev, usageLimit: e.target.value }))}
+              placeholder="Leave empty for unlimited"
+              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#00c87e]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-slate-700 ml-1">Per User Limit</label>
+            <input
+              type="number"
+              min="1"
+              value={formData.perUserLimit}
+              onChange={(e) => setFormData((prev) => ({ ...prev, perUserLimit: e.target.value }))}
+              placeholder="Leave empty for unlimited"
+              className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm outline-none focus:border-[#00c87e]" />
+          </div>
+          <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-slate-700 ml-1">Start Date</label>
             <input
               type="date"
@@ -364,6 +411,7 @@ export default function DiningOfferManagement() {
                   <th className="px-3 py-3 text-left font-semibold text-slate-600">Restaurant</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-600">Offer</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-600">Discount</th>
+                  <th className="px-3 py-3 text-left font-semibold text-slate-600">Usage</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-600">Funding</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-600">Created By</th>
                   <th className="px-3 py-3 text-left font-semibold text-slate-600">Approval</th>
@@ -375,7 +423,7 @@ export default function DiningOfferManagement() {
               <tbody className="divide-y divide-slate-200">
                 {filteredOffers.length === 0 ?
               <tr>
-                    <td colSpan="9" className="px-3 py-8 text-center text-slate-500">No dining offers found.</td>
+                    <td colSpan="10" className="px-3 py-8 text-center text-slate-500">No dining offers found.</td>
                   </tr> :
 
               filteredOffers.map((offer) => {
@@ -394,6 +442,7 @@ export default function DiningOfferManagement() {
                           {offer.description && <div className="text-xs text-slate-500">{offer.description}</div>}
                         </td>
                         <td className="px-3 py-3">{getDiscountLabel(offer)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap text-slate-700">{getUsageLabel(offer)}</td>
                         <td className="px-3 py-3 capitalize">{offer.fundedBy}</td>
                         <td className="px-3 py-3 capitalize">{offer.createdByRole}</td>
                         <td className="px-3 py-3 capitalize">{offer.approvalStatus}</td>

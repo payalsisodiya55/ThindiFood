@@ -43,6 +43,21 @@ const diningOfferSchema = new mongoose.Schema(
             default: 0,
             min: 0,
         },
+        usageLimit: {
+            type: Number,
+            default: null,
+            min: 1,
+        },
+        perUserLimit: {
+            type: Number,
+            default: null,
+            min: 1,
+        },
+        usedCount: {
+            type: Number,
+            default: 0,
+            min: 0,
+        },
         fundedBy: {
             type: String,
             enum: ['platform', 'restaurant'],

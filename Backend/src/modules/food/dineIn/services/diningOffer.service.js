@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodDiningOffer } from '../models/diningOffer.model.js';
+import { FoodDiningOfferUsage } from '../models/diningOfferUsage.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 
 const ensureObjectId = (value, message) => {
@@ -11,6 +12,13 @@ const ensureObjectId = (value, message) => {
 };
 
 const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
+const normalizePositiveIntegerOrNull = (value) => {
+    if (value === undefined || value === null || value === '') return null;
+    const normalized = Number(value);
+    if (!Number.isFinite(normalized)) return null;
+    if (normalized < 1) return null;
+    return Math.trunc(normalized);
+};
 
 const normalizeOffer = (doc) => {
     if (!doc) return null;
@@ -72,6 +80,8 @@ const buildOfferPayload = (payload, { restaurantId, restaurantName, fundedBy, cr
     minBillAmount: payload.minBillAmount !== undefined && payload.minBillAmount !== null && payload.minBillAmount !== ''
         ? Number(payload.minBillAmount)
         : 0,
+    usageLimit: normalizePositiveIntegerOrNull(payload.usageLimit),
+    perUserLimit: normalizePositiveIntegerOrNull(payload.perUserLimit ?? payload.perUserRedeemLimit),
     fundedBy,
     createdByRole,
     createdById,
@@ -97,6 +107,17 @@ const validateOfferPayload = (payload) => {
     }
     if (payload.minBillAmount !== null && payload.minBillAmount !== undefined && payload.minBillAmount !== '' && Number(payload.minBillAmount) < 0) {
         throw new ValidationError('Minimum bill amount must be 0 or more');
+    }
+    if (payload.usageLimit !== undefined && payload.usageLimit !== null && payload.usageLimit !== '') {
+        if (!Number.isInteger(Number(payload.usageLimit)) || Number(payload.usageLimit) < 1) {
+            throw new ValidationError('Usage limit must be at least 1');
+        }
+    }
+    const perUserLimit = payload.perUserLimit ?? payload.perUserRedeemLimit;
+    if (perUserLimit !== undefined && perUserLimit !== null && perUserLimit !== '') {
+        if (!Number.isInteger(Number(perUserLimit)) || Number(perUserLimit) < 1) {
+            throw new ValidationError('Per user limit must be at least 1');
+        }
     }
 
     const startDate = toDateOrNull(payload.startDate);
@@ -253,6 +274,10 @@ export const updateAdminDiningOffer = async (offerId, payload) => {
     if (payload.startDate !== undefined) existing.startDate = toDateOrNull(payload.startDate);
     if (payload.endDate !== undefined) existing.endDate = toDateOrNull(payload.endDate);
     if (payload.priority !== undefined) existing.priority = Number(payload.priority) || 0;
+    if (payload.usageLimit !== undefined) existing.usageLimit = normalizePositiveIntegerOrNull(payload.usageLimit);
+    if (payload.perUserLimit !== undefined || payload.perUserRedeemLimit !== undefined) {
+        existing.perUserLimit = normalizePositiveIntegerOrNull(payload.perUserLimit ?? payload.perUserRedeemLimit);
+    }
     existing.approvalStatus = 'approved';
     existing.rejectionReason = '';
     await existing.save();
@@ -303,20 +328,65 @@ export const calculateDiningOfferDiscount = (offer, subtotal) => {
     return Math.round(normalizedDiscount);
 };
 
-export const getBestApplicableDiningOffer = async ({ restaurantId, subtotal }) => {
+const buildUsageLimitFilter = () => ({
+    $or: [
+        { usageLimit: { $exists: false } },
+        { usageLimit: null },
+        { usageLimit: { $lte: 0 } },
+        { $expr: { $lt: ['$usedCount', '$usageLimit'] } },
+    ],
+});
+
+export const getBestApplicableDiningOffer = async ({ restaurantId, subtotal, userId = null, excludeOfferIds = [] }) => {
     const rid = ensureObjectId(restaurantId, 'Invalid restaurant id');
     const baseAmount = roundMoney(subtotal);
     if (baseAmount <= 0) return null;
 
     const now = new Date();
-    const offers = await FoodDiningOffer.find({
+    const excludedIds = (Array.isArray(excludeOfferIds) ? excludeOfferIds : [])
+        .map((value) => String(value || '').trim())
+        .filter((value) => mongoose.Types.ObjectId.isValid(value))
+        .map((value) => new mongoose.Types.ObjectId(value));
+    const filter = {
         restaurantId: rid,
         status: 'active',
         approvalStatus: 'approved',
         $or: [{ startDate: null }, { startDate: { $lte: now } }],
         $and: [{ $or: [{ endDate: null }, { endDate: { $gte: now } }] }],
         minBillAmount: { $lte: baseAmount },
-    }).lean();
+        ...buildUsageLimitFilter(),
+    };
+    if (excludedIds.length) {
+        filter._id = { $nin: excludedIds };
+    }
+    let offers = await FoodDiningOffer.find(filter).lean();
+
+    if (!offers.length) return null;
+
+    if (userId && mongoose.Types.ObjectId.isValid(String(userId))) {
+        const limitedOfferIds = offers
+            .filter((offer) => Number(offer?.perUserLimit || 0) > 0)
+            .map((offer) => offer._id);
+
+        if (limitedOfferIds.length) {
+            const usages = await FoodDiningOfferUsage.find({
+                offerId: { $in: limitedOfferIds },
+                userId: new mongoose.Types.ObjectId(String(userId)),
+            })
+                .select('offerId count')
+                .lean();
+
+            const usageMap = new Map(
+                usages.map((usage) => [String(usage.offerId), Number(usage.count || 0)])
+            );
+
+            offers = offers.filter((offer) => {
+                const perUserLimit = Number(offer?.perUserLimit || 0);
+                if (perUserLimit <= 0) return true;
+                return Number(usageMap.get(String(offer._id)) || 0) < perUserLimit;
+            });
+        }
+    }
 
     if (!offers.length) return null;
 
@@ -333,6 +403,87 @@ export const getBestApplicableDiningOffer = async ({ restaurantId, subtotal }) =
         });
 
     return ranked.length ? normalizeOffer(ranked[0]) : null;
+};
+
+export const consumeDiningOfferUsage = async ({ offerId, userId = null }) => {
+    const oid = ensureObjectId(offerId, 'Invalid dining offer id');
+    const offer = await FoodDiningOffer.findById(oid)
+        .select('_id usageLimit usedCount perUserLimit status')
+        .lean();
+
+    if (!offer || String(offer.status || '').toLowerCase() !== 'active') {
+        return false;
+    }
+
+    let userUsageIncremented = false;
+    let normalizedUserId = null;
+    const perUserLimit = Number(offer.perUserLimit || 0);
+
+    if (userId && mongoose.Types.ObjectId.isValid(String(userId)) && perUserLimit > 0) {
+        normalizedUserId = new mongoose.Types.ObjectId(String(userId));
+        try {
+            const usageDoc = await FoodDiningOfferUsage.findOneAndUpdate(
+                {
+                    offerId: oid,
+                    userId: normalizedUserId,
+                    $or: [
+                        { count: { $exists: false } },
+                        { count: { $lt: perUserLimit } },
+                    ],
+                },
+                {
+                    $inc: { count: 1 },
+                    $set: { lastUsedAt: new Date() },
+                },
+                {
+                    new: true,
+                    upsert: true,
+                    setDefaultsOnInsert: true,
+                }
+            ).lean();
+
+            if (!usageDoc || Number(usageDoc.count || 0) > perUserLimit) {
+                return false;
+            }
+
+            userUsageIncremented = true;
+        } catch (error) {
+            if (error?.code === 11000) {
+                return false;
+            }
+            throw error;
+        }
+    }
+
+    const updatedOffer = await FoodDiningOffer.findOneAndUpdate(
+        {
+            _id: oid,
+            status: 'active',
+            ...buildUsageLimitFilter(),
+        },
+        { $inc: { usedCount: 1 } },
+        { new: true, projection: { _id: 1, usageLimit: 1, usedCount: 1, status: 1 } }
+    ).lean();
+
+    if (!updatedOffer) {
+        if (userUsageIncremented && normalizedUserId) {
+            await FoodDiningOfferUsage.updateOne(
+                { offerId: oid, userId: normalizedUserId, count: { $gt: 0 } },
+                { $inc: { count: -1 } }
+            );
+        }
+        return false;
+    }
+
+    const usageLimit = Number(updatedOffer.usageLimit || 0);
+    if (usageLimit > 0 && Number(updatedOffer.usedCount || 0) >= usageLimit) {
+        await FoodDiningOffer.updateOne(
+            { _id: oid, status: 'active' },
+            { $set: { status: 'inactive' } }
+        );
+    }
+
+    return true;
 };
 
 export const getDisplayDiningOfferForRestaurant = async (restaurantId) => {

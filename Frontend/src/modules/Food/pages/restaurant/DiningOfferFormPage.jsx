@@ -30,6 +30,8 @@ const createInitialForm = () => ({
   discountValue: "",
   maxDiscount: "",
   minBillAmount: "",
+  usageLimit: "",
+  perUserLimit: "",
   startDate: "",
   endDate: "",
 })
@@ -41,6 +43,8 @@ const mapOfferToForm = (offer) => ({
   discountValue: offer?.discountValue != null ? String(Number(offer.discountValue)) : "",
   maxDiscount: offer?.maxDiscount != null ? String(Number(offer.maxDiscount)) : "",
   minBillAmount: offer?.minBillAmount != null ? String(Number(offer.minBillAmount)) : "",
+  usageLimit: offer?.usageLimit != null ? String(Number(offer.usageLimit)) : "",
+  perUserLimit: (offer?.perUserLimit ?? offer?.perUserRedeemLimit) != null ? String(Number(offer?.perUserLimit ?? offer?.perUserRedeemLimit)) : "",
   startDate: toInputDate(offer?.startDate),
   endDate: toInputDate(offer?.endDate),
 })
@@ -103,6 +107,12 @@ export default function DiningOfferFormPage({ mode = "create" }) {
     if (form.minBillAmount !== "" && (!Number.isFinite(Number(form.minBillAmount)) || Number(form.minBillAmount) < 0)) {
       return "Minimum bill amount must be 0 or more"
     }
+    if (form.usageLimit !== "" && (!Number.isInteger(Number(form.usageLimit)) || Number(form.usageLimit) < 1)) {
+      return "Usage limit must be at least 1"
+    }
+    if (form.perUserLimit !== "" && (!Number.isInteger(Number(form.perUserLimit)) || Number(form.perUserLimit) < 1)) {
+      return "Per user redeem limit must be at least 1"
+    }
     const todayStr = getTodayDateString()
     if (!isEditMode && form.startDate && form.startDate < todayStr) {
       return "Start date cannot be in the past"
@@ -128,6 +138,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
         discountValue: Number(form.discountValue),
         maxDiscount: isPercentage && form.maxDiscount !== "" ? Number(form.maxDiscount) : null,
         minBillAmount: form.minBillAmount !== "" ? Number(form.minBillAmount) : 0,
+        usageLimit: form.usageLimit !== "" ? Number(form.usageLimit) : null,
+        perUserLimit: form.perUserLimit !== "" ? Number(form.perUserLimit) : null,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
       }
@@ -209,6 +221,16 @@ export default function DiningOfferFormPage({ mode = "create" }) {
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Minimum Bill Amount</label>
                 <Input type="number" min="0" value={form.minBillAmount} onChange={(e) => setField("minBillAmount", e.target.value)} placeholder="e.g. 500" className="h-12" />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-800">Usage Limit (global)</label>
+                <Input type="number" min="1" value={form.usageLimit} onChange={(e) => setField("usageLimit", e.target.value)} placeholder="Leave empty for unlimited" className="h-12" />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-800">Per User Redeem Limit</label>
+                <Input type="number" min="1" value={form.perUserLimit} onChange={(e) => setField("perUserLimit", e.target.value)} placeholder="Leave empty for unlimited" className="h-12" />
               </div>
 
               <div>
