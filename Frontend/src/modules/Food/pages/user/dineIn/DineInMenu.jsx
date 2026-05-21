@@ -272,12 +272,22 @@ const DineInMenu = () => {
         return Number(cartSubtotal || 0);
     }, [sessionData, billPreview, cartSubtotal]);
 
-    const hasPlacedOrder = useMemo(() => {
-        const activeOrders = Array.isArray(sessionData?.orders)
-            ? sessionData.orders.filter((order) => String(order?.status || "").toLowerCase() !== "cancelled")
-            : [];
-        return activeOrders.length > 0 || runningPayableTotal > 0;
-    }, [sessionData, runningPayableTotal]);
+    const canViewBill = useMemo(() => {
+        const visibleBillStatuses = new Set(["preparing", "ready", "served"]);
+        const finalizedSessionStatuses = new Set(["bill_requested", "completed"]);
+        const activeOrders = Array.isArray(sessionData?.orders) ? sessionData.orders : [];
+
+        const hasAcceptedOrder = activeOrders.some((order) => {
+            const status = String(order?.status || "").toLowerCase();
+            return visibleBillStatuses.has(status);
+        });
+
+        return (
+            hasAcceptedOrder ||
+            finalizedSessionStatuses.has(String(sessionData?.status || "").toLowerCase()) ||
+            sessionData?.isBillFinalized === true
+        );
+    }, [sessionData]);
 
     const roundBillPreview = useMemo(() => {
         const currentSubtotal = Number(billPreview?.summary?.subtotal ?? sessionData?.subtotal ?? 0);
@@ -379,7 +389,7 @@ const DineInMenu = () => {
                                 <h3 className="text-3xl font-black">{RUPEE_SYMBOL}{runningPayableTotal}</h3>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                {hasPlacedOrder && (
+                                {canViewBill && (
                                     <Button 
                                         onClick={() => navigate(`/user/dine-in/bill?sessionId=${sessionId}`)}
                                         variant="ghost" 

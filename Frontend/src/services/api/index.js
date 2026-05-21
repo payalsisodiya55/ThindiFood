@@ -1276,6 +1276,7 @@ export const restaurantAPI = {
       const now = Date.now();
       const coupons = list
         .filter((o) => {
+          if (o?.showInCart === false) return false;
           // Guard: respect selected restaurant scope
           if (String(o?.restaurantScope) === "selected") {
             if (!restaurantId) return false;

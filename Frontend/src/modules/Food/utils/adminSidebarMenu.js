@@ -107,7 +107,7 @@ export const adminSidebarMenu = [
     items: [
       {
         type: "link",
-        label: "Restaurant Coupons & Offers",
+        label: "Restaurant Coupons",
         path: "/admin/food/coupons",
         icon: "Gift",
         permissionKey: "promotions",

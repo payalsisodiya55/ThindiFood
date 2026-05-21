@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { useState, useEffect, useMemo, useCallback, useRef } from "react"
 import { Eye, RefreshCw, Search, X } from "lucide-react"
 import { adminAPI } from "@food/api"
 const debugLog = (...args) => {}
@@ -7,6 +7,7 @@ const debugError = (...args) => {}
 
 
 export default function Coupons() {
+  const formSectionRef = useRef(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [offers, setOffers] = useState([])
   const [restaurants, setRestaurants] = useState([])
@@ -89,6 +90,12 @@ export default function Coupons() {
   useEffect(() => {
     fetchPendingRestaurantCoupons()
   }, [fetchPendingRestaurantCoupons])
+
+  useEffect(() => {
+    if (isAddOpen && editingOfferId && formSectionRef.current) {
+      formSectionRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
+    }
+  }, [isAddOpen, editingOfferId])
 
   useEffect(() => {
     const fetchRestaurants = async () => {
@@ -432,7 +439,7 @@ export default function Coupons() {
         {/* Header */}
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between mb-4">
-            <h1 className="text-2xl font-bold text-slate-900">Restaurant Offers & Coupons</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Restaurant Coupons</h1>
             <button
               type="button"
               onClick={() => {
@@ -451,6 +458,7 @@ export default function Coupons() {
 
           {isAddOpen && (
             <form
+              ref={formSectionRef}
               onSubmit={handleCreateCoupon}
               className="border border-slate-200 rounded-xl p-4 mb-5 bg-slate-50"
             >
@@ -679,7 +687,7 @@ export default function Coupons() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
               type="text"
-              placeholder="Search by restaurant name, dish name, or coupon code..."
+              placeholder="Search by restaurant name or coupon code..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -691,17 +699,17 @@ export default function Coupons() {
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-slate-900">
-              Offers List
+              Coupons List
             </h2>
             <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
-              {filteredOffers.length} {filteredOffers.length === 1 ? 'offer' : 'offers'}
+              {filteredOffers.length} {filteredOffers.length === 1 ? 'coupon' : 'coupons'}
             </span>
           </div>
 
           {loading ? (
             <div className="text-center py-20">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="text-sm text-slate-500 mt-4">Loading offers...</p>
+              <p className="text-sm text-slate-500 mt-4">Loading coupons...</p>
             </div>
           ) : error ? (
             <div className="text-center py-20">
@@ -710,9 +718,9 @@ export default function Coupons() {
             </div>
           ) : filteredOffers.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-lg font-semibold text-slate-700 mb-1">No Offers Found</p>
+              <p className="text-lg font-semibold text-slate-700 mb-1">No Coupons Found</p>
               <p className="text-sm text-slate-500">
-                {searchQuery ? "No offers match your search criteria" : "No offers have been created yet"}
+                {searchQuery ? "No coupons match your search criteria" : "No coupons have been created yet"}
               </p>
             </div>
           ) : (

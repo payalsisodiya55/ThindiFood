@@ -1,4 +1,4 @@
-import { confirmApp } from "@shared/lib/appDialog";import { useCallback, useEffect, useMemo, useState } from "react";
+import { confirmApp } from "@shared/lib/appDialog";import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Pencil, Plus, Search, Store, Trash2, XCircle } from "lucide-react";
 import { adminAPI } from "@food/api";
 import { toast } from "sonner";
@@ -55,6 +55,7 @@ export default function DiningOfferManagement() {
   const [rejectReasonById, setRejectReasonById] = useState({});
   const [formData, setFormData] = useState(initialForm);
   const isEditing = Boolean(editingOfferId);
+  const formRef = useRef(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -112,6 +113,9 @@ export default function DiningOfferManagement() {
       startDate: offer.startDate ? String(offer.startDate).slice(0, 10) : "",
       endDate: offer.endDate ? String(offer.endDate).slice(0, 10) : ""
     });
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
   };
 
   const handleSaveOffer = async () => {
@@ -241,7 +245,7 @@ export default function DiningOfferManagement() {
         <p className="text-sm text-slate-500 mt-1">Create platform-funded dining offers and review restaurant requests.</p>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div ref={formRef} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
         <div className="flex items-center gap-2">
           <Plus className="w-4 h-4 text-[#00c87e]" />
           <h2 className="text-base font-semibold text-slate-900">{isEditing ? "Edit Dining Offer" : "Create Platform Dining Offer"}</h2>
