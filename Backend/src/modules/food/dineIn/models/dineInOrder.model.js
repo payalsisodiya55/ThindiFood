@@ -24,6 +24,18 @@ const dineInOrderItemSchema = new mongoose.Schema(
             trim: true,
         },
 
+        itemType: {
+            type: String,
+            enum: ['food', 'addon'],
+            default: 'food',
+            trim: true,
+        },
+
+        isAddon: {
+            type: Boolean,
+            default: false,
+        },
+
         variantId: {
             type: String,
             default: '',

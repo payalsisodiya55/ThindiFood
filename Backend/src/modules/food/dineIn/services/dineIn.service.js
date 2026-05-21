@@ -78,6 +78,10 @@ const normalizeDineInOrderItems = (items = []) => {
         return {
             itemId,
             name,
+            itemType: String(item?.itemType || (item?.isAddon ? 'addon' : 'food')).trim().toLowerCase() === 'addon'
+                ? 'addon'
+                : 'food',
+            isAddon: Boolean(item?.isAddon) || String(item?.itemType || '').trim().toLowerCase() === 'addon',
             variantId: String(item?.variantId || item?.variant?._id || item?.variant?.id || '').trim(),
             variantName: String(item?.variantName || item?.variant?.name || '').trim(),
             variantPrice: Number.isFinite(Number(item?.variantPrice ?? item?.variant?.price))
@@ -639,7 +643,7 @@ export async function getSessionBill(sessionId) {
         if (order.status === 'cancelled') return;
 
         order.items.forEach(item => {
-            const key = String(item.itemId);
+            const key = `${String(item.itemType || 'food')}::${String(item.itemId)}`;
             if (itemMap[key]) {
                 itemMap[key].quantity += item.quantity;
                 itemMap[key].itemTotal += item.itemTotal;
@@ -647,6 +651,8 @@ export async function getSessionBill(sessionId) {
                 itemMap[key] = {
                     itemId: item.itemId,
                     name: item.name,
+                    itemType: item.itemType || 'food',
+                    isAddon: item.isAddon === true || String(item.itemType || '').toLowerCase() === 'addon',
                     price: item.price,
                     quantity: item.quantity,
                     itemTotal: item.itemTotal,

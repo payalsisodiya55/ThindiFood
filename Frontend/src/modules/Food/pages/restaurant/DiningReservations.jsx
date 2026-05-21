@@ -534,7 +534,6 @@ export default function DiningReservations() {
             <div className="mt-5 rounded-[26px] border border-slate-200 bg-slate-50/70 p-4 sm:p-5">
                 <div className="mb-4">
                     <div className="flex items-center gap-2 text-slate-900">
-                        <Sparkles className="h-4 w-4 text-emerald-500" />
                         <h3 className="text-base font-black">Dining categories</h3>
                     </div>
                     <p className="mt-1 text-xs font-medium text-slate-500">Choose one or multiple categories for this request.</p>

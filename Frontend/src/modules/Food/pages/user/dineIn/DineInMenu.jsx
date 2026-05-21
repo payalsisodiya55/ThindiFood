@@ -17,8 +17,6 @@ import { toast } from "sonner";
 
 const RUPEE_SYMBOL = "\u20B9";
 const formatMoney = (value) => Number(value || 0).toFixed(2);
-const roundStandard = (value) => Math.round((Number(value) || 0) + Number.EPSILON);
-
 const resolveRestaurantPayload = (response) =>
     response?.data?.data?.restaurant ||
     response?.data?.restaurant ||
@@ -53,6 +51,7 @@ const DineInMenu = () => {
     const [restaurantOfferPreview, setRestaurantOfferPreview] = useState(null);
     const [restaurant, setRestaurant] = useState(null);
     const [menuSections, setMenuSections] = useState([]);
+    const [addons, setAddons] = useState([]);
     
     // Draft Cart for the current round
     const [roundCart, setRoundCart] = useState({});
@@ -114,9 +113,10 @@ const DineInMenu = () => {
 
             // 2. Fetch Restaurant & Menu
             const rId = session.restaurantId._id || session.restaurantId;
-            const [rRes, mRes, billRes, offerRes] = await Promise.all([
+            const [rRes, mRes, aRes, billRes, offerRes] = await Promise.all([
                 restaurantAPI.getRestaurantById(rId),
                 restaurantAPI.getMenuByRestaurantId(rId),
+                restaurantAPI.getAddonsByRestaurantId(rId).catch(() => null),
                 dineInAPI.getSessionBill(sessionId).catch(() => null),
                 diningAPI.getRestaurantOverallOffer(rId).catch(() => null),
             ]);
@@ -128,6 +128,8 @@ const DineInMenu = () => {
                 const rawSections = mRes.data.data.menu?.sections || [];
                 setMenuSections(Array.isArray(rawSections) ? rawSections : Object.values(rawSections));
             }
+            const rawAddons = aRes?.data?.data?.addons || aRes?.data?.addons || [];
+            setAddons(Array.isArray(rawAddons) ? rawAddons : []);
             const summaryFromBill = billRes?.data?.success ? billRes?.data?.data?.summary : null;
             const appliedOfferFromBill = billRes?.data?.success ? billRes?.data?.data?.appliedOffer : null;
             setBillPreview({
@@ -167,7 +169,9 @@ const DineInMenu = () => {
                     price: item.price || item.featuredPrice || 0,
                     quantity: newQty,
                     isVeg: item.isVeg || item.foodType === 'Veg',
-                    itemTotal: (item.price || item.featuredPrice || 0) * newQty
+                    itemTotal: (item.price || item.featuredPrice || 0) * newQty,
+                    itemType: item.itemType || (item.isAddon ? "addon" : "food"),
+                    isAddon: Boolean(item.isAddon),
                 }
             };
         });
@@ -253,11 +257,20 @@ const DineInMenu = () => {
         }).filter(section => section.items.length > 0);
     }, [menuSections, searchQuery]);
 
+    const filteredAddons = useMemo(() => {
+        if (!Array.isArray(addons) || addons.length === 0) return [];
+        return addons.filter((addon) =>
+            String(addon?.name || "").toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [addons, searchQuery]);
+
     const runningPayableTotal = useMemo(() => {
-        const snapshotTotal = Number(sessionData?.billingSnapshot?.summary?.totalAmount || 0);
-        if (snapshotTotal > 0) return snapshotTotal;
-        return Number(sessionData?.totalAmount || 0);
-    }, [sessionData]);
+        const billedSubtotal = Number(billPreview?.summary?.subtotal ?? 0);
+        if (billedSubtotal > 0) return billedSubtotal + Number(cartSubtotal || 0);
+        const sessionSubtotal = Number(sessionData?.subtotal ?? 0);
+        if (sessionSubtotal > 0) return sessionSubtotal + Number(cartSubtotal || 0);
+        return Number(cartSubtotal || 0);
+    }, [sessionData, billPreview, cartSubtotal]);
 
     const hasPlacedOrder = useMemo(() => {
         const activeOrders = Array.isArray(sessionData?.orders)
@@ -267,56 +280,20 @@ const DineInMenu = () => {
     }, [sessionData, runningPayableTotal]);
 
     const roundBillPreview = useMemo(() => {
-        const snapshot = sessionData?.billingSnapshot || {};
-        const summary = snapshot?.summary || billPreview?.summary || {};
-        const appliedOffer = snapshot?.appliedOffer || billPreview?.appliedOffer || restaurantOfferPreview || null;
-
-        const currentSubtotal = Number(summary?.subtotal ?? sessionData?.subtotal ?? 0);
-        const currentPlatformFee = Number(summary?.platformFee ?? 0);
-        const currentTaxAmount = Number(summary?.taxAmount ?? sessionData?.taxAmount ?? 0);
-        const configuredGstRate = Number(summary?.gstRate ?? 0);
-        const inferredGstRate =
-            configuredGstRate > 0
-                ? configuredGstRate
-                : currentSubtotal > 0.009
-                    ? (currentTaxAmount / currentSubtotal) * 100
-                    : 5;
-
+        const currentSubtotal = Number(billPreview?.summary?.subtotal ?? sessionData?.subtotal ?? 0);
         const projectedSubtotal = currentSubtotal + Number(cartSubtotal || 0);
-        let projectedOfferDiscount = 0;
-
-        const minBillAmount = Number(appliedOffer?.minBillAmount || 0);
-        if (appliedOffer && projectedSubtotal >= minBillAmount) {
-            const discountType = String(appliedOffer?.discountType || "").toLowerCase();
-            const discountValue = Number(appliedOffer?.discountValue || 0);
-            if (discountType === "flat") {
-                projectedOfferDiscount = discountValue;
-            } else {
-                projectedOfferDiscount = (projectedSubtotal * discountValue) / 100;
-            }
-            const maxDiscount = Number(appliedOffer?.maxDiscount || 0);
-            if (maxDiscount > 0) {
-                projectedOfferDiscount = Math.min(projectedOfferDiscount, maxDiscount);
-            }
-            projectedOfferDiscount = Math.min(projectedOfferDiscount, projectedSubtotal);
-            projectedOfferDiscount = roundStandard(projectedOfferDiscount);
-        }
-
-        const projectedTaxAmount = Math.round((projectedSubtotal * inferredGstRate) / 100);
-        const projectedGrossTotal = Math.max(0, Number((projectedSubtotal + currentPlatformFee + projectedTaxAmount).toFixed(2)));
-        const projectedTotal = Math.max(
-            0,
-            Number((projectedSubtotal - projectedOfferDiscount + currentPlatformFee + projectedTaxAmount).toFixed(2))
-        );
 
         return {
-            subtotal: projectedSubtotal,
-            platformFee: currentPlatformFee,
-            taxAmount: projectedTaxAmount,
-            grossTotalAmount: projectedGrossTotal,
-            offerDiscount: projectedOfferDiscount,
-            totalAmount: projectedTotal,
-            offerTitle: String(appliedOffer?.title || "").trim(),
+            currentSubtotal,
+            roundTotal: Number(cartSubtotal || 0),
+            projectedSubtotal,
+            offerTitle:
+                String(
+                    sessionData?.billingSnapshot?.appliedOffer?.title ||
+                    billPreview?.appliedOffer?.title ||
+                    restaurantOfferPreview?.title ||
+                    ""
+                ).trim(),
         };
     }, [sessionData, billPreview, restaurantOfferPreview, cartSubtotal]);
 
@@ -398,7 +375,7 @@ const DineInMenu = () => {
                     <div className="bg-gradient-to-r from-[#00c87e] to-[#00b06f] rounded-[2rem] p-6 text-white shadow-xl shadow-green-100 mb-6">
                         <div className="flex justify-between items-start mb-4">
                             <div>
-                                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Running Total</p>
+                                <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest">Running Food Total</p>
                                 <h3 className="text-3xl font-black">{RUPEE_SYMBOL}{runningPayableTotal}</h3>
                             </div>
                             <div className="flex flex-col items-end gap-2">
@@ -423,18 +400,23 @@ const DineInMenu = () => {
                             </div>
                         </div>
                         <div className="flex items-center gap-2">
-                             <div className="h-1.5 flex-1 bg-white/20 rounded-full overflow-hidden">
-                                <motion.div 
-                                    className="h-full bg-white" 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: sessionData.status === 'completed' ? '100%' : '60%' }}
-                                />
-                             </div>
+                             {runningPayableTotal > 0 && (
+                                 <div className="h-1.5 flex-1 bg-white/20 rounded-full overflow-hidden">
+                                    <motion.div 
+                                        className="h-full bg-white" 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: sessionData.status === 'completed' ? '100%' : '60%' }}
+                                    />
+                                 </div>
+                             )}
                              <span className="text-[10px] font-bold uppercase tracking-wider">
                                 {sessionData.status === 'active' ? 'Dining Active' : sessionData.status}
                              </span>
-                        </div>
-                    </div>
+                         </div>
+                         <p className="text-[10px] font-semibold text-white/80 mt-3">
+                            Platform fee, GST, and dining offers will be applied only on the final bill.
+                         </p>
+                     </div>
 
                     {/* LIVE ORDER STATUS SECTION */}
                     {sessionData.orders?.length > 0 && (
@@ -563,6 +545,88 @@ const DineInMenu = () => {
                         </div>
                     </div>
                 ))}
+
+                {filteredAddons.length > 0 && (
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                            Add-ons
+                            <div className="h-px flex-1 bg-gray-100" />
+                        </h2>
+
+                        <div className="space-y-6">
+                            {filteredAddons.map((addon, idx) => {
+                                const addonKey = addon._id || addon.id || `addon-${idx}`;
+                                const qty = roundCart[addonKey]?.quantity || 0;
+                                const addonItem = {
+                                    ...addon,
+                                    _id: addonKey,
+                                    itemId: addonKey,
+                                    isVeg: true,
+                                    isAddon: true,
+                                    itemType: "addon",
+                                };
+
+                                return (
+                                    <div key={addonKey} className="flex gap-4">
+                                        <div className="flex-1 py-1">
+                                            <div className="mb-1">
+                                                <div className="inline-flex items-center gap-2">
+                                                    <div className="w-4 h-4 border-2 border-green-600 p-[2px] rounded-sm">
+                                                        <div className="w-full h-full bg-green-600 rounded-full" />
+                                                    </div>
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-[#00c87e]">
+                                                        Add-on
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <h3 className="text-base font-bold text-gray-900 mb-1">{addon.name}</h3>
+                                            <p className="text-lg font-black text-[#00c87e] mb-2">{RUPEE_SYMBOL}{addon.price}</p>
+                                            <p className="text-xs text-gray-500 line-clamp-2 pr-4">{addon.description}</p>
+                                        </div>
+
+                                        <div className="shrink-0 relative">
+                                            <div className="w-28 h-28 rounded-2xl overflow-hidden shadow-md ring-1 ring-gray-100">
+                                                <OptimizedImage
+                                                    src={addon.image || addon.images?.[0] || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200"}
+                                                    alt={addon.name}
+                                                    className="w-full h-full"
+                                                    objectFit="cover"
+                                                />
+                                            </div>
+
+                                            <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-[80%]">
+                                                {qty > 0 ? (
+                                                    <div className="bg-white border border-[#00c87e] shadow-lg rounded-xl flex items-center justify-between p-1">
+                                                        <button
+                                                            onClick={() => updateRoundCart(addonItem, -1)}
+                                                            className="p-1 text-[#00c87e] hover:bg-green-50 rounded-lg"
+                                                        >
+                                                            <Minus className="w-4 h-4" />
+                                                        </button>
+                                                        <span className="font-bold text-[#00c87e] text-sm">{qty}</span>
+                                                        <button
+                                                            onClick={() => updateRoundCart(addonItem, 1)}
+                                                            className="p-1 text-[#00c87e] hover:bg-green-50 rounded-lg"
+                                                        >
+                                                            <Plus className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <Button
+                                                        onClick={() => updateRoundCart(addonItem, 1)}
+                                                        className="w-full bg-white hover:bg-[#00c87e] hover:text-white border border-[#00c87e] text-[#00c87e] font-black text-xs py-2 shadow-lg rounded-xl uppercase tracking-wider transition-all"
+                                                    >
+                                                        Add
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Floating Action Button (FAB) for Cart */}
@@ -631,52 +695,26 @@ const DineInMenu = () => {
                                             <p className="font-black text-gray-900">{RUPEE_SYMBOL}{item.itemTotal}</p>
                                         </div>
                                     ))}
-                                    <div className="border-t border-gray-100 pt-4 space-y-2">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <p className="font-semibold text-gray-500">Round Total</p>
-                                            <p className="font-black text-gray-900">{RUPEE_SYMBOL}{formatMoney(cartSubtotal)}</p>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <p className="font-semibold text-gray-500">Current Payable</p>
-                                            <p className="font-black text-gray-900">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.totalAmount)}</p>
-                                        </div>
-                                    </div>
                                 </div>
 
                                 <div className="border border-gray-100 rounded-2xl p-4 mb-6">
                                     <p className="text-xs font-black uppercase tracking-widest text-gray-500 mb-3">
-                                        Bill Details (After Place Round)
+                                        Final Bill Note
                                     </p>
                                     <div className="space-y-2 text-sm">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-gray-600 font-medium">Item Total</span>
-                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.subtotal)}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-gray-600 font-medium">Platform Fee</span>
-                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.platformFee)}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-gray-600 font-medium">GST and Restaurant Charges</span>
-                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.taxAmount)}</span>
-                                        </div>
-                                        {roundBillPreview.offerDiscount > 0 && (
+                                        {roundBillPreview.currentSubtotal > 0 && (
                                             <div className="flex items-center justify-between">
-                                                <span className="text-[#00c87e] font-medium">
-                                                    {roundBillPreview.offerTitle || "Dining Offer"}
-                                                </span>
-                                                <span className="text-[#00c87e] font-bold">-{RUPEE_SYMBOL}{formatMoney(roundBillPreview.offerDiscount)}</span>
+                                                <span className="text-gray-600 font-medium">Current Session Food Total</span>
+                                                <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.currentSubtotal)}</span>
                                             </div>
                                         )}
-                                        {roundBillPreview.offerDiscount > 0 && (
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="text-gray-400 font-medium">Original bill total</span>
-                                                <span className="text-gray-500 font-semibold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.grossTotalAmount)}</span>
-                                            </div>
-                                        )}
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-gray-600 font-medium">This Round</span>
+                                            <span className="text-gray-900 font-bold">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.roundTotal)}</span>
+                                        </div>
                                         <div className="border-t border-gray-200 pt-2 flex items-center justify-between">
-                                            <span className="text-gray-900 font-black">To Pay</span>
-                                            <span className="text-gray-900 font-black">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.totalAmount)}</span>
+                                            <span className="text-gray-900 font-black">Food Total After Round</span>
+                                            <span className="text-gray-900 font-black">{RUPEE_SYMBOL}{formatMoney(roundBillPreview.projectedSubtotal)}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -684,7 +722,9 @@ const DineInMenu = () => {
                                 <div className="space-y-4 mb-10">
                                     <div className="p-4 bg-gray-50 rounded-2xl flex items-center gap-3">
                                         <Info className="w-5 h-5 text-gray-400" />
-                                        <p className="text-xs text-gray-500 font-medium">This is a draft. Once you place the order, it will be sent to the kitchen for preparation.</p>
+                                        <p className="text-xs text-gray-500 font-medium">
+                                            This is a draft. Once you place the order, it will be sent to the kitchen for preparation. Platform fee, GST, and any dining offer{roundBillPreview.offerTitle ? ` like ${roundBillPreview.offerTitle}` : ""} will be applied only on the final bill.
+                                        </p>
                                     </div>
                                 </div>
 

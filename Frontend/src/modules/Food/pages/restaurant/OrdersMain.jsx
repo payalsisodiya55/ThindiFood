@@ -2950,7 +2950,7 @@ export default function OrdersMain() {
     }
 
     handleCloseBookingPopup();
-    navigate("/food/restaurant", { state: { initialFilter: "table-booking" } });
+    navigate("/restaurant/reservations");
   };
 
   const handleDeclineBooking = async () => {

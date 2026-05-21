@@ -11,6 +11,38 @@ const formatRoundedCurrency = (amount) => {
   const n = Number(amount) || 0
   return Number(Math.round(n + Number.EPSILON)).toLocaleString('en-IN')
 }
+
+const getRestaurantItemAmount = (order) => {
+  const pricing = order?.pricing || {}
+  const candidates = [
+    pricing?.subtotal,
+    pricing?.itemsTotal,
+    pricing?.itemSubtotal,
+    order?.itemSubtotal,
+    order?.subtotal,
+    order?.commissionBaseAmount,
+    pricing?.commissionBaseAmount,
+    order?.restaurantGrossBeforeDiscount,
+  ]
+
+  for (const value of candidates) {
+    const amount = Number(value)
+    if (Number.isFinite(amount) && amount > 0) {
+      return amount
+    }
+  }
+
+  if (Array.isArray(order?.items)) {
+    return order.items.reduce((sum, item) => {
+      const price = Number(item?.price || 0)
+      const quantity = Number(item?.quantity || 1)
+      return sum + (Number.isFinite(price) ? price : 0) * (Number.isFinite(quantity) ? quantity : 1)
+    }, 0)
+  }
+
+  return 0
+}
+
 const formatCurrencyByOrder = (order, amount) =>
   order?.sourceModule === "dining"
     ? formatRoundedCurrency(amount)
@@ -189,7 +221,7 @@ export default function HubFinance() {
   const invoiceSummary = useMemo(() => {
     const earnings = invoiceOrders.reduce((sum, order) => sum + (order.payout || order.restaurantEarning || 0), 0)
     const commission = invoiceOrders.reduce((sum, order) => sum + (order.commission || 0), 0)
-    const gross = invoiceOrders.reduce((sum, order) => sum + (order.totalAmount || order.orderTotal || 0), 0)
+    const gross = invoiceOrders.reduce((sum, order) => sum + getRestaurantItemAmount(order), 0)
     return { earnings, commission, gross, count: invoiceOrders.length }
   }, [invoiceOrders])
 
@@ -1396,7 +1428,7 @@ export default function HubFinance() {
                                 </p>
                                 {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
                                   <p className="mt-0.5">
-                                    Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)} | GST: ₹{formatRoundedCurrency(order?.diningBreakdown?.gst || 0)}
+                                    Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)}{Number(order?.diningBreakdown?.gst || 0) > 0 && ` | GST: ₹${formatRoundedCurrency(order?.diningBreakdown?.gst)}`}
                                   </p>
                                 )}
                               </div>
@@ -1449,7 +1481,7 @@ export default function HubFinance() {
                                 </p>
                                 {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
                                   <p className="mt-0.5">
-                                    Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)} | GST: ₹{formatRoundedCurrency(order?.diningBreakdown?.gst || 0)}
+                                    Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)}{Number(order?.diningBreakdown?.gst || 0) > 0 && ` | GST: ₹${formatRoundedCurrency(order?.diningBreakdown?.gst)}`}
                                   </p>
                                 )}
                               </div>
@@ -1517,20 +1549,11 @@ export default function HubFinance() {
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-semibold text-gray-900">
-                            ₹{(order.totalAmount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₹{getRestaurantItemAmount(order).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                           <p className="text-xs text-gray-500">Total</p>
                         </div>
                       </div>
-                      {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
-                        <div className="mt-2 rounded-md border border-amber-100 bg-amber-50 p-2 text-[11px] text-amber-900">
-                          Dining deduction: ₹{formatRoundedCurrency(order?.diningBreakdown?.total || 0)}
-                          {" "}(
-                          commission ₹{formatRoundedCurrency(order?.diningBreakdown?.commission || 0)},
-                          {" "}fee ₹{formatRoundedCurrency(order?.diningBreakdown?.platformFee || 0)},
-                          {" "}GST ₹{formatRoundedCurrency(order?.diningBreakdown?.gst || 0)})
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>

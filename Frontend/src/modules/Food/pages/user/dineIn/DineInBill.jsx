@@ -312,7 +312,14 @@ const DineInBill = () => {
                                 {itemized.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-start text-sm">
                                         <div className="flex-1">
-                                            <p className="font-bold text-gray-800 leading-tight">{item.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-bold text-gray-800 leading-tight">{item.name}</p>
+                                                {item.isAddon && (
+                                                    <span className="px-2 py-0.5 rounded-full bg-green-50 text-[#00c87e] text-[10px] font-black uppercase tracking-wider">
+                                                        Add-on
+                                                    </span>
+                                                )}
+                                            </div>
                                             <p className="text-xs text-gray-400">Qty: {item.quantity}</p>
                                         </div>
                                         <p className="font-bold text-gray-900">{RUPEE_SYMBOL}{item.itemTotal}</p>
