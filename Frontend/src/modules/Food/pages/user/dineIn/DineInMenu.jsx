@@ -611,8 +611,6 @@ const DineInMenu = () => {
                             className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3rem] z-[101] max-h-[85vh] overflow-y-auto"
                         >
                             <div className="p-8">
-                                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
-                                
                                 <div className="flex items-center justify-between mb-8">
                                     <h3 className="text-2xl font-black text-gray-900">Review Round</h3>
                                     <button onClick={() => setShowCartDrawer(false)} className="p-2 bg-gray-100 rounded-full leading-none">

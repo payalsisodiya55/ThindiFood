@@ -583,9 +583,12 @@ export default function DiningCategory() {
                                 event.stopPropagation()
                                 navigate("/user/dine-in/scan")
                               }}
-                              className="inline-flex items-center gap-2 text-sm font-bold hover:opacity-80 text-blue-600"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 active:scale-95 transition-all shadow-sm"
                             >
-                              <BadgePercent className="h-4 w-4" />
+                              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                                <rect x="14" y="14" width="2" height="2"/><rect x="19" y="14" width="2" height="2"/><rect x="14" y="19" width="2" height="2"/><rect x="19" y="19" width="2" height="2"/>
+                              </svg>
                               <span>Scan QR</span>
                             </button>
                           )}

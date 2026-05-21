@@ -491,6 +491,30 @@ const transformDineInSessionForList = (session, tableLike = null) => {
   };
 };
 
+const getSessionBookingLinkKey = (sessionLike) => {
+  const rawBooking =
+    sessionLike?.bookingId?._id ||
+    sessionLike?.bookingId?.id ||
+    sessionLike?.bookingId?.bookingId ||
+    sessionLike?.bookingId ||
+    sessionLike?.reservationId ||
+    sessionLike?.tableBookingId ||
+    null;
+
+  return String(rawBooking || "").trim();
+};
+
+const hasAcceptedDineInRound = (sessionLike) => {
+  const latestRound = getDineInSessionLatestRound(sessionLike);
+  const latestStatus = String(latestRound?.status || "").trim().toLowerCase();
+  const itemCount = Array.isArray(latestRound?.items) ? latestRound.items.length : 0;
+
+  return (
+    itemCount > 0 &&
+    !["", "received", "created", "confirmed", "pending"].includes(latestStatus)
+  );
+};
+
 // Completed Orders List Component
 function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
   const [orders, setOrders] = useState([]);
@@ -1026,8 +1050,9 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0 }) {
 }
 
 // Table Bookings List Component
-function TableBookings() {
+function TableBookings({ onSelectOrder }) {
   const [bookings, setBookings] = useState([]);
+  const [linkedSessionMap, setLinkedSessionMap] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -1035,9 +1060,22 @@ function TableBookings() {
 
     const fetchBookings = async () => {
       try {
-        const response = await dineInAPI.getRestaurantBookings();
+        const [response, sessionsResponse] = await Promise.all([
+          dineInAPI.getRestaurantBookings(),
+          dineInAPI.getRestaurantSessions({ limit: 200 }).catch(() => null),
+        ]);
         if (isMounted && response?.data?.success) {
           setBookings(Array.isArray(response?.data?.data) ? response.data.data : []);
+          const sessions = Array.isArray(sessionsResponse?.data?.data)
+            ? sessionsResponse.data.data
+            : [];
+          const nextSessionMap = {};
+          sessions.forEach((session) => {
+            const key = getSessionBookingLinkKey(session);
+            if (!key) return;
+            nextSessionMap[key] = session;
+          });
+          setLinkedSessionMap(nextSessionMap);
           setLoading(false);
           return;
         }
@@ -1051,9 +1089,22 @@ function TableBookings() {
         const restaurant = res.data?.data?.restaurant || res.data?.restaurant || res.data?.data;
         const restaurantId = restaurant?._id || restaurant?.id;
         if (restaurantId) {
-          const fallbackResponse = await diningAPI.getRestaurantBookings(restaurant);
+          const [fallbackResponse, sessionsResponse] = await Promise.all([
+            diningAPI.getRestaurantBookings(restaurant),
+            dineInAPI.getRestaurantSessions({ limit: 200 }).catch(() => null),
+          ]);
           if (isMounted && fallbackResponse?.data?.success) {
             setBookings(Array.isArray(fallbackResponse?.data?.data) ? fallbackResponse.data.data : []);
+            const sessions = Array.isArray(sessionsResponse?.data?.data)
+              ? sessionsResponse.data.data
+              : [];
+            const nextSessionMap = {};
+            sessions.forEach((session) => {
+              const key = getSessionBookingLinkKey(session);
+              if (!key) return;
+              nextSessionMap[key] = session;
+            });
+            setLinkedSessionMap(nextSessionMap);
           }
         }
       } catch (error) {
@@ -1114,6 +1165,38 @@ function TableBookings() {
     }
   };
 
+  const handleManageBookingSession = (booking) => {
+    const bookingKey =
+      String(booking?._id || booking?.id || "").trim() ||
+      String(booking?.bookingId || "").trim();
+    const linkedSession =
+      linkedSessionMap[bookingKey] ||
+      linkedSessionMap[String(booking?.bookingId || "").trim()] ||
+      null;
+    if (!linkedSession || !hasAcceptedDineInRound(linkedSession)) return;
+
+    const transformed = transformDineInSessionForList(linkedSession, {
+      tableNumber: linkedSession?.tableNumber || booking?.tableNumber || "Table",
+      tableLabel:
+        linkedSession?.tableLabel ||
+        booking?.tableLabel ||
+        booking?.tableName ||
+        booking?.slotLabel ||
+        null,
+    });
+
+    if (!transformed) {
+      toast.error("Session details nahi mile");
+      return;
+    }
+
+    onSelectOrder?.({
+      ...transformed,
+      customerName: getBookingGuestName(booking) || transformed.customerName,
+      customerPhone: getBookingGuestPhone(booking) || transformed.customerPhone,
+    });
+  };
+
   if (loading)
     return (
       <div className="text-center py-10 text-gray-400">Loading bookings...</div>
@@ -1138,6 +1221,14 @@ function TableBookings() {
               className="bg-white rounded-2xl p-4 border border-gray-200 shadow-sm transition-all hover:border-gray-300">
               {(() => {
                 const statusMeta = getBookingStatusMeta(booking?.status);
+                const linkedSession =
+                  linkedSessionMap[String(booking?._id || booking?.id || "").trim()] ||
+                  linkedSessionMap[String(booking?.bookingId || "").trim()] ||
+                  null;
+                const canManageBooking =
+                  ["CHECKED_IN"].includes(String(booking?.status || "").toUpperCase()) &&
+                  linkedSession &&
+                  hasAcceptedDineInRound(linkedSession);
                 return (
                   <>
               <div className="flex justify-between items-start mb-3">
@@ -1149,10 +1240,22 @@ function TableBookings() {
                     {getBookingGuestPhone(booking) || "No phone"}
                   </p>
                 </div>
-                <span
-                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusMeta.className}`}>
-                  {statusMeta.label}
-                </span>
+                <div className="flex flex-col items-end gap-2">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusMeta.className}`}>
+                    {statusMeta.label}
+                  </span>
+                  {canManageBooking && (
+                    <button
+                      type="button"
+                      onClick={() => handleManageBookingSession(booking)}
+                      className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm"
+                    >
+                      Manage
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-4 text-[11px] text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
@@ -3234,7 +3337,7 @@ export default function OrdersMain() {
           />
         );
       case "table-booking":
-        return <TableBookings />;
+        return <TableBookings onSelectOrder={handleSelectOrder} />;
       case "cancelled":
         return (
           <CancelledOrders
@@ -4629,6 +4732,10 @@ function OrderCard({
     typeof onAssignBoy === "function";
   const canVerifyOtp =
     isReady && typeof onVerifyOtp === "function" && !isSelfDeliveryOrder;
+  const hasLiveDineInRound =
+    isDineIn &&
+    !["", "no items", "active session"].includes(String(itemsSummary || "").trim().toLowerCase()) &&
+    !["active", "received", "created", "confirmed", "pending"].includes(normalizedStatus);
   const phoneForCall = normalizePhoneForCall(customerPhone);
   const shouldShowCustomerContact =
     Boolean(customerName || phoneForCall) &&
@@ -4749,6 +4856,32 @@ function OrderCard({
         />
         {isActiveDineIn ? "DINE-IN ACTIVE" : statusLabel}
       </div>
+              {hasLiveDineInRound && typeof onSelect === "function" && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelect({
+                      orderId,
+                      mongoId,
+                      status,
+                      isDineIn,
+                      customerName,
+                      type,
+                      tableOrToken,
+                      timePlaced,
+                      eta,
+                      itemsSummary,
+                      paymentMethod,
+                      customerPhone,
+                    });
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  Manage
+                  <ChevronDown className="h-3 w-3" />
+                </button>
+              )}
               <span className="text-[11px] text-gray-500 text-right whitespace-normal break-words max-w-[120px] leading-tight">
                 {timePlaced}
               </span>
