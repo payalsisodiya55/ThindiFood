@@ -2883,8 +2883,8 @@ export async function submitOrderRatings(orderId, userId, dto) {
     userId: new mongoose.Types.ObjectId(userId),
   });
   if (!order) throw new NotFoundError("Order not found");
-  if (!["delivered", "delivered_self"].includes(String(order.orderStatus))) {
-    throw new ValidationError("You can rate only delivered orders");
+  if (!["delivered", "delivered_self", "completed", "picked_up", "picked_up_by_boy"].includes(String(order.orderStatus))) {
+    throw new ValidationError("You can rate only completed orders");
   }
 
   const restaurantAlreadyRated = Number.isFinite(

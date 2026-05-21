@@ -3153,6 +3153,8 @@ export const dineInAPI = {
   /** Restaurant staff marks the counter payment as done (cash/card received). */
   markCounterPaymentPaid: (sessionId) =>
     apiClient.post(`/food/dine-in/sessions/${sessionId}/mark-counter-paid`, {}, { contextModule: 'restaurant' }),
+  submitSessionReview: (sessionId, body = {}) =>
+    apiClient.patch(`/food/dine-in/sessions/${sessionId}/review`, body, { contextModule: 'user' }),
 };
 
 export const heroBannerAPI = createStubAPI();

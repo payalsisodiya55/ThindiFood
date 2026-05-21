@@ -273,3 +273,14 @@ export async function listRestaurantSessionsController(req, res, next) {
         next(error);
     }
 }
+
+export async function submitSessionReviewController(req, res, next) {
+    try {
+        const { id } = req.params;
+        const userId = req.user.userId || req.user.id;
+        const session = await dineInService.submitSessionReview(id, userId, req.body || {});
+        return sendResponse(res, 200, 'Dine-in review submitted successfully', session);
+    } catch (error) {
+        next(error);
+    }
+}

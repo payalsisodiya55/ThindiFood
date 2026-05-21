@@ -170,6 +170,23 @@ const tableSessionSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.Mixed,
             default: null,
         },
+        review: {
+            rating: {
+                type: Number,
+                min: 1,
+                max: 5,
+                default: null,
+            },
+            comment: {
+                type: String,
+                trim: true,
+                default: '',
+            },
+            ratedAt: {
+                type: Date,
+                default: null,
+            },
+        },
     },
     {
         collection: 'food_table_sessions',

@@ -21,6 +21,7 @@ import {
     requestCounterPaymentController,
     markCounterPaidController,
     listRestaurantSessionsController,
+    submitSessionReviewController,
 } from '../controllers/dineIn.controller.js';
 import {
     createBookingController,
@@ -59,6 +60,7 @@ router.post('/sessions/:id/cancel-empty', authMiddleware, requireRoles('USER'), 
 // Pay at Counter
 router.post('/sessions/:id/request-counter-payment', authMiddleware, requireRoles('USER'), requestCounterPaymentController);
 router.post('/sessions/:id/mark-counter-paid', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), markCounterPaidController);
+router.patch('/sessions/:id/review', authMiddleware, requireRoles('USER'), submitSessionReviewController);
 
 // Table Management
 router.post('/tables', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), addTableController);

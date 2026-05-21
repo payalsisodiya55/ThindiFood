@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
     ChevronLeft, Receipt, CreditCard, ChevronRight, 
     CheckCircle2, Loader2, AlertCircle, Clock, Wallet,
-    MapPin, ShieldCheck, Bell
+    MapPin, ShieldCheck, Bell, Star, X
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
 import { authAPI, dineInAPI } from "@food/api";
@@ -27,6 +27,10 @@ const DineInBill = () => {
     const [paying, setPaying] = useState(false);
     const [billData, setBillData] = useState(null);
     const [error, setError] = useState(null);
+    const [showReviewModal, setShowReviewModal] = useState(false);
+    const [selectedDiningRating, setSelectedDiningRating] = useState(null);
+    const [diningFeedbackText, setDiningFeedbackText] = useState("");
+    const [submittingReview, setSubmittingReview] = useState(false);
 
     // Pay at Counter states
     const [counterPaymentRequested, setCounterPaymentRequested] = useState(false);
@@ -52,13 +56,26 @@ const DineInBill = () => {
         };
     }, []);
 
-    const fetchBill = async () => {
+    const fetchBill = async ({ openReview = false, showSuccessState = false } = {}) => {
         try {
             setLoading(true);
             const res = await dineInAPI.getSessionBill(sessionId);
             if (res.data?.success) {
                 const data = res.data.data;
                 setBillData(data);
+                if (showSuccessState) {
+                    setCounterPaymentRequested(false);
+                }
+
+                const hasReview = Number.isFinite(Number(data?.review?.rating));
+                const isPaidAndCompleted =
+                    data?.isPaid === true &&
+                    String(data?.status || "").toLowerCase() === "completed";
+                if (openReview && isPaidAndCompleted && !hasReview) {
+                    setShowReviewModal(true);
+                    setSelectedDiningRating(null);
+                    setDiningFeedbackText("");
+                }
 
                 // Restore state if counter payment was already requested
                 const sessionData = res.data.data?.session || res.data.data;
@@ -137,7 +154,7 @@ const DineInBill = () => {
                         if (verifyRes?.data?.success) {
                             toast.success("Payment successful!");
                             localStorage.removeItem("activeDineInSessionId");
-                            navigate("/food/user/dining");
+                            await fetchBill({ openReview: true, showSuccessState: true });
                             return;
                         }
                         throw new Error(verifyRes?.data?.message || "Payment verification failed");
@@ -191,13 +208,17 @@ const DineInBill = () => {
             try {
                 const res = await dineInAPI.getSessionBill(sessionId);
                 const sessionData = res.data?.data?.session || res.data?.data;
-                if (sessionData?.paymentStatus === "PAID" || sessionData?.status === "closed") {
+                if (
+                    sessionData?.paymentStatus === "PAID" ||
+                    String(sessionData?.status || "").toLowerCase() === "completed" ||
+                    sessionData?.isPaid === true
+                ) {
                     clearInterval(pollIntervalRef.current);
                     clearInterval(countdownIntervalRef.current);
                     setCounterPaymentCompleted(true);
                     toast.success("Payment confirmed! Thank you for dining with us. 🎉");
                     localStorage.removeItem("activeDineInSessionId");
-                    setTimeout(() => navigate("/food/user/dining"), 3000);
+                    await fetchBill({ openReview: true, showSuccessState: true });
                 }
             } catch {
                 // Keep polling silently
@@ -229,6 +250,114 @@ const DineInBill = () => {
         const s = (seconds % 60).toString().padStart(2, "0");
         return `${m}:${s}`;
     };
+
+    const handleCloseReviewModal = () => {
+        setShowReviewModal(false);
+        setSelectedDiningRating(null);
+        setDiningFeedbackText("");
+        if (counterPaymentCompleted) {
+            navigate("/food/user/dining");
+        }
+    };
+
+    const handleSubmitDiningReview = async () => {
+        if (selectedDiningRating === null) {
+            toast.error("Please select rating first");
+            return;
+        }
+
+        try {
+            setSubmittingReview(true);
+            const res = await dineInAPI.submitSessionReview(sessionId, {
+                rating: selectedDiningRating,
+                comment: diningFeedbackText || undefined,
+            });
+            const updatedSession = res?.data?.data || {};
+            setBillData((prev) => ({
+                ...(prev || {}),
+                review: updatedSession?.review || {
+                    rating: selectedDiningRating,
+                    comment: diningFeedbackText || "",
+                },
+                restaurant: {
+                    ...(prev?.restaurant || {}),
+                    rating: Number(updatedSession?.restaurantId?.rating ?? prev?.restaurant?.rating ?? 0),
+                    totalRatings: Number(updatedSession?.restaurantId?.totalRatings ?? prev?.restaurant?.totalRatings ?? 0),
+                },
+            }));
+            toast.success("Thanks for rating your dining experience!");
+            handleCloseReviewModal();
+        } catch (err) {
+            toast.error(err?.response?.data?.message || "Failed to submit dining review");
+        } finally {
+            setSubmittingReview(false);
+        }
+    };
+
+    const renderReviewModal = () => (
+        showReviewModal ? (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+                <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl">
+                    <div className="bg-gradient-to-r from-[#00c87e] to-[#00b06f] px-6 py-5">
+                        <div className="mb-2 flex items-center justify-between">
+                            <h2 className="flex items-center gap-2 text-xl font-bold text-white">
+                                <Star className="h-5 w-5 fill-white" />
+                                Rate Your Dining
+                            </h2>
+                            <button type="button" onClick={handleCloseReviewModal} className="rounded-full p-1 text-white/80 hover:bg-white/20 hover:text-white">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <p className="text-sm text-white/90">{billData?.restaurant?.name || "Restaurant"}</p>
+                    </div>
+
+                    <div className="px-6 py-6">
+                        <p className="mb-3 text-sm font-semibold text-gray-900">Dining rating (out of 5)</p>
+                        <div className="mb-4 flex items-center justify-center gap-2">
+                            {Array.from({ length: 5 }, (_, index) => index + 1).map((num) => {
+                                const isActive = (selectedDiningRating || 0) >= num;
+                                return (
+                                    <button
+                                        key={`dining-review-${num}`}
+                                        type="button"
+                                        onClick={() => setSelectedDiningRating(num)}
+                                        className="p-2 transition-transform hover:scale-125 active:scale-95"
+                                    >
+                                        <Star className={`h-10 w-10 ${isActive ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <textarea
+                            rows={3}
+                            value={diningFeedbackText}
+                            onChange={(event) => setDiningFeedbackText(event.target.value)}
+                            className="w-full resize-none rounded-xl border-2 border-gray-200 px-4 py-3 text-sm text-gray-800 outline-none transition-all focus:border-[#00c87e] focus:ring-2 focus:ring-[#00c87e]/20"
+                            placeholder="Dining feedback (optional)"
+                        />
+                        <button
+                            type="button"
+                            disabled={submittingReview || selectedDiningRating === null}
+                            onClick={handleSubmitDiningReview}
+                            className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#00c87e] to-[#00b06f] py-3.5 text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {submittingReview ? (
+                                <>
+                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                    Submitting...
+                                </>
+                            ) : (
+                                <>
+                                    <Star className="h-5 w-5 fill-white" />
+                                    Submit Dining Rating
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        ) : null
+    );
 
     // ─── Render states ───────────────────────────────────────────────────────
     if (loading) return (
@@ -262,12 +391,22 @@ const DineInBill = () => {
                     </div>
                     <h1 className="text-3xl font-black text-gray-900 mb-2">Payment Successful!</h1>
                     <p className="text-gray-500 font-medium mb-1">Thank you for dining with us 🙏</p>
-                    <p className="text-sm text-gray-400">Your session has been closed. Redirecting...</p>
+                    <p className="text-sm text-gray-400">Your session has been closed successfully.</p>
                     <div className="mt-8 bg-green-50 rounded-2xl p-4 text-left">
                         <p className="text-[11px] font-bold text-green-700 uppercase tracking-wider">Amount Paid</p>
                         <p className="text-3xl font-black text-green-700 mt-1">{RUPEE_SYMBOL}{summary.totalAmount}</p>
                     </div>
+                    {!showReviewModal && (
+                        <button
+                            type="button"
+                            onClick={() => navigate("/food/user/dining")}
+                            className="mt-6 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-bold text-white"
+                        >
+                            Continue
+                        </button>
+                    )}
                 </motion.div>
+                {renderReviewModal()}
             </AnimatedPage>
         );
     }
@@ -492,6 +631,7 @@ const DineInBill = () => {
                     </div>
                 </div>
             )}
+            {renderReviewModal()}
         </AnimatedPage>
     );
 };

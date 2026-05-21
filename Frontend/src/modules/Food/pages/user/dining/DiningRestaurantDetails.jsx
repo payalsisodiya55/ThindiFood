@@ -15,6 +15,7 @@ import {
   Percent,
   Share2,
   Ticket,
+  UtensilsCrossed,
   X,
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
@@ -519,6 +520,10 @@ export default function DiningRestaurantDetails() {
                 <div className="flex items-center justify-center gap-1 text-[31px] font-black leading-none">
                   <span>{rating}</span>
                   <span className="text-[18px] text-[#18b54f]">★</span>
+                </div>
+                <div className="mt-1 flex items-center justify-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-[#18b54f]">
+                  <UtensilsCrossed className="h-3 w-3" />
+                  Dining
                 </div>
                 <p className="mt-1 text-[13px] leading-4 text-[#6e7481] dark:text-[#a0a5b1]">{reviewCount} Reviews</p>
               </div>

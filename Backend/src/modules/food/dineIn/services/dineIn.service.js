@@ -6,6 +6,7 @@ import { FoodDineInOrder } from '../models/dineInOrder.model.js';
 import { FoodTableBooking } from '../models/tableBooking.model.js';
 import { FoodDiningRestaurantCommission } from '../../admin/models/diningRestaurantCommission.model.js';
 import { FoodDiningFeeSettings } from '../../admin/models/diningFeeSettings.model.js';
+import { applyAggregateRating } from '../../orders/services/order.helpers.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { findAcceptedBooking, linkBookingToSession } from './tableBooking.service.js';
 import { consumeDiningOfferUsage, getBestApplicableDiningOffer, getDisplayDiningOfferForRestaurant } from './diningOffer.service.js';
@@ -135,7 +136,7 @@ const buildBillingSnapshot = async (session, options = {}) => {
     const platformFee = roundStandard(feeSettings?.platformFee || 0);
     const grossTotalAmount = roundMoney(subtotal + platformFee + taxAmount);
     const applicableOffer = await getBestApplicableDiningOffer({
-        restaurantId: session.restaurantId,
+        restaurantId: session.restaurantId?._id || session.restaurantId,
         subtotal,
         userId: session?.userId || null,
         excludeOfferIds: options?.excludeOfferIds || [],
@@ -458,6 +459,7 @@ export async function getSessionById(sessionId) {
     }
 
     const session = await FoodTableSession.findById(sessionId)
+        .populate('restaurantId', 'restaurantName profileImage rating totalRatings')
         .populate({
             path: 'orders',
             populate: {
@@ -639,7 +641,10 @@ async function recalculateSessionTotal(sessionId) {
  * Get final aggregated bill for a session.
  */
 export async function getSessionBill(sessionId) {
-    const session = await FoodTableSession.findById(sessionId).populate('orders').lean();
+    const session = await FoodTableSession.findById(sessionId)
+        .populate('orders')
+        .populate('restaurantId', 'restaurantName profileImage rating totalRatings')
+        .lean();
     if (!session) throw new Error('Session not found');
 
     // Itemized aggregation
@@ -676,6 +681,15 @@ export async function getSessionBill(sessionId) {
     return {
         sessionId: session._id,
         restaurantId: session.restaurantId,
+        restaurant: session?.restaurantId
+            ? {
+                  id: session.restaurantId?._id || session.restaurantId?.id || null,
+                  name: session.restaurantId?.restaurantName || 'Restaurant',
+                  image: session.restaurantId?.profileImage?.url || session.restaurantId?.profileImage || '',
+                  rating: Number(session.restaurantId?.rating || 0),
+                  totalRatings: Number(session.restaurantId?.totalRatings || 0),
+              }
+            : null,
         tableNumber: session.tableNumber,
         itemized: Object.values(itemMap),
         summary: billingSnapshot.summary,
@@ -710,11 +724,57 @@ export async function getSessionBill(sessionId) {
               },
         status: session.status,
         isPaid: session.isPaid,
+        review: session.review || null,
         paymentMode: session.paymentMode || '',
         paymentStatus: session.paymentStatus || '',
         paymentRequestedAt: session.paymentRequestedAt || null,
         isBillFinalized: session.isBillFinalized === true
     };
+}
+
+export async function submitSessionReview(sessionId, userId, dto = {}) {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid Session ID', 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(String(userId || ''))) {
+        throw createHttpError('Invalid User ID', 400);
+    }
+
+    const session = await FoodTableSession.findOne({
+        _id: new mongoose.Types.ObjectId(String(sessionId)),
+        userId: new mongoose.Types.ObjectId(String(userId)),
+    });
+
+    if (!session) {
+        throw createHttpError('Session not found', 404);
+    }
+
+    if (session.isPaid !== true || String(session.status || '').toLowerCase() !== 'completed') {
+        throw createHttpError('You can review only paid completed dine-in sessions', 400);
+    }
+
+    if (Number.isFinite(Number(session?.review?.rating))) {
+        throw createHttpError('Review already submitted for this dine-in session', 409);
+    }
+
+    const rating = Number(dto?.rating);
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
+        throw createHttpError('Valid rating between 1 and 5 is required', 400);
+    }
+
+    session.review = {
+        rating,
+        comment: String(dto?.comment || '').trim(),
+        ratedAt: new Date(),
+    };
+
+    await applyAggregateRating(FoodRestaurant, session.restaurantId, rating);
+    await session.save();
+
+    return FoodTableSession.findById(session._id)
+        .populate('restaurantId', 'restaurantName profileImage rating totalRatings')
+        .lean();
 }
 
 /**
@@ -1368,6 +1428,7 @@ export async function listRestaurantSessions(restaurantId, filters = {}) {
     const limit = Math.min(Math.max(Number(filters?.limit) || 50, 1), 200);
 
     return FoodTableSession.find(query)
+        .populate('restaurantId', 'restaurantName profileImage rating totalRatings')
         .populate({
             path: 'orders',
             populate: {

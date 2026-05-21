@@ -1037,15 +1037,21 @@ export default function Dining() {
                                 </motion.h3>
                               </div>
                               <motion.div
-                                className="flex-shrink-0 bg-green-600 text-white px-2 py-1 rounded-lg flex items-center gap-1"
+                                className="flex-shrink-0 rounded-lg bg-green-600 px-2 py-1 text-white"
                                 variants={{
                                   rest: { scale: 1, rotate: 0 },
                                   hover: { scale: 1.1, rotate: 5 }
                                 }}
                                 transition={{ duration: 0.3, type: "spring", stiffness: 400 }}
                               >
-                                <span className="text-sm font-bold">{restaurant.rating}</span>
-                                <Star className="h-3 w-3 fill-white text-white" />
+                                <div className="flex items-center gap-1">
+                                  <span className="text-sm font-bold">{restaurant.rating.toFixed(1)}</span>
+                                  <Star className="h-3 w-3 fill-white text-white" />
+                                </div>
+                                <div className="mt-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-white/90">
+                                  <UtensilsCrossed className="h-2.5 w-2.5" />
+                                  Dining
+                                </div>
                               </motion.div>
                             </div>
 
@@ -1255,9 +1261,15 @@ export default function Dining() {
                                 {restaurant.name}
                               </h3>
                             </div>
-                            <div className="flex-shrink-0 bg-green-600 text-white px-2 py-1 rounded-lg flex items-center gap-1">
-                              <span className="text-sm font-bold">{restaurant.rating}</span>
-                              <Star className="h-3 w-3 fill-white text-white" />
+                            <div className="flex-shrink-0 rounded-lg bg-green-600 px-2 py-1 text-white">
+                              <div className="flex items-center gap-1">
+                                <span className="text-sm font-bold">{restaurant.rating.toFixed(1)}</span>
+                                <Star className="h-3 w-3 fill-white text-white" />
+                              </div>
+                              <div className="mt-0.5 flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-white/90">
+                                <UtensilsCrossed className="h-2.5 w-2.5" />
+                                Dining
+                              </div>
                             </div>
                           </div>
 
