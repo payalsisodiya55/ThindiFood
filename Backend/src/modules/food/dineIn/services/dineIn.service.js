@@ -810,7 +810,7 @@ export async function submitSessionReview(sessionId, userId, dto = {}) {
         throw createHttpError('You can review only paid completed dine-in sessions', 400);
     }
 
-    if (Number.isFinite(Number(session?.review?.rating))) {
+    if (session?.review?.rating != null && Number.isFinite(Number(session.review.rating)) && Number(session.review.rating) >= 1) {
         throw createHttpError('Review already submitted for this dine-in session', 409);
     }
 

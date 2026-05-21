@@ -126,22 +126,15 @@ const DineInBill = () => {
                     setCounterPaymentRequested(false);
                 }
 
-                const hasReview = Number.isFinite(Number(data?.review?.rating));
+                const hasReview = data?.review?.rating != null && Number.isFinite(Number(data.review.rating)) && Number(data.review.rating) >= 1;
                 const isPaidAndCompleted =
                     data?.isPaid === true &&
                     String(data?.status || "").toLowerCase() === "completed";
                 const shouldRequestReview = isPaidAndCompleted && !hasReview;
-                const shouldOpenReviewHere =
-                    shouldRequestReview &&
-                    (openReview || String(data?.paymentStatus || "").toUpperCase() === "PAID");
-                if (!shouldOpenReviewHere && shouldRequestReview && !hasDiningReviewPromptShown(sessionId)) {
+                // Always defer the rating popup to GlobalReviewPrompt so the
+                // Payment Successful screen can be seen first without interruption.
+                if (shouldRequestReview && !hasDiningReviewPromptShown(sessionId)) {
                     rememberPendingDiningReview(sessionId);
-                }
-                if (shouldOpenReviewHere) {
-                    markDiningReviewPromptShown(sessionId);
-                    setShowReviewModal(true);
-                    setSelectedDiningRating(null);
-                    setDiningFeedbackText("");
                 }
 
                 // Restore state if counter payment was already requested
@@ -222,7 +215,7 @@ const DineInBill = () => {
                             toast.success("Payment successful!");
                             rememberPendingDiningReview(sessionId);
                             localStorage.removeItem("activeDineInSessionId");
-                            await fetchBill({ openReview: true, showSuccessState: true });
+                            await fetchBill({ showSuccessState: true });
                             return;
                         }
                         throw new Error(verifyRes?.data?.message || "Payment verification failed");
@@ -287,7 +280,7 @@ const DineInBill = () => {
                     toast.success("Payment confirmed! Thank you for dining with us. 🎉");
                     rememberPendingDiningReview(sessionId);
                     localStorage.removeItem("activeDineInSessionId");
-                    await fetchBill({ openReview: true, showSuccessState: true });
+                    await fetchBill({ showSuccessState: true });
                 }
             } catch {
                 // Keep polling silently
@@ -324,9 +317,6 @@ const DineInBill = () => {
         setShowReviewModal(false);
         setSelectedDiningRating(null);
         setDiningFeedbackText("");
-        if (counterPaymentCompleted) {
-            navigate("/food/user/dining");
-        }
     };
 
     const handleSubmitDiningReview = async () => {
@@ -359,7 +349,16 @@ const DineInBill = () => {
             markDiningReviewPromptShown(sessionId);
             handleCloseReviewModal();
         } catch (err) {
-            toast.error(err?.response?.data?.message || "Failed to submit dining review");
+            const statusCode = err?.response?.status;
+            if (statusCode === 409) {
+                // Review already submitted — close modal gracefully
+                toast.success("Your dining review is already recorded!");
+                removePendingDiningReview(sessionId);
+                markDiningReviewPromptShown(sessionId);
+                handleCloseReviewModal();
+            } else {
+                toast.error(err?.response?.data?.message || "Failed to submit dining review");
+            }
         } finally {
             setSubmittingReview(false);
         }

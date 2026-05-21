@@ -210,6 +210,11 @@ export default function GlobalReviewPrompt() {
     const checkPendingReviews = async () => {
       if (orderReviewState.open || diningReviewState.open) return
 
+      // Don't show dining review popup while user is on the dine-in bill page
+      // (let them see the Payment Successful screen first)
+      const currentPath = window.location.pathname || ""
+      if (currentPath.includes("dine-in/bill")) return
+
       try {
         const diningSessionIds = getDiningReviewSessionCandidates()
         for (const sessionId of diningSessionIds) {
@@ -221,7 +226,7 @@ export default function GlobalReviewPrompt() {
           try {
             const sessionResponse = await dineInAPI.getSessionBill(sessionId)
             const sessionData = sessionResponse?.data?.data || {}
-            const hasDiningReview = Number.isFinite(Number(sessionData?.review?.rating))
+            const hasDiningReview = sessionData?.review?.rating != null && Number.isFinite(Number(sessionData.review.rating)) && Number(sessionData.review.rating) >= 1
             const isDiningCompleted =
               sessionData?.isPaid === true &&
               String(sessionData?.status || "").toLowerCase() === "completed"
