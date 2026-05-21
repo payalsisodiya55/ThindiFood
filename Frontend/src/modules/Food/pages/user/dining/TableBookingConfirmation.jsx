@@ -74,6 +74,16 @@ export default function TableBookingConfirmation() {
     const [bookingInProgress, setBookingInProgress] = useState(false)
     const [requiresLogin, setRequiresLogin] = useState(() => !isModuleAuthenticated("user"))
 
+    // Edit details state
+    const [isEditDetailsOpen, setIsEditDetailsOpen] = useState(false)
+    const [editName, setEditName] = useState("")
+    const [editPhone, setEditPhone] = useState("")
+    const [editErrors, setEditErrors] = useState({})
+    const [overrideName, setOverrideName] = useState("")
+    const [overridePhone, setOverridePhone] = useState("")
+    const displayGuestName = overrideName || user?.name || "Guest"
+    const displayGuestPhone = overridePhone || user?.phone || user?.email || "Phone not available"
+
     const isAuthError = (error) => {
         const status = Number(error?.response?.status || 0)
         if (status === 401 || status === 403) return true
@@ -155,6 +165,8 @@ export default function TableBookingConfirmation() {
                 restaurant: restaurantId,
                 restaurantRef: restaurant,
                 userRef: user,
+                guestName: overrideName || undefined,
+                guestPhone: overridePhone || undefined,
                 guests,
                 date,
                 timeSlot,
@@ -220,6 +232,43 @@ export default function TableBookingConfirmation() {
         setIsSpecialRequestOpen(false)
     }
 
+
+    const openEditDetails = () => {
+        setEditName(overrideName || user?.name || "")
+        setEditPhone(overridePhone || user?.phone || "")
+        setEditErrors({})
+        setIsEditDetailsOpen(true)
+    }
+
+    const validateEditDetails = () => {
+        const errors = {}
+        const name = editName.trim()
+        const phone = editPhone.trim()
+        if (!name) {
+            errors.name = "Name is required"
+        } else if (name.length < 2) {
+            errors.name = "Name must be at least 2 characters"
+        } else if (!/^[a-zA-Z\s]+$/.test(name)) {
+            errors.name = "Name can only contain letters and spaces"
+        }
+        if (!phone) {
+            errors.phone = "Phone number is required"
+        } else if (!/^[6-9]\d{9}$/.test(phone)) {
+            errors.phone = "Enter a valid 10-digit Indian mobile number"
+        }
+        return errors
+    }
+
+    const saveEditDetails = () => {
+        const errors = validateEditDetails()
+        if (Object.keys(errors).length > 0) {
+            setEditErrors(errors)
+            return
+        }
+        setOverrideName(editName.trim())
+        setOverridePhone(editPhone.trim())
+        setIsEditDetailsOpen(false)
+    }
 
     const bookingDate = new Date(date)
     const formattedDate = Number.isNaN(bookingDate.getTime())
@@ -340,10 +389,10 @@ export default function TableBookingConfirmation() {
 
                         <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-[#222222] flex items-center justify-between">
                             <div>
-                                <p className="font-bold text-gray-900 dark:text-white">{user?.name || "Shailu"}</p>
-                                <p className="text-sm text-slate-400 dark:text-[#a0a5b8] mt-1">{user?.phone || user?.email || "8090512291"}</p>
+                                <p className="font-bold text-gray-900 dark:text-white">{displayGuestName}</p>
+                                <p className="text-sm text-slate-400 dark:text-[#a0a5b8] mt-1">{displayGuestPhone}</p>
                             </div>
-                            <button className="text-sm font-bold hover:underline" style={{ color: RED }}>Edit</button>
+                            <button onClick={openEditDetails} className="text-sm font-bold hover:underline" style={{ color: RED }}>Edit</button>
                         </div>
                     </div>
 
@@ -454,6 +503,80 @@ export default function TableBookingConfirmation() {
                                 style={{ backgroundColor: RED }}
                             >
                                 Save Request
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Edit Details Modal */}
+            {isEditDetailsOpen && (
+                <div className="fixed inset-0 z-[100] flex items-end justify-center">
+                    <div
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm"
+                        style={{ animation: 'fadeIn 0.3s ease-out forwards' }}
+                        onClick={() => setIsEditDetailsOpen(false)}
+                    />
+                    <div
+                        className="relative w-full max-w-lg rounded-t-[32px] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_-20px_50px_rgba(0,0,0,0.3)] z-10"
+                        style={{
+                            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                            paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))'
+                        }}
+                    >
+                        <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-slate-100 dark:bg-[#333333]" />
+
+                        <div className="mb-6">
+                            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Edit Your Details</h3>
+                            <p className="mt-1 text-sm text-slate-500 dark:text-[#a0a5b8] font-medium">This name will be used for your booking at the restaurant</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-[#a0a5b8] uppercase tracking-wider mb-1.5">Name</label>
+                                <input
+                                    type="text"
+                                    value={editName}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/[^a-zA-Z\s]/g, "").slice(0, 50)
+                                        setEditName(val)
+                                        if (editErrors.name) setEditErrors((prev) => ({ ...prev, name: "" }))
+                                    }}
+                                    placeholder="Enter your name"
+                                    className={`w-full rounded-2xl border bg-slate-50 dark:bg-[#252525] p-4 text-slate-800 dark:text-white outline-none transition-all text-base shadow-inner ${editErrors.name ? "border-red-400 focus:border-red-400" : "border-slate-100 dark:border-[#222222] focus:border-red-400 focus:bg-white dark:focus:bg-[#1a1a1a]"}`}
+                                />
+                                {editErrors.name && <p className="mt-1.5 text-xs text-red-500 font-medium">{editErrors.name}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 dark:text-[#a0a5b8] uppercase tracking-wider mb-1.5">Phone Number</label>
+                                <input
+                                    type="tel"
+                                    value={editPhone}
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, "").slice(0, 10)
+                                        setEditPhone(val)
+                                        if (editErrors.phone) setEditErrors((prev) => ({ ...prev, phone: "" }))
+                                    }}
+                                    placeholder="10-digit mobile number"
+                                    className={`w-full rounded-2xl border bg-slate-50 dark:bg-[#252525] p-4 text-slate-800 dark:text-white outline-none transition-all text-base shadow-inner ${editErrors.phone ? "border-red-400 focus:border-red-400" : "border-slate-100 dark:border-[#222222] focus:border-red-400 focus:bg-white dark:focus:bg-[#1a1a1a]"}`}
+                                />
+                                {editErrors.phone && <p className="mt-1.5 text-xs text-red-500 font-medium">{editErrors.phone}</p>}
+                            </div>
+                        </div>
+
+                        <div className="mt-8 grid grid-cols-2 gap-4">
+                            <Button
+                                onClick={() => setIsEditDetailsOpen(false)}
+                                variant="outline"
+                                className="h-14 rounded-2xl font-bold text-slate-600 dark:text-[#a0a0a0] border-slate-200 dark:border-[#333333] hover:bg-slate-50 dark:hover:bg-[#222222] active:scale-95 transition-all"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={saveEditDetails}
+                                className="h-14 rounded-2xl font-bold text-white shadow-lg shadow-red-100 active:scale-95 transition-all"
+                                style={{ backgroundColor: RED }}
+                            >
+                                Save
                             </Button>
                         </div>
                     </div>

@@ -185,17 +185,18 @@ const hydrateBookingGuest = (booking) => {
 
     const name =
         String(
-            populated?.name ||
-            snapshot?.name ||
             booking?.customerName ||
+            snapshot?.name ||
+            populated?.name ||
             '',
         ).trim();
     const phone =
         String(
-            populated?.phone ||
-            snapshot?.phone ||
+            booking?.customerPhone ||
             booking?.phone ||
             booking?.phoneNumber ||
+            snapshot?.phone ||
+            populated?.phone ||
             '',
         ).trim();
     const email = String(populated?.email || snapshot?.email || '').trim();
@@ -312,11 +313,14 @@ export async function createTableBooking(userId, body = {}) {
         const bodyUser = toSafeUserRef(body.userRef);
         const dbUser = toSafeUserRef(trustedUser);
         if (!bodyUser && !dbUser) return null;
+        // If caller explicitly provides a name/phone override, prefer it over DB value
+        const overrideName = String(body.guestName || '').trim();
+        const overridePhone = String(body.guestPhone || '').trim();
         return {
             _id: dbUser?._id || bodyUser?._id || userId || null,
             id: dbUser?._id || bodyUser?.id || userId || null,
-            name: String(dbUser?.name || bodyUser?.name || '').trim(),
-            phone: String(dbUser?.phone || bodyUser?.phone || '').trim(),
+            name: String(overrideName || dbUser?.name || bodyUser?.name || '').trim(),
+            phone: String(overridePhone || dbUser?.phone || bodyUser?.phone || '').trim(),
             email: String(dbUser?.email || bodyUser?.email || '').trim(),
         };
     })();

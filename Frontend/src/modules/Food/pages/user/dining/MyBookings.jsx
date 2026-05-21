@@ -44,6 +44,24 @@ const getRestaurantAddress = (booking) =>
         ? booking.restaurant.location
         : (booking.restaurant?.location?.formattedAddress || booking.restaurant?.location?.address || `${booking.restaurant?.location?.city || ""}${booking.restaurant?.location?.area ? ", " + booking.restaurant.location.area : ""}`)
 
+const getBookingGuestName = (booking) =>
+    String(
+        booking?.customerName ||
+        booking?.user?.name ||
+        booking?.userRef?.name ||
+        ""
+    ).trim() || "Guest"
+
+const getBookingGuestPhone = (booking) =>
+    String(
+        booking?.customerPhone ||
+        booking?.phone ||
+        booking?.phoneNumber ||
+        booking?.user?.phone ||
+        booking?.userRef?.phone ||
+        ""
+    ).trim()
+
 const getReservationDateTime = (booking) => {
     const baseDate = new Date(booking?.date)
     if (Number.isNaN(baseDate.getTime())) return null
@@ -155,6 +173,8 @@ function ReviewModal({ booking, onClose, onSubmit }) {
 function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
     const cancellationPreview = useMemo(() => getCancellationPreview(booking), [booking])
     const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(normalizeStatus(booking?.status))
+    const guestName = getBookingGuestName(booking)
+    const guestPhone = getBookingGuestPhone(booking)
 
     return (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -198,6 +218,12 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#808080]">Special Request</p>
                             <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{booking.specialRequest || "No special request"}</p>
                         </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-slate-100 dark:border-[#222222] p-4">
+                        <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8]">Booked by</p>
+                        <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{guestName}</p>
+                        <p className="mt-1 text-sm text-slate-600 dark:text-[#a0a5b8]">{guestPhone || "Phone not available"}</p>
                     </div>
 
                     <div className="rounded-2xl border border-slate-100 dark:border-[#222222] p-4">

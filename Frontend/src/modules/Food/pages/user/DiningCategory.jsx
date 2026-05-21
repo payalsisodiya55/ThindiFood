@@ -84,11 +84,31 @@ const getStatusBadgeClass = (status) => {
   return "bg-slate-100 text-slate-700"
 }
 
+const getBookingGuestName = (booking) =>
+  String(
+    booking?.customerName ||
+    booking?.user?.name ||
+    booking?.userRef?.name ||
+    ""
+  ).trim() || "Guest"
+
+const getBookingGuestPhone = (booking) =>
+  String(
+    booking?.customerPhone ||
+    booking?.phone ||
+    booking?.phoneNumber ||
+    booking?.user?.phone ||
+    booking?.userRef?.phone ||
+    ""
+  ).trim()
+
 function BookingDetailsModal({ booking, onClose, onCancel }) {
   const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(String(booking?.status || "").toUpperCase())
   const rawRest = booking.restaurantId && typeof booking.restaurantId === 'object' ? booking.restaurantId : (booking.restaurantRef || booking.restaurant || {})
   const restaurantName = rawRest.restaurantName || rawRest.name || "Restaurant"
   const restaurantAddress = formatAddress(rawRest)
+  const guestName = getBookingGuestName(booking)
+  const guestPhone = getBookingGuestPhone(booking)
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center">
@@ -132,6 +152,12 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Special Request</p>
               <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white truncate">{booking.specialRequest || "No special request"}</p>
             </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-100 p-4 dark:border-gray-800">
+            <p className="text-sm font-semibold text-slate-500">Booked by</p>
+            <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{guestName}</p>
+            <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">{guestPhone || "Phone not available"}</p>
           </div>
 
           <div className="rounded-2xl border border-slate-100 p-4 dark:border-gray-800">
