@@ -295,42 +295,63 @@ export default function RestaurantComplaints() {
         </div>
       )}
 
-      {/* Update Modal */}
       <Dialog open={!!editingComplaint} onOpenChange={(open) => !open && setEditingComplaint(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Update Complaint</DialogTitle>
-            <DialogDescription>
-              Update the status and provide a response for this complaint.
-            </DialogDescription>
+        <DialogContent className="sm:max-w-lg rounded-[28px] p-6 shadow-2xl border border-slate-100 bg-white">
+          <DialogHeader className="border-b border-slate-100 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-100 text-orange-600">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <div className="text-left">
+                <DialogTitle className="text-xl font-bold text-slate-900">Update Complaint</DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 mt-1">
+                  Update the status and provide a response for this customer complaint.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          
+          <div className="space-y-5 py-5">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-bold text-slate-700 block text-left">Status</label>
               <Select value={updateData.status} onValueChange={(val) => setUpdateData({ ...updateData, status: val })}>
-                <SelectTrigger>
+                <SelectTrigger className="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm font-medium text-slate-900 shadow-sm transition hover:border-slate-300 focus:ring-4 focus:ring-orange-500/10 outline-none">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border border-slate-200 rounded-xl shadow-lg z-[9999]">
                   {STATUS_OPTIONS.filter(o => o.value !== 'all').map(o => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                    <SelectItem key={o.value} value={o.value} className="cursor-pointer hover:bg-slate-50 focus:bg-slate-50 rounded-lg">
+                      {o.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+            
             <div className="space-y-2">
-              <label className="text-sm font-medium">Admin Response</label>
+              <label className="text-sm font-bold text-slate-700 block text-left">Admin Response</label>
               <textarea
-                className="w-full min-h-[100px] p-3 border rounded-md"
-                placeholder="Type your response here..."
+                className="w-full min-h-[120px] p-4 border border-slate-200 rounded-xl bg-white text-sm font-medium text-slate-900 placeholder:text-slate-400 outline-none transition hover:border-slate-300 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 shadow-sm resize-none"
+                placeholder="Describe the investigation findings, action taken, or resolution for the customer..."
                 value={updateData.adminResponse}
                 onChange={(e) => setUpdateData({ ...updateData, adminResponse: e.target.value })}
               />
             </div>
           </div>
-          <DialogFooter>
-            <button onClick={() => setEditingComplaint(null)} className="px-4 py-2 border rounded-md">Cancel</button>
-            <button onClick={handleUpdateComplaint} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Save Changes</button>
+          
+          <DialogFooter className="border-t border-slate-100 pt-4 flex gap-2 justify-end">
+            <button 
+              onClick={() => setEditingComplaint(null)} 
+              className="rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 active:scale-95 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={handleUpdateComplaint} 
+              className="rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-600/10 transition hover:bg-orange-700 active:scale-95 cursor-pointer"
+            >
+              Save Changes
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

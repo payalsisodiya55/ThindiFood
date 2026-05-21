@@ -131,7 +131,7 @@ export default function ReferralSettings() {
               <Loader2 className="h-6 w-6 animate-spin text-orange-600" />
             </div>
           ) : (
-            <div className="max-w-md rounded-2xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
+            <div className="max-w-md mx-auto rounded-2xl border border-slate-200 bg-slate-50/50 p-6 shadow-sm">
               <div className="mb-6 flex items-center gap-3 border-b border-slate-200 pb-4">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-600">
                   <Users className="h-5 w-5" />
