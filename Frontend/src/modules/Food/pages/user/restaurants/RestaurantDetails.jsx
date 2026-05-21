@@ -2312,12 +2312,20 @@ function RestaurantDetailsContent() {
 
           {/* Location */}
           <div
-            className="flex items-start gap-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer"
-            onClick={() => setShowLocationSheet(true)}
+            className={`flex items-start gap-1 text-sm text-gray-700 dark:text-gray-300 ${
+              localStorage.getItem("thindi_fulfillment_mode") !== "pickup" ? "cursor-pointer" : ""
+            }`}
+            onClick={() => {
+              if (localStorage.getItem("thindi_fulfillment_mode") !== "pickup") {
+                setShowLocationSheet(true)
+              }
+            }}
           >
             <MapPin className="h-4 w-4 mt-0.5" />
             <span>{restaurant?.distance || "1.2 km"} {restaurant?.location || "Location"}</span>
-            <ChevronDown className="h-4 w-4 text-gray-500 mt-0.5" />
+            {localStorage.getItem("thindi_fulfillment_mode") !== "pickup" && (
+              <ChevronDown className="h-4 w-4 text-gray-500 mt-0.5" />
+            )}
           </div>
 
           {/* Delivery Time */}

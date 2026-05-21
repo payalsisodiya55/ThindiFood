@@ -24,6 +24,7 @@ const OptimizedImage = React.memo(({
   blurDataURL,
   onLoad,
   onError,
+  fallbackSrc,
   ...props
 }) => {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -32,43 +33,61 @@ const OptimizedImage = React.memo(({
   const imgRef = useRef(null)
   const observerRef = useRef(null)
 
+  const isSrcInvalid = useMemo(() => {
+    if (!src || typeof src !== 'string') return true
+    const trimmed = src.trim().toLowerCase()
+    return (
+      trimmed === '' ||
+      trimmed === 'undefined' ||
+      trimmed === 'null' ||
+      trimmed.endsWith('/undefined') ||
+      trimmed.endsWith('/null')
+    )
+  }, [src])
+
+  const effectiveSrc = isSrcInvalid ? fallbackSrc : src
+
+  const imageSrc = hasError 
+    ? (fallbackSrc || 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle"%3EImage not found%3C/text%3E%3C/svg%3E') 
+    : effectiveSrc
+
   // Check if image URL supports optimization (external URLs)
-  const supportsOptimization = (imageSrc) => {
-    if (!imageSrc || typeof imageSrc !== 'string' || imageSrc === '') return false
-    if (imageSrc.startsWith('data:') || imageSrc.startsWith('/')) return false
+  const supportsOptimization = (imageSrcStr) => {
+    if (!imageSrcStr || typeof imageSrcStr !== 'string' || imageSrcStr === '') return false
+    if (imageSrcStr.startsWith('data:') || imageSrcStr.startsWith('/')) return false
     // Check if it's an external URL (http/https)
-    return /^https?:\/\//.test(imageSrc)
+    return /^https?:\/\//.test(imageSrcStr)
   }
 
-  const appendImageParams = (imageSrc, params) => {
+  const appendImageParams = (imageSrcStr, params) => {
     try {
-      const url = new URL(imageSrc)
+      const url = new URL(imageSrcStr)
       Object.entries(params).forEach(([key, value]) => {
         url.searchParams.set(key, String(value))
       })
       return url.toString()
     } catch {
-      return imageSrc
+      return imageSrcStr
     }
   }
 
   // Generate responsive srcset
   const srcSet = useMemo(() => {
-    if (!supportsOptimization(src)) return undefined
+    if (hasError || !supportsOptimization(imageSrc)) return undefined
     const sizesArr = [400, 600, 800, 1200, 1600]
     return sizesArr
-      .map(size => `${appendImageParams(src, { w: size, q: 80 })} ${size}w`)
+      .map(size => `${appendImageParams(imageSrc, { w: size, q: 80 })} ${size}w`)
       .join(', ')
-  }, [src])
+  }, [imageSrc, hasError])
 
   // Generate WebP srcset
   const webPSrcSet = useMemo(() => {
-    if (!supportsOptimization(src)) return undefined
+    if (hasError || !supportsOptimization(imageSrc)) return undefined
     const sizesArr = [400, 600, 800, 1200, 1600]
     return sizesArr
-      .map(size => `${appendImageParams(src, { w: size, q: 80, format: 'webp' })} ${size}w`)
+      .map(size => `${appendImageParams(imageSrc, { w: size, q: 80, format: 'webp' })} ${size}w`)
       .join(', ')
-  }, [src])
+  }, [imageSrc, hasError])
 
   // Intersection Observer for lazy loading
   useEffect(() => {
@@ -115,8 +134,8 @@ const OptimizedImage = React.memo(({
   // Default blur placeholder (tiny gray square)
   const defaultBlurDataURL = blurDataURL || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2U1ZTdlYiIvPjwvc3ZnPg=='
 
-  // Don't render if src is empty or null
-  if (!src || src === '') {
+  // Don't render if src is empty or null (unless fallbackSrc is available)
+  if (!effectiveSrc || effectiveSrc === '') {
     return (
       <div className={`relative overflow-hidden ${className}`}>
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
@@ -125,8 +144,6 @@ const OptimizedImage = React.memo(({
       </div>
     )
   }
-
-  const imageSrc = hasError ? 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="400" height="300"%3E%3Crect fill="%23e5e7eb" width="400" height="300"/%3E%3Ctext fill="%23999" font-family="sans-serif" font-size="14" x="50%25" y="50%25" text-anchor="middle"%3EImage not found%3C/text%3E%3C/svg%3E' : src
 
   return (
     <div className={`relative overflow-hidden ${className}`} ref={imgRef}>
@@ -170,7 +187,7 @@ const OptimizedImage = React.memo(({
             srcSet={srcSet}
             sizes={supportsOptimization(imageSrc) ? sizes : undefined}
             alt={alt}
-            className={`w-full h-full ${objectFit === 'cover' ? 'object-cover' : objectFit === 'contain' ? 'object-contain' : ''} ${priority || isLoaded ? 'opacity-100' : 'opacity-0'} ${!priority && 'transition-opacity duration-300'}`}
+            className={`w-full h-full ${objectFit === 'cover' ? 'object-cover' : objectFit === 'contain' ? 'object-contain' : ''} ${priority || isLoaded || hasError ? 'opacity-100' : 'opacity-0'} ${!priority && 'transition-opacity duration-300'}`}
             loading={priority ? 'eager' : 'lazy'}
             decoding="async"
             fetchPriority={priority ? 'high' : 'auto'}
@@ -182,7 +199,7 @@ const OptimizedImage = React.memo(({
       )}
 
       {/* Error State */}
-      {hasError && (
+      {hasError && !fallbackSrc && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800">
           <span className="text-xs text-gray-400 dark:text-gray-600">Image unavailable</span>
         </div>

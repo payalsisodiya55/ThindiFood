@@ -109,35 +109,61 @@ import exploreCollection from "@food/assets/explore more icons/collection.png";
 // VideoCarousel - auto-plays next video when current ends, with dots
 const VideoCarousel = React.memo(function VideoCarousel({ videos }) {
   const [current, setCurrent] = React.useState(0);
-  const videoRef = React.useRef(null);
+  const containerRef = React.useRef(null);
+
+  const handleScroll = React.useCallback((e) => {
+    const container = e.currentTarget;
+    const width = container.offsetWidth;
+    if (width > 0) {
+      const index = Math.round(container.scrollLeft / width);
+      if (index !== current && index >= 0 && index < videos.length) {
+        setCurrent(index);
+      }
+    }
+  }, [current, videos.length]);
 
   const goTo = React.useCallback((idx) => {
-    setCurrent(idx);
-  }, []);
-
-  React.useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.load();
-      videoRef.current.play().catch(() => {});
+    const container = containerRef.current;
+    if (container) {
+      const width = container.offsetWidth;
+      container.scrollTo({
+        left: idx * width,
+        behavior: 'smooth'
+      });
+      setCurrent(idx);
     }
-  }, [current]);
+  }, []);
 
   if (!videos || videos.length === 0) return null;
 
   return (
-    <div className="relative h-full w-full">
-      <video
-        ref={videoRef}
-        key={videos[current]}
-        src={videos[current]}
-        autoPlay
-        muted
-        playsInline
-        className="h-full w-full max-w-none object-cover object-center"
-        onEnded={() => setCurrent((prev) => (prev + 1) % videos.length)}
-      />
+    <div className="relative h-full w-full overflow-hidden">
+      <style dangerouslySetInnerHTML={{__html: `
+        .no-scrollbar::-webkit-scrollbar {
+          display: none !important;
+        }
+      `}} />
+      <div
+        ref={containerRef}
+        className="flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        onScroll={handleScroll}
+      >
+        {videos.map((src, idx) => (
+          <div key={idx} className="h-full w-full flex-shrink-0 snap-start snap-always relative">
+            <video
+              src={src}
+              autoPlay
+              muted
+              playsInline
+              loop
+              className="h-full w-full max-w-none object-cover object-center"
+            />
+          </div>
+        ))}
+      </div>
       {videos.length > 1 && (
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5 pointer-events-none z-10">
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 pointer-events-none z-10">
           {videos.map((_, idx) => (
             <button
               key={idx}
@@ -228,10 +254,11 @@ const RestaurantImageCarousel = React.memo(
     );
 
     const images = useMemo(() => {
-      const sourceImages =
-        Array.isArray(restaurant.images) && restaurant.images.length > 0
-          ? restaurant.images
-          : [restaurant.image];
+      const firstImage = Array.isArray(restaurant.images) && restaurant.images.length > 0
+        ? restaurant.images[0]
+        : restaurant.image;
+
+      const sourceImages = [firstImage];
 
       const validImages = sourceImages
         .filter((img) => typeof img === "string")
@@ -764,7 +791,9 @@ export default function Home() {
       },
     ];
 
-    if (!landingExploreMore || landingExploreMore.length === 0) return fallback;
+    if (!landingExploreMore || landingExploreMore.length === 0) {
+      return fallback.map(item => ({ ...item, fallbackImage: item.image }));
+    }
 
     return fallback.map((item) => {
       const apiItem = landingExploreMore.find(
@@ -778,6 +807,7 @@ export default function Home() {
           : item.href;
         return {
           ...item,
+          fallbackImage: item.image,
           image:
             normalizeImageUrl(apiItem.imageUrl || apiItem.image || "") ||
             item.image,
@@ -788,7 +818,10 @@ export default function Home() {
               : href,
         };
       }
-      return item;
+      return {
+        ...item,
+        fallbackImage: item.image
+      };
     });
   }, [landingExploreMore, normalizeImageUrl]);
 
@@ -2794,6 +2827,7 @@ export default function Home() {
 
                               <OptimizedImage
                                 src={item.image}
+                                fallbackSrc={item.fallbackImage}
                                 alt={item.label}
                                 className="w-full h-full object-contain relative z-10 transition-transform duration-500 group-hover:scale-110"
                                 width={112}
