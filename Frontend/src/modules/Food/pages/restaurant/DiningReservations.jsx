@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X, ChevronLeft } from "lucide-react"
+import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X, ChevronLeft, Loader2 } from "lucide-react"
 import { diningAPI, restaurantAPI, dineInAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
@@ -827,10 +827,10 @@ export default function DiningReservations() {
                                         {restaurantPhotos.map((photo, i) => (
                                             <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                                                 <img src={photo.url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                <button onClick={() => handleRemoveRestaurantPhoto(photo.url)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur text-rose-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-sm"><X className="w-3.5 h-3.5" /></button>
+                                                <button onClick={() => handleRemoveRestaurantPhoto(photo.url)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur text-rose-600 rounded-lg md:opacity-0 md:group-hover:opacity-100 transition-all cursor-pointer shadow-sm"><X className="w-3.5 h-3.5" /></button>
                                             </div>
                                         ))}
-                                        {uploadingRestaurantPhoto && <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center"><Loader /></div>}
+                                        {uploadingRestaurantPhoto && <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center"><Loader2 className="w-6 h-6 text-slate-400 animate-spin" /></div>}
                                         {restaurantPhotos.length === 0 && !uploadingRestaurantPhoto && <div className="col-span-3 py-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No photos uploaded</div>}
                                     </div>
                                 </div>
@@ -846,10 +846,10 @@ export default function DiningReservations() {
                                         {menuPhotos.map((photo, i) => (
                                             <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                                                 <img src={photo.url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                <button onClick={() => handleRemoveMenuPhoto(photo.url)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur text-rose-600 rounded-lg opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-sm"><X className="w-3.5 h-3.5" /></button>
+                                                <button onClick={() => handleRemoveMenuPhoto(photo.url)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur text-rose-600 rounded-lg md:opacity-0 md:group-hover:opacity-100 transition-all cursor-pointer shadow-sm"><X className="w-3.5 h-3.5" /></button>
                                             </div>
                                         ))}
-                                        {uploadingMenuPhotos && <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center"><Loader /></div>}
+                                        {uploadingMenuPhotos && <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center"><Loader2 className="w-6 h-6 text-slate-400 animate-spin" /></div>}
                                         {menuPhotos.length === 0 && !uploadingMenuPhotos && <div className="col-span-3 py-12 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">No menu cards uploaded</div>}
                                     </div>
                                 </div>

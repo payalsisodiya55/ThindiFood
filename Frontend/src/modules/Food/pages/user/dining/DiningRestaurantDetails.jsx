@@ -2,21 +2,18 @@ import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { diningAPI, restaurantAPI } from "@food/api"
 import { useProfile } from "@food/context/ProfileContext"
-import { getMenuFromResponse } from "@food/utils/menuItems"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { RED } from "@food/constants/color"
 import {
     ArrowLeft,
-    Bookmark,
-    CheckCircle2,
-  Clock3,
+  Bookmark,
+  CheckCircle2,
   IndianRupee,
   Loader2,
   MapPin,
   Percent,
   Share2,
-  Tag,
   Ticket,
   X,
 } from "lucide-react"
@@ -55,7 +52,7 @@ const buildImageList = (restaurant) => {
     restaurant?.coverImage?.url,
     restaurant?.coverImage,
     ...(Array.isArray(restaurant?.coverImages) ? restaurant.coverImages.map((image) => image?.url || image) : []),
-    ...(Array.isArray(restaurant?.menuImages) ? restaurant.menuImages.map((image) => image?.url || image) : []),
+    // removed menuImages
     restaurant?.profileImage?.url,
     restaurant?.profileImage,
   ]
@@ -64,6 +61,15 @@ const buildImageList = (restaurant) => {
     .filter(Boolean)
     .filter((value, index, list) => list.indexOf(value) === index)
 }
+
+const normalizeImageEntries = (entries) =>
+  (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      if (typeof entry === "string") return entry.trim()
+      return String(entry?.url || "").trim()
+    })
+    .filter(Boolean)
+    .filter((value, index, list) => list.indexOf(value) === index)
 
 const buildFacilities = (restaurant) => {
   const facilities = []
@@ -85,28 +91,53 @@ const buildFacilities = (restaurant) => {
     : ["Lunch", "Dinner", "Home delivery", "Takeaway available", "Vegetarian only", "Less noisy"]
 }
 
-const buildFeaturedSections = (menuSections) =>
-  menuSections
-    .map((section, index) => {
-      const items = [
-        ...(Array.isArray(section?.items) ? section.items : []),
-        ...((Array.isArray(section?.subsections) ? section.subsections : []).flatMap((subsection) => subsection?.items || [])),
-      ]
-
-      return {
-        id: `${section?.name || "section"}-${index}`,
-        title: section?.name || "Menu",
-        pages: items.length || 1,
-      }
-    })
-    .slice(0, 2)
-
 const formatTimeLabel = (value) => {
   if (!value) return null
   if (/[ap]m/i.test(value)) return value.toUpperCase()
   const date = new Date(`2000-01-01T${String(value).padStart(5, "0")}`)
   if (Number.isNaN(date.getTime())) return value
   return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+}
+
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+const getTodayOutletTiming = (outletTimings) => {
+  const todayName = DAY_NAMES[new Date().getDay()]
+  if (!todayName || !outletTimings || typeof outletTimings !== "object") {
+    return { dayName: todayName, timing: null }
+  }
+
+  return {
+    dayName: todayName,
+    timing: outletTimings[todayName] && typeof outletTimings[todayName] === "object" ? outletTimings[todayName] : null,
+  }
+}
+
+const isRestaurantOpenForTiming = (timing) => {
+  if (!timing || timing.isOpen === false) return false
+  const openingTime = String(timing.openingTime || "").trim()
+  const closingTime = String(timing.closingTime || "").trim()
+  if (!openingTime || !closingTime) return false
+
+  const now = new Date()
+  const [openingHour, openingMinute] = openingTime.split(":").map(Number)
+  const [closingHour, closingMinute] = closingTime.split(":").map(Number)
+
+  if (
+    [openingHour, openingMinute, closingHour, closingMinute].some((value) => !Number.isFinite(value))
+  ) {
+    return false
+  }
+
+  const currentMinutes = now.getHours() * 60 + now.getMinutes()
+  const openingMinutes = openingHour * 60 + openingMinute
+  const closingMinutes = closingHour * 60 + closingMinute
+
+  if (closingMinutes >= openingMinutes) {
+    return currentMinutes >= openingMinutes && currentMinutes <= closingMinutes
+  }
+
+  return currentMinutes >= openingMinutes || currentMinutes <= closingMinutes
 }
 
 const scrollToSection = (id) => {
@@ -124,21 +155,45 @@ const getOfferHeadline = (offer) => {
   return `${discountValue}% OFF`
 }
 
+const getRestaurantFromResponse = (response) =>
+  response?.data?.data?.restaurant ||
+  response?.data?.restaurant ||
+  response?.data?.data ||
+  null
+
+const isMongoObjectId = (value) => /^[a-f\d]{24}$/i.test(String(value || "").trim())
+
+const normalizeRestaurantLookupValue = (value) => String(value || "").trim()
+
+const shouldTryDirectRestaurantLookup = (value) => {
+  const normalized = normalizeRestaurantLookupValue(value)
+  if (!normalized) return false
+  if (isMongoObjectId(normalized)) return true
+  return !/\s/.test(normalized)
+}
+
+const slugifyRestaurantValue = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+
 export default function DiningRestaurantDetails() {
-  const { category, slug } = useParams()
+  const { diningType, slug } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
   const goBack = useAppBackNavigation()
   const { addFavorite, removeFavorite, isFavorite } = useProfile()
 
   const [restaurant, setRestaurant] = useState(location.state?.restaurant || null)
-  const [menuSections, setMenuSections] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedGuests, setSelectedGuests] = useState(2)
   const [isBookingSheetOpen, setIsBookingSheetOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("prebook")
   const [diningOffer, setDiningOffer] = useState(null)
+  const [outletTimings, setOutletTimings] = useState(location.state?.restaurant?.outletTimings || null)
 
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -153,17 +208,82 @@ export default function DiningRestaurantDetails() {
           routeRestaurant?.id ||
           slug
 
-        const restaurantResponse = await restaurantAPI.getRestaurantById(preferredRestaurantLookup)
-        if (!restaurantResponse?.data?.success) {
-          setError("Restaurant not found")
-          setRestaurant(null)
-          return
+        let resolvedRestaurant =
+          routeRestaurant && (routeRestaurant?._id || routeRestaurant?.restaurantId || routeRestaurant?.id)
+            ? routeRestaurant
+            : null
+
+        if (!resolvedRestaurant && shouldTryDirectRestaurantLookup(preferredRestaurantLookup)) {
+          try {
+            const normalizedLookup = normalizeRestaurantLookupValue(preferredRestaurantLookup).replace(/\s+/g, "-")
+            const restaurantResponse = await restaurantAPI.getRestaurantById(normalizedLookup)
+            if (restaurantResponse?.data?.success) {
+              resolvedRestaurant = getRestaurantFromResponse(restaurantResponse)
+            }
+          } catch {}
         }
 
-        const resolvedRestaurant =
-          restaurantResponse?.data?.data?.restaurant ||
-          restaurantResponse?.data?.data ||
-          null
+        if (!resolvedRestaurant && slug) {
+          const normalizedSlug = String(slug).trim().toLowerCase()
+          const normalizedSlugWithHyphen = slugifyRestaurantValue(normalizedSlug)
+          const diningSearchResponse = await diningAPI
+            .getRestaurants(diningType ? { category: diningType } : {})
+            .catch(() => null)
+          const diningRestaurants = Array.isArray(diningSearchResponse?.data?.data) ? diningSearchResponse.data.data : []
+
+          const matchedDiningRestaurant = diningRestaurants.find((item) => {
+            const itemSlug = slugifyRestaurantValue(item?.restaurantNameNormalized || item?.slug || "")
+            const itemNameSlug = slugifyRestaurantValue(item?.restaurantName || item?.name || "")
+            return (
+              itemSlug === normalizedSlugWithHyphen ||
+              itemNameSlug === normalizedSlugWithHyphen ||
+              itemSlug === normalizedSlug ||
+              itemNameSlug === normalizedSlug
+            )
+          })
+
+          if (matchedDiningRestaurant) {
+            resolvedRestaurant = matchedDiningRestaurant
+          }
+
+          const searchVariants = [{ limit: 100, _ts: Date.now() }]
+
+          for (const searchParams of resolvedRestaurant ? [] : searchVariants) {
+            const searchResponse = await restaurantAPI.getRestaurants(searchParams, { noCache: true }).catch(() => null)
+            const restaurants = searchResponse?.data?.data?.restaurants || searchResponse?.data?.data || []
+
+            const matchingRestaurant = restaurants.find((item) => {
+              const itemSlug = slugifyRestaurantValue(item?.slug || "")
+              const itemName = String(item?.name || item?.restaurantName || "").trim().toLowerCase()
+              const itemNameSlug = slugifyRestaurantValue(itemName)
+
+              return (
+                itemSlug === normalizedSlug ||
+                itemSlug === normalizedSlugWithHyphen ||
+                itemName === normalizedSlug ||
+                itemNameSlug === normalizedSlug ||
+                itemNameSlug === normalizedSlugWithHyphen
+              )
+            })
+
+            if (!matchingRestaurant) continue
+
+            const lookupId =
+              matchingRestaurant?._id ||
+              matchingRestaurant?.restaurantId ||
+              matchingRestaurant?.id
+
+            if (!lookupId) {
+              resolvedRestaurant = matchingRestaurant
+              break
+            }
+
+            const fullRestaurantResponse = await restaurantAPI.getRestaurantById(lookupId).catch(() => null)
+            const fullRestaurant = getRestaurantFromResponse(fullRestaurantResponse)
+            resolvedRestaurant = fullRestaurant || matchingRestaurant
+            if (resolvedRestaurant) break
+          }
+        }
 
         if (!resolvedRestaurant) {
           setError("Restaurant not found")
@@ -172,29 +292,34 @@ export default function DiningRestaurantDetails() {
         }
 
         const restaurantId = resolvedRestaurant?._id || resolvedRestaurant?.id || slug
-        const menuResponse = await restaurantAPI.getMenuByRestaurantId(restaurantId).catch(() => null)
-        const resolvedMenu = menuResponse ? getMenuFromResponse(menuResponse) : null
-
         const offerResponse = await diningAPI.getRestaurantOverallOffer(restaurantId).catch(() => null)
         const resolvedOffer =
           offerResponse?.data?.data?.offer ||
           offerResponse?.data?.offer ||
           null
 
+        const outletTimingResponse = await restaurantAPI.getOutletTimingsByRestaurantId(restaurantId, { noCache: true }).catch(() => null)
+        const resolvedOutletTimings =
+          outletTimingResponse?.data?.data?.outletTimings ||
+          outletTimingResponse?.data?.outletTimings ||
+          resolvedRestaurant?.outletTimings ||
+          null
+
         setRestaurant(resolvedRestaurant)
-        setMenuSections(Array.isArray(resolvedMenu?.sections) ? resolvedMenu.sections : [])
         setDiningOffer(resolvedOffer)
+        setOutletTimings(resolvedOutletTimings)
       } catch {
         setError("Failed to load restaurant")
         setRestaurant(null)
         setDiningOffer(null)
+        setOutletTimings(null)
       } finally {
         setLoading(false)
       }
     }
 
     fetchRestaurantData()
-  }, [location.state?.restaurant, slug])
+  }, [diningType, location.state?.restaurant, slug])
 
   useEffect(() => {
     const maxGuestCount = Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6)
@@ -226,8 +351,9 @@ export default function DiningRestaurantDetails() {
   const address = formatAddress(restaurant) || "Address unavailable"
   const imageGallery = buildImageList(restaurant)
   const heroImage = imageGallery[0] || ""
-  const menuPreviewImages = imageGallery.length > 0 ? imageGallery : [""]
-  const featuredSections = buildFeaturedSections(menuSections)
+  const rawMenuImages = normalizeImageEntries(restaurant?.menuImages)
+  const restaurantPhotos = normalizeImageEntries(restaurant?.coverImages)
+  const menuPreviewImages = rawMenuImages.length > 0 ? rawMenuImages : []
   const cuisines =
     Array.isArray(restaurant?.cuisines) && restaurant.cuisines.length > 0
       ? restaurant.cuisines.join(", ")
@@ -236,8 +362,16 @@ export default function DiningRestaurantDetails() {
   const facilities = buildFacilities(restaurant)
   const rating = Number(restaurant?.rating || restaurant?.avgRating || 0).toFixed(1)
   const reviewCount = restaurant?.totalRatings || restaurant?.reviewCount || restaurant?.reviewsCount || 0
-  const openingTime = formatTimeLabel(restaurant?.openingTime || restaurant?.diningSettings?.openingTime || "12:00")
-  const closingTime = formatTimeLabel(restaurant?.closingTime || restaurant?.diningSettings?.closingTime || "23:59")
+  const { timing: todayOutletTiming } = getTodayOutletTiming(outletTimings)
+  const openingTime = formatTimeLabel(todayOutletTiming?.openingTime || restaurant?.openingTime || restaurant?.diningSettings?.openingTime || "")
+  const closingTime = formatTimeLabel(todayOutletTiming?.closingTime || restaurant?.closingTime || restaurant?.diningSettings?.closingTime || "")
+  const isOpenNow = todayOutletTiming ? isRestaurantOpenForTiming(todayOutletTiming) : restaurant?.availability?.isOpen === true
+  const timingLabel =
+    todayOutletTiming?.isOpen === false
+      ? "Closed today"
+      : openingTime && closingTime
+        ? `${openingTime} to ${closingTime}`
+        : "Timing unavailable"
   const isDiningEnabled = restaurant?.diningSettings?.isEnabled !== false
   const maxGuestCount = Math.max(1, Number(restaurant?.diningSettings?.maxGuests) || 6)
   const offerHeadline = getOfferHeadline(diningOffer)
@@ -276,8 +410,8 @@ export default function DiningRestaurantDetails() {
       return
     }
 
-    if (category) {
-      navigate(`/food/user/dining/${category}`)
+    if (diningType) {
+      navigate(`/food/user/dining/${diningType}`)
       return
     }
 
@@ -360,12 +494,6 @@ export default function DiningRestaurantDetails() {
               >
                 <Bookmark className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
               </button>
-              <button
-                onClick={handleShare}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#51586a]/75 text-white backdrop-blur-md"
-              >
-                <Share2 className="h-4 w-4" />
-              </button>
             </div>
           </div>
 
@@ -381,9 +509,9 @@ export default function DiningRestaurantDetails() {
                 </p>
                 <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-black/28 px-2.5 py-1 text-[13px] font-medium backdrop-blur-sm">
                   <CheckCircle2 className="h-4 w-4 text-[#48d597]" />
-                  <span>Open now</span>
+                  <span>{isOpenNow ? "Open now" : "Closed"}</span>
                   <span className="text-white/70">|</span>
-                  <span>{openingTime} to {closingTime}</span>
+                  <span>{timingLabel}</span>
                 </div>
               </div>
 
@@ -399,7 +527,7 @@ export default function DiningRestaurantDetails() {
         </div>
 
         <div className="px-3 pb-1 pt-3">
-          <div className="grid grid-cols-[1.62fr_0.72fr_0.72fr] gap-2.5">
+          <div className="grid grid-cols-1 gap-2.5">
             <button
               onClick={handleOpenBookingSheet}
               disabled={!isDiningEnabled}
@@ -411,12 +539,6 @@ export default function DiningRestaurantDetails() {
             >
               <Ticket className="h-[15px] w-[15px]" style={{ color: RED }} />
               <span>{isDiningEnabled ? "Book a table" : "Dining paused"}</span>
-            </button>
-            <button className="flex h-[52px] items-center justify-center rounded-full border border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] shadow-[0_10px_24px_rgba(15,23,42,0.05)]" style={{ color: RED }}>
-              <Tag className="h-[15px] w-[15px]" />
-            </button>
-            <button className="flex h-[52px] items-center justify-center rounded-full border border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] shadow-[0_10px_24px_rgba(15,23,42,0.05)]" style={{ color: RED }}>
-              <Clock3 className="h-[15px] w-[15px]" />
             </button>
           </div>
 
@@ -508,42 +630,30 @@ export default function DiningRestaurantDetails() {
           <div className="flex items-end justify-between gap-3">
             <div>
               <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">Menu</h2>
-              <p className="mt-2 text-[13px] text-gray-400">Last updated a month ago</p>
             </div>
-            {featuredSections.length > 0 ? (
-              <div className="rounded-full bg-gray-100 dark:bg-[#222222] px-3 py-1 text-xs font-semibold text-gray-600 dark:text-[#a0a0a0]">
-                {featuredSections.length} dishes
-              </div>
-            ) : null}
           </div>
 
-          {featuredSections.length > 0 ? (
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              {featuredSections.map((section, index) => (
-                <div key={section.id} className="overflow-hidden rounded-[18px] border border-[#ede8dd] dark:border-[#222222] bg-white dark:bg-[#1a1a1a]">
-                  <div className="aspect-[0.88] bg-[#f7f1e7] dark:bg-[#202020]">
-                    {menuPreviewImages[index] ? (
-                      <img src={menuPreviewImages[index]} alt={section.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#fff3e0,#f3eadf)] dark:bg-none text-sm font-medium text-[#a28868] dark:text-[#8a7050]">
-                        Menu preview
-                      </div>
-                    )}
-                  </div>
-                  <div className="px-2 pb-3 pt-2 text-center">
-                    <p className="text-[16px] font-medium leading-tight text-[#2b2218] dark:text-white">{section.title}</p>
-                    {section.pages > 0 ? <p className="mt-1 text-[12px] text-[#7f7a73] dark:text-[#a0a0a0]">{section.pages} pages</p> : null}
-                  </div>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {(menuPreviewImages.length > 0 ? menuPreviewImages.slice(0, 2) : [""]).map((image, index) => (
+              <div key={`${image || "menu-placeholder"}-${index}`} className="overflow-hidden rounded-[18px] border border-[#ede8dd] dark:border-[#222222] bg-white dark:bg-[#1a1a1a]">
+                <div className="aspect-[0.88] bg-[#f7f1e7] dark:bg-[#202020]">
+                  {image ? (
+                    <img src={image} alt={`${restaurantName} menu ${index + 1}`} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,#fff3e0,#f3eadf)] dark:bg-none text-sm font-medium text-[#a28868] dark:text-[#8a7050]">
+                      Menu preview
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-          ) : null}
+              </div>
+            ))}
+          </div>
         </section>
 
         <section id="restaurant-photos" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
           <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">Photos</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
-            {(imageGallery.length > 0 ? imageGallery.slice(0, 4) : menuPreviewImages.slice(0, 2)).map((image, index) => (
+            {(restaurantPhotos.length > 0 ? restaurantPhotos.slice(0, 4) : [""]).map((image, index) => (
               <div
                 key={`${image || "placeholder"}-${index}`}
                 className={`overflow-hidden rounded-[18px] bg-[#f6efe4] dark:bg-[#222222] ${
@@ -585,21 +695,7 @@ export default function DiningRestaurantDetails() {
               </div>
             </div>
 
-            <div className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
-              <h3 className="text-[20px] font-semibold text-[#23180f] dark:text-white">Featured In</h3>
-              <div className="mt-3 overflow-hidden rounded-[16px] bg-white dark:bg-[#1a1a1a] shadow-sm">
-                <div className="aspect-[1.2] bg-[#efe8df] dark:bg-[#222222]">
-                  {heroImage ? (
-                    <img src={heroImage} alt={restaurantName} className="h-full w-full object-cover" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-sm text-[#a28868] dark:text-[#8a7050]">Featured image</div>
-                  )}
-                </div>
-                <div className="-mt-14 bg-[linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,0.72))] p-3 pt-10 text-sm font-medium text-white">
-                  Pan-Asian Restaurants
-                </div>
-              </div>
-            </div>
+
 
             <div className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
               <h3 className="text-[20px] font-semibold text-[#23180f] dark:text-white">Facilities</h3>
@@ -634,24 +730,22 @@ export default function DiningRestaurantDetails() {
       </div>
 
       {isBookingSheetOpen && (
-        <div className="fixed inset-0 z-40">
+        <div className="fixed inset-0 z-40 flex items-end justify-center">
           <button
             aria-label="Close booking sheet"
             className="absolute inset-0 bg-black/35"
             onClick={() => setIsBookingSheetOpen(false)}
           />
 
-          <div className="absolute bottom-0 left-0 right-0 rounded-t-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)]">
-            <div className="mx-auto mb-4 h-1.5 w-14 rounded-full bg-[#e7e5e4] dark:bg-[#333333]" />
-
-            <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="relative w-full max-w-md rounded-t-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)] z-50">
+            <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-black text-[#23180f] dark:text-white">Select number of guests</h3>
                 <p className="mt-1 text-sm text-[#7b6651] dark:text-[#a09080]">Choose how many people will be joining.</p>
               </div>
               <button
                 onClick={() => setIsBookingSheetOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f5f5f5] dark:bg-[#2b2b2b] text-[#5b5b5b] dark:text-[#a0a0a0]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] dark:bg-[#2b2b2b] text-[#5b5b5b] dark:text-[#a0a0a0]"
               >
                 <X className="h-4 w-4" />
               </button>
