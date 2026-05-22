@@ -2183,6 +2183,21 @@ export default function OrdersMain() {
     return Math.max(0, lineBaseTotal - proportionalDiscount);
   };
 
+  const getPopupOrderItemPricing = (item, orderLike) => {
+    const originalTotal =
+      Number(item?.price || 0) * Number(item?.quantity || 0);
+    const displayTotal = getPopupOrderItemDisplayTotal(item, orderLike);
+    const hasRestaurantOffer =
+      getPopupOrderRestaurantOfferDiscount(orderLike) > 0 &&
+      displayTotal < originalTotal;
+
+    return {
+      originalTotal: Math.max(0, originalTotal),
+      displayTotal: Math.max(0, displayTotal),
+      hasRestaurantOffer,
+    };
+  };
+
   const hydratePopupOrder = async (orderLike) => {
     if (isDineInOrderLike(orderLike)) return null;
 
@@ -4252,24 +4267,43 @@ export default function OrdersMain() {
                           className="overflow-hidden">
                           <div className="py-2 space-y-2">
                             {(popupOrder || newOrder)?.items?.map(
-                              (item, index) => (
+                              (item, index) => {
+                                const itemPricing = getPopupOrderItemPricing(
+                                  item,
+                                  popupOrder || newOrder,
+                                );
+
+                                return (
                                 <div
                                   key={index}
                                   className="flex items-start gap-3">
                                   <div
                                     className={`w-2 h-2 rounded-full mt-1 shrink-0 ${item.isVeg ? "bg-green-500" : "bg-red-500"}`}></div>
                                   <div className="flex-1">
-                                    <div className="flex items-start justify-between">
-                                      <p className="text-sm font-medium text-gray-900">
-                                        {formatOrderItemQuantityLabel(item)}
-                                      </p>
-                                      <p className="text-xs text-gray-600 ml-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium text-gray-900">
+                                          {formatOrderItemQuantityLabel(item)}
+                                        </p>
+                                        {itemPricing.hasRestaurantOffer ? (
+                                          <p className="mt-1 text-[11px] font-medium text-emerald-600">
+                                            Restaurant offer applied
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                      {itemPricing.hasRestaurantOffer ? (
+                                        <p className="text-[11px] text-gray-400 line-through">
+                                          ₹{Math.round(itemPricing.originalTotal)}
+                                        </p>
+                                      ) : null}
+                                      <p className="text-xs font-semibold text-gray-700">
                                         ₹{Math.round(getPopupOrderItemDisplayTotal(item, popupOrder || newOrder))}
                                       </p>
                                     </div>
                                   </div>
                                 </div>
-                              ),
+                                );
+                              },
                             ) || (
                               <p className="text-sm text-gray-500">No items</p>
                             )}
