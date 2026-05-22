@@ -3608,10 +3608,10 @@ export default function Cart() {
                       setFulfillmentMode("takeaway")
                       setPlaceOrderErrorMessage("")
                     }}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${
                       fulfillmentMode === "takeaway"
-                        ? "bg-gray-900 text-white border-gray-900"
-                        : "bg-white text-gray-700 border-gray-300"
+                        ? "bg-[#00c87e] text-white border-[#00c87e] shadow-sm"
+                        : "bg-white text-gray-700 border-gray-300 dark:bg-[#2a2a2a] dark:text-gray-400 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#333333]"
                     }`}
                   >
                     Pickup
@@ -3625,10 +3625,10 @@ export default function Cart() {
                       }
                     }}
                     disabled={!canRestaurantAcceptDeliveryOrders(restaurantData)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold border ${
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${
                       fulfillmentMode === "delivery"
-                        ? "bg-[#00c87e] text-white border-[#00c87e]"
-                        : "bg-white text-gray-700 border-gray-300"
+                        ? "bg-[#00c87e] text-white border-[#00c87e] shadow-sm"
+                        : "bg-white text-gray-700 border-gray-300 dark:bg-[#2a2a2a] dark:text-gray-400 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#333333]"
                     } disabled:opacity-50`}
                   >
                     Delivery
