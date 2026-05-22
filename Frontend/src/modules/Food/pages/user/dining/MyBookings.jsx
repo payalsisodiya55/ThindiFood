@@ -13,12 +13,18 @@ const debugError = (...args) => {}
 
 const normalizeStatus = (status) => String(status || "").trim().toUpperCase()
 
+const isCancelledReservationStatus = (status) => {
+    const key = normalizeStatus(status)
+    return key === "LATE_CANCELLED" || key.includes("CANCEL")
+}
+
 const getStatusLabel = (status) => {
     const key = normalizeStatus(status)
     if (key === "PENDING") return "Pending"
     if (key === "CONFIRMED" || key === "ACCEPTED") return "Confirmed"
     if (key === "CHECKED_IN") return "Table Ready"
     if (key === "COMPLETED") return "Completed"
+    if (isCancelledReservationStatus(key) && key !== "LATE_CANCELLED") return "Cancelled"
     if (key === "CANCELLED") return "Cancelled"
     if (key === "LATE_CANCELLED") return "Late Cancelled"
     if (key === "NO_SHOW") return "No-show"
@@ -32,6 +38,7 @@ const getStatusBadgeClass = (status) => {
     if (key === "CONFIRMED" || key === "ACCEPTED") return "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300"
     if (key === "CHECKED_IN") return "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
     if (key === "COMPLETED") return "bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300"
+    if (isCancelledReservationStatus(key) && key !== "LATE_CANCELLED") return "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
     if (key === "CANCELLED") return "bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
     if (key === "LATE_CANCELLED") return "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300"
     if (key === "NO_SHOW") return "bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300"
@@ -172,7 +179,9 @@ function ReviewModal({ booking, onClose, onSubmit }) {
 
 function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
     const cancellationPreview = useMemo(() => getCancellationPreview(booking), [booking])
-    const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(normalizeStatus(booking?.status))
+    const statusKey = normalizeStatus(booking?.status)
+    const isCancelled = isCancelledReservationStatus(statusKey)
+    const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(statusKey) && !isCancelled
     const guestName = getBookingGuestName(booking)
     const guestPhone = getBookingGuestPhone(booking)
 
@@ -249,6 +258,11 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                 </div>
 
                 <div className="p-5 pt-0 space-y-3">
+                    {isCancelled && (
+                        <div className="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300">
+                            Cancelled
+                        </div>
+                    )}
                     {canCancel && (
                         <Button
                             onClick={() => onCancel(booking)}
@@ -366,11 +380,25 @@ export default function MyBookings() {
             const response = await dineInAPI.cancelBooking(booking._id)
             const updatedBooking = response?.data?.data || null
             const warning = response?.data?.meta?.warning || response?.data?.message || ""
+            const fallbackStatus = warning === "Late cancellations may affect future reservations."
+                ? "LATE_CANCELLED"
+                : "CANCELLED"
+            const resolvedBooking = updatedBooking
+                ? { ...booking, ...updatedBooking }
+                : { ...booking, status: fallbackStatus }
 
-            if (updatedBooking) {
-                setBookings((prev) => prev.map((item) => String(item._id) === String(updatedBooking._id) ? { ...item, ...updatedBooking } : item))
-                setBookingDetails((prev) => (prev && String(prev._id) === String(updatedBooking._id) ? { ...prev, ...updatedBooking } : prev))
-            }
+            setBookings((prev) =>
+                prev.map((item) =>
+                    String(item._id) === String(booking?._id)
+                        ? { ...item, ...resolvedBooking }
+                        : item
+                )
+            )
+            setBookingDetails((prev) =>
+                prev && String(prev._id) === String(booking?._id)
+                    ? { ...prev, ...resolvedBooking }
+                    : prev
+            )
 
             if (warning === "Late cancellations may affect future reservations.") {
                 toast.message("Reservation cancelled", { description: warning })

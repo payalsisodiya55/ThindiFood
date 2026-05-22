@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, HelpCircle, Menu, Search, SlidersHorizontal, Calendar, ChevronLeft, ChevronDown, X, Loader2, ChevronRight, Star } from "lucide-react"
+import { Bell, HelpCircle, Menu, Search, SlidersHorizontal, Calendar, ChevronLeft, ChevronDown, X, Loader2, ChevronRight, Star, RefreshCw } from "lucide-react"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { restaurantAPI } from "@food/api"
@@ -71,6 +71,7 @@ export default function Feedback() {
   const [activeTab, setActiveTab] = useState(tabFromUrl === "complaints" ? "complaints" : "reviews")
   const navigate = useNavigate()
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   
   // Update active tab when URL param changes
   useEffect(() => {
@@ -221,7 +222,7 @@ export default function Feedback() {
     }
 
     fetchComplaints()
-  }, [activeTab, selectedDateRange, customDateRange, complaintsFilterValues, complaintsSearchQuery])
+  }, [activeTab, selectedDateRange, customDateRange, complaintsFilterValues, complaintsSearchQuery, refreshTrigger])
 
   useEffect(() => {
     const fetchReviews = async () => {
@@ -309,7 +310,7 @@ export default function Feedback() {
     }
 
     if (!isLoadingRestaurant) fetchReviews()
-  }, [isLoadingRestaurant, restaurantData])
+  }, [isLoadingRestaurant, restaurantData, refreshTrigger])
 
   useEffect(() => {
     let filtered = [...reviews]
@@ -480,6 +481,19 @@ export default function Feedback() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setRefreshTrigger(prev => prev + 1);
+                toast.success("Refreshing feedback data...");
+              }}
+              className={`p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer ${
+                (isComplaintsLoading || isLoadingReviews) ? "animate-spin" : ""
+              }`}
+              aria-label="Refresh feedback"
+            >
+              <RefreshCw className="w-6 h-6 text-gray-700 cursor-pointer" />
+            </button>
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/notifications")}
@@ -727,7 +741,7 @@ export default function Feedback() {
           <div>
             <p className="text-xs font-black text-gray-400 uppercase mb-3">Issue Type</p>
             <div className="flex flex-wrap gap-2">
-              {['Late Delivery', 'Quality Issue', 'Missing Item', 'Wrong Item', 'Packaging'].map((type) => (
+              {['Item missing', 'Wrong item', 'Not delivered', 'Payment issue'].map((type) => (
                 <button
                   key={type}
                   onClick={() => setComplaintsFilterValues(prev => ({

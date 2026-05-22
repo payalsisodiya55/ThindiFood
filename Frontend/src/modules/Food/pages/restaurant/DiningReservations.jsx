@@ -23,6 +23,13 @@ const getDiningCategoriesFromResponse = (response) => {
     return []
 }
 
+const getBookingsFromResponse = (response) => {
+    const payload = response?.data?.data
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.bookings)) return payload.bookings
+    return []
+}
+
 const normalizeImageEntry = (entry) => {
     if (!entry) return null
     if (typeof entry === "string") {
@@ -193,10 +200,6 @@ export default function DiningReservations() {
                     const restaurantId = resData?._id || resData?.id
                     if (restaurantId) {
                         syncRestaurantMediaState(resData)
-                        const bookingsResponse = await dineInAPI.getRestaurantBookings()
-                        if (bookingsResponse.data?.success) {
-                            setBookings(Array.isArray(bookingsResponse.data.data) ? bookingsResponse.data.data : [])
-                        }
                     }
                 }
             } catch (error) {
@@ -209,11 +212,35 @@ export default function DiningReservations() {
     }, [])
 
     useEffect(() => {
+        let isMounted = true
+
+        const fetchBookings = async () => {
+            try {
+                const bookingsResponse = await dineInAPI.getRestaurantBookings()
+                if (!isMounted || bookingsResponse?.data?.success !== true) return
+                setBookings(getBookingsFromResponse(bookingsResponse))
+            } catch (error) {
+                debugError("Error refreshing reservation queue:", error)
+            }
+        }
+
+        fetchBookings()
+        const intervalId = setInterval(fetchBookings, 10000)
+
+        return () => {
+            isMounted = false
+            clearInterval(intervalId)
+        }
+    }, [])
+
+    useEffect(() => {
         if (!newBooking) return
         setBookings((prev) => {
-            const existing = prev.some((b) => String(b?._id || b?.id || "") === String(newBooking?._id || newBooking?.id || ""))
-            if (existing) return prev
-            return [newBooking, ...prev]
+            const bookingKey = String(newBooking?._id || newBooking?.id || "")
+            if (!bookingKey) return [newBooking, ...prev]
+            const existingIndex = prev.findIndex((b) => String(b?._id || b?.id || "") === bookingKey)
+            if (existingIndex === -1) return [newBooking, ...prev]
+            return prev.map((booking, index) => (index === existingIndex ? { ...booking, ...newBooking } : booking))
         })
         toast.success("New table booking received")
         clearNewBooking()
@@ -370,17 +397,20 @@ export default function DiningReservations() {
     }
 
     const getBookingTimestamp = (booking) => {
-        const ts = new Date(booking?.createdAt || booking?.date || "").getTime()
+        const ts = new Date(
+            booking?.updatedAt ||
+            booking?.createdAt ||
+            booking?.bookedAt ||
+            booking?.requestedAt ||
+            booking?.date ||
+            ""
+        ).getTime()
         return isNaN(ts) ? 0 : ts
     }
 
     const isToday = (value) => new Date(value).toDateString() === new Date().toDateString()
 
-    const isNewRequest = (booking) => {
-        if (!isPendingReservationStatus(booking?.status)) return false
-        const ts = getBookingTimestamp(booking)
-        return Date.now() - ts <= 2 * 60 * 60 * 1000
-    }
+    const isNewRequest = (booking) => isPendingReservationStatus(booking?.status)
 
     const sortedBookings = useMemo(() => {
         return [...bookings].sort((a, b) => {

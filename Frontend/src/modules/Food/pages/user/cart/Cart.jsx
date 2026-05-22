@@ -3210,17 +3210,19 @@ export default function Cart() {
 
 
               {/* Cutlery */}
-              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => setSendCutlery(!sendCutlery)}
-                  className={`w-full flex items-center justify-center gap-2 px-3 md:px-4 py-2 md:py-3 border rounded-lg md:rounded-xl text-sm md:text-base ${sendCutlery ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300' : 'border-[#00c87e] dark:border-[#00c87e]/50 text-[#00c87e] dark:text-[#00c87e] bg-[#FEF2F2] dark:bg-[#00c87e]/10'}`}
-                >
-                  <Utensils className="h-4 w-4 md:h-5 md:w-5" />
-                  <span className="whitespace-nowrap">
-                    {sendCutlery ? "Send cutlery" : "Don't send cutlery"}
-                  </span>
-                </button>
-              </div>
+              {fulfillmentMode !== "takeaway" && (
+                <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => setSendCutlery(!sendCutlery)}
+                    className={`w-full flex items-center justify-center gap-2 px-3 md:px-4 py-2 md:py-3 border rounded-lg md:rounded-xl text-sm md:text-base ${sendCutlery ? 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300' : 'border-[#00c87e] dark:border-[#00c87e]/50 text-[#00c87e] dark:text-[#00c87e] bg-[#FEF2F2] dark:bg-[#00c87e]/10'}`}
+                  >
+                    <Utensils className="h-4 w-4 md:h-5 md:w-5" />
+                    <span className="whitespace-nowrap">
+                      {sendCutlery ? "Send cutlery" : "Don't send cutlery"}
+                    </span>
+                  </button>
+                </div>
+              )}
 
               {/* Complete your meal section - Approved Addons */}
               {addons.length > 0 && (
