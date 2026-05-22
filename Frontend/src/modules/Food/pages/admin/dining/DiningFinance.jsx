@@ -201,7 +201,6 @@ export default function DiningFinance() {
                       <td className="px-4 py-4 text-right bg-slate-100/30">
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-sm font-black text-slate-900">{currency(row.totalRevenue)}</span>
-                          <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-500 transition-transform group-hover:translate-x-0.5" />
                         </div>
                       </td>
                     </tr>

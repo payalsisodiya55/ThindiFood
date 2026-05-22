@@ -958,7 +958,7 @@ export default function ExploreMore() {
               <Search className="w-5 h-5 text-gray-900" />
             </button>
             <button
-              onClick={() => navigate("/food/restaurant/onboarding?step=1")}
+              onClick={() => setProfileOpen(true)}
               className="p-2 hover:bg-gray-100 bg-gray-200 rounded-full transition-colors"
               aria-label="Profile"
             >
@@ -1354,7 +1354,7 @@ export default function ExploreMore() {
                 <button 
                   onClick={() => {
                     setProfileOpen(false)
-                    navigate("/food/restaurant/onboarding?step=1")
+                    navigate("/food/restaurant/edit-owner")
                   }}
                   className="w-full flex items-start gap-4 text-left p-2 -m-2 hover:bg-gray-50 rounded-xl transition-colors group"
                 >
@@ -1405,15 +1405,6 @@ export default function ExploreMore() {
                   className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-lg transition-colors"
                 >
                   {isLoggingOut ? "Logging out..." : "Logout"}
-                </button>
-
-                {/* Logout from all devices Button */}
-                <button
-                  onClick={handleLogoutAllDevices}
-                  disabled={isLoggingOut}
-                  className="w-full bg-white border-2 border-red-600 text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed font-semibold py-3 px-4 rounded-lg transition-colors"
-                >
-                  {isLoggingOut ? "Logging out..." : "Logout from all devices"}
                 </button>
               </div>
 

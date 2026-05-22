@@ -409,7 +409,7 @@ export default function DiningRestaurantCommission() {
           </div>
 
           <div className="mb-4 flex items-center gap-3">
-            <div className="relative flex-1 sm:flex-initial min-w-[250px]">
+            <div className="relative flex-1 sm:flex-initial min-w-[320px] sm:min-w-[360px]">
               <input
                 type="text"
                 placeholder="Ex: Search by restaurant name or ID"
