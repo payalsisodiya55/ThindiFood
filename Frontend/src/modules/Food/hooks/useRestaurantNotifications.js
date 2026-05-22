@@ -304,10 +304,10 @@ export const useRestaurantNotifications = () => {
         return;
       }
 
-      // Keep re-alerting while order is pending and tab is not visible.
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        playNotificationSound(activeOrderRef.current);
-      }
+      // Keep re-alerting while order is pending — both foreground and background.
+      // On mobile, the initial play() often fails silently due to autoplay policy;
+      // repeating here ensures the sound eventually plays once the browser allows it.
+      playNotificationSound(activeOrderRef.current);
     }, ALERT_LOOP_INTERVAL_MS);
   };
 
@@ -999,7 +999,9 @@ export const useRestaurantNotifications = () => {
     };
   }, [restaurantId]);
 
-  // Track user interaction for autoplay policy
+  // Track user interaction for autoplay policy.
+  // On mobile, the audio context can be re-suspended when the app goes to
+  // background, so we must re-unlock on *every* interaction — not just the first.
   useEffect(() => {
     const handleUserInteraction = async () => {
       userInteractedRef.current = true;
@@ -1010,15 +1012,15 @@ export const useRestaurantNotifications = () => {
         audioRef.current.volume = 1;
       }
 
-      if (!audioUnlockAttemptedRef.current && audioRef.current) {
-        audioUnlockAttemptedRef.current = true;
+      // Always re-attempt unlock (mobile can re-suspend audio context after bg).
+      if (audioRef.current) {
         try {
           audioRef.current.muted = true;
           await audioRef.current.play();
           audioRef.current.pause();
           audioRef.current.currentTime = 0;
+          audioUnlockAttemptedRef.current = true;
         } catch (error) {
-          audioUnlockAttemptedRef.current = false;
           if (!error.message?.includes('user didn\'t interact') && !error.name?.includes('NotAllowedError')) {
             debugWarn('Error unlocking notification sound:', error);
           }
@@ -1029,19 +1031,15 @@ export const useRestaurantNotifications = () => {
           }
         }
       }
-
-      // Remove listeners after first interaction
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('touchstart', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-      window.removeEventListener('pointerdown', handleUserInteraction);
     };
     
-    // Listen for user interaction
-    document.addEventListener('click', handleUserInteraction, { once: true });
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
-    document.addEventListener('keydown', handleUserInteraction, { once: true });
-    window.addEventListener('pointerdown', handleUserInteraction, { once: true, passive: true });
+    // Listen for *every* user interaction (not { once: true }) so we keep
+    // re-unlocking the audio context on mobile after app resumes from background.
+    const interactionOptions = { passive: true, capture: false };
+    document.addEventListener('click', handleUserInteraction, interactionOptions);
+    document.addEventListener('touchstart', handleUserInteraction, interactionOptions);
+    document.addEventListener('keydown', handleUserInteraction, interactionOptions);
+    window.addEventListener('pointerdown', handleUserInteraction, interactionOptions);
     
     return () => {
       document.removeEventListener('click', handleUserInteraction);
@@ -1057,7 +1055,12 @@ export const useRestaurantNotifications = () => {
         stopAlertLoop();
         return;
       }
-      const usedNativeBridge = await triggerWebViewNativeNotification(orderData);
+
+      // Try native WebView bridge (Flutter InAppWebView) but do NOT return
+      // early — the bridge handlers may silently succeed without producing
+      // audible sound, so we always fall through to web audio as well.
+      triggerWebViewNativeNotification(orderData).catch(() => {});
+
       const hasUserActivation =
         userInteractedRef.current ||
         (typeof document !== 'undefined' && Boolean(document.userActivation?.hasBeenActive));
@@ -1068,32 +1071,36 @@ export const useRestaurantNotifications = () => {
       ) {
         navigator.vibrate([200, 100, 200, 100, 300]);
       }
-      if (usedNativeBridge) {
-        return;
-      }
 
+      // Always attempt web audio playback (primary path for both browser and WebView).
       if (audioRef.current) {
         audioRef.current.muted = false;
         audioRef.current.volume = 1;
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(error => {
-          // Don't log autoplay policy errors as they're expected
-          if (!error.message?.includes('user didn\'t interact') && !error.name?.includes('NotAllowedError')) {
-            debugWarn('Error playing notification sound:', error);
-            // Fallback: try one-shot audio instance (more reliable in background tabs on some browsers)
-            try {
-              if (fallbackAudioRef.current) {
-                fallbackAudioRef.current.pause();
-                fallbackAudioRef.current.currentTime = 0;
-              }
-              fallbackAudioRef.current = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
-              fallbackAudioRef.current.volume = 1;
-              fallbackAudioRef.current.play().catch(() => {});
-            } catch (fallbackError) {
-              debugWarn('Fallback audio playback failed:', fallbackError);
+          // On autoplay-blocked error, try a fresh one-shot Audio instance.
+          // Some mobile browsers allow a new Audio() even when the cached one is blocked.
+          try {
+            if (fallbackAudioRef.current) {
+              fallbackAudioRef.current.pause();
+              fallbackAudioRef.current.currentTime = 0;
             }
+            fallbackAudioRef.current = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
+            fallbackAudioRef.current.volume = 1;
+            fallbackAudioRef.current.play().catch(() => {});
+          } catch (fallbackError) {
+            // Silently swallow — the alert loop will retry.
           }
         });
+      } else {
+        // audioRef not initialized yet — create a one-shot instance.
+        try {
+          const oneShotAudio = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
+          oneShotAudio.volume = 1;
+          oneShotAudio.play().catch(() => {});
+        } catch {
+          // Silently swallow.
+        }
       }
     } catch (error) {
       // Don't log autoplay policy errors
