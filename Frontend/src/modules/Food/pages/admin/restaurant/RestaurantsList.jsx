@@ -317,7 +317,7 @@ export default function RestaurantsList() {
         setError(null)
 
         const [response, reviewsResponse] = await Promise.all([
-          adminAPI.getApprovedRestaurants({}),
+          adminAPI.getRestaurants({ limit: 1000 }),
           adminAPI.getRestaurantReviews({ limit: 1000 }).catch(() => null),
         ])
 
