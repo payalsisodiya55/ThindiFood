@@ -1835,6 +1835,13 @@ export async function createOrder(userId, dto) {
       dto.restaurantId,
       "status restaurantName zoneId location selfDelivery isActive isAcceptingOrders",
     );
+    const selectedZoneId = String(dto.zoneId || "").trim();
+    const restaurantZoneId = String(restaurant?.zoneId || "").trim();
+    if (selectedZoneId && restaurantZoneId && selectedZoneId !== restaurantZoneId) {
+      throw new ValidationError(
+        "This restaurant is not available in your currently selected zone",
+      );
+    }
     await ensureFoodItemsAreOrderable(dto.restaurantId, dto.items);
   }
 

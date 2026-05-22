@@ -8,6 +8,13 @@ export default function StickyCartCard() {
   const { cart, getCartCount } = useCart()
   const [isVisible, setIsVisible] = useState(true)
   const [bottomPosition, setBottomPosition] = useState("bottom-[70px]") // Fixed above bottom navigation
+  const [currentZoneId, setCurrentZoneId] = useState(() => {
+    try {
+      return localStorage.getItem("userZoneId") || ""
+    } catch {
+      return ""
+    }
+  })
   const cartCount = getCartCount()
 
   // Set fixed position above bottom navigation (no scroll-based movement)
@@ -38,9 +45,27 @@ export default function StickyCartCard() {
     }
   }, [])
 
+  useEffect(() => {
+    const syncZone = () => {
+      try {
+        setCurrentZoneId(localStorage.getItem("userZoneId") || "")
+      } catch {
+        setCurrentZoneId("")
+      }
+    }
+
+    window.addEventListener("userLocationUpdated", syncZone)
+    window.addEventListener("storage", syncZone)
+    return () => {
+      window.removeEventListener("userLocationUpdated", syncZone)
+      window.removeEventListener("storage", syncZone)
+    }
+  }, [])
+
   // Get restaurant info from first cart item or use default
   const restaurantName = cart[0]?.restaurant || "Restaurant"
   const restaurantImage = cart[0]?.image || "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=200&h=200&fit=crop"
+  const cartZoneId = String(cart[0]?.zoneId || "").trim()
 
   // Create restaurant slug from restaurant name
   const restaurantSlug = restaurantName.toLowerCase().replace(/\s+/g, "-")
@@ -82,6 +107,7 @@ export default function StickyCartCard() {
 
   // Don't render if cart is empty
   if (cartCount === 0) return null
+  if (cartZoneId && currentZoneId && cartZoneId !== currentZoneId) return null
 
   return (
     <AnimatePresence>

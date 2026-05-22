@@ -541,6 +541,14 @@ export default function Cart() {
       return "saved"
     }
   })
+  const [selectedZoneId, setSelectedZoneId] = useState(() => {
+    try {
+      if (typeof window === "undefined") return ""
+      return localStorage.getItem("userZoneId") || ""
+    } catch {
+      return ""
+    }
+  })
 
   useEffect(() => {
     const audio = new Audio(zoopSound)
@@ -1052,6 +1060,38 @@ export default function Cart() {
       : selectedAddress || savedAddress || currentLocationAddress || null
   }, [deliveryAddressMode, currentLocationAddress, selectedAddress, savedAddress])
 
+  const selectedAddressCoordinates = defaultAddress?.location?.coordinates
+  const zoneLocation = selectedAddressCoordinates?.length === 2
+    ? {
+      latitude: selectedAddressCoordinates[1],
+      longitude: selectedAddressCoordinates[0]
+    }
+    : currentLocation
+  const {
+    zoneId,
+    zone,
+    refreshZone,
+    isOutOfService: isSelectedLocationOutOfZone,
+  } = useZone(zoneLocation) // Prefer selected/saved address zone
+
+  const restaurantZoneId = useMemo(() => {
+    const rawZoneId =
+      restaurantData?.zoneId?._id ||
+      restaurantData?.zoneId ||
+      cart[0]?.zoneId ||
+      ""
+    return String(rawZoneId || "").trim()
+  }, [restaurantData?.zoneId, cart])
+
+  const effectiveSelectedZoneId = useMemo(() => {
+    return String(zoneId || selectedZoneId || "").trim()
+  }, [zoneId, selectedZoneId])
+
+  const isRestaurantOutsideSelectedZone = useMemo(() => {
+    if (!restaurantZoneId || !effectiveSelectedZoneId) return false
+    return restaurantZoneId !== effectiveSelectedZoneId
+  }, [restaurantZoneId, effectiveSelectedZoneId])
+
   const deliveryRadiusAvailabilityMessage = useMemo(() => {
     if (fulfillmentMode !== "delivery") return ""
     return getDeliveryRadiusAvailabilityMessage(
@@ -1078,6 +1118,14 @@ export default function Cart() {
       return "This restaurant is currently closed and cannot accept orders."
     }
 
+    if (isSelectedLocationOutOfZone) {
+      return "Your selected location is outside the service zone."
+    }
+
+    if (isRestaurantOutsideSelectedZone) {
+      return "Your cart contains items from a restaurant in a different zone. Please clear the cart."
+    }
+
     if (fulfillmentMode === "delivery" && deliveryRadiusAvailabilityMessage) {
       return deliveryRadiusAvailabilityMessage
     }
@@ -1094,6 +1142,8 @@ export default function Cart() {
     restaurantData,
     currentRestaurantAvailability,
     fulfillmentMode,
+    isRestaurantOutsideSelectedZone,
+    isSelectedLocationOutOfZone,
     deliveryRadiusAvailabilityMessage,
     selfDeliveryTimingStatus,
   ])
@@ -1123,14 +1173,6 @@ export default function Cart() {
   const hasSavedAddress = Boolean(defaultAddress && formatFullAddress(defaultAddress))
   const recipientName = String(recipientDetails.name || "").trim() || userProfile?.name || "Your Name"
   const recipientPhone = sanitizeRecipientPhone(recipientDetails.phone || "") || userProfile?.phone || ""
-  const selectedAddressCoordinates = defaultAddress?.location?.coordinates
-  const zoneLocation = selectedAddressCoordinates?.length === 2
-    ? {
-      latitude: selectedAddressCoordinates[1],
-      longitude: selectedAddressCoordinates[0]
-    }
-    : currentLocation
-  const { zoneId, zone, refreshZone } = useZone(zoneLocation) // Prefer selected/saved address zone
   const defaultPayment = getDefaultPaymentMethod()
   const isTakeawayCodEnabled =
     restaurantData?.takeawayCodEnabled === true ||
@@ -1147,6 +1189,27 @@ export default function Cart() {
       // ignore
     }
   })
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined
+
+    const syncSelectedZoneId = () => {
+      try {
+        setSelectedZoneId(localStorage.getItem("userZoneId") || "")
+      } catch {
+        setSelectedZoneId("")
+      }
+    }
+
+    syncSelectedZoneId()
+    window.addEventListener("userLocationUpdated", syncSelectedZoneId)
+    window.addEventListener("storage", syncSelectedZoneId)
+
+    return () => {
+      window.removeEventListener("userLocationUpdated", syncSelectedZoneId)
+      window.removeEventListener("storage", syncSelectedZoneId)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isTakeawayCodEnabled && selectedPaymentMethod === "cash") {
@@ -2725,6 +2788,13 @@ export default function Cart() {
       }
 
       const fulfillmentType = fulfillmentMode === "delivery" ? "delivery" : "takeaway"
+      if (isRestaurantOutsideSelectedZone || isSelectedLocationOutOfZone) {
+        const zoneMismatchMessage = placeOrderAvailabilityMessage || "Your cart contains items from a restaurant in a different zone. Please clear the cart."
+        toast.error(zoneMismatchMessage)
+        setIsPlacingOrder(false)
+        return
+      }
+
       if (placeOrderAvailabilityMessage) {
         toast.error(placeOrderAvailabilityMessage)
         setIsPlacingOrder(false)

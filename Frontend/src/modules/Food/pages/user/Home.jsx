@@ -941,43 +941,6 @@ export default function Home() {
     };
   }, [showVegModePopup]);
 
-  // Fetch hero banners from public API (no auth required)
-  useEffect(() => {
-    let cancelled = false;
-    setLoadingBanners(true);
-    publicGetOnce("/food/hero-banners/public", {
-      params: zoneId ? { zoneId } : {},
-    })
-      .then((response) => {
-        if (cancelled) return;
-        const data = response?.data?.data;
-        const list = Array.isArray(data?.banners)
-          ? data.banners
-          : Array.isArray(data)
-            ? data
-            : [];
-        const images = list
-          .map((b) => (b && typeof b.imageUrl === "string" ? b.imageUrl : ""))
-          .filter(Boolean);
-        
-        setHeroBannerImages(images);
-        setHeroBannersData(list);
-        setCurrentBannerIndex(0);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        debugError("Failed to fetch hero banners", err);
-        setHeroBannerImages([]);
-        setHeroBannersData([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingBanners(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [zoneId]);
-
   // Old backend endpoint removed: keep UI stable with empty categories.
   useEffect(() => {
     setLoadingRealCategories(true);
@@ -1217,68 +1180,6 @@ export default function Home() {
   const [showManageCollections, setShowManageCollections] = useState(false);
   const [selectedRestaurantSlug, setSelectedRestaurantSlug] = useState(null);
 
-  // Fetch categories (zone-aware) for the homepage category rail.
-  useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      const zoneKey = String(zoneId || "global")
-      try {
-        // Dedupe repeated calls (StrictMode + zone settling). Cache per zoneKey and share in-flight request.
-        const cached = publicCategoriesCacheRef.current.get(zoneKey)
-        if (cached) {
-          if (!cancelled) setRealCategories(cached)
-          return
-        }
-
-        const inFlight = publicCategoriesInFlightRef.current.get(zoneKey)
-        if (inFlight) {
-          const categories = await inFlight
-          if (!cancelled) setRealCategories(categories)
-          return
-        }
-
-        setLoadingRealCategories(true)
-        const promise = (async () => {
-          const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
-          const list =
-            res?.data?.data?.categories ||
-            res?.data?.categories ||
-            []
-          const categories = Array.isArray(list)
-            ? list.map((cat, idx) => ({
-                id: String(cat?.id || cat?._id || cat?.slug || idx),
-                name: cat?.name || "",
-                slug: cat?.slug || String(cat?.name || "").toLowerCase().replace(/\s+/g, "-"),
-                image:
-                  normalizeImageUrl(cat?.image || cat?.imageUrl) ||
-                  foodImages[idx % foodImages.length] ||
-                  foodImages[0],
-                type: cat?.type || "",
-              }))
-            : []
-
-          publicCategoriesCacheRef.current.set(zoneKey, categories)
-          return categories
-        })()
-
-        publicCategoriesInFlightRef.current.set(zoneKey, promise)
-        const categories = await promise
-        publicCategoriesInFlightRef.current.delete(zoneKey)
-
-        if (!cancelled) setRealCategories(categories)
-      } catch (err) {
-        debugWarn("Failed to fetch categories:", err)
-        if (!cancelled) setRealCategories([])
-      } finally {
-        if (!cancelled) setLoadingRealCategories(false)
-      }
-    }
-    run()
-    return () => {
-      cancelled = true
-    }
-  }, [zoneId, normalizeImageUrl])
-
   // Memoize cartCount to prevent recalculation on every render - use cart directly
   const cartCount = useMemo(
     () => cart.reduce((total, item) => total + (item.quantity || 0), 0),
@@ -1367,18 +1268,141 @@ export default function Home() {
   }, [defaultSavedAddress]);
 
   const {
+    zoneId: savedAddressZoneId,
     isOutOfService: isSavedAddressOutOfService,
     loading: savedAddressZoneLoading,
     error: savedAddressZoneError,
   } = useZone(defaultSavedAddressLocation);
 
-  const hasSavedAddress = Boolean(defaultSavedAddress && savedAddressText);
+  const deliveryAddressMode =
+    typeof window !== "undefined"
+      ? localStorage.getItem("deliveryAddressMode") || "saved"
+      : "saved";
+
+  const shouldUseSavedAddressZone =
+    fulfillmentMode === "delivery" &&
+    deliveryAddressMode === "saved" &&
+    Boolean(defaultSavedAddressLocation);
+
+  const activeZoneId = shouldUseSavedAddressZone ? savedAddressZoneId : zoneId;
+  const activeZoneLoading = shouldUseSavedAddressZone
+    ? savedAddressZoneLoading
+    : zoneLoading;
+  const activeZoneError = shouldUseSavedAddressZone
+    ? savedAddressZoneError
+    : zoneError;
+  const activeZoneOutOfService = shouldUseSavedAddressZone
+    ? isSavedAddressOutOfService
+    : isOutOfService;
+  const hasActiveZoneLocation = shouldUseSavedAddressZone
+    ? Boolean(defaultSavedAddressLocation)
+    : Number.isFinite(location?.latitude) && Number.isFinite(location?.longitude);
+
   const shouldShowOutOfZoneHome =
-    hasSavedAddress &&
-    Boolean(defaultSavedAddressLocation) &&
-    !savedAddressZoneLoading &&
-    !savedAddressZoneError &&
-    isSavedAddressOutOfService;
+    hasActiveZoneLocation &&
+    !activeZoneLoading &&
+    !activeZoneError &&
+    activeZoneOutOfService;
+
+  // Fetch hero banners from public API (no auth required)
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingBanners(true);
+    publicGetOnce("/food/hero-banners/public", {
+      params: activeZoneId ? { zoneId: activeZoneId } : {},
+    })
+      .then((response) => {
+        if (cancelled) return;
+        const data = response?.data?.data;
+        const list = Array.isArray(data?.banners)
+          ? data.banners
+          : Array.isArray(data)
+            ? data
+            : [];
+        const images = list
+          .map((b) => (b && typeof b.imageUrl === "string" ? b.imageUrl : ""))
+          .filter(Boolean);
+
+        setHeroBannerImages(images);
+        setHeroBannersData(list);
+        setCurrentBannerIndex(0);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        debugError("Failed to fetch hero banners", err);
+        setHeroBannerImages([]);
+        setHeroBannersData([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingBanners(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeZoneId]);
+
+  // Fetch categories (zone-aware) for the homepage category rail.
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const zoneKey = String(activeZoneId || "global");
+      try {
+        const cached = publicCategoriesCacheRef.current.get(zoneKey);
+        if (cached) {
+          if (!cancelled) setRealCategories(cached);
+          return;
+        }
+
+        const inFlight = publicCategoriesInFlightRef.current.get(zoneKey);
+        if (inFlight) {
+          const categories = await inFlight;
+          if (!cancelled) setRealCategories(categories);
+          return;
+        }
+
+        setLoadingRealCategories(true);
+        const promise = (async () => {
+          const res = await adminAPI.getPublicCategories(
+            activeZoneId ? { zoneId: activeZoneId } : {},
+          );
+          const list =
+            res?.data?.data?.categories ||
+            res?.data?.categories ||
+            [];
+          const categories = Array.isArray(list)
+            ? list.map((cat, idx) => ({
+                id: String(cat?.id || cat?._id || cat?.slug || idx),
+                name: cat?.name || "",
+                slug: cat?.slug || String(cat?.name || "").toLowerCase().replace(/\s+/g, "-"),
+                image:
+                  normalizeImageUrl(cat?.image || cat?.imageUrl) ||
+                  foodImages[idx % foodImages.length] ||
+                  foodImages[0],
+                type: cat?.type || "",
+              }))
+            : [];
+
+          publicCategoriesCacheRef.current.set(zoneKey, categories);
+          return categories;
+        })();
+
+        publicCategoriesInFlightRef.current.set(zoneKey, promise);
+        const categories = await promise;
+        publicCategoriesInFlightRef.current.delete(zoneKey);
+
+        if (!cancelled) setRealCategories(categories);
+      } catch (err) {
+        debugWarn("Failed to fetch categories:", err);
+        if (!cancelled) setRealCategories([]);
+      } finally {
+        if (!cancelled) setLoadingRealCategories(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeZoneId, normalizeImageUrl]);
 
   // Mock points value - replace with actual points from context/store
   const userPoints = 99;
@@ -1466,6 +1490,18 @@ export default function Home() {
       try {
         setLoadingRestaurants(true);
 
+        if (hasActiveZoneLocation) {
+          if (activeZoneLoading) {
+            setRestaurantsData([]);
+            return;
+          }
+
+          if (activeZoneOutOfService || !activeZoneId) {
+            setRestaurantsData([]);
+            return;
+          }
+        }
+
         // Backend disconnected - new backend in progress. Skip health check.
 
         // Build query parameters from filters
@@ -1534,8 +1570,8 @@ export default function Home() {
 
         // Homepage must refetch immediately when the selected/current address
         // resolves to a different delivery zone.
-        if (zoneId) {
-          params.zoneId = zoneId;
+        if (activeZoneId) {
+          params.zoneId = activeZoneId;
         }
 
         debugLog("Fetching restaurants with params:", params);
@@ -1837,9 +1873,12 @@ export default function Home() {
     [
       extractImages,
       buildRestaurantImageCandidates,
+      activeZoneId,
+      activeZoneLoading,
+      activeZoneOutOfService,
+      hasActiveZoneLocation,
       location?.latitude,
       location?.longitude,
-      zoneId,
     ],
   );
 

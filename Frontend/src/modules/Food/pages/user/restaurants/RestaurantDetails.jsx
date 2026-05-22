@@ -1283,6 +1283,12 @@ function RestaurantDetailsContent() {
       image: item.image,
       restaurant: restaurant.name, // Use restaurant.name directly (already validated)
       restaurantId: validRestaurantId, // Use validated restaurantId
+      zoneId:
+        typeof restaurant?.zoneId === "string"
+          ? restaurant.zoneId
+          : typeof restaurant?.zoneId?._id === "string"
+            ? restaurant.zoneId._id
+            : "",
       description: item.description,
       originalPrice: item.originalPrice,
       isVeg: item.isVeg, // Use the already normalized isVeg property
