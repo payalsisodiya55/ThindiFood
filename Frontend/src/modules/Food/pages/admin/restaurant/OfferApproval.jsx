@@ -275,17 +275,20 @@ export default function OfferApproval() {
                           </span>
                         </td>
                         <td className="px-3 py-3 text-right">
-                          <div className="flex justify-end gap-2">
+                           <div className="flex justify-end gap-2">
                             <button
                               onClick={() => { setSelectedOffer(offer); setShowDetailModal(true); }}
-                              className="p-1.5 bg-[#006fbd] text-white rounded-md hover:opacity-90 transition-all"
+                              className="p-1.5 bg-[#006fbd] text-white rounded-md hover:opacity-90 transition-all cursor-pointer"
+                              title="View Offer"
+                              aria-label="View Offer"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => openEditModal(offer)}
-                              className="p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all"
-                              title="Edit offer"
+                              className="p-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-all cursor-pointer"
+                              title="Edit Offer"
+                              aria-label="Edit Offer"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -293,13 +296,17 @@ export default function OfferApproval() {
                               <>
                                 <button
                                   onClick={() => handleApprove(offer._id || offer.id)}
-                                  className="p-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all"
+                                  className="p-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 transition-all cursor-pointer"
+                                  title="Approve Offer"
+                                  aria-label="Approve Offer"
                                 >
                                   <CheckCircle2 className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => { setSelectedOffer(offer); setShowRejectModal(true); }}
-                                  className="p-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all"
+                                  className="p-1.5 bg-red-600 text-white rounded-md hover:bg-red-700 transition-all cursor-pointer"
+                                  title="Reject Offer"
+                                  aria-label="Reject Offer"
                                 >
                                   <XCircle className="w-4 h-4" />
                                 </button>
