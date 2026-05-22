@@ -231,12 +231,14 @@ const DineInTableManagement = () => {
         );
     };
 
-    const triggerDownload = (href, fileName) => {
+    const triggerDownload = (href, fileName, openInNewTab = true) => {
         const link = document.createElement("a");
         link.href = href;
         link.download = fileName;
-        link.rel = "noopener";
-        link.target = "_blank";
+        if (openInNewTab) {
+            link.rel = "noopener";
+            link.target = "_blank";
+        }
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -253,26 +255,13 @@ const DineInTableManagement = () => {
             const dataUrl = await generateQrDataUrl(table?.qrCodeUrl || "", 700);
             if (!dataUrl) throw new Error("QR generation failed");
 
-            const blob = await dataUrlToBlob(dataUrl);
-
-            if (
-                isNativeLikeShell() &&
-                typeof navigator !== "undefined" &&
-                navigator.share &&
-                typeof window.File !== "undefined"
-            ) {
-                const file = new File([blob], fileName, { type: blob.type || "image/png" });
-                if (!navigator.canShare || navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: `Table ${table.tableNumber} QR`,
-                        text: `Save or share QR for table ${table.tableNumber}`,
-                    });
-                    toast.success(`Table ${table.tableNumber} QR downloaded`);
-                    return;
-                }
+            if (isNativeLikeShell()) {
+                triggerDownload(dataUrl, fileName, false);
+                toast.success(`Table ${table.tableNumber} QR downloaded`);
+                return;
             }
 
+            const blob = await dataUrlToBlob(dataUrl);
             const objectUrl = URL.createObjectURL(blob);
             try {
                 triggerDownload(objectUrl, fileName);
