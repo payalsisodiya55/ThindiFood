@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
     Plus, QrCode, Users, Trash2, Download, Pencil,
     Loader2, AlertCircle, CheckCircle2, MoreVertical, 
-    Printer, Info, Search, Utensils, ChevronLeft
+    Info, Search, Utensils, ChevronLeft
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
 import { Card, CardContent } from "@food/components/ui/card";
@@ -217,13 +217,34 @@ const DineInTableManagement = () => {
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#039;");
 
+    const isNativeLikeShell = () => {
+        if (typeof window === "undefined") return false;
+        const protocol = String(window.location?.protocol || "").toLowerCase();
+        const userAgent = String(window.navigator?.userAgent || "").toLowerCase();
+
+        return (
+            Boolean(window.flutter_inappwebview) ||
+            Boolean(window.ReactNativeWebView) ||
+            protocol === "file:" ||
+            userAgent.includes(" wv") ||
+            userAgent.includes("; wv")
+        );
+    };
+
     const triggerDownload = (href, fileName) => {
         const link = document.createElement("a");
         link.href = href;
         link.download = fileName;
+        link.rel = "noopener";
+        link.target = "_blank";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const dataUrlToBlob = async (dataUrl) => {
+        const response = await fetch(dataUrl);
+        return await response.blob();
     };
 
     const downloadQR = async (table) => {
@@ -231,14 +252,40 @@ const DineInTableManagement = () => {
         try {
             const dataUrl = await generateQrDataUrl(table?.qrCodeUrl || "", 700);
             if (!dataUrl) throw new Error("QR generation failed");
-            triggerDownload(dataUrl, fileName);
+
+            const blob = await dataUrlToBlob(dataUrl);
+
+            if (
+                isNativeLikeShell() &&
+                typeof navigator !== "undefined" &&
+                navigator.share &&
+                typeof window.File !== "undefined"
+            ) {
+                const file = new File([blob], fileName, { type: blob.type || "image/png" });
+                if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: `Table ${table.tableNumber} QR`,
+                        text: `Save or share QR for table ${table.tableNumber}`,
+                    });
+                    toast.success(`Table ${table.tableNumber} QR downloaded`);
+                    return;
+                }
+            }
+
+            const objectUrl = URL.createObjectURL(blob);
+            try {
+                triggerDownload(objectUrl, fileName);
+            } finally {
+                window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+            }
             toast.success(`Table ${table.tableNumber} QR downloaded`);
-        } catch {
-            toast.error("Failed to generate QR for download");
+        } catch (error) {
+            toast.error(error?.message || "Failed to download QR");
         }
     };
 
-    const openQrPreview = async (table, autoPrint = false) => {
+    const openQrPreview = async (table) => {
         const tableNumber = toSafeText(table?.tableNumber || "");
         const tableLabel = toSafeText(table?.tableLabel || "Table");
         const qrTarget = toSafeText(table?.qrCodeUrl || "");
@@ -248,7 +295,7 @@ const DineInTableManagement = () => {
 
         const previewWindow = window.open("", "_blank", "width=760,height=900");
         if (!previewWindow) {
-            toast.error("Popup blocked. Please allow popups to preview/print QR.");
+            toast.error("Popup blocked. Please allow popups to preview QR.");
             return;
         }
 
@@ -270,7 +317,6 @@ const DineInTableManagement = () => {
                     .meta { margin-top: 14px; font-size: 13px; color: #475569; line-height: 1.5; word-break: break-all; }
                     .actions { margin-top: 16px; display: flex; gap: 10px; }
                     .btn { border: 0; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
-                    .btn-print { background: #10b981; color: #fff; }
                     .btn-download { background: #e2e8f0; color: #0f172a; }
                     @media print {
                         body { background: #fff; }
@@ -290,7 +336,6 @@ const DineInTableManagement = () => {
                         </div>
                         <div class="meta">Scan URL: ${qrTarget}</div>
                         <div class="actions">
-                            <button class="btn btn-print" onclick="window.print()">Print</button>
                             <button class="btn btn-download" onclick="const a=document.createElement('a');a.href='${qrDataUrl}';a.download='Table_${tableNumber}_QR.png';a.click();">Download</button>
                         </div>
                     </div>
@@ -300,16 +345,6 @@ const DineInTableManagement = () => {
         `);
         previewWindow.document.close();
 
-        if (autoPrint) {
-            previewWindow.onload = () => {
-                previewWindow.focus();
-                previewWindow.print();
-            };
-        }
-    };
-
-    const printQR = (table) => {
-        openQrPreview(table, true);
     };
 
     if (loading) return (
@@ -426,18 +461,12 @@ const DineInTableManagement = () => {
                             </div>
 
                             {/* Action Buttons - Always Visible */}
-                            <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="grid grid-cols-1 gap-3 mb-6">
                                 <Button 
                                     onClick={() => downloadQR(table)}
                                     className="bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl font-bold h-12 gap-2 text-xs"
                                 >
                                     <Download className="w-4 h-4" /> Download
-                                </Button>
-                                <Button 
-                                    onClick={() => printQR(table)}
-                                    className="bg-white border border-[#00c87e]/30 text-[#00a86c] hover:bg-[#00c87e]/10 rounded-2xl font-bold h-12 gap-2 text-xs"
-                                >
-                                    <Printer className="w-4 h-4" /> Print
                                 </Button>
                             </div>
 
