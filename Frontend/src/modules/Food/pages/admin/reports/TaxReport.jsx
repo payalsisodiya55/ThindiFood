@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Download, ChevronDown, FileText, DollarSign, Settings, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
@@ -9,6 +9,71 @@ import { toast } from "sonner"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+
+const toAmount = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const normalizeTaxDetailRow = (entry = {}, index = 0) => {
+  const summary = entry.billingSnapshot?.summary || entry.summary || {}
+  const orderId =
+    entry.orderId ||
+    entry.sessionId ||
+    entry.bookingId ||
+    entry.id ||
+    entry._id ||
+    (entry.tableNumber ? `Table ${entry.tableNumber}` : `row-${index + 1}`)
+  const date =
+    entry.date ||
+    entry.createdAt ||
+    entry.updatedAt ||
+    entry.orderedAt ||
+    entry.sessionDate ||
+    null
+  const totalAmount = toAmount(
+    entry.totalAmount ??
+    entry.amount ??
+    entry.grandTotal ??
+    entry.billAmount ??
+    entry.subtotal ??
+    summary.grandTotal ??
+    summary.totalAmount,
+  )
+  const taxAmount = toAmount(
+    entry.taxAmount ??
+    entry.tax ??
+    entry.totalTax ??
+    summary.taxAmount ??
+    summary.totalTax,
+  )
+
+  return {
+    id: entry.id || entry._id || `${orderId}-${index}`,
+    orderId,
+    date,
+    totalAmount,
+    taxAmount,
+  }
+}
+
+const extractTaxDetailRows = (reportDetail) => {
+  if (!reportDetail || typeof reportDetail !== "object") return []
+
+  const candidateArrays = [
+    reportDetail.orders,
+    reportDetail.diningOrders,
+    reportDetail.dineInOrders,
+    reportDetail.sessions,
+    reportDetail.details,
+    reportDetail.items,
+  ].filter(Array.isArray)
+
+  return candidateArrays
+    .flatMap((entries) => entries)
+    .map(normalizeTaxDetailRow)
+    .filter((row) => row.orderId && row.taxAmount > 0)
+}
 
 
 export default function TaxReport() {
@@ -27,6 +92,12 @@ export default function TaxReport() {
   const [selectedReport, setSelectedReport] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [reportDetail, setReportDetail] = useState(null)
+
+  const detailRows = useMemo(() => extractTaxDetailRows(reportDetail), [reportDetail])
+  const detailTotalTax = useMemo(
+    () => detailRows.reduce((sum, row) => sum + row.taxAmount, 0),
+    [detailRows],
+  )
 
   const fetchTaxReport = async () => {
     try {
@@ -439,7 +510,7 @@ export default function TaxReport() {
                 <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-4" />
                 <p className="text-slate-600">Fetching order details...</p>
               </div>
-            ) : reportDetail?.orders?.length > 0 ? (
+            ) : detailRows.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-slate-50 border-b border-slate-200">
@@ -451,12 +522,18 @@ export default function TaxReport() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {reportDetail.orders.map((order) => (
+                    {detailRows.map((order) => (
                       <tr key={order.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-slate-900">{order.orderId}</td>
-                        <td className="px-4 py-3 text-sm text-slate-600">{new Date(order.date).toLocaleDateString('en-IN')}</td>
-                        <td className="px-4 py-3 text-sm text-right text-slate-700">{order.totalAmount}</td>
-                        <td className="px-4 py-3 text-sm text-right font-semibold text-red-600">{order.taxAmount}</td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {order.date ? new Date(order.date).toLocaleDateString('en-IN') : "N/A"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right text-slate-700">
+                          ₹{order.totalAmount.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-right font-semibold text-red-600">
+                          ₹{order.taxAmount.toFixed(2)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -472,7 +549,9 @@ export default function TaxReport() {
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
             <div className="text-sm">
               <span className="text-slate-500">Total Tax: </span>
-              <span className="font-bold text-red-600">{selectedReport?.totalTax}</span>
+              <span className="font-bold text-red-600">
+                {detailRows.length > 0 ? `₹${detailTotalTax.toFixed(2)}` : selectedReport?.totalTax}
+              </span>
             </div>
             <button
               onClick={() => setSelectedReport(null)}

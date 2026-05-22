@@ -775,7 +775,6 @@ export default function OrdersPage({ statusKey = "all" }) {
       si: "Serial Number",
       orderId: "Order ID",
       orderDate: "Order Date",
-      orderOtp: "Order OTP",
       customer: "Customer Information",
       restaurant: "Restaurant",
       foodItems: "Food Items",

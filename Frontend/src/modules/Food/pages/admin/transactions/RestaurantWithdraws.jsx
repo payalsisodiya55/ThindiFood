@@ -427,7 +427,7 @@ export default function RestaurantWithdraws() {
               <DialogTitle>Withdraw Request Details</DialogTitle>
             </DialogHeader>
             {selectedWithdraw &&
-            <div className="px-6 pb-6 space-y-4">
+            <div className="px-6 pb-6 space-y-4 max-h-[65vh] overflow-y-auto">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 uppercase">Amount</label>
                   <p className="text-sm font-medium text-slate-900 mt-1">

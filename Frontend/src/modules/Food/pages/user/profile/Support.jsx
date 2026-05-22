@@ -8,7 +8,7 @@ import { Card, CardContent } from "@food/components/ui/card"
 import { orderAPI, restaurantAPI, supportAPI, authAPI } from "@food/api"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { toast } from "sonner"
-import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight, Mail, Phone } from "lucide-react"
+import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight, Mail, Phone, ChevronDown } from "lucide-react"
 
 
 export default function Support() {
@@ -28,6 +28,8 @@ export default function Support() {
   const [orderSearch, setOrderSearch] = useState("")
   const [restaurantSearch, setRestaurantSearch] = useState("")
   const [supportContact, setSupportContact] = useState(() => getCachedSettings()?.supportContact || null)
+  const [isOrderDropdownOpen, setIsOrderDropdownOpen] = useState(false)
+  const [isRestaurantDropdownOpen, setIsRestaurantDropdownOpen] = useState(false)
 
   useEffect(() => {
     setLoadingTickets(true)
@@ -329,21 +331,47 @@ export default function Support() {
               <div className="space-y-3">
                 <h3 className="font-semibold text-slate-900 dark:text-white">Select an order</h3>
                 {orders.length > 0 ? (
-                  <div className="space-y-2">
-                    <Input
-                      list="support-order-options"
-                      value={orderSearch}
-                      onChange={(e) => handleOrderSearchChange(e.target.value)}
-                      placeholder="Select/search order"
-                    />
-                    <datalist id="support-order-options">
-                      {filteredOrders.map((o) => (
-                        <option key={o._id || o.id} value={getOrderLabel(o)}>
-                          {getOrderLabel(o)}
-                        </option>
-                      ))}
-                    </datalist>
-                    {filteredOrders.length === 0 ? <p className="text-sm text-slate-500">No matching orders found</p> : null}
+                  <div className="space-y-2 relative">
+                    <div className="relative">
+                      <Input
+                        value={orderSearch}
+                        onFocus={() => setIsOrderDropdownOpen(true)}
+                        onChange={(e) => {
+                          setOrderSearch(e.target.value)
+                          setIsOrderDropdownOpen(true)
+                        }}
+                        placeholder="Select/search order"
+                        className="pr-10 bg-white dark:bg-[#1a1a1a]"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </div>
+                    {isOrderDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsOrderDropdownOpen(false)} />
+                        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-gray-800 rounded-xl shadow-lg max-h-60 overflow-y-auto z-20">
+                          {filteredOrders.map((o) => (
+                            <button
+                              key={o._id || o.id}
+                              type="button"
+                              onClick={() => {
+                                setOrderSearch(getOrderLabel(o))
+                                setSelectedOrder(o)
+                                setStep("order_issue")
+                                setIsOrderDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-gray-800 last:border-b-0 text-slate-800 dark:text-slate-200 transition-colors"
+                            >
+                              {getOrderLabel(o)}
+                            </button>
+                          ))}
+                          {filteredOrders.length === 0 && (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">No matching orders found</div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">No recent orders found</p>
@@ -374,21 +402,47 @@ export default function Support() {
               <div className="space-y-3">
                 <h3 className="font-semibold text-slate-900 dark:text-white">Select a restaurant</h3>
                 {restaurants.length > 0 ? (
-                  <div className="space-y-2">
-                    <Input
-                      list="support-restaurant-options"
-                      value={restaurantSearch}
-                      onChange={(e) => handleRestaurantSearchChange(e.target.value)}
-                      placeholder="Select/search restaurant"
-                    />
-                    <datalist id="support-restaurant-options">
-                      {filteredRestaurants.map((r) => (
-                        <option key={r._id || r.id} value={getRestaurantLabel(r)}>
-                          {getRestaurantLabel(r)}
-                        </option>
-                      ))}
-                    </datalist>
-                    {filteredRestaurants.length === 0 ? <p className="text-sm text-slate-500">No matching restaurants found</p> : null}
+                  <div className="space-y-2 relative">
+                    <div className="relative">
+                      <Input
+                        value={restaurantSearch}
+                        onFocus={() => setIsRestaurantDropdownOpen(true)}
+                        onChange={(e) => {
+                          setRestaurantSearch(e.target.value)
+                          setIsRestaurantDropdownOpen(true)
+                        }}
+                        placeholder="Select/search restaurant"
+                        className="pr-10 bg-white dark:bg-[#1a1a1a]"
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                        <ChevronDown className="h-4 w-4" />
+                      </div>
+                    </div>
+                    {isRestaurantDropdownOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsRestaurantDropdownOpen(false)} />
+                        <div className="absolute left-0 right-0 mt-1 bg-white dark:bg-[#1a1a1a] border border-slate-200 dark:border-gray-800 rounded-xl shadow-lg max-h-60 overflow-y-auto z-20">
+                          {filteredRestaurants.map((r) => (
+                            <button
+                              key={r._id || r.id}
+                              type="button"
+                              onClick={() => {
+                                setRestaurantSearch(getRestaurantLabel(r))
+                                setSelectedRestaurant(r)
+                                setStep("restaurant_issue")
+                                setIsRestaurantDropdownOpen(false)
+                              }}
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-gray-800 last:border-b-0 text-slate-800 dark:text-slate-200 transition-colors"
+                            >
+                              {getRestaurantLabel(r)}
+                            </button>
+                          ))}
+                          {filteredRestaurants.length === 0 && (
+                            <div className="px-4 py-3 text-sm text-slate-500 text-center">No matching restaurants found</div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <p className="text-sm text-slate-500">No restaurants found</p>

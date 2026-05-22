@@ -147,7 +147,7 @@ const getDefaultVisibleColumns = (statusKey) => ({
   orderId: true,
   orderDate: true,
   scheduledTime: statusKey === "scheduled" || statusKey === "all",
-  orderOtp: true,
+
   customer: true,
   restaurant: true,
   foodItems: true,

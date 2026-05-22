@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, Star, Building2, User, FileText, Phone, Mail, MapPin, ShieldX, Trash2, ArrowRight, Plus } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportRestaurantsToPDF } from "@food/components/admin/restaurants/restaurantsExportUtils"
 import { toast } from "sonner"
 const debugLog = (...args) => {}
@@ -59,6 +60,8 @@ export default function DiningList() {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false)
     const [editingRestaurant, setEditingRestaurant] = useState(null)
     const [actionLoadingId, setActionLoadingId] = useState("")
+    const [isViewOpen, setIsViewOpen] = useState(false)
+    const [selectedRestaurant, setSelectedRestaurant] = useState(null)
 
     const refreshRestaurants = async () => {
         try {
@@ -400,24 +403,46 @@ export default function DiningList() {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        {restaurant.pendingDiningRequest && (
-                                                            <div className="flex items-center justify-end gap-2">
-                                                                <button
-                                                                    onClick={() => handlePendingRequestAction(restaurant, "approve")}
-                                                                    disabled={actionLoadingId === `${restaurant._id}:approve`}
-                                                                    className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                                                                >
-                                                                    {actionLoadingId === `${restaurant._id}:approve` ? "Approving..." : "Approve"}
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => handlePendingRequestAction(restaurant, "reject")}
-                                                                    disabled={actionLoadingId === `${restaurant._id}:reject`}
-                                                                    className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 disabled:opacity-50"
-                                                                >
-                                                                    {actionLoadingId === `${restaurant._id}:reject` ? "Rejecting..." : "Reject"}
-                                                                </button>
-                                                            </div>
-                                                        )}
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            {restaurant.pendingDiningRequest && (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => handlePendingRequestAction(restaurant, "approve")}
+                                                                        disabled={actionLoadingId === `${restaurant._id}:approve`}
+                                                                        className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                                                    >
+                                                                        {actionLoadingId === `${restaurant._id}:approve` ? "Approving..." : "Approve"}
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => handlePendingRequestAction(restaurant, "reject")}
+                                                                        disabled={actionLoadingId === `${restaurant._id}:reject`}
+                                                                        className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 disabled:opacity-50"
+                                                                    >
+                                                                        {actionLoadingId === `${restaurant._id}:reject` ? "Rejecting..." : "Reject"}
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedRestaurant(restaurant)
+                                                                    setIsViewOpen(true)
+                                                                }}
+                                                                className="p-2 rounded-lg bg-orange-50 hover:bg-orange-100 transition-colors"
+                                                                title="View Details"
+                                                            >
+                                                                <Eye className="w-4 h-4 text-orange-600" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingRestaurant(restaurant)
+                                                                    setIsEditModalOpen(true)
+                                                                }}
+                                                                className="p-2 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors"
+                                                                title="Edit Settings"
+                                                            >
+                                                                <Settings className="w-4 h-4 text-blue-600" />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))
@@ -429,6 +454,124 @@ export default function DiningList() {
                     )}
                 </div>
             </div>
+
+
+            {/* View Details Dialog */}
+            <Dialog open={isViewOpen} onOpenChange={setIsViewOpen}>
+                <DialogContent className="max-w-md bg-white p-0">
+                    <DialogHeader className="px-6 pt-6 pb-4">
+                        <DialogTitle>Dining Restaurant Details</DialogTitle>
+                    </DialogHeader>
+                    {selectedRestaurant && (
+                        <div className="px-6 pb-6 space-y-4 max-h-[65vh] overflow-y-auto">
+                            {/* General Details */}
+                            <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
+                                <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 flex-shrink-0 border border-slate-200">
+                                    <img
+                                        src={selectedRestaurant.logo}
+                                        alt={selectedRestaurant.name}
+                                        className="w-full h-full object-cover"
+                                        onError={(e) => { e.target.src = "https://via.placeholder.com/40" }}
+                                    />
+                                </div>
+                                <div className="flex flex-col">
+                                    <h4 className="text-base font-bold text-slate-900">{selectedRestaurant.name}</h4>
+                                    <p className="text-xs text-slate-500">#{formatRestaurantId(selectedRestaurant.originalData?.restaurantId || selectedRestaurant._id)}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Owner Name</label>
+                                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRestaurant.ownerName}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Owner Phone</label>
+                                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRestaurant.ownerPhone}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Zone</label>
+                                    <p className="text-sm font-medium text-slate-900 mt-1">{selectedRestaurant.zone}</p>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Rating</label>
+                                    <p className="text-sm font-medium text-slate-900 mt-1">⭐ {selectedRestaurant.rating || 0}</p>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-4">
+                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Dining Configuration</h5>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Dining Status</label>
+                                        <p className="mt-1">
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                                selectedRestaurant.diningSettings?.isEnabled
+                                                    ? "bg-emerald-100 text-emerald-700"
+                                                    : "bg-rose-100 text-rose-700"
+                                            }`}>
+                                                {selectedRestaurant.diningSettings?.isEnabled ? "Enabled" : "Disabled"}
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-semibold text-slate-500 uppercase">Max Guests</label>
+                                        <p className="text-sm font-medium text-slate-900 mt-1">
+                                            {selectedRestaurant.diningSettings?.isEnabled ? (selectedRestaurant.diningSettings?.maxGuests || 0) : 0} Guests
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="mt-3">
+                                    <label className="text-xs font-semibold text-slate-500 uppercase">Active Sessions</label>
+                                    <p className="text-sm font-medium text-slate-900 mt-1">
+                                        {formatMealTypesLabel(selectedRestaurant.diningSettings?.mealTypes)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-4">
+                                <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Dining Performance</h5>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                        <p className="text-[10px] text-slate-500 uppercase font-semibold">Total Orders</p>
+                                        <p className="text-sm font-bold text-slate-800 mt-1">{selectedRestaurant?.diningStats?.totalOrders || 0}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                        <p className="text-[10px] text-slate-500 uppercase font-semibold">Total Revenue</p>
+                                        <p className="text-sm font-bold text-slate-800 mt-1">₹{Number(selectedRestaurant?.diningStats?.totalRevenue || 0).toFixed(2)}</p>
+                                    </div>
+                                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                                        <p className="text-[10px] text-slate-500 uppercase font-semibold">Active Sessions</p>
+                                        <p className="text-sm font-bold text-slate-800 mt-1">{selectedRestaurant?.diningStats?.activeSessions || 0}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {selectedRestaurant.pendingDiningRequest && (
+                                <div className="border-t border-amber-100 bg-amber-50/50 p-3 rounded-lg border">
+                                    <h5 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">Pending Change Request</h5>
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
+                                        <p><span className="font-semibold">Requested Status:</span> {selectedRestaurant.pendingDiningRequest?.isEnabled ? "ON" : "OFF"}</p>
+                                        <p><span className="font-semibold">Requested Guests:</span> {selectedRestaurant.pendingDiningRequest?.maxGuests || 0}</p>
+                                        <p className="col-span-2"><span className="font-semibold">Requested Sessions:</span> {formatMealTypesLabel(selectedRestaurant.pendingDiningRequest?.mealTypes)}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    <DialogFooter className="px-6 pb-6">
+                        <button
+                            onClick={() => setIsViewOpen(false)}
+                            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-md"
+                        >
+                            Close
+                        </button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Edit Modal */}
             {isEditModalOpen && editingRestaurant && (

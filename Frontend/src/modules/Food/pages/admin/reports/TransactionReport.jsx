@@ -19,6 +19,89 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const toStatusKey = (value) => String(value || "").trim().toLowerCase()
+
+const resolveTransactionStatus = (transaction = {}) => {
+  const paymentStatusRaw = toStatusKey(
+    transaction.paymentStatus ||
+    transaction.payment?.status ||
+    transaction.payment_state,
+  )
+  const refundStatusRaw = toStatusKey(
+    transaction.refundStatus ||
+    transaction.payment?.refund?.status,
+  )
+  const orderStatusRaw = toStatusKey(
+    transaction.orderStatus ||
+    transaction.order?.orderStatus ||
+    transaction.order?.status ||
+    transaction.status,
+  )
+  const paymentMethodRaw = toStatusKey(
+    transaction.paymentMethod ||
+    transaction.payment?.method,
+  )
+  const paymentCollectionRaw = toStatusKey(
+    transaction.paymentCollectionStatus ||
+    transaction.collectionStatus,
+  )
+
+  const isCodPayment =
+    paymentMethodRaw === "cash" ||
+    paymentMethodRaw === "cod" ||
+    paymentMethodRaw === "cash_on_delivery"
+  const isOrderDelivered =
+    orderStatusRaw === "delivered" ||
+    orderStatusRaw === "delivered_self" ||
+    orderStatusRaw === "completed"
+  const isOrderCancelled =
+    orderStatusRaw.includes("cancelled") ||
+    orderStatusRaw.includes("canceled")
+
+  if (refundStatusRaw === "processed" || paymentStatusRaw === "refunded") {
+    return "REFUNDED"
+  }
+  if (refundStatusRaw === "pending") {
+    return "REFUND PENDING"
+  }
+  if (refundStatusRaw === "failed" || paymentStatusRaw === "failed") {
+    return "FAILED"
+  }
+  if (
+    ["paid", "authorized", "captured", "settled", "completed"].includes(paymentStatusRaw) ||
+    paymentCollectionRaw === "collected"
+  ) {
+    return "CAPTURED"
+  }
+  if (isCodPayment) {
+    if (paymentCollectionRaw === "collected" || isOrderDelivered) {
+      return "CAPTURED"
+    }
+    if (isOrderCancelled) {
+      return "CANCELLED"
+    }
+    return "PENDING"
+  }
+  if (isOrderDelivered && ["", "pending", "created", "cod_pending"].includes(paymentStatusRaw)) {
+    return "CAPTURED"
+  }
+  if (isOrderCancelled) {
+    return "CANCELLED"
+  }
+  if (
+    ["captured", "settled", "completed", "paid", "delivered"].includes(orderStatusRaw)
+  ) {
+    return "CAPTURED"
+  }
+
+  return String(transaction.status || transaction.orderStatus || "PENDING").trim().toUpperCase()
+}
+
+const toAmount = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export default function TransactionReport() {
   const [searchQuery, setSearchQuery] = useState("")
   const [transactions, setTransactions] = useState([])
@@ -130,8 +213,85 @@ export default function TransactionReport() {
   }, [searchQuery, filters])
 
   const filteredTransactions = useMemo(() => {
-    return transactions // Backend already filters, so just return transactions
+    return transactions.map((transaction, index) => ({
+      ...transaction,
+      id:
+        transaction.id ||
+        transaction._id ||
+        transaction.orderId ||
+        `transaction-${index}`,
+      displayStatus: resolveTransactionStatus(transaction),
+    }))
   }, [transactions])
+
+  const resolvedSummary = useMemo(() => {
+    if (!filteredTransactions.length) {
+      return summary
+    }
+
+    const totals = filteredTransactions.reduce(
+      (acc, transaction) => {
+        const statusKey = toStatusKey(transaction.displayStatus)
+        const isCaptured = statusKey === "captured"
+        const isRefunded = statusKey === "refunded"
+
+        const orderAmount = toAmount(
+          transaction.orderAmount ??
+          transaction.totalAmount ??
+          transaction.amount,
+        )
+        const adminEarning = toAmount(
+          transaction.adminEarning ??
+          transaction.adminCommission ??
+          transaction.platformFee ??
+          transaction.commission,
+        )
+        const restaurantEarning = toAmount(
+          transaction.restaurantEarning ??
+          transaction.netPayout ??
+          transaction.payoutAmount,
+        )
+
+        if (isCaptured) {
+          acc.completedTransaction += orderAmount
+          acc.adminEarning += adminEarning
+          acc.restaurantEarning += restaurantEarning
+        }
+        if (isRefunded) {
+          acc.refundedTransaction += orderAmount
+        }
+
+        acc.adminCouponDiscount += toAmount(
+          transaction.couponByAdmin ??
+          transaction.platformCouponDiscount,
+        )
+        acc.restaurantCouponDiscount += toAmount(
+          transaction.couponByRestaurant ??
+          transaction.restaurantCouponDiscount,
+        )
+        acc.restaurantOfferDiscount += toAmount(
+          transaction.offerByRestaurant ??
+          transaction.restaurantOfferDiscount,
+        )
+
+        return acc
+      },
+      {
+        completedTransaction: 0,
+        refundedTransaction: 0,
+        adminEarning: 0,
+        restaurantEarning: 0,
+        adminCouponDiscount: 0,
+        restaurantCouponDiscount: 0,
+        restaurantOfferDiscount: 0,
+      },
+    )
+
+    return {
+      ...summary,
+      ...totals,
+    }
+  }, [filteredTransactions, summary])
 
   const handleExport = (format) => {
     if (filteredTransactions.length === 0) {
@@ -293,7 +453,7 @@ export default function TransactionReport() {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold text-green-600 mb-1">{formatCurrency(summary.completedTransaction)}</p>
+                <p className="text-xl font-bold text-green-600 mb-1">{formatCurrency(resolvedSummary.completedTransaction)}</p>
                 <p className="text-sm text-slate-600 leading-tight">Completed Transaction</p>
               </div>
             </div>
@@ -309,7 +469,7 @@ export default function TransactionReport() {
                 </div>
               </div>
               <div className="text-center">
-                <p className="text-xl font-bold text-red-600 mb-1">{formatFullCurrency(summary.refundedTransaction)}</p>
+                <p className="text-xl font-bold text-red-600 mb-1">{formatFullCurrency(resolvedSummary.refundedTransaction)}</p>
                 <p className="text-sm text-slate-600 leading-tight">Refunded Transaction</p>
               </div>
             </div>
@@ -331,7 +491,7 @@ export default function TransactionReport() {
                     </div>
                   </div>
                 </div>
-                <p className="text-base font-bold text-slate-900">{formatCurrency(summary.adminEarning)}</p>
+                <p className="text-base font-bold text-slate-900">{formatCurrency(resolvedSummary.adminEarning)}</p>
               </div>
             </div>
 
@@ -349,22 +509,22 @@ export default function TransactionReport() {
                     </div>
                   </div>
                 </div>
-                <p className="text-base font-bold text-green-600">{formatCurrency(summary.restaurantEarning)}</p>
+                <p className="text-base font-bold text-green-600">{formatCurrency(resolvedSummary.restaurantEarning)}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <p className="text-[11px] font-semibold text-slate-500">Coupon By Admin</p>
-                <p className="mt-1 text-sm font-bold text-blue-600">{formatFullCurrency(summary.adminCouponDiscount || 0)}</p>
+                <p className="mt-1 text-sm font-bold text-blue-600">{formatFullCurrency(resolvedSummary.adminCouponDiscount || 0)}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <p className="text-[11px] font-semibold text-slate-500">Coupon By Restaurant</p>
-                <p className="mt-1 text-sm font-bold text-amber-600">{formatFullCurrency(summary.restaurantCouponDiscount || 0)}</p>
+                <p className="mt-1 text-sm font-bold text-amber-600">{formatFullCurrency(resolvedSummary.restaurantCouponDiscount || 0)}</p>
               </div>
               <div className="rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <p className="text-[11px] font-semibold text-slate-500">Offer By Restaurant</p>
-                <p className="mt-1 text-sm font-bold text-emerald-600">{formatFullCurrency(summary.restaurantOfferDiscount || 0)}</p>
+                <p className="mt-1 text-sm font-bold text-emerald-600">{formatFullCurrency(resolvedSummary.restaurantOfferDiscount || 0)}</p>
               </div>
             </div>
 
@@ -504,8 +664,8 @@ export default function TransactionReport() {
                         <span className="text-[10px] font-medium text-slate-900">{formatFullCurrency(transaction.orderAmount)}</span>
                       </td>
                       <td className="px-1.5 py-1">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${getStatusBadgeClasses(transaction.status || transaction.orderStatus)}`}>
-                          {transaction.status || transaction.orderStatus || 'N/A'}
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${getStatusBadgeClasses(transaction.displayStatus)}`}>
+                          {transaction.displayStatus || 'N/A'}
                         </span>
                       </td>
                     </tr>
