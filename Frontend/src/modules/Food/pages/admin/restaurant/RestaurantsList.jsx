@@ -101,6 +101,119 @@ const getPrimaryRestaurantImage = (restaurant, fallback = "") => {
   )
 }
 
+const getRestaurantRatingValue = (restaurant) => {
+  const candidates = [
+    restaurant?.ratings?.average,
+    restaurant?.averageRatings,
+    restaurant?.avgRating,
+    restaurant?.averageRating,
+    restaurant?.rating,
+    restaurant?.reviewSummary?.averageRating,
+  ]
+
+  for (const candidate of candidates) {
+    const value = Number(candidate)
+    if (Number.isFinite(value)) return value
+  }
+
+  return 0
+}
+
+const getRestaurantReviewCount = (restaurant) => {
+  const candidates = [
+    restaurant?.ratings?.count,
+    restaurant?.totalRatings,
+    restaurant?.reviewCount,
+    restaurant?.reviewsCount,
+    restaurant?.reviews,
+    restaurant?.reviewSummary?.totalReviews,
+  ]
+
+  for (const candidate of candidates) {
+    const value = Number(candidate)
+    if (Number.isFinite(value)) return value
+  }
+
+  return 0
+}
+
+const normalizeLookupValue = (value) => String(value || "").trim().toLowerCase()
+
+const getReviewRestaurantLookupKeys = (review) => {
+  const nestedRestaurant = review?.restaurant && typeof review.restaurant === "object" ? review.restaurant : null
+  const keys = [
+    review?.restaurantId,
+    review?.restaurant_id,
+    review?._restaurantId,
+    nestedRestaurant?._id,
+    nestedRestaurant?.id,
+    nestedRestaurant?.restaurantId,
+    typeof review?.restaurant === "string" ? review.restaurant : "",
+    nestedRestaurant?.name,
+    nestedRestaurant?.restaurantName,
+  ]
+
+  return [...new Set(keys.map(normalizeLookupValue).filter(Boolean))]
+}
+
+const getRestaurantLookupKeys = (restaurant) => {
+  const original = restaurant?.originalData || restaurant
+  const keys = [
+    restaurant?._id,
+    restaurant?.id,
+    original?._id,
+    original?.id,
+    original?.restaurantId,
+    restaurant?.name,
+    original?.name,
+    original?.restaurantName,
+  ]
+
+  return [...new Set(keys.map(normalizeLookupValue).filter(Boolean))]
+}
+
+const buildRestaurantRatingsMap = (reviews = []) => {
+  const ratingsMap = new Map()
+
+  reviews.forEach((review) => {
+    const ratingValue = Number(review?.rating)
+    if (!Number.isFinite(ratingValue) || ratingValue <= 0) return
+
+    const lookupKeys = getReviewRestaurantLookupKeys(review)
+    if (lookupKeys.length === 0) return
+
+    lookupKeys.forEach((key) => {
+      const current = ratingsMap.get(key) || { total: 0, count: 0 }
+      current.total += ratingValue
+      current.count += 1
+      ratingsMap.set(key, current)
+    })
+  })
+
+  return ratingsMap
+}
+
+const getRestaurantRatingSummary = (restaurant, ratingsMap) => {
+  const fallbackRating = getRestaurantRatingValue(restaurant)
+  const fallbackCount = getRestaurantReviewCount(restaurant)
+  const lookupKeys = getRestaurantLookupKeys(restaurant)
+
+  for (const key of lookupKeys) {
+    const match = ratingsMap.get(key)
+    if (match?.count > 0) {
+      return {
+        rating: match.total / match.count,
+        reviewCount: match.count,
+      }
+    }
+  }
+
+  return {
+    rating: fallbackRating,
+    reviewCount: fallbackCount,
+  }
+}
+
 
 export default function RestaurantsList() {
   const navigate = useNavigate()
@@ -203,7 +316,10 @@ export default function RestaurantsList() {
         setLoading(true)
         setError(null)
 
-        const response = await adminAPI.getApprovedRestaurants({})
+        const [response, reviewsResponse] = await Promise.all([
+          adminAPI.getApprovedRestaurants({}),
+          adminAPI.getRestaurantReviews({ limit: 1000 }).catch(() => null),
+        ])
 
         if (cancelled) return
 
@@ -216,6 +332,11 @@ export default function RestaurantsList() {
             : Array.isArray(body?.restaurants)
               ? body.restaurants
               : []
+        const reviews =
+          reviewsResponse?.data?.data?.reviews ||
+          reviewsResponse?.data?.reviews ||
+          []
+        const ratingsMap = buildRestaurantRatingsMap(Array.isArray(reviews) ? reviews : [])
 
         const zoneLabelFromRestaurant = (restaurant) => {
           const zid = restaurant?.zoneId
@@ -245,19 +366,23 @@ export default function RestaurantsList() {
         }
 
         if (rawList.length > 0 || body?.success === true) {
-          const mappedRestaurants = rawList.map((restaurant, index) => ({
-            id: restaurant._id || restaurant.id || index + 1,
-            _id: restaurant._id,
-            name: restaurant.name || restaurant.restaurantName || "N/A",
-            ownerName: restaurant.ownerName || "N/A",
-            ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
-            zone: zoneLabelFromRestaurant(restaurant),
-            approvalStatus: normalizeApprovalStatus(restaurant),
-            isActive: restaurant.isActive !== false,
-            rating: restaurant.ratings?.average || restaurant.rating || 0,
-            logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
-            originalData: restaurant,
-          }))
+          const mappedRestaurants = rawList.map((restaurant, index) => {
+            const ratingSummary = getRestaurantRatingSummary(restaurant, ratingsMap)
+            return {
+              id: restaurant._id || restaurant.id || index + 1,
+              _id: restaurant._id,
+              name: restaurant.name || restaurant.restaurantName || "N/A",
+              ownerName: restaurant.ownerName || "N/A",
+              ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
+              zone: zoneLabelFromRestaurant(restaurant),
+              approvalStatus: normalizeApprovalStatus(restaurant),
+              isActive: restaurant.isActive !== false,
+              rating: ratingSummary.rating,
+              reviewCount: ratingSummary.reviewCount,
+              logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
+              originalData: restaurant,
+            }
+          })
           if (!cancelled) setRestaurants(mappedRestaurants)
         } else {
           if (!cancelled) setRestaurants([])
@@ -402,7 +527,8 @@ export default function RestaurantsList() {
   }
 
   const renderStars = (rating) => {
-    const fullStars = Math.floor(rating || 0);
+    const normalizedRating = Number(rating) || 0
+    const fullStars = Math.floor(normalizedRating);
     return (
       <div className="flex items-center gap-0.5">
         {[...Array(5)].map((_, i) => (
@@ -411,7 +537,7 @@ export default function RestaurantsList() {
             className={`w-3.5 h-3.5 ${i < fullStars ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'}`} 
           />
         ))}
-        <span className="ml-1 text-slate-600">({rating || 0})</span>
+        <span className="ml-1 text-slate-600">({normalizedRating.toFixed(1)})</span>
       </div>
     )
   }
@@ -1572,14 +1698,14 @@ export default function RestaurantsList() {
                         </div>
                       </div>
                       <div className="flex items-center justify-center md:justify-start gap-6 flex-wrap">
-                        {(r?.ratings?.average != null) && (
+                        {((r?.ratings?.average != null) || getRestaurantRatingValue(r) > 0 || getRestaurantReviewCount(r) > 0) && (
                           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-50 rounded-xl">
                             <Star className="w-4 h-4 fill-yellow-400 text-yellow-500" />
                             <span className="text-sm font-bold text-yellow-700">
-                              {(r.ratings?.average ?? 0).toFixed(1)}
+                              {getRestaurantRatingValue(r).toFixed(1)}
                             </span>
                             <span className="text-xs text-yellow-600/70 ml-1 font-medium">
-                              ({(r.ratings?.count ?? 0)} reviews)
+                              ({getRestaurantReviewCount(r)} reviews)
                             </span>
                           </div>
                         )}
