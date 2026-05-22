@@ -122,6 +122,12 @@ const shouldResolveOrderAlert = (orderLike = {}) =>
   isResolvedOrderStatus(orderLike?.orderStatus || orderLike?.status);
 
 
+// Module-level globals to share active state across all hook instances in the app
+let globalActiveOrder = null;
+let globalAudio = null;
+let globalFallbackAudio = null;
+let globalAlertLoopTimer = null;
+
 /**
  * Hook for restaurant to receive real-time order notifications with sound
  * @returns {object} - { newOrder, playSound, isConnected }
@@ -261,6 +267,7 @@ export const useRestaurantNotifications = () => {
     if (shouldSkipBecauseHandled(alertKey)) return;
     markHandled(alertKey);
     activeOrderRef.current = paymentData || { id: Date.now() };
+    globalActiveOrder = activeOrderRef.current;
     playNotificationSound(paymentData);
     startAlertLoop();
     setNewPaymentRequest(paymentData);
@@ -277,18 +284,43 @@ export const useRestaurantNotifications = () => {
   };
 
   const stopAlertLoop = () => {
+    if (globalAlertLoopTimer) {
+      clearInterval(globalAlertLoopTimer);
+      globalAlertLoopTimer = null;
+    }
     if (alertLoopTimerRef.current) {
       clearInterval(alertLoopTimerRef.current);
       alertLoopTimerRef.current = null;
     }
     alertLoopStartedAtRef.current = 0;
+    globalActiveOrder = null;
+    activeOrderRef.current = null;
+
+    if (globalAudio) {
+      try {
+        globalAudio.pause();
+        globalAudio.currentTime = 0;
+      } catch (e) {}
+    }
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
+    }
+
+    if (globalFallbackAudio) {
+      try {
+        globalFallbackAudio.pause();
+        globalFallbackAudio.currentTime = 0;
+      } catch (e) {}
+      globalFallbackAudio = null;
     }
     if (fallbackAudioRef.current) {
-      fallbackAudioRef.current.pause();
-      fallbackAudioRef.current.currentTime = 0;
+      try {
+        fallbackAudioRef.current.pause();
+        fallbackAudioRef.current.currentTime = 0;
+      } catch (e) {}
       fallbackAudioRef.current = null;
     }
   };
@@ -297,9 +329,9 @@ export const useRestaurantNotifications = () => {
     stopAlertLoop();
     alertLoopStartedAtRef.current = Date.now();
 
-    alertLoopTimerRef.current = setInterval(() => {
+    const timer = setInterval(() => {
       const elapsed = Date.now() - alertLoopStartedAtRef.current;
-      if (elapsed >= ALERT_LOOP_MAX_MS || !activeOrderRef.current) {
+      if (elapsed >= ALERT_LOOP_MAX_MS || !globalActiveOrder) {
         stopAlertLoop();
         return;
       }
@@ -307,8 +339,11 @@ export const useRestaurantNotifications = () => {
       // Keep re-alerting while order is pending — both foreground and background.
       // On mobile, the initial play() often fails silently due to autoplay policy;
       // repeating here ensures the sound eventually plays once the browser allows it.
-      playNotificationSound(activeOrderRef.current);
+      playNotificationSound(globalActiveOrder);
     }, ALERT_LOOP_INTERVAL_MS);
+
+    alertLoopTimerRef.current = timer;
+    globalAlertLoopTimer = timer;
   };
 
   const handleIncomingOrderAlert = (orderData) => {
@@ -325,6 +360,7 @@ export const useRestaurantNotifications = () => {
     setNewOrder(orderData);
 
     activeOrderRef.current = orderData || { id: Date.now() };
+    globalActiveOrder = activeOrderRef.current;
     playNotificationSound(orderData);
     startAlertLoop();
 
@@ -334,10 +370,8 @@ export const useRestaurantNotifications = () => {
   };
 
   const resolveActiveOrderAlert = (orderLike = {}) => {
-    if (!doOrdersMatch(activeOrderRef.current, orderLike)) return false;
+    if (!doOrdersMatch(globalActiveOrder || activeOrderRef.current, orderLike)) return false;
     stopAlertLoop();
-    activeOrderRef.current = null;
-    setNewOrder(null);
     return true;
   };
 
@@ -348,6 +382,7 @@ export const useRestaurantNotifications = () => {
 
     // Use the same sound/alert loop behavior as orders.
     activeOrderRef.current = bookingData || { id: Date.now() };
+    globalActiveOrder = activeOrderRef.current;
     playNotificationSound(bookingData);
     startAlertLoop();
     setNewBooking(bookingData);
@@ -916,6 +951,7 @@ export const useRestaurantNotifications = () => {
       setNewOrder(normalizedData);
       // Force immediate buzz for notification events, even if dedupe would skip.
       activeOrderRef.current = normalizedData || { id: Date.now() };
+      globalActiveOrder = activeOrderRef.current;
       playNotificationSound(normalizedData);
       startAlertLoop();
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
@@ -948,6 +984,7 @@ export const useRestaurantNotifications = () => {
       debugLog('dine-in session closed:', payload);
       stopAlertLoop();
       activeOrderRef.current = null;
+      globalActiveOrder = null;
       setNewClosedSession(payload || null);
       dispatchNotificationInboxRefresh();
     });
@@ -981,6 +1018,7 @@ export const useRestaurantNotifications = () => {
     audioRef.current = new Audio(resolveAudioSource(alertSound));
     audioRef.current.preload = 'auto';
     audioRef.current.volume = 1;
+    globalAudio = audioRef.current;
 
     return () => {
       stopAlertLoop();
@@ -995,6 +1033,12 @@ export const useRestaurantNotifications = () => {
       if (fallbackAudioRef.current) {
         fallbackAudioRef.current.pause();
         fallbackAudioRef.current = null;
+      }
+      if (globalAudio === audioRef.current) {
+        globalAudio = null;
+      }
+      if (globalFallbackAudio === fallbackAudioRef.current) {
+        globalFallbackAudio = null;
       }
     };
   }, [restaurantId]);
@@ -1011,6 +1055,7 @@ export const useRestaurantNotifications = () => {
         audioRef.current.preload = 'auto';
         audioRef.current.volume = 1;
       }
+      globalAudio = audioRef.current;
 
       // Always re-attempt unlock (mobile can re-suspend audio context after bg).
       if (audioRef.current) {
@@ -1074,6 +1119,7 @@ export const useRestaurantNotifications = () => {
 
       // Always attempt web audio playback (primary path for both browser and WebView).
       if (audioRef.current) {
+        globalAudio = audioRef.current;
         audioRef.current.muted = false;
         audioRef.current.volume = 1;
         audioRef.current.currentTime = 0;
@@ -1087,6 +1133,7 @@ export const useRestaurantNotifications = () => {
             }
             fallbackAudioRef.current = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
             fallbackAudioRef.current.volume = 1;
+            globalFallbackAudio = fallbackAudioRef.current;
             fallbackAudioRef.current.play().catch(() => {});
           } catch (fallbackError) {
             // Silently swallow — the alert loop will retry.
@@ -1097,6 +1144,7 @@ export const useRestaurantNotifications = () => {
         try {
           const oneShotAudio = new Audio(resolveAudioSource(alertSound, `restaurant-alert-${Date.now()}`));
           oneShotAudio.volume = 1;
+          globalFallbackAudio = oneShotAudio;
           oneShotAudio.play().catch(() => {});
         } catch {
           // Silently swallow.
@@ -1113,6 +1161,7 @@ export const useRestaurantNotifications = () => {
   const clearNewOrder = () => {
     stopAlertLoop();
     activeOrderRef.current = null;
+    globalActiveOrder = null;
     setNewOrder(null);
   };
 
@@ -1126,17 +1175,20 @@ export const useRestaurantNotifications = () => {
   const stopNotificationSound = () => {
     stopAlertLoop();
     activeOrderRef.current = null;
+    globalActiveOrder = null;
   };
 
   const clearNewPaymentRequest = () => {
     stopAlertLoop();
     activeOrderRef.current = null;
+    globalActiveOrder = null;
     setNewPaymentRequest(null);
   };
 
   const clearNewBooking = () => {
     stopAlertLoop();
     activeOrderRef.current = null;
+    globalActiveOrder = null;
     setNewBooking(null);
   };
 
