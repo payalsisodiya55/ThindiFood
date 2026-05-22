@@ -170,14 +170,14 @@ const formatRestaurantPickupAddress = (restaurant) => {
 }
 
 const getRestaurantDisplayName = (restaurant) => {
-  if (!restaurant || typeof restaurant !== "object") return "Restaurant"
+  if (!restaurant || typeof restaurant !== "object") return ""
 
   return (
     restaurant?.restaurantName ||
     restaurant?.name ||
     restaurant?.restaurantId?.restaurantName ||
     restaurant?.restaurantId?.name ||
-    "Restaurant"
+    ""
   )
 }
 

@@ -1110,13 +1110,13 @@ export default function JoiningRequest() {
                         {r?.offer &&
                         <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Current Offer</p>
-                            <p className="text-sm font-medium text-green-600">{r.offer}</p>
+                            <p className="text-sm font-medium text-green-600 break-words">{r.offer}</p>
                           </div>
                         }
                         {r?.featuredDish &&
                         <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Featured Dish</p>
-                            <p className="text-sm font-medium text-slate-900">{r.featuredDish}</p>
+                            <p className="text-sm font-medium text-slate-900 break-words">{r.featuredDish}</p>
                             {r.featuredPrice != null && <p className="text-xs text-green-600 mt-1">₹{r.featuredPrice}</p>}
                           </div>
                         }
@@ -1140,7 +1140,7 @@ export default function JoiningRequest() {
                         {r?.estimatedDeliveryTime &&
                         <div className="min-w-0 flex-1">
                             <p className="text-xs text-slate-500 mb-1">Estimated Delivery Time</p>
-                            <p className="text-sm font-medium text-slate-900">{r.estimatedDeliveryTime}</p>
+                            <p className="text-sm font-medium text-slate-900 break-words">{r.estimatedDeliveryTime}</p>
                           </div>
                         }
                         {r?.openDays && Array.isArray(r.openDays) && r.openDays.length > 0 &&
