@@ -3562,6 +3562,7 @@ export async function updateRestaurantStatus(id, body = {}, scope = {}) {
         id,
         {
             $set: {
+                isActive,
                 status,
                 approvedAt: isActive ? new Date() : undefined,
                 rejectedAt: isActive ? undefined : new Date(),
