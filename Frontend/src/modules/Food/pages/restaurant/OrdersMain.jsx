@@ -243,6 +243,15 @@ const normalizeOrderForPopup = (orderLike) => {
     sendCutlery: orderLike.sendCutlery,
     paymentMethod: orderLike.paymentMethod || orderLike.payment?.method || null,
     payment: orderLike.payment,
+    pricing: orderLike.pricing || null,
+    restaurantOfferDiscount:
+      Number(
+        orderLike?.restaurantOfferDiscount ??
+        orderLike?.pricing?.restaurantOfferDiscount ??
+        orderLike?.restaurantDiscount ??
+        orderLike?.pricing?.restaurantDiscount ??
+        0,
+      ) || 0,
   };
 };
 
@@ -2122,6 +2131,56 @@ export default function OrdersMain() {
     }, 0);
 
     return Number.isFinite(itemsTotal) ? itemsTotal : 0;
+  };
+
+  const getPopupOrderRestaurantOfferDiscount = (orderLike) => {
+    const discount = Number(
+      orderLike?.restaurantOfferDiscount ??
+      orderLike?.pricing?.restaurantOfferDiscount ??
+      orderLike?.restaurantDiscount ??
+      orderLike?.pricing?.restaurantDiscount ??
+      0,
+    );
+    return Number.isFinite(discount) && discount > 0 ? discount : 0;
+  };
+
+  const getPopupOrderItemsSubtotal = (orderLike) => {
+    const pricingSubtotal = Number(
+      orderLike?.pricing?.subtotal ??
+      orderLike?.pricing?.itemsTotal ??
+      orderLike?.pricing?.itemSubtotal ??
+      0,
+    );
+    if (Number.isFinite(pricingSubtotal) && pricingSubtotal > 0) {
+      return pricingSubtotal;
+    }
+
+    const items = Array.isArray(orderLike?.items) ? orderLike.items : [];
+    const computedSubtotal = items.reduce((sum, item) => {
+      const price = Number(item?.price || 0);
+      const qty = Number(item?.quantity || 0);
+      return sum + (Number.isFinite(price) ? price : 0) * (Number.isFinite(qty) ? qty : 0);
+    }, 0);
+
+    return Number.isFinite(computedSubtotal) ? computedSubtotal : 0;
+  };
+
+  const getPopupOrderItemDisplayTotal = (item, orderLike) => {
+    const unitPrice = Number(item?.price || 0);
+    const quantity = Number(item?.quantity || 0);
+    const lineBaseTotal =
+      (Number.isFinite(unitPrice) ? unitPrice : 0) * (Number.isFinite(quantity) ? quantity : 0);
+
+    if (lineBaseTotal <= 0) return 0;
+
+    const restaurantOfferDiscount = getPopupOrderRestaurantOfferDiscount(orderLike);
+    if (restaurantOfferDiscount <= 0) return lineBaseTotal;
+
+    const itemsSubtotal = getPopupOrderItemsSubtotal(orderLike);
+    if (itemsSubtotal <= 0) return Math.max(0, lineBaseTotal - restaurantOfferDiscount);
+
+    const proportionalDiscount = (lineBaseTotal / itemsSubtotal) * restaurantOfferDiscount;
+    return Math.max(0, lineBaseTotal - proportionalDiscount);
   };
 
   const hydratePopupOrder = async (orderLike) => {
@@ -4205,7 +4264,7 @@ export default function OrdersMain() {
                                         {formatOrderItemQuantityLabel(item)}
                                       </p>
                                       <p className="text-xs text-gray-600 ml-2">
-                                        ₹{item.price * item.quantity}
+                                        ₹{Math.round(getPopupOrderItemDisplayTotal(item, popupOrder || newOrder))}
                                       </p>
                                     </div>
                                   </div>

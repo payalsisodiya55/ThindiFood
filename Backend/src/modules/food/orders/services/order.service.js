@@ -3264,6 +3264,199 @@ export async function updateOrderStatusRestaurant(
     return order.toObject();
 }
 
+export async function updateOrderStatusAdmin(
+  orderId,
+  adminId,
+  orderStatus,
+  note = "",
+) {
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+
+  const order = await FoodOrder.findOne(identity);
+  if (!order) throw new NotFoundError("Order not found");
+
+  const restaurantId = order.restaurantId?.toString?.() || order.restaurantId;
+  if (!restaurantId) {
+    throw new ValidationError("Restaurant not found for this order");
+  }
+
+  const nextStatus = String(orderStatus || "").toLowerCase();
+  if (!["confirmed", "preparing", "cancelled_by_admin"].includes(nextStatus)) {
+    throw new ValidationError("Unsupported admin order status");
+  }
+
+  if (
+    nextStatus === "preparing" &&
+    order.scheduledAt &&
+    (order.order_type === "SCHEDULED" || order.prep_start_time)
+  ) {
+    const prepStartTime =
+      order.prep_start_time instanceof Date && !Number.isNaN(order.prep_start_time.getTime())
+        ? order.prep_start_time
+        : (order.pickupAt || order.scheduledAt) && Number(order.prep_time) > 0
+          ? new Date(
+              order.pickupAt
+                ? new Date(order.pickupAt).getTime() - Number(order.prep_time) * 60000
+                : new Date(order.scheduledAt).getTime(),
+            )
+          : null;
+
+    if (prepStartTime && prepStartTime.getTime() > Date.now()) {
+      throw new ValidationError(
+        "Scheduled order cannot move to preparing before its prep start time",
+      );
+    }
+  }
+
+  const from = order.orderStatus;
+  order.orderStatus = orderStatus;
+  if (nextStatus === "confirmed" || nextStatus === "preparing") {
+    order.isAcceptedByRestaurant = true;
+  }
+
+  pushStatusHistory(order, {
+    byRole: "ADMIN",
+    byId: adminId,
+    from,
+    to: orderStatus,
+    note,
+  });
+
+  let refundOutcome = {
+    mode: null,
+    refundStatus: "not_applicable",
+    transactionStatus: null,
+    customerMessage: "",
+  };
+
+  if (nextStatus === "cancelled_by_admin" && isRefundEligibleOrderPayment(order)) {
+    const amount = Math.max(0, Number(order?.pricing?.total || 0));
+    const existingPreference = String(
+      order?.payment?.refund?.userPreference || ""
+    ).toLowerCase();
+    const normalizedPreference = ["wallet", "original"].includes(existingPreference)
+      ? existingPreference
+      : "";
+
+    order.payment.refund = {
+      ...(order.payment?.refund?.toObject?.() || order.payment?.refund || {}),
+      status: "pending",
+      amount,
+      userPreference: normalizedPreference,
+    };
+
+    refundOutcome = {
+      mode: "manual",
+      refundStatus: "pending",
+      transactionStatus: null,
+      customerMessage: " Refund is pending manual admin approval.",
+    };
+  }
+
+  await order.save();
+
+  if (nextStatus === "cancelled_by_admin") {
+    try {
+      const recordedById = mongoose.Types.ObjectId.isValid(adminId)
+        ? new mongoose.Types.ObjectId(adminId)
+        : null;
+      const transactionDetails = {
+        note: "Order cancelled by admin",
+        recordedByRole: "ADMIN",
+        recordedById,
+      };
+      if (refundOutcome.transactionStatus) {
+        transactionDetails.status = refundOutcome.transactionStatus;
+      }
+      await foodTransactionService.updateTransactionStatus(
+        order._id,
+        "cancelled_by_admin",
+        transactionDetails,
+      );
+      await foodTransactionService.reverseRestaurantOnlinePayoutForOrder(order._id, {
+        recordedByRole: "ADMIN",
+        recordedById,
+        reason: "admin_cancelled",
+      });
+    } catch (err) {
+      logger.warn(`updateOrderStatusAdmin transaction sync failed: ${err?.message || err}`);
+    }
+  }
+
+  try {
+    let title = `Order ${order.orderId} updated`;
+    let body = `Status changed to ${String(orderStatus).replace(/_/g, " ")}`;
+
+    const io = getIO();
+    if (io) {
+      const payload = {
+        orderMongoId: order._id?.toString?.(),
+        orderId: order.orderId,
+        orderStatus: order.orderStatus,
+        title: title || `Order ${order.orderId} updated`,
+        message: body || "",
+      };
+      io.to(rooms.restaurant(restaurantId)).emit("order_status_update", payload);
+      io.to(rooms.user(order.userId)).emit("order_status_update", payload);
+    }
+
+    if (orderStatus === "confirmed") {
+      title = "Order Accepted!";
+      body =
+        order.scheduledAt &&
+        (order.order_type === "SCHEDULED" || order.prep_start_time)
+          ? `The restaurant has accepted your scheduled ${order.fulfillmentType === "takeaway" ? "takeaway" : "delivery"} order.`
+          : "Your order has been accepted and is queued for preparation.";
+    } else if (orderStatus === "preparing") {
+      title = "Food is being prepared!";
+      body = "Your food is currently being prepared by the restaurant.";
+    } else if (nextStatus === "cancelled_by_admin") {
+      title = "Order Cancelled";
+      body = `Unfortunately, your order has been cancelled by the admin.${refundOutcome.customerMessage || ""}`;
+    }
+
+    const notifyList = [
+      { ownerType: "USER", ownerId: order.userId },
+      { ownerType: "RESTAURANT", ownerId: restaurantId },
+    ];
+
+    const assignedRiderId = order.dispatch?.deliveryPartnerId;
+    if (assignedRiderId) {
+      notifyList.push({ ownerType: "DELIVERY_PARTNER", ownerId: assignedRiderId });
+    }
+
+    await notifyOwnersSafely(
+      notifyList,
+      {
+        title,
+        body,
+        image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
+        data: {
+          type: "order_status_update",
+          orderId: order.orderId,
+          orderMongoId: order._id?.toString?.() || "",
+          orderStatus: String(orderStatus || ""),
+          link: `/food/user/orders/${order._id?.toString?.() || ""}`,
+        },
+      },
+    );
+  } catch (err) {
+    logger.warn(`updateOrderStatusAdmin notification sync failed: ${err?.message || err}`);
+  }
+
+  enqueueOrderEvent("admin_order_status_updated", {
+    orderMongoId: order._id?.toString?.(),
+    orderId: order.orderId,
+    restaurantId,
+    adminId: adminId ? String(adminId) : null,
+    from,
+    to: orderStatus,
+  });
+
+  return order.toObject();
+}
+
 async function autoStartDueScheduledTakeawayOrders() {
   try {
     const dueOrders = await FoodOrder.find({

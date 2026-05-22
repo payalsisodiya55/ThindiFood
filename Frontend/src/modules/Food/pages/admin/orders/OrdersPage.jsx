@@ -62,6 +62,16 @@ const normalizeAdminDeliveryType = (order = {}) => {
   return hasDeliveryAddress ? "Home Delivery" : getTakeawayLabel();
 };
 
+const getAdminAcceptOrderStatus = (order = {}) => {
+  const fulfillmentType = String(order.fulfillmentType || "").trim().toLowerCase();
+  const takeawayOrderType = String(order.order_type || "").trim().toUpperCase();
+  const isScheduledTakeaway =
+    fulfillmentType === "takeaway" &&
+    takeawayOrderType === "SCHEDULED";
+
+  return isScheduledTakeaway ? "confirmed" : "preparing";
+};
+
 const getAdminPickupDateTime = (order = {}) => {
   const rawValue = order.pickupAt || order.scheduledAt || null;
   if (!rawValue) {
@@ -952,7 +962,9 @@ export default function OrdersPage({ statusKey = "all" }) {
 
     try {
       setProcessingActionOrderId(order.id || order.orderId);
-      const response = await adminAPI.acceptOrder(orderIdToUse);
+      const response = await adminAPI.acceptOrder(orderIdToUse, {
+        orderStatus: getAdminAcceptOrderStatus(order),
+      });
       if (response.data?.success) {
         resolveActiveOrderAlert(order);
         toast.success(response.data?.message || `Order ${order.orderId} accepted`);

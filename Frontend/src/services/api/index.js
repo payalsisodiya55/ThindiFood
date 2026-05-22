@@ -614,6 +614,29 @@ export const adminAPI = {
     apiClient.get(`/food/admin/orders/${String(orderId)}`, {
       contextModule: "admin",
     }),
+  updateOrderStatus: (orderId, body = {}) =>
+    apiClient.patch(`/food/admin/orders/${String(orderId)}/status`, body ?? {}, {
+      contextModule: "admin",
+    }),
+  acceptOrder: (orderId, body = {}) =>
+    adminAPI.updateOrderStatus(orderId, {
+      ...(body ?? {}),
+      orderStatus: body?.orderStatus || "preparing",
+    }),
+  rejectOrder: (orderId, reasonOrBody = {}) => {
+    const body =
+      typeof reasonOrBody === "string"
+        ? {
+            orderStatus: "cancelled_by_admin",
+            reason: reasonOrBody,
+            rejectionReason: reasonOrBody,
+          }
+        : (reasonOrBody ?? {});
+    return adminAPI.updateOrderStatus(orderId, {
+      ...body,
+      orderStatus: body?.orderStatus || "cancelled_by_admin",
+    });
+  },
   processRefund: (orderId, body = {}) =>
     apiClient.post(`/food/admin/orders/${String(orderId)}/refund`, body ?? {}, {
       contextModule: "admin",

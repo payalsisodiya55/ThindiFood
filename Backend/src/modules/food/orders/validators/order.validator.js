@@ -250,6 +250,23 @@ export function validateOrderStatusDto(body) {
     return result.data;
 }
 
+export function validateAdminOrderStatusDto(body) {
+    const schema = z.object({
+        orderStatus: z.enum([
+            'confirmed',
+            'preparing',
+            'cancelled_by_admin'
+        ]),
+        reason: z.string().optional(),
+        rejectionReason: z.string().optional()
+    });
+    const result = schema.safeParse(body || {});
+    if (!result.success) {
+        throw new ValidationError(result.error.errors?.[0]?.message || 'Validation failed');
+    }
+    return result.data;
+}
+
 export function validateAssignDeliveryDto(body) {
     const schema = z.object({
         deliveryPartnerId: z.string().min(1, 'Delivery partner id required')

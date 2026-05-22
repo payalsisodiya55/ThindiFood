@@ -9,7 +9,8 @@ import {
     validateOrderStatusDto,
     validateAssignDeliveryDto,
     validateDispatchSettingsDto,
-    validateOrderRatingsDto
+    validateOrderRatingsDto,
+    validateAdminOrderStatusDto
 } from '../validators/order.validator.js';
 
 export async function calculateOrderController(req, res, next) {
@@ -361,6 +362,23 @@ export async function getOrderByIdAdminController(req, res, next) {
         const orderId = req.params.orderId;
         const order = await orderService.getOrderById(orderId, { admin: true, adminScope: req.adminScope });
         return sendResponse(res, 200, 'Order retrieved', { order });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function updateOrderStatusAdminController(req, res, next) {
+    try {
+        const adminId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const dto = validateAdminOrderStatusDto(req.body);
+        const order = await orderService.updateOrderStatusAdmin(
+            orderId,
+            adminId,
+            dto.orderStatus,
+            dto.reason || dto.rejectionReason || ''
+        );
+        return sendResponse(res, 200, 'Order status updated', { order });
     } catch (err) {
         next(err);
     }
