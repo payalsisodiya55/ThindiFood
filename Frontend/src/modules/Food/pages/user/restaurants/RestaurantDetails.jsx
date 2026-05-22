@@ -2211,6 +2211,28 @@ function RestaurantDetailsContent() {
             <Button
               variant="outline"
               size="icon"
+              className={`rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm transition-colors ${
+                isFavorite(restaurant?.slug || slug || "")
+                  ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900 text-red-500"
+                  : "bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white"
+              }`}
+              onClick={handleAddToCollection}
+            >
+              <Bookmark className={`h-5 w-5 ${isFavorite(restaurant?.slug || slug || "") ? "fill-current" : ""}`} />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white"
+              onClick={handleShareRestaurant}
+            >
+              <Share2 className="h-5 w-5" />
+            </Button>
+
+            <Button
+              variant="outline"
+              size="icon"
               className="rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a]"
               onClick={() => setShowMenuOptionsSheet(true)}
             >
@@ -2637,7 +2659,7 @@ function RestaurantDetailsContent() {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
+                                    <h3 className="font-extrabold text-gray-900 dark:text-white text-lg leading-tight">{item.name}</h3>
                                     {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
                                   </div>
 
@@ -2651,13 +2673,26 @@ function RestaurantDetailsContent() {
                                     </div>
                                   )}
 
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <div className="flex items-center gap-1.5">
-                                      <p className="font-bold text-gray-900 dark:text-white">
-                                        {item.offer 
-                                          ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
-                                          : getFoodPriceLabel(item)}
-                                      </p>
+                                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <div className="flex items-baseline gap-1 flex-wrap">
+                                        {item.offer ? (
+                                          <>
+                                            {hasFoodVariants(item) && (
+                                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                Starting from{" "}
+                                              </span>
+                                            )}
+                                            <span className="font-extrabold text-gray-900 dark:text-white">
+                                              ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <span className="font-extrabold text-gray-900 dark:text-white">
+                                            {getFoodPriceLabel(item)}
+                                          </span>
+                                        )}
+                                      </div>
                                       {item.offer && (
                                         <p className="text-sm text-gray-400 line-through">
                                           ₹{Math.round(getFoodDisplayPrice(item))}
@@ -2666,12 +2701,21 @@ function RestaurantDetailsContent() {
                                     </div>
                                     {/* Preparation Time - Show if available */}
                                     {item.preparationTime && String(item.preparationTime).trim() && (
-                                      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                                      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0">
                                         <Clock size={12} className="text-gray-500" />
                                         <span>{String(item.preparationTime).trim()}</span>
                                       </div>
                                     )}
                                   </div>
+
+                                  {item.offer && (
+                                    <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
+                                      <Tag className="w-2.5 h-2.5" />
+                                      {item.offer.discountType === 'percentage' 
+                                        ? `${item.offer.discountValue}% OFF` 
+                                        : `₹${item.offer.discountValue} OFF`}
+                                    </div>
+                                  )}
 
                                   {/* Description - Show if available */}
                                   {item.description && (
@@ -2713,7 +2757,7 @@ function RestaurantDetailsContent() {
                             </div>
 
                             {/* Right Side - Image and Add Button */}
-                              <div className="relative w-32 h-32 flex-shrink-0">
+                              <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex-shrink-0">
                               {item.image ? (
                                 <img
                                   src={item.image}
@@ -2881,7 +2925,7 @@ function RestaurantDetailsContent() {
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                              <h3 className="font-bold text-gray-800 dark:text-white text-lg leading-tight">{item.name}</h3>
+                                              <h3 className="font-extrabold text-gray-900 dark:text-white text-lg leading-tight">{item.name}</h3>
                                               {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
                                             </div>
 
@@ -2895,13 +2939,26 @@ function RestaurantDetailsContent() {
                                               </div>
                                             )}
 
-                                            <div className="flex items-center gap-2 mt-1">
-                                              <div className="flex items-center gap-1.5">
-                                                <p className="font-bold text-gray-900 dark:text-white">
-                                                  {item.offer 
-                                                    ? `${hasFoodVariants(item) ? 'Starting from ' : ''}₹${Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}` 
-                                                    : getFoodPriceLabel(item)}
-                                                </p>
+                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                              <div className="flex items-center gap-1.5 flex-wrap">
+                                                <div className="flex items-baseline gap-1 flex-wrap">
+                                                  {item.offer ? (
+                                                    <>
+                                                      {hasFoodVariants(item) && (
+                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                          Starting from{" "}
+                                                        </span>
+                                                      )}
+                                                      <span className="font-extrabold text-gray-900 dark:text-white">
+                                                        ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
+                                                      </span>
+                                                    </>
+                                                  ) : (
+                                                    <span className="font-extrabold text-gray-900 dark:text-white">
+                                                      {getFoodPriceLabel(item)}
+                                                    </span>
+                                                  )}
+                                                </div>
                                                 {item.offer && (
                                                   <p className="text-sm text-gray-400 line-through">
                                                     ₹{Math.round(getFoodDisplayPrice(item))}
@@ -2910,14 +2967,14 @@ function RestaurantDetailsContent() {
                                               </div>
                                               {/* Preparation Time - Show if available */}
                                               {item.preparationTime && String(item.preparationTime).trim() && (
-                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0">
                                                   <Clock size={12} className="text-gray-500" />
                                                   <span>{String(item.preparationTime).trim()}</span>
                                                 </div>
                                               )}
                                             </div>
                                             {item.offer && (
-                                              <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20">
+                                              <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
                                                 <Tag className="w-2.5 h-2.5" />
                                                 {item.offer.discountType === 'percentage' 
                                                   ? `${item.offer.discountValue}% OFF` 
@@ -2965,7 +3022,7 @@ function RestaurantDetailsContent() {
                                       </div>
 
                                       {/* Right Side - Image and Add Button */}
-                                      <div className="relative w-32 h-32 flex-shrink-0">
+                                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex-shrink-0">
                                         {item.image ? (
                                           <img
                                             src={item.image}
