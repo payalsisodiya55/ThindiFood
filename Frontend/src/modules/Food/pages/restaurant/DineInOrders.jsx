@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { 
     Clock, CheckCircle2, ChevronRight, Loader2, 
     AlertCircle, RefreshCw, Utensils, Hash,
-    Timer, Bell, Check, Flame, PackageCheck, Printer
+    Timer, Bell, Check, Flame, PackageCheck, Printer, ArrowLeft
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
 import { Card, CardContent } from "@food/components/ui/card";
@@ -126,9 +126,18 @@ const DineInOrders = () => {
             
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900">Live Dine-In Orders</h1>
-                    <p className="text-gray-500 font-medium">Manage active orders across all tables in real-time.</p>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => navigate("/food/restaurant")}
+                        className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                        aria-label="Back"
+                    >
+                        <ArrowLeft className="w-5 h-5 text-gray-700" />
+                    </button>
+                    <div>
+                        <h1 className="text-3xl font-black text-gray-900">Live Dine-In Orders</h1>
+                        <p className="text-gray-500 font-medium">Manage active orders across all tables in real-time.</p>
+                    </div>
                 </div>
                 <Button 
                     variant="outline"

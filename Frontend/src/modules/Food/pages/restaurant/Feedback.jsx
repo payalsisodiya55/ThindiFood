@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, HelpCircle, Menu, Search, SlidersHorizontal, Calendar, ChevronLeft, ChevronDown, X, Loader2, ChevronRight, Star, RefreshCw } from "lucide-react"
+import { Bell, HelpCircle, Menu, Search, SlidersHorizontal, Calendar, ChevronLeft, ChevronDown, X, Loader2, ChevronRight, Star, RefreshCw, ArrowLeft } from "lucide-react"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { restaurantAPI } from "@food/api"
@@ -470,10 +470,10 @@ export default function Feedback() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate("/food/restaurant/explore")}
-              className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all cursor-pointer border border-gray-100 shadow-sm"
+              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
               aria-label="Back to explore"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-700" />
+              <ArrowLeft className="w-5 h-5 text-gray-700" />
             </button>
             <div>
               <p className="text-[10px] tracking-wider text-gray-500 uppercase">Showing data for</p>
@@ -702,7 +702,7 @@ export default function Feedback() {
       <BottomNavOrders />
 
       {/* Date Range Selector Popup */}
-      <BottomPopup isOpen={isDateSelectorOpen} onClose={() => setIsDateSelectorOpen(false)} title="Select date range">
+      <BottomPopup isOpen={isDateSelectorOpen} onClose={() => setIsDateSelectorOpen(false)} title="Select Date Range">
         <div className="p-4 space-y-1">
           {Object.entries(dateRangeLabels).map(([key, label]) => (
             <button
@@ -736,7 +736,7 @@ export default function Feedback() {
       </BottomPopup>
 
       {/* Complaints Filter Popup */}
-      <BottomPopup isOpen={isComplaintsFilterOpen} onClose={() => setIsComplaintsFilterOpen(false)} title="Filter complaints">
+      <BottomPopup isOpen={isComplaintsFilterOpen} onClose={() => setIsComplaintsFilterOpen(false)} title="Filter Complaints">
         <div className="p-4 space-y-6">
           <div>
             <p className="text-xs font-black text-gray-400 uppercase mb-3">Issue Type</p>
