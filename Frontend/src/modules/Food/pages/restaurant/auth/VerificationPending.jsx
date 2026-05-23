@@ -94,7 +94,7 @@ export default function VerificationPending() {
               Your restaurant is under review
             </h1>
             <p className="mt-3 text-sm leading-6 text-slate-600">
-              {companyName} received your onboarding details successfully. Our team will verify your restaurant and activate your dashboard once approval is complete.
+              Your account is currently under review. Verification may take 2-4 business days. Please try again later.
             </p>
             {checkingStatus ? (
               <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-400">
@@ -109,7 +109,7 @@ export default function VerificationPending() {
 
               <div className="text-sm text-slate-700">
                 <p className="font-semibold text-slate-900">What happens next</p>
-                <p className="mt-1">We will notify you once the verification is approved.</p>
+                <p className="mt-1">{companyName} will notify you once your verification is approved.</p>
                 {pendingPhone ? (
                   <p className="mt-2 text-slate-500">
                     Registered phone: <span className="font-medium text-slate-700">{pendingPhone}</span>

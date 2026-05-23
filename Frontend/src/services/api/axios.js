@@ -134,6 +134,11 @@ function redirectToModuleLogin(module) {
   }
 }
 
+function isAuthEndpoint(url = "") {
+  const normalized = String(url || "").toLowerCase();
+  return normalized.includes("/food/auth/") || normalized.includes("/auth/");
+}
+
 function handleAuthFailure(module) {
   clearModuleAuth(module);
   if (getCurrentPageModule() === module) {
@@ -195,6 +200,9 @@ apiClient.interceptors.response.use(
       return Promise.reject(err);
     }
     const module = original.contextModule || getModuleFromUrl(original.url);
+    if (isAuthEndpoint(original.url)) {
+      return Promise.reject(err);
+    }
     const refreshToken = getRefreshToken(module);
     if (!refreshToken) {
       handleAuthFailure(module);

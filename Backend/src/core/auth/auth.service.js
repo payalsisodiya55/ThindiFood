@@ -273,8 +273,9 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
     throw new AuthError(result.reason || "OTP verification failed");
   }
 
-  // Restaurants may store ownerPhone with country code or formatting.
-  // Match by exact phone, last-10 digits, or suffix match to avoid false "needsRegistration".
+  // Restaurants may store ownerPhone with country code, digits only, or
+  // normalized helper fields. Match across all of them to avoid false
+  // "needsRegistration" responses for already submitted restaurants.
   const digits = String(phone || "").replace(/\D/g, "");
   const last10 = digits.slice(-10);
   const phoneCandidates = [phone, digits, last10].filter(Boolean);
@@ -286,6 +287,8 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
   const restaurant = await FoodRestaurant.findOne({
     $or: [
       ...phoneOrFields("ownerPhone"),
+      ...(digits ? [{ ownerPhoneDigits: digits }] : []),
+      ...(last10 ? [{ ownerPhoneLast10: last10 }] : []),
       ...phoneOrFields("primaryContactNumber"),
     ],
   });
@@ -322,9 +325,13 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
   // Pending restaurants are blocked until admin review, but rejected restaurants
   // can log back in and resubmit onboarding for re-verification.
   if (restaurant.status === "pending") {
-    throw new AuthError(
-      "Your restaurant registration is pending approval.",
-    );
+    return {
+      pendingApproval: true,
+      message: "Your account is currently under review. Verification may take 2-4 business days. Please try again later.",
+      phone,
+      user: restaurant,
+      needsRegistration: false,
+    };
   }
 
   const payload = { userId: restaurant._id.toString(), role: ROLES.RESTAURANT };

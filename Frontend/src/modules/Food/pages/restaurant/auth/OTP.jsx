@@ -14,6 +14,26 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const getRestaurantReviewStatus = (restaurant) => {
+  const status = String(restaurant?.status || "").trim().toLowerCase()
+  const approvalStatus = String(restaurant?.approvalStatus || "").trim().toLowerCase()
+  const normalized = status || approvalStatus
+
+  if (["pending", "under_review", "under-review", "review"].includes(normalized)) {
+    return "pending"
+  }
+
+  if (normalized === "rejected") {
+    return "rejected"
+  }
+
+  if (normalized === "approved") {
+    return "approved"
+  }
+
+  return normalized
+}
+
 export default function RestaurantOTP() {
   const companyName = useCompanyName()
   const navigate = useNavigate()
@@ -243,6 +263,22 @@ export default function RestaurantOTP() {
 
       const needsRegistration = data?.needsRegistration === true
       const normalizedPhone = data?.phone || phone
+      const pendingApproval = data?.pendingApproval === true
+      const pendingRestaurant = data?.user ?? data?.restaurant
+
+      if (pendingApproval || getRestaurantReviewStatus(pendingRestaurant) === "pending") {
+        const pendingPhone = normalizedPhone || authData?.phone || authData?.email || contactInfo
+        if (pendingPhone) {
+          setRestaurantPendingPhone(pendingPhone)
+        }
+        sessionStorage.removeItem("restaurantAuthData")
+        sessionStorage.removeItem("restaurantLoginPhone")
+        navigate("/food/restaurant/pending-verification", {
+          replace: true,
+          state: { phone: pendingPhone || "" },
+        })
+        return
+      }
 
       if (needsRegistration) {
         setRestaurantPendingPhone(normalizedPhone)
@@ -255,13 +291,25 @@ export default function RestaurantOTP() {
       const accessToken = data?.accessToken
       const refreshToken = data?.refreshToken ?? null
       const restaurant = data?.user ?? data?.restaurant
-      const restaurantStatus = String(restaurant?.status || "").toLowerCase()
+      const restaurantStatus = getRestaurantReviewStatus(restaurant)
 
       if (accessToken && restaurant) {
         setRestaurantAuthData("restaurant", accessToken, restaurant, refreshToken)
         window.dispatchEvent(new Event("restaurantAuthChanged"))
         sessionStorage.removeItem("restaurantAuthData")
         sessionStorage.removeItem("restaurantLoginPhone")
+
+        if (restaurantStatus === "pending") {
+          const pendingPhone = normalizedPhone || authData?.phone || contactInfo
+          if (pendingPhone) {
+            setRestaurantPendingPhone(pendingPhone)
+          }
+          navigate("/food/restaurant/pending-verification", {
+            replace: true,
+            state: { phone: pendingPhone || "" },
+          })
+          return
+        }
 
         if (restaurantStatus === "rejected") {
           const reason = String(restaurant?.rejectionReason || "").trim()
@@ -303,7 +351,7 @@ export default function RestaurantOTP() {
         err?.message ||
         "Invalid OTP. Please try again."
 
-      if (/pending approval/i.test(message)) {
+      if (/pending approval|pending admin|under review|registration is pending/i.test(message)) {
         const pendingPhone = authData?.phone || authData?.email || contactInfo
         if (pendingPhone) {
           setRestaurantPendingPhone(pendingPhone)
