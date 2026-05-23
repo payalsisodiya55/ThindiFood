@@ -192,7 +192,7 @@ export default function UserLayout() {
                   </div>
                   <LocationPrompt />
                   <GlobalReviewPrompt />
-                  <main className={showBottomNav ? "md:pt-40" : ""}>
+                  <main className={showBottomNav ? "pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-0 md:pt-40" : ""}>
                     <Outlet />
                   </main>
                   {showBottomNav && <BottomNavigation />}

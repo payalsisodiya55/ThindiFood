@@ -4323,7 +4323,7 @@ export default function Home() {
                 exit={{ y: 100, opacity: 0 }}
                 transition={{ duration: 0.3, type: "spring", damping: 25 }}
                 className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10001] bg-black text-white px-6 py-3 rounded-lg shadow-2xl">
-                <p className="text-sm font-medium">Added to your favourites</p>
+                <p className="text-sm font-medium">Added to your favourite restaurants collection</p>
               </motion.div>
             )}
           </AnimatePresence>,

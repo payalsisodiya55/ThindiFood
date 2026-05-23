@@ -1588,7 +1588,7 @@ function RestaurantDetailsContent() {
         priceRange: restaurant.priceRange || "",
         image: restaurant.profileImageUrl?.url || restaurant.image || ""
       })
-      toast.success("Restaurant added to collection")
+      toast.success("Added to your favourite restaurants collection")
     }
 
     setShowMenuOptionsSheet(false)
@@ -2502,7 +2502,7 @@ function RestaurantDetailsContent() {
 
         {/* Menu Items Section */}
         {restaurant?.menuSections && Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0 && (
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-6 sm:py-8 md:py-10 lg:py-12 space-y-6 md:space-y-8 lg:space-y-10">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-3 sm:py-8 md:py-10 lg:py-12 space-y-4 md:space-y-8 lg:space-y-10">
             {filteredSections.length === 0 && (
               <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-5 py-10 text-center shadow-sm">
                 <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2646,27 +2646,27 @@ function RestaurantDetailsContent() {
                                 delete dishCardRefs.current[item.id]
                               }
                             }}
-                            className={`flex gap-4 p-4 border-b border-gray-100 last:border-none relative cursor-pointer transition-all duration-300 ${highlightedDishId === item.id ? "bg-red-50 ring-2 ring-[#00c87e] ring-inset dark:bg-red-950/20" : ""}`}
+                            className={`flex gap-3 p-3 md:gap-4 md:p-4 border-b border-gray-100 last:border-none relative cursor-pointer transition-all duration-300 ${highlightedDishId === item.id ? "bg-red-50 ring-2 ring-[#00c87e] ring-inset dark:bg-red-950/20" : ""}`}
                             onClick={() => handleItemClick(item)}
                           >
                             {/* Left Side - Details */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start gap-2 mb-1">
-                                <div className="mt-1 flex-shrink-0">
+                                <div className="mt-0.5 md:mt-1 flex-shrink-0">
                                   {isVeg ? (
-                                    <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                      <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                    <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-[1.5px] md:border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-600 rounded-full"></div>
                                     </div>
                                   ) : (
-                                    <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                      <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                                    <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-[1.5px] md:border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-red-600 rounded-full"></div>
                                     </div>
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <h3 className="font-extrabold text-gray-900 dark:text-white text-lg leading-tight">{item.name}</h3>
-                                    {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
+                                    <h3 className="font-extrabold text-gray-900 dark:text-white text-sm md:text-lg leading-tight">{item.name}</h3>
+                                    {item.isSpicy && <span className="text-[10px] md:text-xs font-semibold text-red-500">Spicy</span>}
                                   </div>
 
                                   {/* Highly Reordered Progress Bar - Show if recommended */}
@@ -2675,7 +2675,7 @@ function RestaurantDetailsContent() {
                                       <div className="h-1.5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div className="h-full bg-[#00c87e] w-3/4"></div>
                                       </div>
-                                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
+                                      <span className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
                                     </div>
                                   )}
 
@@ -2685,37 +2685,37 @@ function RestaurantDetailsContent() {
                                         {item.offer ? (
                                           <>
                                             {hasFoodVariants(item) && (
-                                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                              <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400">
                                                 Starting from{" "}
                                               </span>
                                             )}
-                                            <span className="font-extrabold text-gray-900 dark:text-white">
+                                            <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
                                               ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
                                             </span>
                                           </>
                                         ) : (
-                                          <span className="font-extrabold text-gray-900 dark:text-white">
+                                          <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
                                             {getFoodPriceLabel(item)}
                                           </span>
                                         )}
                                       </div>
                                       {item.offer && (
-                                        <p className="text-sm text-gray-400 line-through">
+                                        <p className="text-xs md:text-sm text-gray-400 line-through">
                                           ₹{Math.round(getFoodDisplayPrice(item))}
                                         </p>
                                       )}
                                     </div>
                                     {/* Preparation Time - Show if available */}
                                     {item.preparationTime && String(item.preparationTime).trim() && (
-                                      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0">
-                                        <Clock size={12} className="text-gray-500" />
+                                      <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                        <Clock size={10} className="text-gray-500" />
                                         <span>{String(item.preparationTime).trim()}</span>
                                       </div>
                                     )}
                                   </div>
 
                                   {item.offer && (
-                                    <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
+                                    <div className="mt-1 flex items-center gap-1 w-fit text-[9px] md:text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-1.5 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
                                       <Tag className="w-2.5 h-2.5" />
                                       {item.offer.discountType === 'percentage' 
                                         ? `${item.offer.discountValue}% OFF` 
@@ -2725,11 +2725,11 @@ function RestaurantDetailsContent() {
 
                                   {/* Description - Show if available */}
                                   {item.description && (
-                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
+                                    <p className="text-[11px] md:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
                                   )}
 
                                   {/* Mobile-only action buttons */}
-                                  <div className="flex gap-4 mt-3 md:hidden">
+                                  <div className="flex gap-2 mt-2 md:hidden">
                                     <button
                                       type="button"
                                       onClick={(e) => {
@@ -2737,13 +2737,13 @@ function RestaurantDetailsContent() {
                                         e.stopPropagation()
                                         handleBookmarkClick(item)
                                       }}
-                                      className={`p-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
+                                      className={`p-1 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
                                         ? "border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20"
                                         : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
                                         }`}
                                     >
                                       <Bookmark
-                                        size={18}
+                                        size={14}
                                         className={isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500" : ""}
                                       />
                                     </button>
@@ -2753,9 +2753,9 @@ function RestaurantDetailsContent() {
                                         e.stopPropagation()
                                         handleShareClick(item)
                                       }}
-                                      className="p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                      className="p-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                     >
-                                      <Share2 size={18} />
+                                      <Share2 size={14} />
                                     </button>
                                   </div>
                                 </div>
@@ -2763,12 +2763,12 @@ function RestaurantDetailsContent() {
                             </div>
 
                             {/* Right Side - Image and Add Button */}
-                              <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex-shrink-0">
+                            <div className="relative w-24 h-24 xs:w-28 xs:h-28 md:w-32 md:h-32 flex-shrink-0">
                               {item.image ? (
                                 <img
                                   src={item.image}
                                   alt={item.name}
-                                  className="w-full h-full object-cover rounded-2xl shadow-sm"
+                                  className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-sm"
                                   onError={(e) => {
                                     if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
                                       e.currentTarget.src = FOOD_IMAGE_FALLBACK
@@ -2776,15 +2776,15 @@ function RestaurantDetailsContent() {
                                   }}
                                 />
                               ) : (
-                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
-                                  <span className="text-xs text-gray-400">No image</span>
+                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-xl md:rounded-2xl flex items-center justify-center">
+                                  <span className="text-[10px] md:text-xs text-gray-400">No image</span>
                                 </div>
                               )}
                               {quantity > 0 ? (
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.8 }}
                                   animate={{ opacity: 1, scale: 1 }}
-                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                  className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 text-xs md:text-sm md:px-4 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                     : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                     }`}
@@ -2801,9 +2801,9 @@ function RestaurantDetailsContent() {
                                     disabled={shouldShowGrayscale}
                                     className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                   >
-                                    <Minus size={14} />
+                                    <Minus className="h-3 w-3 md:h-3.5 md:w-3.5" />
                                   </button>
-                                  <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                  <span className={`mx-1.5 text-xs md:text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
@@ -2816,8 +2816,8 @@ function RestaurantDetailsContent() {
                                     disabled={shouldShowGrayscale}
                                     className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                   >
-                                      <Plus size={14} className="stroke-[3px]" />
-                                    </button>
+                                    <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px]" />
+                                  </button>
                                 </motion.div>
                               ) : (
                                 <motion.button
@@ -2836,12 +2836,12 @@ function RestaurantDetailsContent() {
                                     }
                                   }}
                                   disabled={shouldShowGrayscale}
-                                  className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                  className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-2 text-xs md:text-sm md:px-6 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                     : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                     }`}
                                 >
-                                  ADD <Plus size={14} className="stroke-[3px] group-hover:text-white transition-colors" />
+                                  ADD <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px] group-hover:text-white transition-colors" />
                                 </motion.button>
                               )}
                             </div>
@@ -2912,27 +2912,27 @@ function RestaurantDetailsContent() {
                                           delete dishCardRefs.current[item.id]
                                         }
                                       }}
-                                      className={`flex gap-4 p-4 border-b border-gray-100 last:border-none relative cursor-pointer transition-all duration-300 ${highlightedDishId === item.id ? "bg-red-50 ring-2 ring-[#00c87e] ring-inset dark:bg-red-950/20" : ""}`}
+                                      className={`flex gap-3 p-3 md:gap-4 md:p-4 border-b border-gray-100 last:border-none relative cursor-pointer transition-all duration-300 ${highlightedDishId === item.id ? "bg-red-50 ring-2 ring-[#00c87e] ring-inset dark:bg-red-950/20" : ""}`}
                                       onClick={() => handleItemClick(item)}
                                     >
                                       {/* Left Side - Details */}
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-start gap-2 mb-1">
-                                          <div className="mt-1 flex-shrink-0">
+                                          <div className="mt-0.5 md:mt-1 flex-shrink-0">
                                             {isVeg ? (
-                                              <div className="w-4 h-4 border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                                <div className="w-2 h-2 bg-green-600 rounded-full"></div>
+                                              <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-[1.5px] md:border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-600 rounded-full"></div>
                                               </div>
                                             ) : (
-                                              <div className="w-4 h-4 border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
-                                                <div className="w-2 h-2 bg-red-600 rounded-full"></div>
+                                              <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-[1.5px] md:border-2 border-red-600 flex items-center justify-center rounded-sm flex-shrink-0">
+                                                <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-red-600 rounded-full"></div>
                                               </div>
                                             )}
                                           </div>
                                           <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                              <h3 className="font-extrabold text-gray-900 dark:text-white text-lg leading-tight">{item.name}</h3>
-                                              {item.isSpicy && <span className="text-xs font-semibold text-red-500">Spicy</span>}
+                                              <h3 className="font-extrabold text-gray-900 dark:text-white text-sm md:text-lg leading-tight">{item.name}</h3>
+                                              {item.isSpicy && <span className="text-[10px] md:text-xs font-semibold text-red-500">Spicy</span>}
                                             </div>
 
                                             {/* Highly Reordered Progress Bar - Show if recommended */}
@@ -2941,7 +2941,7 @@ function RestaurantDetailsContent() {
                                                 <div className="h-1.5 w-16 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                                                   <div className="h-full bg-[#00c87e] w-3/4"></div>
                                                 </div>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
+                                                <span className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 font-medium">Highly reordered</span>
                                               </div>
                                             )}
 
@@ -2951,36 +2951,37 @@ function RestaurantDetailsContent() {
                                                   {item.offer ? (
                                                     <>
                                                       {hasFoodVariants(item) && (
-                                                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                        <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400">
                                                           Starting from{" "}
                                                         </span>
                                                       )}
-                                                      <span className="font-extrabold text-gray-900 dark:text-white">
+                                                      <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
                                                         ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
                                                       </span>
                                                     </>
                                                   ) : (
-                                                    <span className="font-extrabold text-gray-900 dark:text-white">
+                                                    <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
                                                       {getFoodPriceLabel(item)}
                                                     </span>
                                                   )}
                                                 </div>
                                                 {item.offer && (
-                                                  <p className="text-sm text-gray-400 line-through">
+                                                  <p className="text-xs md:text-sm text-gray-400 line-through">
                                                     ₹{Math.round(getFoodDisplayPrice(item))}
                                                   </p>
                                                 )}
                                               </div>
                                               {/* Preparation Time - Show if available */}
                                               {item.preparationTime && String(item.preparationTime).trim() && (
-                                                <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full flex-shrink-0">
-                                                  <Clock size={12} className="text-gray-500" />
+                                                <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                                                  <Clock size={10} className="text-gray-500" />
                                                   <span>{String(item.preparationTime).trim()}</span>
                                                 </div>
                                               )}
                                             </div>
+
                                             {item.offer && (
-                                              <div className="mt-1.5 flex items-center gap-1 w-fit text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-2 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
+                                              <div className="mt-1 flex items-center gap-1 w-fit text-[9px] md:text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-1.5 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
                                                 <Tag className="w-2.5 h-2.5" />
                                                 {item.offer.discountType === 'percentage' 
                                                   ? `${item.offer.discountValue}% OFF` 
@@ -2990,11 +2991,11 @@ function RestaurantDetailsContent() {
 
                                             {/* Description - Show if available */}
                                             {item.description && (
-                                              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
+                                              <p className="text-[11px] md:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
                                             )}
 
                                             {/* Mobile-only action buttons */}
-                                            <div className="flex gap-4 mt-3 md:hidden">
+                                            <div className="flex gap-2 mt-2 md:hidden">
                                               <button
                                                 type="button"
                                                 onClick={(e) => {
@@ -3002,13 +3003,13 @@ function RestaurantDetailsContent() {
                                                   e.stopPropagation()
                                                   handleBookmarkClick(item)
                                                 }}
-                                                className={`p-1.5 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
+                                                className={`p-1 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors ${isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)
                                                   ? "border-red-500 text-red-500 bg-red-50 dark:bg-red-900/20"
                                                   : "border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400"
                                                   }`}
                                               >
                                                 <Bookmark
-                                                  size={18}
+                                                  size={14}
                                                   className={isDishFavorite(item.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id) ? "fill-red-500" : ""}
                                                 />
                                               </button>
@@ -3018,9 +3019,9 @@ function RestaurantDetailsContent() {
                                                   e.stopPropagation()
                                                   handleShareClick(item)
                                                 }}
-                                                className="p-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                                className="p-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                                               >
-                                                <Share2 size={18} />
+                                                <Share2 size={14} />
                                               </button>
                                             </div>
                                           </div>
@@ -3028,12 +3029,12 @@ function RestaurantDetailsContent() {
                                       </div>
 
                                       {/* Right Side - Image and Add Button */}
-                                      <div className="relative w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 flex-shrink-0">
+                                      <div className="relative w-24 h-24 xs:w-28 xs:h-28 md:w-32 md:h-32 flex-shrink-0">
                                         {item.image ? (
                                           <img
                                             src={item.image}
                                             alt={item.name}
-                                            className="w-full h-full object-cover rounded-2xl shadow-sm"
+                                            className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-sm"
                                             onError={(e) => {
                                               if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
                                                 e.currentTarget.src = FOOD_IMAGE_FALLBACK
@@ -3041,15 +3042,15 @@ function RestaurantDetailsContent() {
                                             }}
                                           />
                                         ) : (
-                                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
-                                            <span className="text-xs text-gray-400">No image</span>
+                                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-xl md:rounded-2xl flex items-center justify-center">
+                                            <span className="text-[10px] md:text-xs text-gray-400">No image</span>
                                           </div>
                                         )}
                                         {quantity > 0 ? (
                                           <motion.div
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
-                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                            className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 text-xs md:text-sm md:px-4 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                               : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                               }`}
@@ -3066,9 +3067,9 @@ function RestaurantDetailsContent() {
                                               disabled={shouldShowGrayscale}
                                               className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                             >
-                                              <Minus size={14} />
+                                              <Minus className="h-3 w-3 md:h-3.5 md:w-3.5" />
                                             </button>
-                                            <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                            <span className={`mx-1.5 text-xs md:text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
@@ -3081,7 +3082,7 @@ function RestaurantDetailsContent() {
                                               disabled={shouldShowGrayscale}
                                               className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
                                             >
-                                              <Plus size={14} className="stroke-[3px]" />
+                                              <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px]" />
                                             </button>
                                           </motion.div>
                                         ) : (
@@ -3101,30 +3102,30 @@ function RestaurantDetailsContent() {
                                               }
                                             }}
                                             disabled={shouldShowGrayscale}
-                                            className={`absolute -bottom-2 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-1.5 rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                            className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-2 text-xs md:text-sm md:px-6 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                               : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
                                               }`}
                                           >
-                                            ADD <Plus size={14} className="stroke-[3px] group-hover:text-white transition-colors" />
+                                            ADD <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px] group-hover:text-white transition-colors" />
                                           </motion.button>
                                         )}
                                       </div>
                                     </div>
-                                  )
-                                })}
-                              </div>
-                            )}
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+                                    )
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
       </div>
 
       {/* FSSAI License Information - Bottom of page */}
