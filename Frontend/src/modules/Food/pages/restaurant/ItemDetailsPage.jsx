@@ -103,8 +103,8 @@ export default function ItemDetailsPage() {
   const [loadingItem, setLoadingItem] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
 
-  const maxNameLength = 70;
-  const maxDescriptionLength = 1000;
+  const maxNameLength = 50;
+  const maxDescriptionLength = 250;
   const descriptionLength = itemDescription.length;
   const minDescriptionLength = 5;
   const nameLength = itemName.length;
@@ -989,7 +989,8 @@ export default function ItemDetailsPage() {
                 placeholder="Enter item name" />
               
             </div>
-            <div className="text-right mt-1">
+            <div className="flex items-center justify-between mt-1">
+              <span className="text-xs text-gray-500">Maximum 50 characters allowed</span>
               <span className="text-xs text-gray-500">
                 {nameLength} / {maxNameLength}
               </span>
@@ -1014,7 +1015,7 @@ export default function ItemDetailsPage() {
             </div>
             <div className="flex items-center justify-between mt-1">
               <span className={`text-xs ${descriptionLength < minDescriptionLength ? "text-red-500" : "text-gray-500"}`}>
-                {descriptionLength < minDescriptionLength ? "Min 5 characters required" : ""}
+                {descriptionLength < minDescriptionLength ? "Min 5 characters required" : "Maximum 250 characters allowed"}
               </span>
               <span className="text-xs text-gray-500">
                 {descriptionLength} / {maxDescriptionLength}
@@ -1060,7 +1061,7 @@ export default function ItemDetailsPage() {
             </label>
             <div className="space-y-3">
               {variants.length === 0 ?
-              <div className="relative">
+              <div>
                   <label className="block text-xs text-gray-600 mb-1">Base price</label>
                   <div className="relative">
                     <input
@@ -1080,11 +1081,12 @@ export default function ItemDetailsPage() {
                       }
                     }}
                     placeholder="Enter price"
-                    maxLength={10}
+                    maxLength={5}
                     className="w-full pl-8 pr-12 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                   
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">Only 5 digits allowed</p>
                 </div> :
 
               <div className="rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-sm text-orange-700">
@@ -1111,7 +1113,7 @@ export default function ItemDetailsPage() {
                 {variants.length > 0 ?
                 <div className="space-y-3">
                     {variants.map((variant, index) =>
-                  <div key={variant.localId} className="grid grid-cols-[1fr_auto] gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div key={variant.localId} className="grid grid-cols-[1fr_auto] items-end gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">Variant name</label>
@@ -1120,9 +1122,12 @@ export default function ItemDetailsPage() {
                           value={variant.name}
                           onChange={(e) => handleVariantChange(variant.localId, "name", e.target.value)}
                           placeholder={index === 0 ? "Full" : "Half"}
-                          maxLength={100}
+                          maxLength={30}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                        
+                            <div className="flex items-center justify-between mt-1 px-0.5">
+                              <span className="text-[10px] text-gray-500">Maximum 30 characters allowed</span>
+                              <span className="text-[10px] text-gray-500">{(variant.name || "").length} / 30</span>
+                            </div>
                           </div>
                           <div>
                             <label className="block text-xs text-gray-600 mb-1">Variant price</label>
@@ -1139,21 +1144,23 @@ export default function ItemDetailsPage() {
                               handleVariantChange(variant.localId, "price", cleanedValue);
                             }}
                             placeholder="Enter price"
-                            maxLength={10}
+                            maxLength={5}
                             className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
                           
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
                             </div>
+                            <p className="text-[10px] text-gray-500 mt-1 px-0.5">Only 5 digits allowed</p>
                           </div>
                         </div>
-                        <button
-                      type="button"
-                      onClick={() => handleRemoveVariant(variant.localId)}
-                      className="mt-6 rounded-full p-2 text-red-500 hover:bg-white hover:text-red-600 transition-colors"
-                      aria-label="Remove variant">
-                      
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="h-[38px] flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(variant.localId)}
+                            className="rounded-full p-2 text-red-500 hover:bg-white hover:text-red-600 transition-colors"
+                            aria-label="Remove variant">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                   )}
                   </div> :

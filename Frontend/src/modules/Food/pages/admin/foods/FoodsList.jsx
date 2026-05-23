@@ -1,6 +1,6 @@
-import { confirmApp } from "@shared/lib/appDialog";import { useState, useMemo, useEffect, useCallback } from "react";
+import { confirmApp } from "@shared/lib/appDialog";import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Search, Trash2, Loader2, Eye, Pencil, Plus, Save, ChevronDown, ChevronLeft, ChevronRight, Upload, Download, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { Search, Trash2, Loader2, Eye, Pencil, Plus, Save, ChevronDown, ChevronLeft, ChevronRight, Upload, Download, FileSpreadsheet, AlertCircle, X } from "lucide-react";
 import { adminAPI, uploadAPI } from "@food/api";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog";
@@ -233,6 +233,27 @@ export default function FoodsList() {
   const [bulkImporting, setBulkImporting] = useState(false);
   const [bulkImportSummary, setBulkImportSummary] = useState(null);
   const [bulkImportInputKey, setBulkImportInputKey] = useState(0);
+
+  const fileInputRef = useRef(null);
+
+  const scrollContainerRef = useCallback((el) => {
+    if (el) {
+      const stopPropagation = (e) => {
+        e.stopPropagation();
+      };
+      el.addEventListener("wheel", stopPropagation, { passive: false });
+      el.addEventListener("touchmove", stopPropagation, { passive: false });
+    }
+  }, []);
+
+  const handleRemoveImage = () => {
+    setSelectedImageFile(null);
+    setImagePreviewUrl("");
+    setFoodForm((prev) => ({ ...prev, image: "" }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   const getItemCreatedMs = (item = {}) => {
     const direct = [item.createdAt, item.addedAt, item.requestedAt, item.updatedAt].
@@ -1219,7 +1240,7 @@ export default function FoodsList() {
                       <ChevronDown className="w-4 h-4 text-slate-500" />
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2 !z-[100]" align="start">
                     <input
                       type="text"
                       value={categorySearch}
@@ -1228,7 +1249,7 @@ export default function FoodsList() {
                       placeholder="Search category..."
                       autoFocus />
                     
-                    <div className="max-h-56 overflow-y-auto">
+                    <div ref={scrollContainerRef} className="max-h-56 overflow-y-auto">
                       {categoryOptions.
                       filter((c) => {
                         const q = String(categorySearch || "").trim().toLowerCase();
@@ -1295,6 +1316,7 @@ export default function FoodsList() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Upload Image</label>
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
@@ -1310,14 +1332,15 @@ export default function FoodsList() {
                 
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Timing</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Preparation Timing</label>
                 <div className="relative">
                   <select
                     value={foodForm.preparationTime}
                     onChange={(e) => setFoodForm((prev) => ({ ...prev, preparationTime: e.target.value }))}
                     className="w-full px-3 py-2.5 pr-10 border border-slate-300 rounded-lg text-sm bg-white appearance-none">
                     
-                    <option value="">Select timing</option>
+                    <option value="">Select preparation timing</option>
+                    <option value="5-10 mins">5-10 mins</option>
                     <option value="10-20 mins">10-20 mins</option>
                     <option value="20-25 mins">20-25 mins</option>
                     <option value="25-35 mins">25-35 mins</option>
@@ -1329,12 +1352,20 @@ export default function FoodsList() {
               {imagePreviewUrl ?
               <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Image Preview</label>
-                  <div className="w-28 h-28 rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
-                    <img
-                    src={imagePreviewUrl}
-                    alt="Food preview"
-                    className="w-full h-full object-cover" />
-                  
+                  <div className="relative w-28 h-28">
+                    <div className="w-full h-full rounded-lg overflow-hidden border border-slate-200 bg-slate-50">
+                      <img
+                        src={imagePreviewUrl}
+                        alt="Food preview"
+                        className="w-full h-full object-cover" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="absolute -top-2 -right-2 p-1 bg-red-100 hover:bg-red-200 text-red-600 hover:text-red-700 rounded-full border border-red-200 shadow-sm transition-colors z-20"
+                      title="Remove image">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div> :
               null}

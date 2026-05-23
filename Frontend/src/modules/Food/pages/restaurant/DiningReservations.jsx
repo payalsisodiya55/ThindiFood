@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X, ChevronLeft, Loader2 } from "lucide-react"
+import { Calendar, Clock, Users, Search, MessageSquare, CheckCircle2, Clock4, UploadCloud, ImagePlus, ChevronDown, ChevronUp, Sparkles, MapPin, Phone, Info, X, ChevronLeft, Loader2, ArrowLeft } from "lucide-react"
 import { diningAPI, restaurantAPI, dineInAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
@@ -644,8 +644,12 @@ export default function DiningReservations() {
             <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-30 border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => navigate("/food/restaurant/explore")} className="p-2 rounded-xl hover:bg-slate-100 transition-all cursor-pointer border border-slate-200">
-                            <ChevronLeft className="w-6 h-6 text-slate-700" />
+                        <button
+                            onClick={() => navigate("/food/restaurant/explore")}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                            aria-label="Go back"
+                        >
+                            <ArrowLeft className="w-6 h-6 text-gray-900" />
                         </button>
                         <div>
                             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">

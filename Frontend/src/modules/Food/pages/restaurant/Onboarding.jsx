@@ -22,7 +22,13 @@ import { determineStepToShow } from "@food/utils/onboardingUtils"
 import { toast } from "sonner"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
-import { clearModuleAuth, clearAuthData, getCurrentUser } from "@food/utils/auth"
+import {
+  clearModuleAuth,
+  clearAuthData,
+  getCurrentUser,
+  getRestaurantPendingPhone,
+  isModuleAuthenticated,
+} from "@food/utils/auth"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { isFlutterBridgeAvailable, openCamera } from "@food/utils/imageUploadUtils"
 const debugLog = (...args) => {}
@@ -548,7 +554,7 @@ function TimeSelector({ label, value, onChange }) {
     <div className="border border-gray-200 rounded-md px-3 py-2 bg-gray-50/60">
       <div className="flex items-center gap-2 mb-2">
         <Clock className="w-4 h-4 text-gray-800" />
-        <span className="text-xs font-medium text-gray-900">
+        <span className="text-xs font-bold text-gray-700">
           {typeof label === "string" && label.endsWith("*") ? (
             <>
               {label.slice(0, -1)}
@@ -620,6 +626,8 @@ export default function RestaurantOnboarding() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
   const [accountNumberError, setAccountNumberError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [fieldTouched, setFieldTouched] = useState({})
   const [showConfirmAccountNumber, setShowConfirmAccountNumber] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
@@ -710,11 +718,11 @@ export default function RestaurantOnboarding() {
     featuredPrice: "",
     offer: "",
     selfDeliveryEnabled: false,
-    selfDeliveryRadius: "3",
-    selfDeliveryFee: "0",
-    selfDeliveryMinOrderAmount: "0",
-    selfDeliveryStart: "10:00",
-    selfDeliveryEnd: "22:00",
+    selfDeliveryRadius: "",
+    selfDeliveryFee: "",
+    selfDeliveryMinOrderAmount: "",
+    selfDeliveryStart: "",
+    selfDeliveryEnd: "",
   })
   const previewUrlCacheRef = useRef(new Map())
   const prevStepRef = useRef(step)
@@ -736,6 +744,282 @@ export default function RestaurantOnboarding() {
     fileNamePrefix: "camera-image",
     fallbackInputRef: null,
   })
+
+  const getFieldValue = (fieldName, overrides = {}) => {
+    const step1Data = overrides.step1 || step1
+    const step3Data = overrides.step3 || step3
+    const step4Data = overrides.step4 || step4
+
+    switch (fieldName) {
+      case "restaurantName":
+        return step1Data.restaurantName
+      case "ownerName":
+        return step1Data.ownerName
+      case "ownerEmail":
+        return step1Data.ownerEmail
+      case "ownerPhone":
+        return step1Data.ownerPhone
+      case "primaryContactNumber":
+        return step1Data.primaryContactNumber
+      case "zoneId":
+        return step1Data.zoneId
+      case "location.area":
+        return step1Data.location?.area
+      case "location.city":
+        return step1Data.location?.city
+      case "location.state":
+        return step1Data.location?.state
+      case "location.pincode":
+        return step1Data.location?.pincode
+      case "panNumber":
+        return step3Data.panNumber
+      case "nameOnPan":
+        return step3Data.nameOnPan
+      case "gstNumber":
+        return step3Data.gstNumber
+      case "gstLegalName":
+        return step3Data.gstLegalName
+      case "gstAddress":
+        return step3Data.gstAddress
+      case "fssaiNumber":
+        return step3Data.fssaiNumber
+      case "fssaiExpiry":
+        return step3Data.fssaiExpiry
+      case "accountNumber":
+        return step3Data.accountNumber
+      case "confirmAccountNumber":
+        return step3Data.confirmAccountNumber
+      case "ifscCode":
+        return step3Data.ifscCode
+      case "accountHolderName":
+        return step3Data.accountHolderName
+      case "accountType":
+        return step3Data.accountType
+      case "estimatedDeliveryTime":
+        return step4Data.estimatedDeliveryTime
+      case "featuredDish":
+        return step4Data.featuredDish
+      default:
+        return ""
+    }
+  }
+
+  const validateSingleField = (fieldName, overrides = {}) => {
+    const step1Data = overrides.step1 || step1
+    const step3Data = overrides.step3 || step3
+    const step4Data = overrides.step4 || step4
+
+    switch (fieldName) {
+      case "restaurantName":
+        return step1Data.restaurantName?.trim() ? "" : "Restaurant name is required"
+      case "ownerName":
+        return step1Data.ownerName?.trim() ? "" : "Owner name is required"
+      case "ownerEmail":
+        if (!step1Data.ownerEmail?.trim()) return "Owner email is required"
+        return EMAIL_REGEX.test(step1Data.ownerEmail.trim()) ? "" : "Please enter a valid email address"
+      case "ownerPhone": {
+        const digits = normalizePhoneDigits(step1Data.ownerPhone)
+        if (!digits) return "Owner phone number is required"
+        return digits.length >= 10 ? "" : "Please enter a valid phone number"
+      }
+      case "primaryContactNumber":
+        if (!step1Data.primaryContactNumber?.trim()) return "Primary contact number is required"
+        return isValidIndianPrimaryContactNumber(step1Data.primaryContactNumber)
+          ? ""
+          : "Please enter a valid Indian mobile or landline number"
+      case "zoneId":
+        return step1Data.zoneId?.trim() ? "" : "Service zone is required"
+      case "location.area":
+        return step1Data.location?.area?.trim() ? "" : "Area/Sector/Locality is required"
+      case "location.city":
+        if (!step1Data.location?.city?.trim()) return "City is required"
+        return /^[a-zA-Z\s]+$/.test(step1Data.location.city.trim()) ? "" : "City must contain only alphabets"
+      case "location.state":
+        if (!step1Data.location?.state?.trim()) return "State is required"
+        return /^[a-zA-Z\s]+$/.test(step1Data.location.state.trim()) ? "" : "State must contain only alphabets"
+      case "location.pincode":
+        if (!step1Data.location?.pincode?.trim()) return "Pincode is required"
+        return /^\d{6}$/.test(step1Data.location.pincode.trim()) ? "" : "Pincode must be exactly 6 digits"
+      case "panNumber":
+        if (!step3Data.panNumber?.trim()) return "PAN number is required"
+        return PAN_NUMBER_REGEX.test(step3Data.panNumber.trim().toUpperCase())
+          ? ""
+          : "PAN number must be valid (e.g., ABCDE1234F)"
+      case "nameOnPan":
+        return step3Data.nameOnPan?.trim() ? "" : "Name on PAN is required"
+      case "gstNumber":
+        if (!step3Data.gstRegistered) return ""
+        if (!step3Data.gstNumber?.trim()) return "GST number is required when GST registered"
+        return GST_NUMBER_REGEX.test(step3Data.gstNumber.trim().toUpperCase())
+          ? ""
+          : "GST number must be a valid 15-character GSTIN"
+      case "gstLegalName":
+        if (!step3Data.gstRegistered) return ""
+        if (!step3Data.gstLegalName?.trim()) return "GST legal name is required when GST registered"
+        return GST_LEGAL_NAME_REGEX.test(step3Data.gstLegalName.trim())
+          ? ""
+          : "GST legal name must contain only letters"
+      case "gstAddress":
+        if (!step3Data.gstRegistered) return ""
+        return step3Data.gstAddress?.trim() ? "" : "GST registered address is required when GST registered"
+      case "fssaiNumber":
+        if (!step3Data.fssaiNumber?.trim()) return "FSSAI number is required"
+        return FSSAI_NUMBER_REGEX.test(step3Data.fssaiNumber.trim())
+          ? ""
+          : "FSSAI number must contain exactly 14 digits"
+      case "fssaiExpiry":
+        if (!step3Data.fssaiExpiry?.trim()) return "FSSAI expiry date is required"
+        if (step3Data.fssaiExpiry < getTodayLocalYMD()) return "FSSAI expiry date cannot be in the past"
+        if (step3Data.fssaiExpiry > getMaxFssaiExpiryLocalYMD()) {
+          return `FSSAI expiry date cannot be more than ${FSSAI_VALIDITY_YEARS} years from today`
+        }
+        return ""
+      case "accountNumber":
+        if (!step3Data.accountNumber?.trim()) return "Account number is required"
+        return BANK_ACCOUNT_NUMBER_REGEX.test(step3Data.accountNumber.trim())
+          ? ""
+          : "Account number must contain 9 to 18 digits only"
+      case "confirmAccountNumber":
+        if (!step3Data.confirmAccountNumber?.trim()) return "Please confirm your account number"
+        if (!BANK_ACCOUNT_NUMBER_REGEX.test(step3Data.confirmAccountNumber.trim())) {
+          return "Confirm account number must contain 9 to 18 digits only"
+        }
+        if (
+          step3Data.accountNumber &&
+          step3Data.confirmAccountNumber &&
+          step3Data.accountNumber !== step3Data.confirmAccountNumber
+        ) {
+          return "Account numbers do not match"
+        }
+        return ""
+      case "ifscCode":
+        if (!step3Data.ifscCode?.trim()) return "IFSC code is required"
+        return IFSC_CODE_REGEX.test(step3Data.ifscCode.trim().toUpperCase())
+          ? ""
+          : "Invalid IFSC code format (e.g., SBIN0001234)"
+      case "accountHolderName":
+        if (!step3Data.accountHolderName?.trim()) return "Account holder name is required"
+        return ACCOUNT_HOLDER_NAME_REGEX.test(step3Data.accountHolderName.trim())
+          ? ""
+          : "Account holder name must contain only letters"
+      case "accountType":
+        if (!step3Data.accountType?.trim()) return "Account type is required"
+        return ["Saving", "Current"].includes(step3Data.accountType.trim())
+          ? ""
+          : "Account type must be either Saving or Current"
+      case "estimatedDeliveryTime":
+        return step4Data.estimatedDeliveryTime?.trim() ? "" : "Estimated delivery time is required"
+      case "featuredDish":
+        if (!step4Data.featuredDish?.trim()) return "Featured dish name is required"
+        return FEATURED_DISH_NAME_REGEX.test(step4Data.featuredDish.trim())
+          ? ""
+          : "Featured dish name must contain only letters"
+      default:
+        return ""
+    }
+  }
+
+  const setFieldValidation = (fieldName, overrides = {}) => {
+    const message = validateSingleField(fieldName, overrides)
+    setFieldErrors((prev) => {
+      if (!message && !prev[fieldName]) return prev
+      if (!message) {
+        const next = { ...prev }
+        delete next[fieldName]
+        return next
+      }
+      if (prev[fieldName] === message) return prev
+      return { ...prev, [fieldName]: message }
+    })
+
+    if (fieldName === "accountNumber" || fieldName === "confirmAccountNumber") {
+      setAccountNumberError(message.includes("Account number") ? message : "")
+    }
+
+    return !message
+  }
+
+  const handleFieldBlur = (fieldName, overrides = {}) => {
+    setFieldTouched((prev) => ({ ...prev, [fieldName]: true }))
+    return setFieldValidation(fieldName, overrides)
+  }
+
+  const revalidateTouchedField = (fieldName, overrides = {}) => {
+    if (!fieldTouched[fieldName] && !fieldErrors[fieldName]) return
+    setFieldValidation(fieldName, overrides)
+  }
+
+  const getFieldStatus = (fieldName, overrides = {}) => {
+    if (!fieldTouched[fieldName]) return "idle"
+    if (fieldErrors[fieldName]) return "error"
+    const value = getFieldValue(fieldName, overrides)
+    const hasValue = typeof value === "string" ? Boolean(value.trim()) : Boolean(value)
+    return hasValue ? "success" : "idle"
+  }
+
+  const getFieldClassName = (fieldName, baseClassName, overrides = {}) => {
+    const status = getFieldStatus(fieldName, overrides)
+    if (status === "error") {
+      return `${baseClassName} border-red-500 focus-visible:ring-red-500`
+    }
+    if (status === "success") {
+      return `${baseClassName} border-emerald-500 focus-visible:ring-emerald-500`
+    }
+    return baseClassName
+  }
+
+  const renderFieldMessage = (fieldName, overrides = {}) => {
+    const status = getFieldStatus(fieldName, overrides)
+    if (status === "error") {
+      return <p className="mt-1 text-[10px] font-medium text-red-500">{fieldErrors[fieldName]}</p>
+    }
+    if (status === "success") {
+      return <p className="mt-1 text-[10px] font-medium text-emerald-600">Looks good</p>
+    }
+    return null
+  }
+
+  const validateFieldsForStep = (stepNumber) => {
+    const stepFieldMap = {
+      1: [
+        "restaurantName",
+        "ownerName",
+        "ownerEmail",
+        "ownerPhone",
+        "primaryContactNumber",
+        "zoneId",
+        "location.area",
+        "location.city",
+        "location.state",
+        "location.pincode",
+      ],
+      3: [
+        "panNumber",
+        "nameOnPan",
+        "fssaiNumber",
+        "fssaiExpiry",
+        "accountNumber",
+        "confirmAccountNumber",
+        "ifscCode",
+        "accountHolderName",
+        "accountType",
+        ...(step3.gstRegistered ? ["gstNumber", "gstLegalName", "gstAddress"] : []),
+      ],
+      4: ["estimatedDeliveryTime", "featuredDish"],
+    }
+
+    const fields = stepFieldMap[stepNumber] || []
+    if (!fields.length) return
+
+    setFieldTouched((prev) => ({
+      ...prev,
+      ...Object.fromEntries(fields.map((field) => [field, true])),
+    }))
+
+    fields.forEach((field) => {
+      setFieldValidation(field)
+    })
+  }
 
   const getPreviewImageUrl = (value) => {
     if (!value) return null
@@ -924,11 +1208,11 @@ export default function RestaurantOnboarding() {
             featuredPrice: localData.step4.featuredPrice || "",
             offer: localData.step4.offer || "",
             selfDeliveryEnabled: localData.step4.selfDeliveryEnabled === true,
-            selfDeliveryRadius: localData.step4.selfDeliveryRadius || "3",
-            selfDeliveryFee: localData.step4.selfDeliveryFee || "0",
-            selfDeliveryMinOrderAmount: localData.step4.selfDeliveryMinOrderAmount || "0",
-            selfDeliveryStart: localData.step4.selfDeliveryStart || "10:00",
-            selfDeliveryEnd: localData.step4.selfDeliveryEnd || "22:00",
+            selfDeliveryRadius: localData.step4.selfDeliveryRadius === "3" ? "" : (localData.step4.selfDeliveryRadius || ""),
+            selfDeliveryFee: localData.step4.selfDeliveryFee === "0" ? "" : (localData.step4.selfDeliveryFee || ""),
+            selfDeliveryMinOrderAmount: localData.step4.selfDeliveryMinOrderAmount === "0" ? "" : (localData.step4.selfDeliveryMinOrderAmount || ""),
+            selfDeliveryStart: localData.step4.selfDeliveryStart === "10:00" ? "" : (localData.step4.selfDeliveryStart || ""),
+            selfDeliveryEnd: localData.step4.selfDeliveryEnd === "22:00" ? "" : (localData.step4.selfDeliveryEnd || ""),
           })
         }
         if (!stepParam && localData?.currentStep) {
@@ -1025,6 +1309,20 @@ export default function RestaurantOnboarding() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const hasRestaurantSession =
+        isModuleAuthenticated("restaurant") && Boolean(getCurrentUser("restaurant"))
+
+      if (!hasRestaurantSession) {
+        const pendingPhone = getRestaurantPendingPhone()
+        setCurrentRestaurantStatus("")
+        setCurrentRestaurantRejectionReason("")
+        setIsEditing(true)
+        if (pendingPhone) {
+          setVerifiedPhoneNumber(pendingPhone)
+        }
+        return
+      }
+
       try {
         setLoading(true)
         // Use restaurantAPI.getCurrentRestaurant() to fetch real data
@@ -1100,11 +1398,11 @@ export default function RestaurantOnboarding() {
             featuredPrice: data.featuredPrice || "",
             offer: data.offer || "",
             selfDeliveryEnabled: data?.selfDelivery?.enabled === true,
-            selfDeliveryRadius: String(data?.selfDelivery?.radius ?? 3),
-            selfDeliveryFee: String(data?.selfDelivery?.fee ?? 0),
-            selfDeliveryMinOrderAmount: String(data?.selfDelivery?.minOrderAmount ?? 0),
-            selfDeliveryStart: data?.selfDelivery?.timings?.start || "10:00",
-            selfDeliveryEnd: data?.selfDelivery?.timings?.end || "22:00",
+            selfDeliveryRadius: data?.selfDelivery?.radius !== undefined && data?.selfDelivery?.radius !== null ? String(data.selfDelivery.radius) : "",
+            selfDeliveryFee: data?.selfDelivery?.fee !== undefined && data?.selfDelivery?.fee !== null ? String(data.selfDelivery.fee) : "",
+            selfDeliveryMinOrderAmount: data?.selfDelivery?.minOrderAmount !== undefined && data?.selfDelivery?.minOrderAmount !== null ? String(data.selfDelivery.minOrderAmount) : "",
+            selfDeliveryStart: data?.selfDelivery?.timings?.start || "",
+            selfDeliveryEnd: data?.selfDelivery?.timings?.end || "",
           })
 
           // Only determine step automatically if not specified in URL
@@ -1420,6 +1718,7 @@ export default function RestaurantOnboarding() {
 
   const handleNext = async () => {
     setError("")
+    validateFieldsForStep(step)
 
     // Validate current step before proceeding
     let validationErrors = []
@@ -1635,21 +1934,27 @@ export default function RestaurantOnboarding() {
   const renderStep1 = () => (
     <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md">
-        <h2 className="text-lg font-semibold text-black mb-4">Restaurant information</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Information</h2>
         <div className="space-y-3">
           <div>
-            <Label className="text-xs text-gray-700">Restaurant name<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Name<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step1.restaurantName || ""}
-              onChange={(e) => setStep1({ ...step1, restaurantName: e.target.value })}
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              onChange={(e) => {
+                const nextStep1 = { ...step1, restaurantName: e.target.value }
+                setStep1(nextStep1)
+                revalidateTouchedField("restaurantName", { step1: nextStep1 })
+              }}
+              onBlur={() => handleFieldBlur("restaurantName")}
+              className={getFieldClassName("restaurantName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="Customers will see this name"
               maxLength={100}
               disabled={!isEditing}
             />
+            {renderFieldMessage("restaurantName")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Pure veg restaurant?<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Pure Veg Restaurant?<span className="text-rose-500 ml-0.5">*</span></Label>
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -1682,56 +1987,76 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md">
-        <h2 className="text-lg font-semibold text-black mb-4">Owner details</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Owner Details</h2>
         <p className="text-sm text-gray-600 mb-4">
           These details will be used for all business communications and updates.
         </p>
         <div className="space-y-4">
           <div>
-            <Label className="text-xs text-gray-700">Full name<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Full Name<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step1.ownerName || ""}
-              onChange={(e) => setStep1({ ...step1, ownerName: e.target.value })}
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              onChange={(e) => {
+                const nextStep1 = { ...step1, ownerName: e.target.value }
+                setStep1(nextStep1)
+                revalidateTouchedField("ownerName", { step1: nextStep1 })
+              }}
+              onBlur={() => handleFieldBlur("ownerName")}
+              className={getFieldClassName("ownerName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="Owner full name"
               maxLength={50}
               disabled={!isEditing}
             />
+            {renderFieldMessage("ownerName")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Email address<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Email Address<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               type="email"
               value={step1.ownerEmail || ""}
-              onChange={(e) => setStep1({ ...step1, ownerEmail: e.target.value })}
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              onChange={(e) => {
+                const nextStep1 = { ...step1, ownerEmail: e.target.value }
+                setStep1(nextStep1)
+                revalidateTouchedField("ownerEmail", { step1: nextStep1 })
+              }}
+              onBlur={() => handleFieldBlur("ownerEmail")}
+              className={getFieldClassName("ownerEmail", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="owner@example.com"
               disabled={!isEditing}
             />
+            {renderFieldMessage("ownerEmail")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Phone number<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Phone Number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step1.ownerPhone || ""}
-              onChange={(e) => setStep1({ ...step1, ownerPhone: e.target.value })}
+              onChange={(e) => {
+                const nextStep1 = { ...step1, ownerPhone: e.target.value }
+                setStep1(nextStep1)
+                revalidateTouchedField("ownerPhone", { step1: nextStep1 })
+              }}
+              onBlur={() => handleFieldBlur("ownerPhone")}
               readOnly={Boolean(verifiedPhoneNumber)}
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              className={getFieldClassName("ownerPhone", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="+91 98XXXXXX"
               disabled={!isEditing}
             />
+            {renderFieldMessage("ownerPhone")}
           </div>
         </div>
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">Restaurant contact & location</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Contact & Location</h2>
         <div>
-          <Label className="text-xs text-gray-700">Primary contact number<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Primary Contact Number<span className="text-rose-500 ml-0.5">*</span></Label>
           <Input
             value={step1.primaryContactNumber || ""}
             onChange={(e) => {
               const val = normalizePrimaryContactNumber(e.target.value)
-              setStep1({ ...step1, primaryContactNumber: val })
+              const nextStep1 = { ...step1, primaryContactNumber: val }
+              setStep1(nextStep1)
+              revalidateTouchedField("primaryContactNumber", { step1: nextStep1 })
             }}
             onKeyDown={(e) => {
               const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"]
@@ -1741,13 +2066,17 @@ export default function RestaurantOnboarding() {
             onPaste={(e) => {
               e.preventDefault()
               const pasted = normalizePrimaryContactNumber(e.clipboardData.getData("text"))
-              setStep1({ ...step1, primaryContactNumber: pasted })
+              const nextStep1 = { ...step1, primaryContactNumber: pasted }
+              setStep1(nextStep1)
+              revalidateTouchedField("primaryContactNumber", { step1: nextStep1 })
             }}
+            onBlur={() => handleFieldBlur("primaryContactNumber")}
             inputMode="numeric"
-            className="mt-1 bg-white text-sm text-black placeholder:text-gray-400"
+            className={getFieldClassName("primaryContactNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
             placeholder="Restaurant's primary contact number"
             disabled={!isEditing}
           />
+          {renderFieldMessage("primaryContactNumber")}
           <p className="text-[11px] text-gray-500 mt-1">
             Customers, delivery partners and {companyName} may call on this number for order
             support.
@@ -1758,7 +2087,7 @@ export default function RestaurantOnboarding() {
             Add your restaurant's location for order pick-up.
           </p>
           <div>
-            <Label className="text-xs text-gray-700">Service zone<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Service Zone<span className="text-rose-500 ml-0.5">*</span></Label>
             <select
               value={step1.zoneId || ""}
               onChange={(e) => {
@@ -1776,27 +2105,32 @@ export default function RestaurantOnboarding() {
                   }
                   return newState
                 })
+                revalidateTouchedField("zoneId", { step1: { ...step1, zoneId: newZoneId } })
               }}
-              className="mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm"
+              onBlur={() => handleFieldBlur("zoneId")}
+              className={getFieldClassName("zoneId", `mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#00c87e] cursor-pointer ${
+                step1.zoneId ? "text-gray-900" : "text-gray-400"
+              }`)}
               disabled={zonesLoading || !isEditing}
             >
-              <option value="">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
+              <option value="" className="text-gray-400">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
               {zones.map((z) => {
                 const id = String(z?._id || z?.id || "")
                 const label = z?.name || z?.zoneName || z?.serviceLocation || id
                 return (
-                  <option key={id} value={id}>
+                  <option key={id} value={id} className="text-gray-900">
                     {label}
                   </option>
                 )
               })}
             </select>
+            {renderFieldMessage("zoneId")}
             <p className="text-[11px] text-gray-500 mt-1">
               Choose the service zone where your restaurant will be available.
             </p>
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Search location</Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Search Location</Label>
             <Input
               ref={locationSearchInputRef}
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
@@ -1822,75 +2156,93 @@ export default function RestaurantOnboarding() {
             onChange={(e) =>
               setStep1({
                 ...step1,
-                location: { ...step1.location, addressLine2: e.target.value },
+                location: { ...step1.location, addressLine2: e.target.value.slice(0, 50) },
               })
             }
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Floor / tower (optional)"
+            maxLength={50}
           />
           <Input
             value={step1.location?.landmark || ""}
             onChange={(e) =>
               setStep1({
                 ...step1,
-                location: { ...step1.location, landmark: e.target.value },
+                location: { ...step1.location, landmark: e.target.value.slice(0, 100) },
               })
             }
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="Nearby landmark (optional)"
+            maxLength={100}
           />
             <Input
               value={step1.location?.area || ""}
-              onChange={(e) =>
-                setStep1({
+              onChange={(e) => {
+                const nextStep1 = {
                   ...step1,
                   location: { ...step1.location, area: e.target.value },
-                })
-              }
+                }
+                setStep1(nextStep1)
+                revalidateTouchedField("location.area", { step1: nextStep1 })
+              }}
+            onBlur={() => handleFieldBlur("location.area")}
             readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.area?.trim())}
-            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.area?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
+            className={getFieldClassName("location.area", `bg-white text-sm text-gray-900 placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.area?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`)}
             placeholder="Area / Sector / Locality*"
           />
+          {renderFieldMessage("location.area")}
           <Input
             value={step1.location?.city || ""}
             onChange={(e) => {
               const val = e.target.value.replace(/[^a-zA-Z\s]/g, "")
-                setStep1({
+                const nextStep1 = {
                   ...step1,
                   location: { ...step1.location, city: val },
-                })
+                }
+                setStep1(nextStep1)
+                revalidateTouchedField("location.city", { step1: nextStep1 })
               }}
+            onBlur={() => handleFieldBlur("location.city")}
             readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.city?.trim())}
-            className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.city?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
+            className={getFieldClassName("location.city", `bg-white text-sm text-gray-900 placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.city?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`)}
             placeholder="City"
           />
+          {renderFieldMessage("location.city")}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input
               value={step1.location?.state || ""}
               onChange={(e) => {
                 const val = e.target.value.replace(/[^a-zA-Z\s]/g, "")
-                setStep1({
+                const nextStep1 = {
                   ...step1,
                   location: { ...step1.location, state: val },
-                })
+                }
+                setStep1(nextStep1)
+                revalidateTouchedField("location.state", { step1: nextStep1 })
               }}
+              onBlur={() => handleFieldBlur("location.state")}
               readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.state?.trim())}
-              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.state?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              className={getFieldClassName("location.state", `bg-white text-sm text-gray-900 placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.state?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`)}
               placeholder="State"
             />
+            {renderFieldMessage("location.state")}
             <Input
               value={step1.location?.pincode || ""}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, "").slice(0, 6)
-                setStep1({
+                const nextStep1 = {
                   ...step1,
                   location: { ...step1.location, pincode: val },
-                })
+                }
+                setStep1(nextStep1)
+                revalidateTouchedField("location.pincode", { step1: nextStep1 })
               }}
+              onBlur={() => handleFieldBlur("location.pincode")}
               readOnly={Boolean(step1.location?.latitude && step1.location?.longitude && step1.location?.pincode?.trim())}
-              className={`bg-white text-sm placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.pincode?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`}
+              className={getFieldClassName("location.pincode", `bg-white text-sm text-gray-900 placeholder:text-gray-400 ${step1.location?.latitude && step1.location?.longitude && step1.location?.pincode?.trim() ? "bg-gray-100 cursor-not-allowed" : ""}`)}
               placeholder="Pincode"
             />
+            {renderFieldMessage("location.pincode")}
           </div>
           <p className="text-[11px] text-gray-500 mt-1">
             Please ensure that this address is the same as mentioned on your FSSAI license.
@@ -2196,7 +2548,7 @@ export default function RestaurantOnboarding() {
     <div className="space-y-6">
       {/* Images section */}
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
-        <h2 className="text-lg font-semibold text-black">Menu & photos</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Menu & Photos</h2>
         <p className="text-xs text-gray-500">
           Add clear photos of your printed menu and a primary profile image. This helps customers
           understand what you serve.
@@ -2204,16 +2556,16 @@ export default function RestaurantOnboarding() {
 
         {/* Menu images */}
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-gray-700">Menu images<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Menu Images<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
                 <ImageIcon className="w-6 h-6 text-gray-600" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900">Upload menu images</span>
+                <span className="text-sm font-semibold text-gray-900">Upload Menu Images</span>
                 <span className="text-[11px] text-gray-500">
-                  JPG, PNG, WebP. You can select multiple files (Max {MAX_MENU_IMAGES_COUNT})
+                  JPG, PNG, WebP (Max size 5MB). You can select multiple files (Max {MAX_MENU_IMAGES_COUNT})
                 </span>
               </div>
             </div>
@@ -2248,7 +2600,7 @@ export default function RestaurantOnboarding() {
                 }
                 
                 if (validFiles.length + currentCount > MAX_MENU_IMAGES_COUNT) {
-                  toast.error(`Maximum ${MAX_MENU_IMAGES_COUNT} menu images allowed.`)
+                  toast.error("Cannot upload more than 10 menu images.")
                   const remaining = MAX_MENU_IMAGES_COUNT - currentCount
                   if (remaining <= 0) {
                     e.target.value = ''
@@ -2335,7 +2687,7 @@ export default function RestaurantOnboarding() {
 
         {/* Profile image */}
         <div className="space-y-2">
-          <Label className="text-xs font-medium text-gray-700">Restaurant profile image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Profile Image<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
@@ -2376,9 +2728,9 @@ export default function RestaurantOnboarding() {
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900">Upload profile image</span>
+                <span className="text-sm font-semibold text-gray-900">Upload Profile Image</span>
                 <span className="text-[11px] text-gray-500">
-                  This will be shown on your listing card and restaurant page.
+                  JPG, PNG, WebP (Max size 5MB). This will be shown on your listing card and restaurant page.
                 </span>
               </div>
             </div>
@@ -2418,17 +2770,17 @@ export default function RestaurantOnboarding() {
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
         {/* Timings with popover time selectors */}
         <div className="space-y-3">
-          <Label className="text-xs text-gray-700">Restaurant timings<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Timings<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TimeSelector
-              label="Opening time*"
+              label="Opening Time*"
               value={step2.openingTime || ""}
               onChange={(val) =>
                 setStep2((prev) => ({ ...prev, openingTime: normalizeTimeValue(val) || "" }))
               }
             />
             <TimeSelector
-              label="Closing time*"
+              label="Closing Time*"
               value={step2.closingTime || ""}
               onChange={(val) =>
                 setStep2((prev) => ({ ...prev, closingTime: normalizeTimeValue(val) || "" }))
@@ -2439,9 +2791,9 @@ export default function RestaurantOnboarding() {
 
         {/* Open days in a calendar-like grid */}
         <div className="space-y-2">
-          <Label className="text-xs text-gray-700 flex items-center gap-1.5">
+          <Label className="text-xs font-bold text-gray-700 flex items-center gap-1.5 mb-1">
             <CalendarIcon className="w-3.5 h-3.5 text-gray-800" />
-            <span>Open days<span className="text-rose-500 ml-0.5">*</span></span>
+            <span>Open Days<span className="text-rose-500 ml-0.5">*</span></span>
           </Label>
           <p className="text-[11px] text-gray-500">
             Select the days your restaurant accepts orders.
@@ -2471,10 +2823,10 @@ export default function RestaurantOnboarding() {
   const renderStep3 = () => (
     <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">PAN details</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">PAN Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">PAN number<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">PAN Number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.panNumber || ""}
               onChange={(e) => {
@@ -2482,29 +2834,39 @@ export default function RestaurantOnboarding() {
                   .toUpperCase()
                   .replace(/[^A-Z0-9]/g, "")
                   .slice(0, 10)
-                setStep3({ ...step3, panNumber: normalized })
+                const nextStep3 = { ...step3, panNumber: normalized }
+                setStep3(nextStep3)
+                revalidateTouchedField("panNumber", { step3: nextStep3 })
               }}
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              onBlur={() => handleFieldBlur("panNumber")}
+              className={getFieldClassName("panNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="ABCDE1234F"
             />
+            {renderFieldMessage("panNumber")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700">PAN Card Holder Name<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">PAN Card Holder Name<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.nameOnPan || ""}
-              onChange={(e) =>
-                setStep3({
+              onChange={(e) => {
+                const nextStep3 = {
                   ...step3,
                   nameOnPan: e.target.value.replace(/[^A-Za-z ]/g, ""),
-                })
-              }
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                }
+                setStep3(nextStep3)
+                revalidateTouchedField("nameOnPan", { step3: nextStep3 })
+              }}
+              onBlur={() => handleFieldBlur("nameOnPan")}
+              className={getFieldClassName("nameOnPan", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
+              placeholder="Name on PAN card"
               maxLength={50}
             />
+            {renderFieldMessage("nameOnPan")}
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">PAN image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">PAN Image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <p className="text-[11px] text-gray-500 mt-1">JPG, PNG, WebP (Max size 5MB)</p>
           <Button
             type="button"
             variant="outline"
@@ -2557,9 +2919,9 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">GST details</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">GST Details</h2>
         <div className="flex gap-4 items-center text-sm">
-          <span className="text-gray-700">GST registered?</span>
+          <span className="text-gray-700">GST Registered?</span>
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: true })}
@@ -2582,44 +2944,59 @@ export default function RestaurantOnboarding() {
         {step3.gstRegistered && (
           <div className="space-y-3">
             <div>
-              <Label className="text-xs text-gray-700">GST number<span className="text-rose-500 ml-0.5">*</span></Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">GST Number<span className="text-rose-500 ml-0.5">*</span></Label>
               <Input
                 value={step3.gstNumber || ""}
-                onChange={(e) =>
-                  setStep3({
+                onChange={(e) => {
+                  const nextStep3 = {
                     ...step3,
                     gstNumber: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15),
-                  })
-                }
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                  }
+                  setStep3(nextStep3)
+                  revalidateTouchedField("gstNumber", { step3: nextStep3 })
+                }}
+                onBlur={() => handleFieldBlur("gstNumber")}
+              className={getFieldClassName("gstNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
                 placeholder="GST number (15 characters)"
               />
+              {renderFieldMessage("gstNumber")}
             </div>
             <div>
-              <Label className="text-xs text-gray-700">GST legal name<span className="text-rose-500 ml-0.5">*</span></Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">GST Legal Name<span className="text-rose-500 ml-0.5">*</span></Label>
               <Input
                 value={step3.gstLegalName || ""}
-                onChange={(e) =>
-                  setStep3({
+                onChange={(e) => {
+                  const nextStep3 = {
                     ...step3,
                     gstLegalName: e.target.value.replace(/[^A-Za-z ]/g, ""),
-                  })
-                }
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
-                placeholder="Legal name"
+                  }
+                  setStep3(nextStep3)
+                  revalidateTouchedField("gstLegalName", { step3: nextStep3 })
+                }}
+                onBlur={() => handleFieldBlur("gstLegalName")}
+              className={getFieldClassName("gstLegalName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
+                placeholder="GST legal name"
               />
+              {renderFieldMessage("gstLegalName")}
             </div>
             <div>
-              <Label className="text-xs text-gray-700">GST registered address<span className="text-rose-500 ml-0.5">*</span></Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">GST Registered Address<span className="text-rose-500 ml-0.5">*</span></Label>
               <Input
                 value={step3.gstAddress || ""}
-                onChange={(e) => setStep3({ ...step3, gstAddress: e.target.value })}
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
-                placeholder="Registered address"
+                onChange={(e) => {
+                  const nextStep3 = { ...step3, gstAddress: e.target.value }
+                  setStep3(nextStep3)
+                  revalidateTouchedField("gstAddress", { step3: nextStep3 })
+                }}
+                onBlur={() => handleFieldBlur("gstAddress")}
+              className={getFieldClassName("gstAddress", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
+                placeholder="GST registered address"
               />
+              {renderFieldMessage("gstAddress")}
             </div>
             <div>
-              <Label className="text-xs text-gray-700">GST image<span className="text-rose-500 ml-0.5">*</span></Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">GST Image<span className="text-rose-500 ml-0.5">*</span></Label>
+              <p className="text-[11px] text-gray-500 mt-1">JPG, PNG, WebP (Max size 5MB)</p>
               <Button
                 type="button"
                 variant="outline"
@@ -2674,29 +3051,39 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">FSSAI details</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">FSSAI Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">FSSAI number<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">FSSAI Number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.fssaiNumber || ""}
-              onChange={(e) =>
-                setStep3({ ...step3, fssaiNumber: e.target.value.replace(/\D/g, "").slice(0, 14) })
-              }
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              onChange={(e) => {
+                const nextStep3 = { ...step3, fssaiNumber: e.target.value.replace(/\D/g, "").slice(0, 14) }
+                setStep3(nextStep3)
+                revalidateTouchedField("fssaiNumber", { step3: nextStep3 })
+              }}
+              onBlur={() => handleFieldBlur("fssaiNumber")}
+              className={getFieldClassName("fssaiNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="FSSAI number (14 digits)"
             />
+            {renderFieldMessage("fssaiNumber")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700 mb-1 block">FSSAI expiry date<span className="text-rose-500 ml-0.5">*</span></Label>
-            <Popover open={isFssaiCalendarOpen} onOpenChange={setIsFssaiCalendarOpen}>
+            <Label className="text-xs font-bold text-gray-700 mb-1 block">FSSAI Expiry Date<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Popover
+              open={isFssaiCalendarOpen}
+              onOpenChange={(open) => {
+                setIsFssaiCalendarOpen(open)
+                if (!open) handleFieldBlur("fssaiExpiry")
+              }}
+            >
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   onClick={() => setIsFssaiCalendarOpen(true)}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                  className={getFieldClassName("fssaiExpiry", "w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50 cursor-pointer")}
                 >
-                  <span className={step3.fssaiExpiry ? "text-gray-900" : "text-gray-500"}>
+                  <span className={step3.fssaiExpiry ? "text-gray-900" : "text-gray-400"}>
                     {step3.fssaiExpiry
                       ? parseLocalYMDDate(step3.fssaiExpiry)?.toLocaleDateString("en-US", {
                         year: "numeric",
@@ -2743,10 +3130,12 @@ export default function RestaurantOnboarding() {
                 </div>
               </PopoverContent>
             </Popover>
+            {renderFieldMessage("fssaiExpiry")}
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">FSSAI image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">FSSAI Image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <p className="text-[11px] text-gray-500 mt-1">JPG, PNG, WebP (Max size 5MB)</p>
           <Button
             type="button"
             variant="outline"
@@ -2799,43 +3188,40 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">Bank account details</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Bank Account Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">Account number<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Account Number<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.accountNumber || ""}
               onChange={(e) => {
                 const val = e.target.value.replace(/\D/g, "").slice(0, 18)
-                setStep3({ ...step3, accountNumber: val })
-                if (val === step3.confirmAccountNumber) setAccountNumberError("")
+                const nextStep3 = { ...step3, accountNumber: val }
+                setStep3(nextStep3)
+                revalidateTouchedField("accountNumber", { step3: nextStep3 })
+                revalidateTouchedField("confirmAccountNumber", { step3: nextStep3 })
               }}
-              onBlur={() => {
-                if (step3.accountNumber && step3.confirmAccountNumber && step3.accountNumber !== step3.confirmAccountNumber) {
-                  setAccountNumberError("Account numbers do not match")
-                }
-              }}
-              className={`mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 ${accountNumberError ? "border-red-500 focus:ring-red-500" : ""}`}
+              onBlur={() => handleFieldBlur("accountNumber")}
+              className={getFieldClassName("accountNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="Account number"
             />
+            {renderFieldMessage("accountNumber")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Confirm account number<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Confirm Account Number<span className="text-rose-500 ml-0.5">*</span></Label>
             <div className="relative mt-1">
               <Input
                 type={showConfirmAccountNumber ? "text" : "password"}
                 value={step3.confirmAccountNumber || ""}
                 onChange={(e) => {
                   const val = e.target.value.replace(/\D/g, "").slice(0, 18)
-                  setStep3({ ...step3, confirmAccountNumber: val })
-                  if (val === step3.accountNumber) setAccountNumberError("")
+                  const nextStep3 = { ...step3, confirmAccountNumber: val }
+                  setStep3(nextStep3)
+                  revalidateTouchedField("confirmAccountNumber", { step3: nextStep3 })
                 }}
-                onBlur={() => {
-                  if (step3.accountNumber && step3.confirmAccountNumber && step3.accountNumber !== step3.confirmAccountNumber) {
-                    setAccountNumberError("Account numbers do not match")
-                  }
-                }}
-                className={`bg-white text-sm text-gray-900 placeholder:text-gray-400 pr-10 ${accountNumberError ? "border-red-500 focus:ring-red-500" : ""}`}
+                onPaste={(e) => e.preventDefault()}
+                onBlur={() => handleFieldBlur("confirmAccountNumber")}
+                className={getFieldClassName("confirmAccountNumber", "bg-white text-sm text-gray-900 placeholder:text-gray-400 pr-10")}
                 placeholder="Re-enter account number"
               />
               <button
@@ -2851,35 +3237,40 @@ export default function RestaurantOnboarding() {
                 )}
               </button>
             </div>
-            {accountNumberError && (
-              <p className="text-[10px] text-red-500 mt-1 font-medium">
-                {accountNumberError}
-              </p>
-            )}
+            {renderFieldMessage("confirmAccountNumber")}
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs text-gray-700">IFSC code<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">IFSC Code<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.ifscCode || ""}
-              onChange={(e) =>
-                setStep3({
+              onChange={(e) => {
+                const nextStep3 = {
                   ...step3,
                   ifscCode: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11),
-                })
-              }
-              className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                }
+                setStep3(nextStep3)
+                revalidateTouchedField("ifscCode", { step3: nextStep3 })
+              }}
+              onBlur={() => handleFieldBlur("ifscCode")}
+              className={getFieldClassName("ifscCode", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
               placeholder="e.g. SBIN0001234"
             />
+            {renderFieldMessage("ifscCode")}
           </div>
           <div>
-            <Label className="text-xs text-gray-700">Account type<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Account Type<span className="text-rose-500 ml-0.5">*</span></Label>
             <Select
               value={step3.accountType || ""}
-              onValueChange={(value) => setStep3({ ...step3, accountType: value })}
+              onValueChange={(value) => {
+                const nextStep3 = { ...step3, accountType: value }
+                setStep3(nextStep3)
+                setFieldTouched((prev) => ({ ...prev, accountType: true }))
+                setFieldValidation("accountType", { step3: nextStep3 })
+              }}
             >
-              <SelectTrigger className="mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-gray-400 cursor-pointer">
+              <SelectTrigger className={getFieldClassName("accountType", "mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-gray-400 cursor-pointer")}>
                 <SelectValue placeholder="Select account type" />
               </SelectTrigger>
               <SelectContent>
@@ -2887,21 +3278,26 @@ export default function RestaurantOnboarding() {
                 <SelectItem value="Current">Current</SelectItem>
               </SelectContent>
             </Select>
+            {renderFieldMessage("accountType")}
           </div>
         </div>
         <div>
-          <Label className="text-xs text-gray-700">Account holder name<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Account Holder Name<span className="text-rose-500 ml-0.5">*</span></Label>
           <Input
             value={step3.accountHolderName || ""}
-            onChange={(e) =>
-              setStep3({
+            onChange={(e) => {
+              const nextStep3 = {
                 ...step3,
                 accountHolderName: e.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 50),
-              })
-            }
-            className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+              }
+              setStep3(nextStep3)
+              revalidateTouchedField("accountHolderName", { step3: nextStep3 })
+            }}
+            onBlur={() => handleFieldBlur("accountHolderName")}
+            className={getFieldClassName("accountHolderName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
             placeholder="Account holder name"
           />
+          {renderFieldMessage("accountHolderName")}
         </div>
       </section>
     </div>
@@ -2910,19 +3306,24 @@ export default function RestaurantOnboarding() {
   const renderStep4 = () => (
     <div className="space-y-6">
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-lg font-semibold text-black">Restaurant Display Information</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Display Information</h2>
         <p className="text-sm text-gray-600">
           Add information that will be displayed to customers on the home page
         </p>
 
         <div>
-          <Label className="text-xs text-gray-700">Estimated Delivery Time<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Estimated Delivery Time<span className="text-rose-500 ml-0.5">*</span></Label>
           <Select
             value={step4.estimatedDeliveryTime || ""}
-            onValueChange={(value) => setStep4({ ...step4, estimatedDeliveryTime: value })}
+            onValueChange={(value) => {
+              const nextStep4 = { ...step4, estimatedDeliveryTime: value }
+              setStep4(nextStep4)
+              setFieldTouched((prev) => ({ ...prev, estimatedDeliveryTime: true }))
+              setFieldValidation("estimatedDeliveryTime", { step4: nextStep4 })
+            }}
           >
-            <SelectTrigger className="mt-1 bg-white text-sm text-gray-900 cursor-pointer">
-              <SelectValue placeholder="Select estimated timing" className="placeholder:text-gray-400" />
+            <SelectTrigger className={getFieldClassName("estimatedDeliveryTime", "mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-gray-400 cursor-pointer")}>
+              <SelectValue placeholder="Select estimated timing" />
             </SelectTrigger>
             <SelectContent>
               {[
@@ -2938,77 +3339,99 @@ export default function RestaurantOnboarding() {
               ))}
             </SelectContent>
           </Select>
+          {renderFieldMessage("estimatedDeliveryTime")}
         </div>
 
         <div>
-          <Label className="text-xs text-gray-700">Featured Dish Name<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Featured Dish Name<span className="text-rose-500 ml-0.5">*</span></Label>
           <Input
             value={step4.featuredDish || ""}
-            onChange={(e) =>
-              setStep4({
+            onChange={(e) => {
+              const nextStep4 = {
                 ...step4,
-                featuredDish: e.target.value.replace(/[^A-Za-z ]/g, ""),
-              })
-            }
-            className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
+                featuredDish: e.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30),
+              }
+              setStep4(nextStep4)
+              revalidateTouchedField("featuredDish", { step4: nextStep4 })
+            }}
+            onBlur={() => handleFieldBlur("featuredDish")}
+            className={getFieldClassName("featuredDish", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
             placeholder="e.g., Butter Chicken Special"
+            maxLength={30}
           />
+          {renderFieldMessage("featuredDish")}
+          <p className="text-[11px] text-gray-500 mt-1">Maximum 30 characters allowed</p>
         </div>
 
         <div>
-          <Label className="text-xs text-gray-700">Special Offer/Promotion</Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Special Offer/Promotion</Label>
           <Input
             value={step4.offer || ""}
-            onChange={(e) => setStep4({ ...step4, offer: e.target.value })}
+            onChange={(e) => setStep4({ ...step4, offer: e.target.value.slice(0, 80) })}
             className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
             placeholder="e.g., Flat 50 Rs. OFF on Order Above Rs.199"
+            maxLength={80}
           />
           <p className="text-[11px] text-gray-500 mt-1">
-            Optional. Leave this blank if you do not want to highlight an offer.
+            Maximum 80 characters allowed. Optional. Leave this blank if you do not want to highlight an offer.
           </p>
         </div>
 
         <div className="border-t border-gray-200 pt-4 space-y-4">
-          <div className="flex items-start justify-between sm:justify-start sm:gap-16 gap-3">
-            <div>
-              <Label className="text-sm font-medium text-gray-800">Enable Self Delivery</Label>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Turn this on if your restaurant uses its own delivery boys.
-              </p>
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <Label className="text-xs font-bold text-gray-700 block mb-1">Enable Self Delivery</Label>
+              <Switch
+                checked={step4.selfDeliveryEnabled === true}
+                onCheckedChange={(checked) => {
+                  setStep4((prev) => {
+                    const radius = prev.selfDeliveryRadius === "3" ? "" : (prev.selfDeliveryRadius || "")
+                    const fee = prev.selfDeliveryFee === "0" ? "" : (prev.selfDeliveryFee || "")
+                    const minAmount = prev.selfDeliveryMinOrderAmount === "0" ? "" : (prev.selfDeliveryMinOrderAmount || "")
+                    const start = prev.selfDeliveryStart === "10:00" ? "" : (prev.selfDeliveryStart || "")
+                    const end = prev.selfDeliveryEnd === "22:00" ? "" : (prev.selfDeliveryEnd || "")
+                    return {
+                      ...prev,
+                      selfDeliveryEnabled: checked,
+                      selfDeliveryRadius: radius,
+                      selfDeliveryFee: fee,
+                      selfDeliveryMinOrderAmount: minAmount,
+                      selfDeliveryStart: start,
+                      selfDeliveryEnd: end,
+                    }
+                  })
+                }}
+                className="data-[state=checked]:bg-[#00c87e] cursor-pointer"
+              />
             </div>
-            <Switch
-              checked={step4.selfDeliveryEnabled === true}
-              onCheckedChange={(checked) =>
-                setStep4({
-                  ...step4,
-                  selfDeliveryEnabled: checked,
-                })
-              }
-              className="mt-1 data-[state=checked]:bg-[#00c87e] cursor-pointer"
-            />
+            <p className="text-[11px] text-gray-500">
+              Turn this on if your restaurant uses its own delivery boys.
+            </p>
           </div>
 
           <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-opacity ${!step4.selfDeliveryEnabled ? "opacity-40 pointer-events-none" : ""}`}>
             <div>
-              <Label className="text-xs text-gray-700">Self Delivery Radius (km)</Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">Self Delivery Radius (km)</Label>
               <Input
                 type="number"
                 min="0"
                 value={step4.selfDeliveryRadius || ""}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value.slice(0, 2);
                   setStep4({
                     ...step4,
-                    selfDeliveryRadius: e.target.value,
-                  })
-                }
+                    selfDeliveryRadius: val,
+                  });
+                }}
                 disabled={!step4.selfDeliveryEnabled}
                 className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                placeholder="3"
+                placeholder="Enter delivery radius (e.g. 5)"
               />
+              <p className="text-[11px] text-gray-500 mt-1">Maximum 2 digits allowed</p>
             </div>
 
             <div>
-              <Label className="text-xs text-gray-700">Delivery Fee</Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">Delivery Fee</Label>
               <Input
                 type="number"
                 min="0"
@@ -3018,6 +3441,7 @@ export default function RestaurantOnboarding() {
                   if (val.startsWith("0") && val.length > 1) {
                     val = val.replace(/^0+/, "");
                   }
+                  val = val.slice(0, 4);
                   setStep4({
                     ...step4,
                     selfDeliveryFee: val,
@@ -3025,12 +3449,13 @@ export default function RestaurantOnboarding() {
                 }}
                 disabled={!step4.selfDeliveryEnabled}
                 className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                placeholder="0"
+                placeholder="Enter delivery fee (e.g. 10)"
               />
+              <p className="text-[11px] text-gray-500 mt-1">Maximum 4 digits allowed</p>
             </div>
 
             <div>
-              <Label className="text-xs text-gray-700">Minimum Order Amount</Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">Minimum Order Amount</Label>
               <Input
                 type="number"
                 min="0"
@@ -3040,6 +3465,7 @@ export default function RestaurantOnboarding() {
                   if (val.startsWith("0") && val.length > 1) {
                     val = val.replace(/^0+/, "");
                   }
+                  val = val.slice(0, 5);
                   setStep4({
                     ...step4,
                     selfDeliveryMinOrderAmount: val,
@@ -3047,23 +3473,24 @@ export default function RestaurantOnboarding() {
                 }}
                 disabled={!step4.selfDeliveryEnabled}
                 className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                placeholder="0"
+                placeholder="Enter minimum order amount (e.g. 100)"
               />
+              <p className="text-[11px] text-gray-500 mt-1">Maximum 5 digits allowed</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <TimeSelector
                 label="Start Time*"
-                value={step4.selfDeliveryStart || "10:00"}
+                value={step4.selfDeliveryStart || ""}
                 onChange={(val) =>
-                  setStep4((prev) => ({ ...prev, selfDeliveryStart: normalizeTimeValue(val) || "10:00" }))
+                  setStep4((prev) => ({ ...prev, selfDeliveryStart: normalizeTimeValue(val) || "" }))
                 }
               />
               <TimeSelector
                 label="End Time*"
-                value={step4.selfDeliveryEnd || "22:00"}
+                value={step4.selfDeliveryEnd || ""}
                 onChange={(val) =>
-                  setStep4((prev) => ({ ...prev, selfDeliveryEnd: normalizeTimeValue(val) || "22:00" }))
+                  setStep4((prev) => ({ ...prev, selfDeliveryEnd: normalizeTimeValue(val) || "" }))
                 }
               />
             </div>
@@ -3099,7 +3526,7 @@ export default function RestaurantOnboarding() {
             >
               <X className="w-5 h-5 text-gray-600" />
             </button>
-            <div className="text-sm font-semibold text-black">Restaurant onboarding</div>
+            <div className="text-lg font-extrabold text-black">Restaurant onboarding</div>
           </div>
           <div className="flex items-center gap-3">
             {!loading && !isEditing && (

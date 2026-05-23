@@ -279,8 +279,6 @@ function TimePickerWheel({
   const hourRef = useRef(null)
   const minuteRef = useRef(null)
   const periodRef = useRef(null)
-  const scrollTimeoutRef = useRef(null)
-  const isScrollingRef = useRef(false)
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1)
   const minutes = Array.from({ length: 60 }, (_, i) => i)
@@ -297,98 +295,46 @@ function TimePickerWheel({
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden'
-
       const timer = setTimeout(() => {
-        const padding = 80
-        const itemHeight = 40
-
-        const hourIndex = parsedHour - 1
-        const hourScrollPos = padding + (hourIndex * itemHeight)
         if (hourRef.current) {
-          hourRef.current.scrollTop = hourScrollPos
-          setSelectedHour(parsedHour)
-          setTimeout(() => {
-            hourRef.current?.scrollTo({
-              top: hourScrollPos,
-              behavior: 'smooth'
-            })
-          }, 50)
+          const hourIndex = hours.indexOf(parsedHour)
+          if (hourIndex !== -1) hourRef.current.scrollTop = hourIndex * 40
         }
-
-        const minuteIndex = Math.max(0, Math.min(59, parsedMinute))
-        const minuteScrollPos = padding + (minuteIndex * itemHeight)
         if (minuteRef.current) {
-          minuteRef.current.scrollTop = minuteScrollPos
-          setSelectedMinute(minuteIndex)
-          setTimeout(() => {
-            minuteRef.current?.scrollTo({
-              top: minuteScrollPos,
-              behavior: 'smooth'
-            })
-          }, 50)
+          const minuteIndex = minutes.indexOf(parsedMinute)
+          if (minuteIndex !== -1) minuteRef.current.scrollTop = minuteIndex * 40
         }
-
-        const periodIndex = periods.indexOf(parsedPeriod)
-        const periodScrollPos = padding + (periodIndex * itemHeight)
         if (periodRef.current) {
-          periodRef.current.scrollTop = periodScrollPos
-          setSelectedPeriod(parsedPeriod)
-          setTimeout(() => {
-            periodRef.current?.scrollTo({
-              top: periodScrollPos,
-              behavior: 'smooth'
-            })
-          }, 50)
+          const periodIndex = periods.indexOf(parsedPeriod)
+          if (periodIndex !== -1) periodRef.current.scrollTop = periodIndex * 40
         }
-      }, 150)
+      }, 100)
 
       return () => {
-        clearTimeout(timer)
-        if (scrollTimeoutRef.current) {
-          clearTimeout(scrollTimeoutRef.current)
-        }
         document.body.style.overflow = 'unset'
+        clearTimeout(timer)
       }
     }
   }, [isOpen, parsedHour, parsedMinute, parsedPeriod])
 
-  const handleScroll = (container, setValue, values, itemHeight) => {
-    if (!container || isScrollingRef.current) return
-
-    const padding = 80
-    const scrollTop = container.scrollTop
-    const index = Math.round((scrollTop - padding) / itemHeight)
+  const handleScroll = (ref, setValue, values) => {
+    if (!ref.current) return
+    const scrollTop = ref.current.scrollTop
+    const index = Math.round(scrollTop / 40)
     const clampedIndex = Math.max(0, Math.min(index, values.length - 1))
     const newValue = values[clampedIndex]
-
     if (newValue !== undefined) {
       setValue(newValue)
     }
+  }
 
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current)
+  const handleItemClick = (ref, index) => {
+    if (ref.current) {
+      ref.current.scrollTo({
+        top: index * 40,
+        behavior: 'smooth'
+      })
     }
-
-    isScrollingRef.current = true
-    scrollTimeoutRef.current = setTimeout(() => {
-      const finalIndex = Math.round((container.scrollTop - padding) / itemHeight)
-      const finalClampedIndex = Math.max(0, Math.min(finalIndex, values.length - 1))
-      const snapPosition = padding + (finalClampedIndex * itemHeight)
-      container.scrollTop = snapPosition
-      if (values[finalClampedIndex] !== undefined) {
-        setValue(values[finalClampedIndex])
-      }
-      setTimeout(() => {
-        container.scrollTo({
-          top: snapPosition,
-          behavior: 'smooth'
-        })
-      }, 50)
-
-      setTimeout(() => {
-        isScrollingRef.current = false
-      }, 300)
-    }, 150)
   }
 
   const handleConfirm = () => {
@@ -414,10 +360,10 @@ function TimePickerWheel({
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
-          className="bg-white rounded-lg shadow-2xl w-full max-w-xs overflow-hidden"
+          className="bg-white rounded-2xl shadow-2xl w-full max-w-xs overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-center py-8 px-4 relative">
+          <div className="flex items-center justify-center py-8 px-4 relative h-64 select-none">
             <style>{`
               .time-picker-scroll::-webkit-scrollbar {
                 display: none;
@@ -428,45 +374,24 @@ function TimePickerWheel({
               }
             `}</style>
 
-            <div className="flex-1 flex flex-col items-center">
+            {/* Hour Column */}
+            <div className="flex-1 flex flex-col items-center h-48 relative">
               <div
                 ref={hourRef}
-                className="w-full h-48 overflow-y-scroll time-picker-scroll snap-y snap-mandatory"
+                className="w-full h-48 overflow-y-scroll time-picker-scroll"
                 style={{
                   scrollSnapType: 'y mandatory',
-                  scrollBehavior: 'smooth',
                   WebkitOverflowScrolling: 'touch'
                 }}
-                onScroll={() => handleScroll(hourRef.current, setSelectedHour, hours, 40)}
-                onTouchEnd={() => {
-                  setTimeout(() => {
-                    if (hourRef.current) {
-                      const padding = 80
-                      const itemHeight = 40
-                      const scrollTop = hourRef.current.scrollTop
-                      const index = Math.round((scrollTop - padding) / itemHeight)
-                      const clampedIndex = Math.max(0, Math.min(index, hours.length - 1))
-                      const snapPosition = padding + (clampedIndex * itemHeight)
-                      hourRef.current.scrollTop = snapPosition
-                      if (hours[clampedIndex] !== undefined) {
-                        setSelectedHour(hours[clampedIndex])
-                      }
-                      setTimeout(() => {
-                        hourRef.current?.scrollTo({
-                          top: snapPosition,
-                          behavior: 'smooth'
-                        })
-                      }, 50)
-                    }
-                  }, 100)
-                }}
+                onScroll={() => handleScroll(hourRef, setSelectedHour, hours)}
               >
-                <div className="h-20"></div>
-                {hours.map((hour) => (
+                <div className="h-[76px] shrink-0" style={{ minHeight: '76px' }}></div>
+                {hours.map((hour, idx) => (
                   <div
                     key={hour}
-                    className="h-10 flex items-center justify-center snap-center"
-                    style={{ minHeight: '40px' }}
+                    onClick={() => handleItemClick(hourRef, idx)}
+                    className="h-10 flex items-center justify-center cursor-pointer"
+                    style={{ scrollSnapAlign: 'center', height: '40px', minHeight: '40px' }}
                   >
                     <span
                       className={`text-lg transition-all duration-200 ${selectedHour === hour
@@ -478,53 +403,33 @@ function TimePickerWheel({
                     </span>
                   </div>
                 ))}
-                <div className="h-20"></div>
+                <div className="h-[76px] shrink-0" style={{ minHeight: '76px' }}></div>
               </div>
             </div>
 
-            <div className="px-2">
+            {/* Separator */}
+            <div className="px-2 h-10 flex items-center justify-center">
               <span className="text-2xl font-bold text-gray-900">:</span>
             </div>
 
-            <div className="flex-1 flex flex-col items-center">
+            {/* Minute Column */}
+            <div className="flex-1 flex flex-col items-center h-48 relative">
               <div
                 ref={minuteRef}
-                className="w-full h-48 overflow-y-scroll time-picker-scroll snap-y snap-mandatory"
+                className="w-full h-48 overflow-y-scroll time-picker-scroll"
                 style={{
                   scrollSnapType: 'y mandatory',
-                  scrollBehavior: 'smooth',
                   WebkitOverflowScrolling: 'touch'
                 }}
-                onScroll={() => handleScroll(minuteRef.current, setSelectedMinute, minutes, 40)}
-                onTouchEnd={() => {
-                  setTimeout(() => {
-                    if (minuteRef.current) {
-                      const padding = 80
-                      const itemHeight = 40
-                      const scrollTop = minuteRef.current.scrollTop
-                      const index = Math.round((scrollTop - padding) / itemHeight)
-                      const clampedIndex = Math.max(0, Math.min(index, minutes.length - 1))
-                      const snapPosition = padding + (clampedIndex * itemHeight)
-                      minuteRef.current.scrollTop = snapPosition
-                      if (minutes[clampedIndex] !== undefined) {
-                        setSelectedMinute(minutes[clampedIndex])
-                      }
-                      setTimeout(() => {
-                        minuteRef.current?.scrollTo({
-                          top: snapPosition,
-                          behavior: 'smooth'
-                        })
-                      }, 50)
-                    }
-                  }, 100)
-                }}
+                onScroll={() => handleScroll(minuteRef, setSelectedMinute, minutes)}
               >
-                <div className="h-20"></div>
-                {minutes.map((minute) => (
+                <div className="h-[76px] shrink-0" style={{ minHeight: '76px' }}></div>
+                {minutes.map((minute, idx) => (
                   <div
                     key={minute}
-                    className="h-10 flex items-center justify-center snap-center"
-                    style={{ minHeight: '40px' }}
+                    onClick={() => handleItemClick(minuteRef, idx)}
+                    className="h-10 flex items-center justify-center cursor-pointer"
+                    style={{ scrollSnapAlign: 'center', height: '40px', minHeight: '40px' }}
                   >
                     <span
                       className={`text-lg transition-all duration-200 ${selectedMinute === minute
@@ -536,49 +441,28 @@ function TimePickerWheel({
                     </span>
                   </div>
                 ))}
-                <div className="h-20"></div>
+                <div className="h-[76px] shrink-0" style={{ minHeight: '76px' }}></div>
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col items-center">
+            {/* Period Column */}
+            <div className="flex-1 flex flex-col items-center h-48 relative">
               <div
                 ref={periodRef}
-                className="w-full h-48 overflow-y-scroll time-picker-scroll snap-y snap-mandatory"
+                className="w-full h-48 overflow-y-scroll time-picker-scroll"
                 style={{
                   scrollSnapType: 'y mandatory',
-                  scrollBehavior: 'smooth',
                   WebkitOverflowScrolling: 'touch'
                 }}
-                onScroll={() => handleScroll(periodRef.current, setSelectedPeriod, periods, 40)}
-                onTouchEnd={() => {
-                  setTimeout(() => {
-                    if (periodRef.current) {
-                      const padding = 80
-                      const itemHeight = 40
-                      const scrollTop = periodRef.current.scrollTop
-                      const index = Math.round((scrollTop - padding) / itemHeight)
-                      const clampedIndex = Math.max(0, Math.min(index, periods.length - 1))
-                      const snapPosition = padding + (clampedIndex * itemHeight)
-                      periodRef.current.scrollTop = snapPosition
-                      if (periods[clampedIndex] !== undefined) {
-                        setSelectedPeriod(periods[clampedIndex])
-                      }
-                      setTimeout(() => {
-                        periodRef.current?.scrollTo({
-                          top: snapPosition,
-                          behavior: 'smooth'
-                        })
-                      }, 50)
-                    }
-                  }, 100)
-                }}
+                onScroll={() => handleScroll(periodRef, setSelectedPeriod, periods)}
               >
-                <div className="h-20"></div>
-                {periods.map((period) => (
+                <div className="h-[76px] shrink-0" style={{ minHeight: '76px' }}></div>
+                {periods.map((period, idx) => (
                   <div
                     key={period}
-                    className="h-10 flex items-center justify-center snap-center"
-                    style={{ minHeight: '40px' }}
+                    onClick={() => handleItemClick(periodRef, idx)}
+                    className="h-10 flex items-center justify-center cursor-pointer"
+                    style={{ scrollSnapAlign: 'center', height: '40px', minHeight: '40px' }}
                   >
                     <span
                       className={`text-lg transition-all duration-200 ${selectedPeriod === period
@@ -586,18 +470,16 @@ function TimePickerWheel({
                           : 'font-normal text-gray-400 text-base'
                         }`}
                     >
-                      {period}
+                      {period.toUpperCase()}
                     </span>
                   </div>
                 ))}
-                <div className="h-20"></div>
+                <div className="h-[76px] shrink-0" style={{ minHeight: '76px' }}></div>
               </div>
             </div>
 
-            <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 pointer-events-none">
-              <div className="border-t border-gray-300 mx-4"></div>
-              <div className="border-b border-gray-300 mx-4 mt-10"></div>
-            </div>
+            {/* Selection Highlight Overlays */}
+            <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-10 pointer-events-none border-t border-b border-gray-300"></div>
           </div>
 
           <div className="border-t border-gray-200 px-4 py-4 flex justify-center">
