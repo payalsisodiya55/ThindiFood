@@ -532,8 +532,9 @@ export default function MenuCategoriesPage() {
                   value={formData.name}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   maxLength={30}
+                  autoComplete="off"
                   placeholder="Enter category name"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900" />
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900 text-slate-700 placeholder:text-slate-400" />
                   <div className="flex items-center justify-between mt-1 px-0.5">
                     <span className="text-[10px] text-slate-500">Maximum 30 characters allowed</span>
                     <span className="text-[10px] text-slate-500">{(formData.name || "").length} / 30</span>
@@ -546,7 +547,7 @@ export default function MenuCategoriesPage() {
                   <select
                   value={formData.foodTypeScope}
                   onChange={(e) => setFormData((prev) => ({ ...prev, foodTypeScope: e.target.value }))}
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900">
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 bg-white outline-none focus:border-slate-900 text-slate-400 cursor-pointer">
                   
                     {dietScopeOptions.map((scope) =>
                   <option key={scope} value={scope}>
@@ -568,8 +569,9 @@ export default function MenuCategoriesPage() {
                   value={formData.type}
                   onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
                   maxLength={30}
+                  autoComplete="off"
                   placeholder="Examples: Starters, Desserts, Drinks"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900" />
+                  className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900 text-slate-700 placeholder:text-slate-400" />
                   <div className="flex items-center justify-between mt-1 px-0.5">
                     <span className="text-[10px] text-slate-500">Maximum 30 characters allowed</span>
                     <span className="text-[10px] text-slate-500">{(formData.type || "").length} / 30</span>
@@ -589,7 +591,7 @@ export default function MenuCategoriesPage() {
                     <button
                       type="button"
                       onClick={handleImageClick}
-                      className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700">
+                      className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-400 bg-white hover:bg-slate-50 cursor-pointer">
                       <Upload className="h-4 w-4" />
                       Upload Image
                     </button>

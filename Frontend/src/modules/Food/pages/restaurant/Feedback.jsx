@@ -571,7 +571,7 @@ export default function Feedback() {
                 {/* Filter Button */}
                 <button 
                   onClick={() => setIsComplaintsFilterOpen(true)} 
-                  className="bg-white w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center shadow-sm shrink-0 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="bg-white w-12 h-12 rounded-xl border border-black flex items-center justify-center shadow-sm shrink-0 cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   <SlidersHorizontal className="w-5 h-5 text-gray-900" />
                 </button>
@@ -656,7 +656,7 @@ export default function Feedback() {
                 {/* Filter Button */}
                 <button 
                   onClick={() => setIsFilterOpen(true)} 
-                  className="bg-white w-12 h-12 rounded-xl border border-gray-200 flex items-center justify-center shadow-sm shrink-0 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="bg-white w-12 h-12 rounded-xl border border-black flex items-center justify-center shadow-sm shrink-0 cursor-pointer hover:bg-gray-50 transition-colors"
                 >
                   <SlidersHorizontal className="w-5 h-5 text-gray-900" />
                 </button>

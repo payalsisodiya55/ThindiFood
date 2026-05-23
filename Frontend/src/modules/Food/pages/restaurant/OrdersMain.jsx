@@ -4441,7 +4441,7 @@ export default function OrdersMain() {
                   <div className="space-y-2">
                     <div
                       ref={acceptSliderRef}
-                      className="relative h-12 rounded-2xl bg-gray-900 overflow-hidden select-none"
+                      className="relative h-12 rounded-2xl bg-gray-900 overflow-hidden select-none cursor-pointer"
                       style={{ touchAction: "none" }}>
                       <motion.div
                         className="absolute inset-y-0 left-0 bg-blue-600"
@@ -4458,7 +4458,7 @@ export default function OrdersMain() {
                       </div>
                       <motion.button
                         type="button"
-                        className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-white text-gray-900 shadow-md disabled:cursor-not-allowed"
+                        className="absolute left-2 top-1/2 z-20 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-white text-gray-900 shadow-md disabled:cursor-not-allowed cursor-pointer"
                         style={{
                           touchAction: "none",
                           x: (() => {
@@ -4524,7 +4524,7 @@ export default function OrdersMain() {
                     <button
                       onClick={handleRejectClick}
                       disabled={isAcceptingOrder}
-                      className="w-full bg-white border-2 border-red-500 text-red-600 py-2 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60">
+                      className="w-full bg-white border-2 border-red-500 text-red-600 py-2 rounded-lg font-semibold text-sm hover:bg-red-50 transition-colors disabled:opacity-60 cursor-pointer">
                       Reject Order
                     </button>
                   </div>
