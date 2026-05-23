@@ -165,17 +165,6 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
   );
 });
 
-            <div 
-              className="pointer-events-none absolute inset-0 z-0 rounded-md border border-transparent transition-all duration-300 group-hover:border-[var(--hover-border)] group-hover:shadow-[inset_0_0_0_1px_rgba(226,40,27,0.2)]" 
-              style={{ '--hover-border': `${RED}4D` }} 
-            />
-          </Card>
-        </Link>
-      </div>
-    </div>
-  );
-});
-
 import { RED } from "@food/constants/color";
 
 function FoodHomeContent({
@@ -403,7 +392,15 @@ function FoodHomeContent({
                 whileHover={{ y: -5 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <Link to={item.href} className="flex-shrink-0">
+                <Link
+                  to={item.href}
+                  state={
+                    item.label?.toLowerCase() === "collections"
+                      ? { backTo: "/food/user" }
+                      : undefined
+                  }
+                  className="flex-shrink-0"
+                >
                   <div className="group flex w-24 flex-col items-center gap-3 sm:w-28">
                     <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl border border-gray-100 bg-white p-3 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.08)] transition-all duration-500 group-hover:border-[var(--hover-color)] group-hover:shadow-[0_10px_25px_-5px_rgba(0,0,0,0.12)] dark:border-gray-800 dark:bg-[#1a1a1a] sm:h-24 sm:w-24" style={{ '--hover-color': `${RED}4D` }}>
                       <div

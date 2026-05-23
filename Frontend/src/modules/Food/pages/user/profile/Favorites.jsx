@@ -12,6 +12,7 @@ import { useLocation } from "@food/hooks/useLocation";
 import { useZone } from "@food/hooks/useZone";
 import { restaurantAPI } from "@food/api";
 import { toast } from "sonner";
+import useAppBackNavigation from "@food/hooks/useAppBackNavigation";
 
 function calcDistance(lat1, lng1, lat2, lng2) {
   const R = 6371; // Radius of the earth in km
@@ -25,6 +26,7 @@ function calcDistance(lat1, lng1, lat2, lng2) {
 }
 
 export default function Favorites() {
+  const goBack = useAppBackNavigation();
   const { getFavorites, removeFavorite, getDishFavorites, removeDishFavorite } = useProfile();
   const restaurantFavorites = getFavorites();
   const dishFavorites = getDishFavorites();
@@ -123,11 +125,9 @@ export default function Favorites() {
         <div className="max-w-4xl mx-auto space-y-6">
           <ScrollReveal>
             <div className="flex items-center gap-3 sm:gap-4">
-              <Link to="/user/profile">
-                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
-                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
+              <Button onClick={goBack} variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold dark:text-white">My Favorites</h1>
             </div>
           </ScrollReveal>
@@ -153,11 +153,9 @@ export default function Favorites() {
         <ScrollReveal>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <Link to="/user/profile">
-                <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10 dark:text-white dark:hover:bg-zinc-800">
-                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
+              <Button onClick={goBack} variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10 dark:text-white dark:hover:bg-zinc-800">
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
               <div>
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold dark:text-white">My Favorites</h1>
                 <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm font-semibold">
