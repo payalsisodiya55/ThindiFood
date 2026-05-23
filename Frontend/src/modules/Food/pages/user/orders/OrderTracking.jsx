@@ -1,4 +1,4 @@
-import { useParams, Link, useSearchParams, useLocation as useRouteLocation } from "react-router-dom"
+import { useParams, Link, useSearchParams, useLocation as useRouteLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
@@ -693,6 +693,7 @@ function normalizeLookupId(value) {
 }
 
 export default function OrderTracking() {
+  const navigate = useNavigate()
   const companyName = useCompanyName()
   const { orderId } = useParams()
   const routeLocation = useRouteLocation()
@@ -767,6 +768,17 @@ export default function OrderTracking() {
     setError(null)
     setLoading(false)
   }, [hydratedInitialOrder, prefetchedOrder, orderId])
+
+  // Redirect to home page once the takeaway order is picked up by the customer
+  useEffect(() => {
+    if (!order) return
+    const isTakeaway = String(order.fulfillmentType || "").toLowerCase() === "takeaway"
+    const status = String(order.status || order.orderStatus || "").toLowerCase()
+    
+    if (isTakeaway && (status === "picked_up" || status === "completed" || status === "delivered" || status === "delivered_self")) {
+      navigate("/food/user")
+    }
+  }, [order, navigate])
 
   useEffect(() => {
     let cancelled = false

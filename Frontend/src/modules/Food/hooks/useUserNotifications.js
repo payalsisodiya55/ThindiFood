@@ -144,11 +144,17 @@ export const useUserNotifications = () => {
         })
       );
       const title = orderId ? `Order ${orderId}` : 'Takeaway OTP';
-      const parts = [message, otp ? `OTP: ${otp}` : ''].filter(Boolean);
+      let descriptionText = '';
+      if (message.toLowerCase().includes('hand over') || message.toLowerCase().includes('share this otp') || message.toLowerCase().includes('your restaurant')) {
+        descriptionText = `Use this OTP to collect your order from the restaurant. OTP: ${otp}`;
+      } else {
+        const parts = [message, otp ? `OTP: ${otp}` : ''].filter(Boolean);
+        descriptionText = parts.join(' - ') || `Use this OTP to collect your order from the restaurant. OTP: ${otp}`;
+      }
       const toastId = orderId ? `delivery-drop-otp-${orderId}` : `delivery-drop-otp-${Date.now()}`;
       toast.message(title, {
         id: toastId,
-        description: parts.join(' - ') || 'Handover OTP from your delivery partner.',
+        description: descriptionText,
         duration: 90_000,
 
         action: {
