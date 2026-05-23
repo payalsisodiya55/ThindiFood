@@ -1274,10 +1274,24 @@ export default function Home() {
     error: savedAddressZoneError,
   } = useZone(defaultSavedAddressLocation);
 
-  const deliveryAddressMode =
-    typeof window !== "undefined"
-      ? localStorage.getItem("deliveryAddressMode") || "saved"
-      : "saved";
+  const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("deliveryAddressMode") || "saved";
+    }
+    return "saved";
+  });
+
+  useEffect(() => {
+    const handleLocationUpdate = () => {
+      if (typeof window !== "undefined") {
+        setDeliveryAddressMode(localStorage.getItem("deliveryAddressMode") || "saved");
+      }
+    };
+    window.addEventListener("userLocationUpdated", handleLocationUpdate);
+    return () => {
+      window.removeEventListener("userLocationUpdated", handleLocationUpdate);
+    };
+  }, []);
 
   const shouldUseSavedAddressZone =
     fulfillmentMode === "delivery" &&
@@ -2678,7 +2692,7 @@ export default function Home() {
           activeTab={activeTab}
           setActiveTab={handleTabChange}
           location={location}
-          savedAddressText={savedAddressText}
+          savedAddressText={deliveryAddressMode === "saved" ? savedAddressText : ""}
           handleLocationClick={handleLocationClick}
           handleSearchFocus={handleSearchFocus}
           placeholderIndex={placeholderIndex}
@@ -2700,7 +2714,7 @@ export default function Home() {
           activeTab={activeTab}
           setActiveTab={handleTabChange}
           location={location}
-          savedAddressText={savedAddressText}
+          savedAddressText={deliveryAddressMode === "saved" ? savedAddressText : ""}
           handleLocationClick={handleLocationClick}
           handleSearchFocus={handleSearchFocus}
           placeholderIndex={placeholderIndex}

@@ -143,7 +143,7 @@ export default function HomeHeader({
   const locationTitle =
     savedAddressText || location?.area || location?.city || "Select Location";
   const locationSubtitle =
-    location?.address || location?.city || "Tap to choose delivery location";
+    location?.formattedAddress || location?.address || location?.city || "Tap to choose delivery location";
 
   const mergedNotifications = useMemo(() => {
     const localItems = Array.isArray(notifications)

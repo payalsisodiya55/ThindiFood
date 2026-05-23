@@ -176,19 +176,42 @@ const reverseGeocodeDirect = async (latitude, longitude) => {
         const nominatimData = await nominatimRes.json()
         if (nominatimData?.address) {
           const addr = nominatimData.address
-          const formattedAddress = normalizeAddressPart(nominatimData.display_name)
-          const street = buildStreetFromAddressParts(addr, formattedAddress)
+          const rawFormattedAddress = normalizeAddressPart(nominatimData.display_name)
+          const street = buildStreetFromAddressParts(addr, rawFormattedAddress)
+          const streetNumber = normalizeAddressPart(addr.house_number)
+          
+          const cleanAreaName = (val) => {
+            if (!val) return ""
+            return val.replace(/\s*(tahsil|tehsil|taluka|district|division)\b/gi, "").trim()
+          }
+          
+          let area = ""
+          if (addr.suburb) area = normalizeAddressPart(addr.suburb)
+          else if (addr.neighbourhood) area = normalizeAddressPart(addr.neighbourhood)
+          else if (addr.residential) area = normalizeAddressPart(addr.residential)
+          else if (addr.county) area = cleanAreaName(addr.county)
+          else if (addr.city_district) area = cleanAreaName(addr.city_district)
+          
+          const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || "Unknown City"
+          const state = addr.state || ""
+          const postalCode = normalizeAddressPart(addr.postcode)
+          const country = addr.country || ""
+          
+          const formattedAddress = [street, area, city, state, postalCode].filter(Boolean).join(", ") || rawFormattedAddress
+          
           const value = {
-            city: addr.city || addr.town || addr.village || addr.municipality || addr.county || "Unknown City",
-            state: addr.state || "",
-            country: addr.country || "",
-            area: addr.suburb || addr.neighbourhood || addr.residential || "",
+            latitude,
+            longitude,
+            city,
+            state,
+            country,
+            area,
             street,
-            streetNumber: normalizeAddressPart(addr.house_number),
-            postalCode: normalizeAddressPart(addr.postcode),
-            address: street || formattedAddress || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-            formattedAddress:
-              formattedAddress || street || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+            streetNumber,
+            postalCode,
+            zipCode: postalCode,
+            address: street || formattedAddress,
+            formattedAddress,
           }
 
           globalReverseGeocodeLastSuccess = value

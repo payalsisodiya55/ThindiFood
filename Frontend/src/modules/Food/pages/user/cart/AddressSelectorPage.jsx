@@ -610,6 +610,67 @@ export default function AddressSelectorPage() {
     }
 
     try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1`
+      const response = await fetch(url, {
+        headers: {
+          "Accept-Language": "en",
+        }
+      })
+      const json = await response.json()
+      if (json && json.address) {
+        const addr = json.address
+        const rawFormattedAddress = normalizeAddressPart(json.display_name)
+        
+        // Build primary street address using the deduplication logic
+        const street = buildPrimaryAddressFromParts(addr, rawFormattedAddress)
+        const streetNumber = normalizeAddressPart(addr.house_number)
+        
+        // Clean and resolve the area/locality name beautifully
+        const cleanAreaName = (val) => {
+          if (!val) return ""
+          return val.replace(/\s*(tahsil|tehsil|taluka|district|division)\b/gi, "").trim()
+        }
+        
+        let area = ""
+        if (addr.suburb) area = normalizeAddressPart(addr.suburb)
+        else if (addr.neighbourhood) area = normalizeAddressPart(addr.neighbourhood)
+        else if (addr.residential) area = normalizeAddressPart(addr.residential)
+        else if (addr.county) area = cleanAreaName(addr.county)
+        else if (addr.city_district) area = cleanAreaName(addr.city_district)
+        
+        const city = normalizeAddressPart(addr.city || addr.town || addr.village || addr.municipality || addr.county || "")
+        const state = normalizeAddressPart(addr.state || "")
+        const postalCode = normalizeAddressPart(addr.postcode)
+        const country = normalizeAddressPart(addr.country || "")
+        
+        // Construct a clean, elegant, non-repetitive formatted address
+        const formattedAddress = [street, area, city, state, postalCode].filter(Boolean).join(", ") || rawFormattedAddress
+        
+        const fallbackLocation = {
+          latitude: lat,
+          longitude: lng,
+          street,
+          streetNumber,
+          area,
+          city,
+          state,
+          postalCode,
+          zipCode: postalCode,
+          country,
+          address: street || formattedAddress,
+          formattedAddress,
+        }
+        bestLocation = chooseBetterResolvedLocation(bestLocation, fallbackLocation)
+      }
+    } catch (error) {
+      debugWarn("Nominatim reverse geocode failed, trying BigDataCloud:", error)
+    }
+
+    if (bestLocation?.formattedAddress && countAddressSegments(bestLocation.formattedAddress) >= 4) {
+      return bestLocation
+    }
+
+    try {
       const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
       const response = await fetch(url)
       const json = await response.json()
