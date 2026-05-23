@@ -367,8 +367,8 @@ export default function RestaurantNavbar({
         )}
         <div className="min-w-0">
           {/* Restaurant Name */}
-          <div className="flex items-baseline gap-1.5">
-            <h1 className="text-[15px] font-bold text-gray-900 whitespace-nowrap">
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <h1 className="text-[15px] font-bold text-gray-900 truncate">
               {loading ? "Loading..." : (restaurantName || "Restaurant")}
             </h1>
           </div>
@@ -384,7 +384,7 @@ export default function RestaurantNavbar({
       </div>
 
       {/* Right Side - Interactive Elements */}
-      <div className="flex items-center">
+      <div className="flex items-center shrink-0 gap-0.5 sm:gap-1">
         {/* Offline/Online Status Tag */}
         {showOfflineOnlineTag && (
           <button
