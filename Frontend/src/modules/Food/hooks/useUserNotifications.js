@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@food/api/config';
-import { userAPI } from '@food/api';
+import { orderAPI, userAPI } from '@food/api';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
 
 const debugLog = (...args) => {
@@ -19,6 +19,40 @@ const emitSocketConnectionChange = (nextConnected) => {
       detail: { isConnected: nextConnected }
     })
   );
+};
+
+const getOrderFromCachedResponse = (payload) => {
+  if (!payload || typeof payload !== 'object') return null;
+  if (payload?.data?.data?.order && typeof payload.data.data.order === 'object') return payload.data.data.order;
+  if (payload?.data?.order && typeof payload.data.order === 'object') return payload.data.order;
+  if (payload?.data?.data && typeof payload.data.data === 'object') return payload.data.data;
+  if (payload?.data && typeof payload.data === 'object') return payload.data;
+  return null;
+};
+
+const resolveOtpFulfillmentType = (payload, orderId) => {
+  const explicitType = String(
+    payload?.fulfillmentType || payload?.orderType || payload?.order?.fulfillmentType || '',
+  )
+    .trim()
+    .toLowerCase();
+  if (explicitType === 'delivery' || explicitType === 'takeaway') return explicitType;
+
+  const explicitDeliveryType = String(payload?.deliveryType || payload?.order?.deliveryType || '')
+    .trim()
+    .toLowerCase();
+  if (explicitDeliveryType === 'self' || explicitDeliveryType === 'partner') return 'delivery';
+  if (explicitDeliveryType === 'takeaway' || explicitDeliveryType === 'pickup') return 'takeaway';
+
+  const cachedOrder = getOrderFromCachedResponse(orderAPI.getOrderDetails.peek?.(orderId));
+  const cachedType = String(cachedOrder?.fulfillmentType || '').trim().toLowerCase();
+  if (cachedType === 'delivery' || cachedType === 'takeaway') return cachedType;
+
+  const savedMode =
+    typeof window !== 'undefined'
+      ? String(window.localStorage?.getItem('thindi_fulfillment_mode') || '').trim().toLowerCase()
+      : '';
+  return savedMode === 'delivery' ? 'delivery' : 'takeaway';
 };
 
 /**
@@ -133,24 +167,30 @@ export const useUserNotifications = () => {
       const otp = payload?.otp != null ? String(payload.otp) : '';
       const orderId = payload?.orderId != null ? String(payload.orderId) : '';
       const message = payload?.message != null ? String(payload.message) : '';
+      const fulfillmentType = resolveOtpFulfillmentType(payload, orderId);
+      const lowerMsg = message.toLowerCase();
+      const isDelivery =
+        fulfillmentType === 'delivery' ||
+        (fulfillmentType !== 'takeaway' &&
+          (lowerMsg.includes('delivery') ||
+            lowerMsg.includes('rider') ||
+            lowerMsg.includes('boy') ||
+            lowerMsg.includes('partner')));
+      const descriptionText = isDelivery
+        ? `Share this OTP with the delivery partner to receive your order. OTP - ${otp}`
+        : `Use this OTP to collect your order from the restaurant. OTP - ${otp}`;
       window.dispatchEvent(
         new CustomEvent('deliveryDropOtp', {
           detail: {
             orderMongoId: payload?.orderMongoId,
             orderId,
             otp,
-            message
+            message: descriptionText,
+            fulfillmentType: isDelivery ? 'delivery' : 'takeaway',
           }
         })
       );
-      const title = orderId ? `Order ${orderId}` : 'Takeaway OTP';
-      let descriptionText = '';
-      if (message.toLowerCase().includes('hand over') || message.toLowerCase().includes('share this otp') || message.toLowerCase().includes('your restaurant')) {
-        descriptionText = `Use this OTP to collect your order from the restaurant. OTP: ${otp}`;
-      } else {
-        const parts = [message, otp ? `OTP: ${otp}` : ''].filter(Boolean);
-        descriptionText = parts.join(' - ') || `Use this OTP to collect your order from the restaurant. OTP: ${otp}`;
-      }
+      const title = orderId ? `Order ${orderId}` : isDelivery ? 'Delivery OTP' : 'Takeaway OTP';
       const toastId = orderId ? `delivery-drop-otp-${orderId}` : `delivery-drop-otp-${Date.now()}`;
       toast.message(title, {
         id: toastId,

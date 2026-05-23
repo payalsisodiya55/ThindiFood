@@ -83,11 +83,13 @@ export default function Notifications() {
     }
 
     const handleDeliveryOtp = (event) => {
-      const { orderId, otp, message } = event.detail
+      const { orderId, otp, message, fulfillmentType } = event.detail
+      const isDeliveryOrder =
+        String(fulfillmentType || "").trim().toLowerCase() === "delivery"
       const newNotification = {
         id: `otp-${Date.now()}`,
         type: "alert",
-        title: "Takeaway OTP Received",
+        title: isDeliveryOrder ? "Delivery OTP Received" : "Takeaway OTP Received",
         message: message || `Your OTP for order #${orderId} is ${otp}`,
         time: "Just now",
         timestamp: Date.now(),

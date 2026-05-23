@@ -1876,8 +1876,9 @@ export default function OrderTracking() {
   })()
 
   const isTakeawayOrder = order?.fulfillmentType === "takeaway"
+  const isDeliveryOrder = order?.fulfillmentType === "delivery"
   const isSelfDeliveryOrder =
-    order?.fulfillmentType === "delivery" &&
+    isDeliveryOrder &&
     String(order?.deliveryType || "").toLowerCase() === "self"
 
   const statusConfig = {
@@ -2120,13 +2121,13 @@ export default function OrderTracking() {
             transition={{ delay: 0.28 }}
           >
             <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
-              {isSelfDeliveryOrder ? "Delivery OTP" : "Takeaway OTP"}
+              {isDeliveryOrder ? "Delivery OTP" : "Takeaway OTP"}
             </p>
             <p className="text-2xl font-extrabold text-blue-900 dark:text-blue-300 mt-1 tracking-widest">{customerDeliveryOtp}</p>
             <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
-              {isSelfDeliveryOrder
-                ? "Share this 4-digit OTP with the delivery boy only after your order reaches you."
-                : "Share this 4-digit OTP with the restaurant at pickup."}
+              {isDeliveryOrder
+                ? "Share this OTP with the delivery partner to receive your order."
+                : "Use this OTP to collect your order from the restaurant."}
             </p>
           </motion.div>
         )}

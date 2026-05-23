@@ -57,12 +57,21 @@ export function emitDeliveryDropOtpToUser(order, plainOtp) {
   try {
     const io = getIO();
     if (!io || !plainOtp || !order?.userId) return;
+    const fulfillmentType =
+      String(order?.fulfillmentType || "").toLowerCase() === "takeaway"
+        ? "takeaway"
+        : "delivery";
+    const message =
+      fulfillmentType === "delivery"
+        ? "Share this OTP with the delivery partner to receive your order."
+        : "Use this OTP to collect your order from the restaurant.";
     io.to(rooms.user(order.userId)).emit("delivery_drop_otp", {
       orderMongoId: order._id?.toString?.(),
       orderId: order.order_id || order._id?.toString?.(),
+      fulfillmentType,
+      deliveryType: order.deliveryType || null,
       otp: plainOtp,
-      message:
-        "Share this OTP with your restaurant to hand over the order.",
+      message,
     });
   } catch (e) {
     logger.warn(`emitDeliveryDropOtpToUser failed: ${e?.message || e}`);

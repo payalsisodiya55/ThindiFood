@@ -359,10 +359,19 @@ export const initSocket = async (server) => {
               
               // Re-emit OTP if user is in drop phase
               if (role === 'USER' && state.activeOrder.handoverOtp) {
+                const fulfillmentType =
+                  String(state.activeOrder.fulfillmentType || '').toLowerCase() === 'takeaway'
+                    ? 'takeaway'
+                    : 'delivery';
                 socket.emit('delivery_drop_otp', {
                   orderId: state.activeOrder.orderId,
+                  fulfillmentType,
+                  deliveryType: state.activeOrder.deliveryType || null,
                   otp: state.activeOrder.handoverOtp,
-                  message: 'Share this OTP with your restaurant.'
+                  message:
+                    fulfillmentType === 'delivery'
+                      ? 'Share this OTP with the delivery partner to receive your order.'
+                      : 'Use this OTP to collect your order from the restaurant.'
                 });
               }
             }
