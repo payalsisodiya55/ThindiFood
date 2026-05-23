@@ -159,7 +159,7 @@ function ImgCarousel({ restaurant, priority = false }) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function Delivery() {
   const { location } = useLocation();
-  const { zoneId } = useZone(location);
+  const { zoneId, isOutOfService } = useZone(location);
   const { vegMode } = useProfile();
   const { openLocationSelector } = useLocationSelector();
   const { openSearch } = useSearchOverlay();
@@ -293,7 +293,7 @@ export default function Delivery() {
       </div>
 
       {/* Page content */}
-      <div className="px-4 pb-28 md:pb-12 max-w-7xl mx-auto md:px-6">
+      <div className={`px-4 pb-28 md:pb-12 max-w-7xl mx-auto md:px-6 transition-all duration-300 ${isOutOfService ? "grayscale opacity-75" : ""}`}>
 
         {/* Desktop title + search */}
         <div className="hidden md:block pt-6 pb-4">

@@ -88,6 +88,7 @@ import { useLocation } from "@food/hooks/useLocation";
 import { useZone } from "@food/hooks/useZone";
 import quickSpicyLogo from "@food/assets/quicky-spicy-logo.png";
 import offerImage from "@food/assets/offerimage.png";
+import chefMascot from "../../../../assets/chef-mascot-Co3vdp03.png";
 import api, { publicGetOnce, restaurantAPI, adminAPI } from "@food/api";
 import { API_BASE_URL } from "@food/api/config";
 import OptimizedImage from "@food/components/OptimizedImage";
@@ -2670,16 +2671,7 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen bg-white dark:bg-[#0a0a0a] pb-16 md:pb-6 overflow-x-clip">
-      {shouldShowOutOfZoneHome && (
-        <div className="fixed inset-0 z-[90] pointer-events-none">
-          <div className="absolute inset-0 bg-slate-300/35 backdrop-blur-[1px]" />
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 px-4">
-            <div className="rounded-xl border border-red-200 bg-red-50/95 text-red-700 px-4 py-2 shadow-sm text-sm sm:text-base font-semibold max-w-[calc(100vw-2rem)] text-center">
-              You are out of zone
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Out of zone is now rendered dynamically below header */}
 
       {/* Main Header - Mobile Only */}
       <div
@@ -2900,242 +2892,363 @@ export default function Home() {
 
           {/* Featured Foods - Horizontal Scroll */}
 
-          {/* Restaurants - Enhanced with Animations */}
-          <motion.section
-            className="content-auto space-y-0 pt-3 sm:pt-4 lg:pt-6 pb-8 md:pb-10"
-            initial={false}
-            animate={{ opacity: 1 }}>
-            <div className="px-4 mb-3 lg:mb-4">
-              <div className="flex flex-col gap-3 lg:gap-4">
-                <div className="flex flex-col gap-0.5 lg:gap-1">
-                  <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 tracking-widest uppercase">
-                    {filteredRestaurants.length} Restaurants {fulfillmentMode === "delivery" ? "Delivering Nearby" : "Available for Pickup"}
-                  </h2>
-                  <span className="text-base sm:text-lg lg:text-2xl text-gray-500 font-normal">
-                    Featured
-                  </span>
+          {shouldShowOutOfZoneHome ? (
+            <motion.div
+              key="out-of-zone-restaurants"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.35 }}
+              className="flex flex-col items-center justify-center py-16 px-4 text-center min-h-[480px] overflow-visible bg-white dark:bg-[#0a0a0a]"
+            >
+              <div className="flex flex-col items-center max-w-sm mx-auto relative" style={{ opacity: 1, transform: "none" }}>
+                <div className="relative mb-14">
+                  <div className="absolute inset-0 bg-[#00c87e]/20 rounded-full blur-[70px]" style={{ transform: "scale(1.39975)" }}></div>
+                  <div className="absolute inset-0 bg-emerald-400/20 rounded-full blur-[50px]" style={{ transform: "scale(1.20724)" }}></div>
+                  
+                  <motion.div 
+                    animate={{
+                      y: [-14.99, -4.99, -14.99],
+                      rotate: [14.99, 20, 14.99],
+                    }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute -top-10 -left-10 text-green-400/40"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-pizza w-12 h-12" aria-hidden="true">
+                      <path d="m12 14-1 1"></path>
+                      <path d="m13.75 18.25-1.25 1.42"></path>
+                      <path d="M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12"></path>
+                      <path d="M18.8 9.3a1 1 0 0 0 2.1 7.7"></path>
+                      <path d="M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z"></path>
+                    </svg>
+                  </motion.div>
+                  
+                  <motion.div 
+                    animate={{
+                      y: [4.63, 14.63, 4.63],
+                      rotate: [-6.18, 0, -6.18],
+                    }}
+                    transition={{
+                      duration: 6,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute -bottom-6 -right-12 text-emerald-400/40"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-utensils-crossed w-10 h-10" aria-hidden="true">
+                      <path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"></path>
+                      <path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"></path>
+                      <path d="m2.1 21.8 6.4-6.3"></path>
+                      <path d="m19 5-7 7"></path>
+                    </svg>
+                  </motion.div>
+                  
+                  <motion.div 
+                    animate={{
+                      y: [-0.48, 4.52, -0.48],
+                      scale: [1, 1.1, 1],
+                    }}
+                    transition={{
+                      duration: 4.5,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute top-4 -right-14 text-teal-400/30"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-flame w-8 h-8" aria-hidden="true">
+                      <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"></path>
+                    </svg>
+                  </motion.div>
+                  
+                  <motion.div 
+                    animate={{
+                      y: [0, -12, 0],
+                    }}
+                    transition={{
+                      duration: 4,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="relative z-10 w-44 h-44 bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-sm rounded-[3rem] shadow-[0_20px_50px_rgba(0,200,126,0.18)] flex items-center justify-center border border-white/50 dark:border-white/10 overflow-hidden" 
+                    style={{ transform: "translateY(-24.2552px)" }}
+                  >
+                    <img alt="Chef Mascot" className="w-full h-full object-contain p-2 transform scale-115 drop-shadow-2xl animate-pulse-subtle" src={chefMascot} />
+                  </motion.div>
+                  
+                  <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-[#00c87e]/40 rounded-full" style={{ transform: "translateX(-66.7223px) translateY(-100.083px) scale(0.5428)" }}></div>
+                  <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-emerald-400/40 rounded-full" style={{ transform: "translateX(-34.0656px) translateY(-102.197px) scale(0.487184)" }}></div>
+                  <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-[#00c87e]/40 rounded-full" style={{ transform: "translateY(-109.113px) scale(0.306488)" }}></div>
+                  <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-emerald-400/40 rounded-full" style={{ transform: "translateX(35.185px) translateY(-105.555px) scale(0.399897)" }}></div>
+                  <div className="absolute top-1/2 left-1/2 w-2 h-2 bg-[#00c87e]/40 rounded-full" style={{ transform: "translateX(46.7967px) translateY(-70.1951px) scale(0.950239)" }}></div>
+                </div>
+                
+                <h3 className="text-3xl sm:text-4xl font-black mb-4 tracking-tight leading-tight bg-gradient-to-r from-[#00c87e] via-emerald-400 to-[#00c87e] bg-clip-text text-transparent bg-[length:200%_auto] animate-gradient-shift uppercase italic">
+                  Coming Soon!
+                </h3>
+                
+                <p className="text-base sm:text-lg font-medium text-gray-500 dark:text-gray-400 leading-relaxed px-4 max-w-xs">
+                  Currently we are not operating on this area. We are coming soon to your location!
+                </p>
+                
+                {/* CTA Action Button */}
+                <div className="mt-8 w-full max-w-xs px-4">
+                  <Button
+                    onClick={openLocationSelector}
+                    className="w-full py-6 rounded-2xl bg-gradient-to-r from-[#00c87e] to-[#40e0a0] hover:from-[#00b06f] hover:to-[#38d090] text-white font-bold text-base shadow-lg shadow-emerald-500/15 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 border-none cursor-pointer"
+                  >
+                    <MapPin className="h-5 w-5" />
+                    <span>Change Location</span>
+                  </Button>
+                </div>
+                
+                <div className="mt-12 flex items-center gap-3">
+                  <div className="h-1.5 bg-[#00c87e] rounded-full animate-pulse" style={{ width: "20.132px" }}></div>
+                  <div className="h-1.5 bg-[#00c87e] rounded-full" style={{ width: "27.868px" }}></div>
+                  <div className="h-1.5 bg-[#00c87e] rounded-full" style={{ width: "38.1px" }}></div>
                 </div>
               </div>
-            </div>
-            <div
-              className={`relative ${showRestaurantSkeleton ? "min-h-[360px] sm:min-h-[420px]" : ""}`}>
-              {/* Loading Overlay */}
-              <AnimatePresence>
-                {showRestaurantSkeleton && (
-                  <motion.div
-                    className="absolute inset-0 z-10 rounded-lg bg-white/94 dark:bg-[#1a1a1a]/94"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25 }}>
-                    <LoadingSkeletonRegion label="Loading restaurants" className="h-full p-1 sm:p-2">
-                      <RestaurantGridSkeleton
-                        count={3}
-                        className="grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3"
-                        compact
-                      />
-                    </LoadingSkeletonRegion>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            </motion.div>
+          ) : (
+            <motion.section
+              className="content-auto space-y-0 pt-3 sm:pt-4 lg:pt-6 pb-8 md:pb-10"
+              initial={false}
+              animate={{ opacity: 1 }}>
+              <div className="px-4 mb-3 lg:mb-4">
+                <div className="flex flex-col gap-3 lg:gap-4">
+                  <div className="flex flex-col gap-0.5 lg:gap-1">
+                    <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 tracking-widest uppercase">
+                      {filteredRestaurants.length} Restaurants {fulfillmentMode === "delivery" ? "Delivering Nearby" : "Available for Pickup"}
+                    </h2>
+                    <span className="text-base sm:text-lg lg:text-2xl text-gray-500 font-normal">
+                      Featured
+                    </span>
+                  </div>
+                </div>
+              </div>
               <div
-                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-4 lg:gap-5 xl:gap-6 px-4 pt-1 sm:pt-1.5 lg:pt-2 items-stretch ${isLoadingFilterResults || loadingRestaurants ? "opacity-50" : "opacity-100"} transition-opacity duration-300`}>
-                {visibleRestaurants.map((restaurant, index) => {
-                  const nameStr =
-                    typeof restaurant?.name === "string"
-                      ? restaurant.name.trim()
-                      : "";
-                  const fallbackSlugSource =
-                    nameStr ||
-                    (typeof restaurant?.restaurantName === "string"
-                      ? restaurant.restaurantName.trim()
-                      : "") ||
-                    String(
-                      restaurant?.slug ||
-                        restaurant?.id ||
-                        restaurant?._id ||
-                        `restaurant-${index}`,
+                className={`relative ${showRestaurantSkeleton ? "min-h-[360px] sm:min-h-[420px]" : ""}`}>
+                {/* Loading Overlay */}
+                <AnimatePresence>
+                  {showRestaurantSkeleton && (
+                    <motion.div
+                      className="absolute inset-0 z-10 rounded-lg bg-white/94 dark:bg-[#1a1a1a]/94"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}>
+                      <LoadingSkeletonRegion label="Loading restaurants" className="h-full p-1 sm:p-2">
+                        <RestaurantGridSkeleton
+                          count={3}
+                          className="grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3"
+                          compact
+                        />
+                      </LoadingSkeletonRegion>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <div
+                  className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-4 lg:gap-5 xl:gap-6 px-4 pt-1 sm:pt-1.5 lg:pt-2 items-stretch ${isLoadingFilterResults || loadingRestaurants ? "opacity-50" : "opacity-100"} transition-opacity duration-300`}>
+                  {visibleRestaurants.map((restaurant, index) => {
+                    const nameStr =
+                      typeof restaurant?.name === "string"
+                        ? restaurant.name.trim()
+                        : "";
+                    const fallbackSlugSource =
+                      nameStr ||
+                      (typeof restaurant?.restaurantName === "string"
+                        ? restaurant.restaurantName.trim()
+                        : "") ||
+                      String(
+                        restaurant?.slug ||
+                          restaurant?.id ||
+                          restaurant?._id ||
+                          `restaurant-${index}`,
+                      );
+
+                    const restaurantSlug = (
+                      typeof restaurant?.slug === "string" && restaurant.slug.trim()
+                        ? restaurant.slug.trim()
+                        : (restaurant.restaurantName || restaurant.name || "restaurant")
+                    ).toLowerCase().replace(/\s+/g, "-");
+                    const availability = getRestaurantAvailabilityStatus(
+                      restaurant,
+                      new Date(availabilityTick),
+                      fulfillmentMode === "delivery"
+                        ? { ignoreOperationalStatus: true, preferSelfDeliveryTimings: true }
+                        : { ignoreOperationalStatus: true },
                     );
+                    // Direct favorite check - isFavorite is already memoized in context
+                    const favorite = isFavorite(restaurantSlug);
 
-                  const restaurantSlug = (
-                    typeof restaurant?.slug === "string" && restaurant.slug.trim()
-                      ? restaurant.slug.trim()
-                      : (restaurant.restaurantName || restaurant.name || "restaurant")
-                  ).toLowerCase().replace(/\s+/g, "-");
-                  const availability = getRestaurantAvailabilityStatus(
-                    restaurant,
-                    new Date(availabilityTick),
-                    fulfillmentMode === "delivery"
-                      ? { ignoreOperationalStatus: true, preferSelfDeliveryTimings: true }
-                      : { ignoreOperationalStatus: true },
-                  );
-                  // Direct favorite check - isFavorite is already memoized in context
-                  const favorite = isFavorite(restaurantSlug);
-
-                  const handleToggleFavorite = (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (favorite) {
-                      removeFavorite(restaurantSlug);
-                    } else {
-                      // Add to favorites and show toast
-                      addFavorite({
-                        slug: restaurantSlug,
-                        name: restaurant.name,
-                        cuisine: restaurant.cuisine,
-                        rating: restaurant.rating,
-                        deliveryTime: restaurant.deliveryTime,
-                        distance: restaurant.distance,
-                        priceRange: restaurant.priceRange,
-                        image: restaurant.image,
-                      });
-                      setShowToast(true);
-                      setTimeout(() => {
-                        setShowToast(false);
-                      }, 3000);
-                    }
-                  };
-
-                  return (
-                    <div
-                      key={
-                        restaurant?.id ||
-                        restaurant?._id ||
-                        restaurantSlug ||
-                        index
+                    const handleToggleFavorite = (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (favorite) {
+                        removeFavorite(restaurantSlug);
+                      } else {
+                        // Add to favorites and show toast
+                        addFavorite({
+                          slug: restaurantSlug,
+                          name: restaurant.name,
+                          cuisine: restaurant.cuisine,
+                          rating: restaurant.rating,
+                          deliveryTime: restaurant.deliveryTime,
+                          distance: restaurant.distance,
+                          priceRange: restaurant.priceRange,
+                          image: restaurant.image,
+                        });
+                        setShowToast(true);
+                        setTimeout(() => {
+                          setShowToast(false);
+                        }, 3000);
                       }
-                      className="h-full transform transition-all duration-300 hover:-translate-y-3 hover:scale-[1.02]"
-                      style={{
-                        perspective: 1000,
-                        animation:
-                          index < 10
-                            ? `fade-in-up 0.5s ease-out ${index * 0.05}s backwards`
-                            : "none",
-                      }}>
-                      <div className="h-full group">
-                        <Link
-                          to={`/user/restaurants/${restaurantSlug}`}
-                          className="h-full flex">
-                          <div className={`relative w-full overflow-hidden rounded-2xl shadow-sm transition-all duration-300 hover:shadow-lg active:scale-[0.98] ${
-                            isOutOfService || !availability.isOpen ? "grayscale opacity-70" : ""
-                          }`}>
-                            {/* Full image */}
-                            <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
-                              <RestaurantImageCarousel
-                                restaurant={restaurant}
-                                priority={index < 3}
-                                backendOrigin={BACKEND_ORIGIN}
-                              />
+                    };
 
-                              {/* Featured dish badge top-left */}
-                              <div className="absolute left-2 top-2 z-10 max-w-[65%]">
-                                <div className="truncate rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-medium text-white backdrop-blur-sm">
-                                  {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
-                                </div>
-                              </div>
+                    return (
+                      <div
+                        key={
+                          restaurant?.id ||
+                          restaurant?._id ||
+                          restaurantSlug ||
+                          index
+                        }
+                        className="h-full transform transition-all duration-300 hover:-translate-y-3 hover:scale-[1.02]"
+                        style={{
+                          perspective: 1000,
+                          animation:
+                            index < 10
+                              ? `fade-in-up 0.5s ease-out ${index * 0.05}s backwards`
+                              : "none",
+                        }}>
+                        <div className="h-full group">
+                          <Link
+                            to={`/user/restaurants/${restaurantSlug}`}
+                            className="h-full flex">
+                            <div className={`relative w-full overflow-hidden rounded-2xl shadow-sm transition-all duration-300 hover:shadow-lg active:scale-[0.98] ${
+                              isOutOfService || !availability.isOpen ? "grayscale opacity-70" : ""
+                            }`}>
+                              {/* Full image */}
+                              <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
+                                <RestaurantImageCarousel
+                                  restaurant={restaurant}
+                                  priority={index < 3}
+                                  backendOrigin={BACKEND_ORIGIN}
+                                />
 
-                              {/* Bookmark top-right */}
-                              <button
-                                onClick={handleToggleFavorite}
-                                className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 ${
-                                  favorite ? "bg-red-500 text-white" : "bg-white/85 text-gray-600 backdrop-blur-sm"
-                                }`}>
-                                <Bookmark className={`h-3.5 w-3.5 ${favorite ? "fill-white" : ""}`} />
-                              </button>
-
-                              {/* Dark bottom overlay */}
-                              <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-[2px] px-3 py-2.5">
-                                {/* Row 1: initial + name + arrow */}
-                                <div className="flex items-center gap-2">
-                                  <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/20 text-sm font-bold text-white">
-                                    {restaurant.name?.charAt(0) || "R"}
+                                {/* Featured dish badge top-left */}
+                                <div className="absolute left-2 top-2 z-10 max-w-[65%]">
+                                  <div className="truncate rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-medium text-white backdrop-blur-sm">
+                                    {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
                                   </div>
-                                  <div className="min-w-0 flex-1">
-                                    <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">
-                                      {restaurant.name}
-                                    </p>
-                                    <p className="line-clamp-1 text-[10px] text-white/70">
-                                      {restaurant.cuisine || (Array.isArray(restaurant.cuisines) ? restaurant.cuisines.join(", ") : "")}
-                                    </p>
-                                  </div>
-                                  <svg className="h-4 w-4 flex-shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                  </svg>
                                 </div>
 
-                                {/* Row 2: open + closes-in + rating */}
-                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                                  <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${
-                                    availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-500 text-white"
+                                {/* Bookmark top-right */}
+                                <button
+                                  onClick={handleToggleFavorite}
+                                  className={`absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full shadow transition-all duration-200 ${
+                                    favorite ? "bg-red-500 text-white" : "bg-white/85 text-gray-600 backdrop-blur-sm"
                                   }`}>
-                                    {availability.isOpen ? "Open" : "Closed"}
-                                  </span>
-                                  {availability.isOpen && availability.closingCountdownLabel && (
-                                    <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-300">
-                                      <Timer className="h-2.5 w-2.5 flex-shrink-0" strokeWidth={2.5} />
-                                      {availability.closingCountdownLabel}
+                                  <Bookmark className={`h-3.5 w-3.5 ${favorite ? "fill-white" : ""}`} />
+                                </button>
+
+                                {/* Dark bottom overlay */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-[2px] px-3 py-2.5">
+                                  {/* Row 1: initial + name + arrow */}
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/20 text-sm font-bold text-white">
+                                      {restaurant.name?.charAt(0) || "R"}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">
+                                        {restaurant.name}
+                                      </p>
+                                      <p className="line-clamp-1 text-[10px] text-white/70">
+                                        {restaurant.cuisine || (Array.isArray(restaurant.cuisines) ? restaurant.cuisines.join(", ") : "")}
+                                      </p>
+                                    </div>
+                                    <svg className="h-4 w-4 flex-shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                                    </svg>
+                                  </div>
+
+                                  {/* Row 2: open + closes-in + rating */}
+                                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${
+                                      availability.isOpen ? "bg-emerald-500 text-white" : "bg-gray-500 text-white"
+                                    }`}>
+                                      {availability.isOpen ? "Open" : "Closed"}
                                     </span>
-                                  )}
-                                  <div className={`ml-auto flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white ${
-                                    Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-500"
-                                  }`}>
-                                    <span>{Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}</span>
-                                    {Number(restaurant.rating) > 0 && <Star className="ml-0.5 h-2.5 w-2.5 fill-white" strokeWidth={0} />}
+                                    {availability.isOpen && availability.closingCountdownLabel && (
+                                      <span className="flex items-center gap-0.5 rounded-full border border-amber-400/30 bg-amber-500/20 px-1.5 py-0.5 text-[10.5px] font-semibold text-amber-300">
+                                        <Timer className="h-2.5 w-2.5 flex-shrink-0" strokeWidth={2.5} />
+                                        {availability.closingCountdownLabel}
+                                      </span>
+                                    )}
+                                    <div className={`ml-auto flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white ${
+                                      Number(restaurant.rating) > 0 ? "bg-[#259539]" : "bg-gray-500"
+                                    }`}>
+                                      <span>{Number(restaurant.rating) > 0 ? Number(restaurant.rating).toFixed(1) : "NEW"}</span>
+                                      {Number(restaurant.rating) > 0 && <Star className="ml-0.5 h-2.5 w-2.5 fill-white" strokeWidth={0} />}
+                                    </div>
                                   </div>
-                                </div>
 
-                                {/* Row 3: time + distance + offer */}
-                                <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-white">
-                                  <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
-                                  <span>{restaurant.deliveryTime}</span>
-                                  <span className="text-white/60">|</span>
-                                  <span>{restaurant.distance}</span>
-                                  {fulfillmentMode === "delivery" && Number(restaurant?.selfDelivery?.fee) >= 0 && (
-                                    <>
-                                      <span className="text-white/60">|</span>
-                                      <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
-                                      <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(0)}</span>
-                                    </>
-                                  )}
-                                  {restaurant.offer && (
-                                    <>
-                                      <span className="text-white/60">|</span>
-                                      <BadgePercent className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
-                                      <span className="line-clamp-1 flex-1">{restaurant.offer}</span>
-                                    </>
-                                  )}
+                                  {/* Row 3: time + distance + offer */}
+                                  <div className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-white">
+                                    <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
+                                    <span>{restaurant.deliveryTime}</span>
+                                    <span className="text-white/60">|</span>
+                                    <span>{restaurant.distance}</span>
+                                    {fulfillmentMode === "delivery" && Number(restaurant?.selfDelivery?.fee) >= 0 && (
+                                      <>
+                                        <span className="text-white/60">|</span>
+                                        <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
+                                        <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(0)}</span>
+                                      </>
+                                    )}
+                                    {restaurant.offer && (
+                                      <>
+                                        <span className="text-white/60">|</span>
+                                        <BadgePercent className="h-3 w-3 flex-shrink-0" strokeWidth={2.5} />
+                                        <span className="line-clamp-1 flex-1">{restaurant.offer}</span>
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                          </div>
-                        </Link>
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            <div className="flex flex-col items-center pt-2 sm:pt-3 gap-2 px-4">
-              {hasMoreRestaurants && (
-                <Button
-                  variant="outline"
-                  onClick={loadMoreRestaurants}
-                  className="text-sm font-medium border-gray-300 hover:border-gray-400">
-                  Load more restaurants
-                </Button>
-              )}
-              {fulfillmentMode === "delivery" && filteredRestaurants.length === 0 && (
-                <p className="text-sm text-gray-500 text-center">
-                  No self-delivery restaurants are currently available within your delivery radius.
-                </p>
-              )}
-              <div
-                ref={restaurantLoadMoreRef}
-                className="h-1 w-full"
-                aria-hidden="true"
-              />
-            </div>
-          </motion.section>
+              <div className="flex flex-col items-center pt-2 sm:pt-3 gap-2 px-4">
+                {hasMoreRestaurants && (
+                  <Button
+                    variant="outline"
+                    onClick={loadMoreRestaurants}
+                    className="text-sm font-medium border-gray-300 hover:border-gray-400">
+                    Load more restaurants
+                  </Button>
+                )}
+                {fulfillmentMode === "delivery" && filteredRestaurants.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center">
+                    No self-delivery restaurants are currently available within your delivery radius.
+                  </p>
+                )}
+                <div
+                  ref={restaurantLoadMoreRef}
+                  className="h-1 w-full"
+                  aria-hidden="true"
+                />
+              </div>
+            </motion.section>
+          )}
         </div>
         </motion.div>
       ) : activeTab === "quick" ? (

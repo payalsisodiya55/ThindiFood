@@ -44,7 +44,7 @@ const pickRestaurantImage = (restaurant) => {
 export default function Restaurants() {
   const { addFavorite, removeFavorite, isFavorite } = useProfile()
   const { location: userLocation } = useLocation()
-  const { zoneId } = useZone(userLocation)
+  const { zoneId, isOutOfService } = useZone(userLocation)
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const showRestaurantsSkeleton = useDelayedLoading(loading)
@@ -110,7 +110,7 @@ export default function Restaurants() {
   const hasRestaurants = useMemo(() => restaurants.length > 0, [restaurants.length])
 
   return (
-    <AnimatedPage className="min-h-screen bg-gradient-to-b from-yellow-50/30 dark:from-[#0a0a0a] via-white dark:via-[#0a0a0a] to-orange-50/20 dark:to-[#0a0a0a]">
+    <AnimatedPage className={`min-h-screen bg-gradient-to-b from-yellow-50/30 dark:from-[#0a0a0a] via-white dark:via-[#0a0a0a] to-orange-50/20 dark:to-[#0a0a0a] transition-all duration-300 ${isOutOfService ? "grayscale" : ""}`}>
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10 space-y-4 sm:space-y-6 lg:space-y-8">
         <ScrollReveal>
           <div className="flex items-center gap-3 sm:gap-4 lg:gap-5 mb-4 lg:mb-6">
