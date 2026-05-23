@@ -17,7 +17,6 @@ import {
 "lucide-react";
 import { Switch } from "@food/components/ui/switch";
 // Removed getAllFoods and saveFood - now using menu API
-import api from "@food/api";
 import { restaurantAPI, uploadAPI } from "@food/api";
 import { toast } from "sonner";
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker";
@@ -28,6 +27,7 @@ const debugWarn = (...args) => {};
 const debugError = (...args) => {};
 
 const INVENTORY_RECOMMENDED_KEY = "restaurant_inventory_recommended_map";
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 
 const getUploadErrorMessage = (error, fileName = "image") => {
@@ -102,6 +102,8 @@ export default function ItemDetailsPage() {
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingItem, setLoadingItem] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
+  const [touchedFields, setTouchedFields] = useState({});
+  const [saveAttempted, setSaveAttempted] = useState(false);
 
   const maxNameLength = 50;
   const maxDescriptionLength = 250;
@@ -110,6 +112,61 @@ export default function ItemDetailsPage() {
   const nameLength = itemName.length;
   const currentApprovalStatus = String(itemData?.approvalStatus || "").toLowerCase();
   const currentRejectionReason = String(itemData?.rejectionReason || "").trim();
+  const hasAttachedImage = images.some((img) =>
+  typeof img === "string" && String(img).trim() !== ""
+  );
+  const parsedBasePrice = Number(basePrice);
+  const isBasePriceValid = Number.isFinite(parsedBasePrice) && parsedBasePrice > 0;
+  const nameError =
+  !itemName.trim() ?
+  "Please enter an item name" :
+  null;
+  const descriptionError =
+  itemDescription.trim() && itemDescription.trim().length < minDescriptionLength ?
+  "Min 5 characters required" :
+  null;
+  const categoryError =
+  !selectedCategoryId ?
+  "Please select a category" :
+  null;
+  const imageError =
+  !hasAttachedImage ?
+  "Please upload a menu item image" :
+  null;
+  const basePriceError =
+  variants.length === 0 && !isBasePriceValid ?
+  "Please enter a base price greater than 0" :
+  null;
+
+  const shouldShowFieldError = (field, hasValue = false) =>
+  Boolean(saveAttempted || touchedFields[field] || hasValue);
+
+  const getVariantErrors = (variant, allVariants) => {
+    const name = String(variant?.name || "").trim();
+    const price = String(variant?.price || "").trim();
+    const lowercaseNames = allVariants.map((entry) => String(entry?.name || "").trim().toLowerCase()).filter(Boolean);
+    const prices = allVariants.map((entry) => String(entry?.price || "").trim()).filter(Boolean);
+
+    return {
+      name: !name ?
+      "Variant name is required" :
+      lowercaseNames.filter((entry) => entry === name.toLowerCase()).length > 1 ?
+      "Duplicate variant name" :
+      null,
+      price: !price ?
+      "Variant price is required" :
+      !(Number(price) > 0) ?
+      "Variant price must be greater than 0" :
+      prices.filter((entry) => entry === price).length > 1 ?
+      "Duplicate price" :
+      null
+    };
+  };
+
+  const hasIncompleteVariant = variants.some((variant) => {
+    const errors = getVariantErrors(variant, variants);
+    return Boolean(errors.name || errors.price);
+  });
 
   const populateFormFromItem = (item = {}) => {
     setItemData(item);
@@ -389,6 +446,10 @@ export default function ItemDetailsPage() {
 
   const handleImageAdd = (file) => {
     if (!file) return;
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      toast.error("Image size should be less than 5MB");
+      return;
+    }
 
     // Single-image mode: keep only the first selected valid file
     const previewUrl = URL.createObjectURL(file);
@@ -537,14 +598,24 @@ export default function ItemDetailsPage() {
   };
 
   const handleSave = async () => {
+    setSaveAttempted(true);
+    setTouchedFields((prev) => ({
+      ...prev,
+      itemName: true,
+      itemDescription: true,
+      category: true,
+      image: true,
+      basePrice: true
+    }));
+
     if (!itemName.trim()) {
       toast.error("Please enter an item name");
       return;
     }
-
-    const hasAttachedImage = images.some((img) =>
-      typeof img === "string" && String(img).trim() !== ""
-    );
+    if (itemDescription.trim() && itemDescription.trim().length < minDescriptionLength) {
+      toast.error("Item description must be at least 5 characters");
+      return;
+    }
     if (!hasAttachedImage) {
       toast.error("Please upload a menu item image");
       return;
@@ -675,10 +746,18 @@ export default function ItemDetailsPage() {
         return;
       }
 
+      const normalizedVariantPrices = normalizedVariants.map((variant) =>
+      Number(variant.price)
+      );
+      if (new Set(normalizedVariantPrices).size !== normalizedVariantPrices.length) {
+        toast.error("Duplicate prices are not allowed in the variant list");
+        setUploadingImages(false);
+        return;
+      }
+
       const hasVariants = normalizedVariants.length > 0;
-      const parsedBasePrice = Number(basePrice);
-      if (!hasVariants && (!Number.isFinite(parsedBasePrice) || parsedBasePrice < 0)) {
-        toast.error("Please enter a valid base price");
+      if (!hasVariants && (!Number.isFinite(parsedBasePrice) || parsedBasePrice <= 0)) {
+        toast.error("Please enter a base price greater than 0");
         setUploadingImages(false);
         return;
       }
@@ -772,6 +851,10 @@ export default function ItemDetailsPage() {
   };
 
   const handleVariantChange = (localId, field, value) => {
+    setTouchedFields((prev) => ({
+      ...prev,
+      [`variant-${localId}-${field}`]: true
+    }));
     setVariants((prev) =>
     prev.map((variant) =>
     variant.localId === localId ? { ...variant, [field]: value } : variant
@@ -780,6 +863,38 @@ export default function ItemDetailsPage() {
   };
 
   const handleAddVariant = () => {
+    setTouchedFields((prev) => ({
+      ...prev,
+      itemName: true,
+      itemDescription: true,
+      category: true,
+      image: true,
+      basePrice: true
+    }));
+    if (!itemName.trim()) {
+      toast.error("Please enter item name before adding variants");
+      return;
+    }
+    if (itemDescription.trim() && itemDescription.trim().length < minDescriptionLength) {
+      toast.error("Please enter at least 5 characters in description before adding variants");
+      return;
+    }
+    if (!selectedCategoryId) {
+      toast.error("Please select category before adding variants");
+      return;
+    }
+    if (!images.some((img) => typeof img === "string" && String(img).trim() !== "")) {
+      toast.error("Please add item image before adding variants");
+      return;
+    }
+    if (variants.length === 0 && !isBasePriceValid) {
+      toast.error("Please enter a valid base price before adding variants");
+      return;
+    }
+    if (hasIncompleteVariant) {
+      toast.error("Please complete the current variant before adding another one");
+      return;
+    }
     setVariants((prev) => [...prev, createVariantDraft()]);
   };
 
@@ -787,10 +902,31 @@ export default function ItemDetailsPage() {
     setVariants((prev) => prev.filter((variant) => variant.localId !== localId));
   };
 
-  const handleDelete = () => {
-    // Delete logic here
-    debugLog("Deleting item:", id);
-    goBack();
+  const handleDelete = async () => {
+    if (isNewItem) {
+      navigate("/food/restaurant/inventory", { replace: true });
+      return;
+    }
+
+    const itemId = String(itemData?.id || id || "").trim();
+    if (!itemId) {
+      toast.error("Invalid item id");
+      return;
+    }
+
+    if (!(await confirmApp("Are you sure you want to delete this item?"))) {
+      return;
+    }
+
+    try {
+      await restaurantAPI.deleteFood(itemId);
+      toast.success("Item deleted successfully");
+      navigate("/food/restaurant/inventory", { replace: true });
+      window.dispatchEvent(new CustomEvent("foodsChanged"));
+    } catch (error) {
+      debugError("Failed to delete item:", error);
+      toast.error(error?.response?.data?.message || "Failed to delete item");
+    }
   };
 
   return (
@@ -837,6 +973,9 @@ export default function ItemDetailsPage() {
             <p className="text-sm font-medium text-gray-900">
               Item image<span className="text-rose-500 ml-1">*</span>
             </p>
+            {shouldShowFieldError("image") && imageError ?
+            <p className="mt-1 text-xs text-red-500">{imageError}</p> :
+            null}
           </div>
           {images.length > 0 ?
           <div className="relative w-full h-80 overflow-hidden bg-gray-100">
@@ -965,13 +1104,16 @@ export default function ItemDetailsPage() {
             </label>
             <button
               onClick={() => setIsCategoryPopupOpen(true)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors">
+              className={`w-full px-4 py-3 border rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors ${shouldShowFieldError("category", Boolean(selectedCategoryId)) && categoryError ? "border-red-500" : "border-gray-300"}`}>
               
               <span className="text-sm text-gray-900">
                 {category || "Select category"}
               </span>
               <ChevronDown className="w-5 h-5 text-gray-500" />
             </button>
+            {shouldShowFieldError("category", Boolean(selectedCategoryId)) && categoryError ?
+            <p className="mt-1 text-xs text-red-500">{categoryError}</p> :
+            null}
           </div>
 
           {/* Item Name */}
@@ -984,13 +1126,16 @@ export default function ItemDetailsPage() {
                 type="text"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
+                onBlur={() => setTouchedFields((prev) => ({ ...prev, itemName: true }))}
                 maxLength={maxNameLength}
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter item name" />
               
             </div>
             <div className="flex items-center justify-between mt-1">
-              <span className="text-xs text-gray-500">Maximum 50 characters allowed</span>
+              <span className={`text-xs ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "text-red-500" : "text-gray-500"}`}>
+                {shouldShowFieldError("itemName", itemName.length > 0) && nameError ? nameError : "Maximum 50 characters allowed"}
+              </span>
               <span className="text-xs text-gray-500">
                 {nameLength} / {maxNameLength}
               </span>
@@ -1007,15 +1152,16 @@ export default function ItemDetailsPage() {
               <textarea
                 value={itemDescription}
                 onChange={(e) => setItemDescription(e.target.value)}
+                onBlur={() => setTouchedFields((prev) => ({ ...prev, itemDescription: true }))}
                 maxLength={maxDescriptionLength}
                 rows={4}
                 placeholder="Eg: Yummy veg paneer burger with a soft patty, veggies, cheese, and special sauce"
-                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none" />
+                className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "border-red-500" : "border-gray-300"}`} />
               
             </div>
             <div className="flex items-center justify-between mt-1">
-              <span className={`text-xs ${descriptionLength < minDescriptionLength ? "text-red-500" : "text-gray-500"}`}>
-                {descriptionLength < minDescriptionLength ? "Min 5 characters required" : "Maximum 250 characters allowed"}
+              <span className={`text-xs ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "text-red-500" : "text-gray-500"}`}>
+                {shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? descriptionError : "Maximum 250 characters allowed"}
               </span>
               <span className="text-xs text-gray-500">
                 {descriptionLength} / {maxDescriptionLength}
@@ -1075,6 +1221,7 @@ export default function ItemDetailsPage() {
                       value;
                       setBasePrice(cleanedValue);
                     }}
+                    onBlur={() => setTouchedFields((prev) => ({ ...prev, basePrice: true }))}
                     onFocus={(e) => {
                       if (e.target.value.startsWith('\u20B9')) {
                         e.target.value = e.target.value.replace(/[\u20B9\s]+/g, '');
@@ -1082,11 +1229,13 @@ export default function ItemDetailsPage() {
                     }}
                     placeholder="Enter price"
                     maxLength={5}
-                    className="w-full pl-8 pr-12 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    className={`w-full pl-8 pr-12 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${shouldShowFieldError("basePrice", basePrice.length > 0) && basePriceError ? "border-red-500" : "border-gray-300"}`} />
                   
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Only 5 digits allowed</p>
+                  <p className={`text-xs mt-1 ${shouldShowFieldError("basePrice", basePrice.length > 0) && basePriceError ? "text-red-500" : "text-gray-500"}`}>
+                    {shouldShowFieldError("basePrice", basePrice.length > 0) && basePriceError ? basePriceError : "Only 5 digits allowed"}
+                  </p>
                 </div> :
 
               <div className="rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-sm text-orange-700">
@@ -1103,7 +1252,7 @@ export default function ItemDetailsPage() {
                   <button
                     type="button"
                     onClick={handleAddVariant}
-                    className="inline-flex items-center gap-1 rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 hover:bg-orange-100">
+                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${hasIncompleteVariant ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"}`}>
                     
                     <Plus className="w-3.5 h-3.5" />
                     Add variant
@@ -1112,57 +1261,83 @@ export default function ItemDetailsPage() {
 
                 {variants.length > 0 ?
                 <div className="space-y-3">
-                    {variants.map((variant, index) =>
-                  <div key={variant.localId} className="grid grid-cols-[1fr_auto] items-end gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Variant name</label>
-                            <input
-                          type="text"
-                          value={variant.name}
-                          onChange={(e) => handleVariantChange(variant.localId, "name", e.target.value)}
-                          placeholder={index === 0 ? "Full" : "Half"}
-                          maxLength={30}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                            <div className="flex items-center justify-between mt-1 px-0.5">
-                              <span className="text-[10px] text-gray-500">Maximum 30 characters allowed</span>
-                              <span className="text-[10px] text-gray-500">{(variant.name || "").length} / 30</span>
+                    {(() => {
+                      const lowercaseNames = variants.map(v => (v.name || "").trim().toLowerCase());
+                      const prices = variants.map(v => (v.price || "").trim());
+                      return variants.map((variant, index) => {
+                        const name = (variant.name || "").trim().toLowerCase();
+                        const price = (variant.price || "").trim();
+                        const isDuplicateName = name && lowercaseNames.filter(n => n === name).length > 1;
+                        const isDuplicatePrice = price && prices.filter(p => p === price).length > 1;
+                        const fieldErrors = getVariantErrors(variant, variants);
+                        const showNameError = Boolean(touchedFields[`variant-${variant.localId}-name`] || variant.name || saveAttempted) && fieldErrors.name;
+                        const showPriceError = Boolean(touchedFields[`variant-${variant.localId}-price`] || variant.price || saveAttempted) && fieldErrors.price;
+                        return (
+                          <div key={variant.localId} className="relative rounded-lg border border-gray-200 bg-gray-50 p-3 pr-12">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Variant name</label>
+                                <input
+                                  type="text"
+                                  value={variant.name}
+                                  onChange={(e) => handleVariantChange(variant.localId, "name", e.target.value)}
+                                  onBlur={() => setTouchedFields((prev) => ({ ...prev, [`variant-${variant.localId}-name`]: true }))}
+                                  placeholder={index === 0 ? "Full" : "Half"}
+                                  maxLength={30}
+                                  className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                    showNameError || isDuplicateName ? "border-red-500 ring-2 ring-red-500/20" : "border-gray-300"
+                                  }`} />
+                                <div className="flex items-center justify-between mt-1 px-0.5">
+                                  {showNameError ? (
+                                    <span className="text-[10px] text-red-500 font-medium">{fieldErrors.name}</span>
+                                  ) : (
+                                    <span className="text-[10px] text-gray-500">Maximum 30 characters allowed</span>
+                                  )}
+                                  <span className="text-[10px] text-gray-500">{(variant.name || "").length} / 30</span>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="block text-xs text-gray-600 mb-1">Variant price</label>
+                                <div className="relative">
+                                  <input
+                                    type="text"
+                                    value={variant.price}
+                                    onChange={(e) => {
+                                      const value = e.target.value.replace(/[\u20B9\s,]/g, '').replace(/[^0-9.]/g, '');
+                                      const parts = value.split('.');
+                                      const cleanedValue = parts.length > 2 ?
+                                      parts[0] + '.' + parts.slice(1).join('') :
+                                      value;
+                                      handleVariantChange(variant.localId, "price", cleanedValue);
+                                    }}
+                                    onBlur={() => setTouchedFields((prev) => ({ ...prev, [`variant-${variant.localId}-price`]: true }))}
+                                    placeholder="Enter price"
+                                    maxLength={5}
+                                    className={`w-full pl-8 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                      showPriceError || isDuplicatePrice ? "border-red-500 ring-2 ring-red-500/20" : "border-gray-300"
+                                    }`} />
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
+                                </div>
+                                {showPriceError ? (
+                                  <p className="text-[10px] text-red-500 font-medium mt-1 px-0.5">{fieldErrors.price}</p>
+                                ) : (
+                                  <p className="text-[10px] text-gray-500 mt-1 px-0.5">Only 5 digits allowed</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveVariant(variant.localId)}
+                                className="rounded-full p-2 text-red-500 hover:bg-white hover:text-red-600 transition-colors"
+                                aria-label="Remove variant">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
-                          <div>
-                            <label className="block text-xs text-gray-600 mb-1">Variant price</label>
-                            <div className="relative">
-                              <input
-                            type="text"
-                            value={variant.price}
-                            onChange={(e) => {
-                              const value = e.target.value.replace(/[\u20B9\s,]/g, '').replace(/[^0-9.]/g, '');
-                              const parts = value.split('.');
-                              const cleanedValue = parts.length > 2 ?
-                              parts[0] + '.' + parts.slice(1).join('') :
-                              value;
-                              handleVariantChange(variant.localId, "price", cleanedValue);
-                            }}
-                            placeholder="Enter price"
-                            maxLength={5}
-                            className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-                          
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
-                            </div>
-                            <p className="text-[10px] text-gray-500 mt-1 px-0.5">Only 5 digits allowed</p>
-                          </div>
-                        </div>
-                        <div className="h-[38px] flex items-center justify-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVariant(variant.localId)}
-                            className="rounded-full p-2 text-red-500 hover:bg-white hover:text-red-600 transition-colors"
-                            aria-label="Remove variant">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                  )}
+                        );
+                      });
+                    })()}
                   </div> :
 
                 <p className="text-xs text-gray-500">No variants added. This item will use the base price only.</p>

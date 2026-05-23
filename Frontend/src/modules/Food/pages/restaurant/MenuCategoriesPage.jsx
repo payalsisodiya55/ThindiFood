@@ -531,8 +531,13 @@ export default function MenuCategoriesPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  maxLength={30}
                   placeholder="Enter category name"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900" />
+                  <div className="flex items-center justify-between mt-1 px-0.5">
+                    <span className="text-[10px] text-slate-500">Maximum 30 characters allowed</span>
+                    <span className="text-[10px] text-slate-500">{(formData.name || "").length} / 30</span>
+                  </div>
                 
                 </div>
 
@@ -562,8 +567,13 @@ export default function MenuCategoriesPage() {
                   type="text"
                   value={formData.type}
                   onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
+                  maxLength={30}
                   placeholder="Examples: Starters, Desserts, Drinks"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900" />
+                  <div className="flex items-center justify-between mt-1 px-0.5">
+                    <span className="text-[10px] text-slate-500">Maximum 30 characters allowed</span>
+                    <span className="text-[10px] text-slate-500">{(formData.type || "").length} / 30</span>
+                  </div>
                 
                 </div>
 
@@ -575,14 +585,16 @@ export default function MenuCategoriesPage() {
                   className="h-16 w-16 rounded-2xl object-cover" />
 
                 }
-                  <button
-                  type="button"
-                  onClick={handleImageClick}
-                  className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700">
-                  
-                    <Upload className="h-4 w-4" />
-                    Upload Image
-                  </button>
+                  <div className="flex flex-col items-start gap-1">
+                    <button
+                      type="button"
+                      onClick={handleImageClick}
+                      className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-700">
+                      <Upload className="h-4 w-4" />
+                      Upload Image
+                    </button>
+                    <p className="text-[10px] text-slate-500 mt-1 px-0.5">Max size 5MB allowed</p>
+                  </div>
                   <input
                   ref={fileInputRef}
                   type="file"

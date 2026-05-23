@@ -318,3 +318,17 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
 
     return updated;
 }
+
+export async function deleteRestaurantFood(restaurantId, foodId) {
+    await getRestaurantContext(restaurantId);
+    if (!foodId || !mongoose.Types.ObjectId.isValid(String(foodId))) {
+        throw new ValidationError('Invalid food id');
+    }
+
+    const deleted = await FoodItem.findOneAndDelete({
+        _id: new mongoose.Types.ObjectId(String(foodId)),
+        restaurantId: new mongoose.Types.ObjectId(String(restaurantId))
+    }).lean();
+
+    return deleted ? { id: String(deleted._id) } : null;
+}
