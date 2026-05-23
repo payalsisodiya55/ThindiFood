@@ -158,9 +158,92 @@ function ImgCarousel({ restaurant, priority = false }) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function Delivery() {
-  const { location } = useLocation();
-  const { zoneId, isOutOfService } = useZone(location);
-  const { vegMode } = useProfile();
+  const { location: geolocatedLocation } = useLocation();
+  const { vegMode, getDefaultAddress } = useProfile();
+
+  const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("deliveryAddressMode") || "saved";
+    }
+    return "saved";
+  });
+
+  useEffect(() => {
+    const handleLocationUpdate = () => {
+      if (typeof window !== "undefined") {
+        setDeliveryAddressMode(localStorage.getItem("deliveryAddressMode") || "saved");
+      }
+    };
+    window.addEventListener("userLocationUpdated", handleLocationUpdate);
+    return () => {
+      window.removeEventListener("userLocationUpdated", handleLocationUpdate);
+    };
+  }, []);
+
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress]
+  );
+
+  const defaultSavedAddressLocation = useMemo(() => {
+    if (!defaultSavedAddress) return null;
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0]);
+      const lat = parseFloat(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+
+    const lat = parseFloat(
+      defaultSavedAddress?.latitude || defaultSavedAddress?.lat
+    );
+    const lng = parseFloat(
+      defaultSavedAddress?.longitude || defaultSavedAddress?.lng
+    );
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+
+  const savedAddressText = useMemo(() => {
+    if (!defaultSavedAddress) return "";
+    if (defaultSavedAddress.formattedAddress && defaultSavedAddress.formattedAddress !== "Select location") {
+      return defaultSavedAddress.formattedAddress;
+    }
+    const parts = [];
+    if (defaultSavedAddress.additionalDetails) parts.push(defaultSavedAddress.additionalDetails);
+    if (defaultSavedAddress.street) parts.push(defaultSavedAddress.street);
+    if (defaultSavedAddress.city) parts.push(defaultSavedAddress.city);
+    if (defaultSavedAddress.state) parts.push(defaultSavedAddress.state);
+    if (defaultSavedAddress.zipCode) parts.push(defaultSavedAddress.zipCode);
+    if (parts.length > 0) return parts.join(", ");
+    if (defaultSavedAddress.address && defaultSavedAddress.address !== "Select location") {
+      return defaultSavedAddress.address;
+    }
+    return "";
+  }, [defaultSavedAddress]);
+
+  const shouldUseSavedAddress = deliveryAddressMode === "saved" && Boolean(defaultSavedAddressLocation);
+
+  const activeLocation = useMemo(() => {
+    if (shouldUseSavedAddress) {
+      return {
+        ...defaultSavedAddress,
+        latitude: defaultSavedAddressLocation.latitude,
+        longitude: defaultSavedAddressLocation.longitude,
+        formattedAddress: savedAddressText,
+        address: defaultSavedAddress.additionalDetails || defaultSavedAddress.street || defaultSavedAddress.city || "Select Location",
+        area: defaultSavedAddress.additionalDetails || ""
+      };
+    }
+    return geolocatedLocation;
+  }, [shouldUseSavedAddress, defaultSavedAddress, defaultSavedAddressLocation, savedAddressText, geolocatedLocation]);
+
+  const { zoneId, isOutOfService } = useZone(activeLocation);
   const { openLocationSelector } = useLocationSelector();
   const { openSearch } = useSearchOverlay();
   const [availabilityTick] = useState(Date.now());
@@ -183,7 +266,7 @@ export default function Delivery() {
         const res = await restaurantAPI.getRestaurants(params);
         if (cancelled) return;
         const list = res.data?.data?.restaurants || [];
-        const userLat = location?.latitude, userLng = location?.longitude;
+        const userLat = activeLocation?.latitude, userLng = activeLocation?.longitude;
 
         const mapped = list
           .map(r => {
@@ -245,7 +328,7 @@ export default function Delivery() {
     };
     fetch();
     return () => { cancelled = true; };
-  }, [location?.latitude, location?.longitude, zoneId]);
+  }, [activeLocation?.latitude, activeLocation?.longitude, zoneId]);
 
   const filtered = useMemo(() => {
     let list = restaurants;
@@ -257,8 +340,10 @@ export default function Delivery() {
     return list;
   }, [restaurants, vegMode, searchText]);
 
-  const locationTitle = location?.area || location?.city || "Select Location";
-  const locationSubtitle = location?.city || location?.state || "";
+  const locationTitle = (deliveryAddressMode === "saved" && defaultSavedAddress)
+    ? (defaultSavedAddress.additionalDetails || defaultSavedAddress.street || defaultSavedAddress.city || "Select Location")
+    : (activeLocation?.area || activeLocation?.city || "Select Location");
+  const locationSubtitle = activeLocation?.formattedAddress || activeLocation?.address || activeLocation?.city || "";
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a]">
@@ -269,12 +354,12 @@ export default function Delivery() {
           <div className="flex items-center justify-between mb-3">
             <button onClick={openLocationSelector} className="flex items-center gap-1.5 text-white flex-1 min-w-0">
               <Navigation className="h-3.5 w-3.5 flex-shrink-0" fill="white" strokeWidth={2.5} />
-              <div className="flex flex-col items-start min-w-0">
-                <div className="flex items-center gap-1">
-                  <span className="font-extrabold text-sm truncate">{locationTitle}</span>
-                  <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" strokeWidth={3} />
+              <div className="flex flex-col items-start min-w-0 w-full max-w-[280px]">
+                <div className="flex items-center gap-1 min-w-0 w-full">
+                  <span className="font-extrabold text-sm truncate block max-w-[220px]">{locationTitle}</span>
+                  <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-90" strokeWidth={3} />
                 </div>
-                {locationSubtitle && <span className="text-white/75 text-[10px] truncate">{locationSubtitle}</span>}
+                {locationSubtitle && <span className="text-white/75 text-[10px] truncate w-full block max-w-[240px]">{locationSubtitle}</span>}
               </div>
             </button>
           </div>

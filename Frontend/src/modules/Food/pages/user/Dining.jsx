@@ -145,9 +145,97 @@ export default function Dining() {
   const rightContentRef = useRef(null)
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
   const { openLocationSelector } = useLocationSelector()
-  const { location } = useLocationHook()
-  const { zoneId, loading: zoneLoading, isOutOfService } = useZone(location)
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { location: geolocatedLocation } = useLocationHook()
+  const { addFavorite, removeFavorite, isFavorite, getDefaultAddress } = useProfile()
+
+  const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("deliveryAddressMode") || "saved";
+    }
+    return "saved";
+  });
+
+  useEffect(() => {
+    const handleLocationUpdate = () => {
+      if (typeof window !== "undefined") {
+        setDeliveryAddressMode(localStorage.getItem("deliveryAddressMode") || "saved");
+      }
+    };
+    window.addEventListener("userLocationUpdated", handleLocationUpdate);
+    return () => {
+      window.removeEventListener("userLocationUpdated", handleLocationUpdate);
+    };
+  }, []);
+
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress]
+  );
+
+  const defaultSavedAddressLocation = useMemo(() => {
+    if (!defaultSavedAddress) return null;
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = parseFloat(coords[0]);
+      const lat = parseFloat(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng };
+      }
+    }
+
+    const lat = parseFloat(
+      defaultSavedAddress?.latitude || defaultSavedAddress?.lat
+    );
+    const lng = parseFloat(
+      defaultSavedAddress?.longitude || defaultSavedAddress?.lng
+    );
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+
+  const savedAddressText = useMemo(() => {
+    if (!defaultSavedAddress) return "";
+    if (defaultSavedAddress.formattedAddress && defaultSavedAddress.formattedAddress !== "Select location") {
+      return defaultSavedAddress.formattedAddress;
+    }
+    const parts = [];
+    if (defaultSavedAddress.additionalDetails) parts.push(defaultSavedAddress.additionalDetails);
+    if (defaultSavedAddress.street) parts.push(defaultSavedAddress.street);
+    if (defaultSavedAddress.city) parts.push(defaultSavedAddress.city);
+    if (defaultSavedAddress.state) parts.push(defaultSavedAddress.state);
+    if (defaultSavedAddress.zipCode) parts.push(defaultSavedAddress.zipCode);
+    if (parts.length > 0) return parts.join(", ");
+    if (defaultSavedAddress.address && defaultSavedAddress.address !== "Select location") {
+      return defaultSavedAddress.address;
+    }
+    return "";
+  }, [defaultSavedAddress]);
+
+  const savedAddressTitle = useMemo(() => {
+    if (!defaultSavedAddress) return "";
+    return defaultSavedAddress.additionalDetails || defaultSavedAddress.street || defaultSavedAddress.city || "";
+  }, [defaultSavedAddress]);
+
+  const shouldUseSavedAddress = deliveryAddressMode === "saved" && Boolean(defaultSavedAddressLocation);
+
+  const activeLocation = useMemo(() => {
+    if (shouldUseSavedAddress) {
+      return {
+        ...defaultSavedAddress,
+        latitude: defaultSavedAddressLocation.latitude,
+        longitude: defaultSavedAddressLocation.longitude,
+        formattedAddress: savedAddressText,
+        address: defaultSavedAddress.additionalDetails || defaultSavedAddress.street || defaultSavedAddress.city || "Select Location",
+        area: defaultSavedAddress.additionalDetails || ""
+      };
+    }
+    return geolocatedLocation;
+  }, [shouldUseSavedAddress, defaultSavedAddress, defaultSavedAddressLocation, savedAddressText, geolocatedLocation]);
+
+  const { zoneId, loading: zoneLoading, isOutOfService } = useZone(activeLocation)
 
   const [categories, setCategories] = useState([])
   const [restaurantList, setRestaurantList] = useState([])
@@ -205,7 +293,7 @@ export default function Dining() {
     const fetchDiningData = async () => {
       try {
         setLoading(true)
-        const hasCoordinates = Number.isFinite(Number(location?.latitude)) && Number.isFinite(Number(location?.longitude))
+        const hasCoordinates = Number.isFinite(Number(activeLocation?.latitude)) && Number.isFinite(Number(activeLocation?.longitude))
         const shouldFetchRestaurants = Boolean(zoneId) && !isOutOfService
         const restaurantParams = shouldFetchRestaurants ? { zoneId, _ts: Date.now() } : null
         const [bannerResponse, cats, rests] = await Promise.all([
@@ -249,7 +337,7 @@ export default function Dining() {
       }
     }
     fetchDiningData()
-  }, [isOutOfService, location?.latitude, location?.longitude, zoneId, zoneLoading])
+  }, [isOutOfService, activeLocation?.latitude, activeLocation?.longitude, zoneId, zoneLoading])
 
   useEffect(() => {
     if (placeholders.length <= 1) return undefined
@@ -283,7 +371,7 @@ export default function Dining() {
     return (Array.isArray(restaurantList) ? restaurantList : [])
       .filter((restaurant) => String(restaurant?.restaurantName || restaurant?.name || "").trim().length > 0)
       .map((restaurant, index) => {
-        const distanceKm = getDistanceKm(location, restaurant)
+        const distanceKm = getDistanceKm(activeLocation, restaurant)
         const restaurantName = String(restaurant?.restaurantName || restaurant?.name || "").trim()
         return {
           ...restaurant,
@@ -327,7 +415,7 @@ export default function Dining() {
           diningType: restaurant?.diningSettings?.diningType || restaurant?.categories?.[0]?.slug || "dining",
         }
       })
-  }, [restaurantList, location])
+  }, [restaurantList, activeLocation])
 
   const categoryRestaurantKeys = useMemo(() => {
     const keySet = new Set()
@@ -584,8 +672,8 @@ export default function Dining() {
         <HomeHeader
           activeTab="food"
           setActiveTab={() => {}}
-          location={location}
-          savedAddressText={location?.area || location?.city || ""}
+          location={activeLocation}
+          savedAddressText={deliveryAddressMode === "saved" ? savedAddressTitle : ""}
           handleLocationClick={openLocationSelector}
           handleSearchFocus={handleSearchFocus}
           placeholderIndex={placeholderIndex}
@@ -605,8 +693,8 @@ export default function Dining() {
         <HomeHeader
           activeTab="food"
           setActiveTab={() => {}}
-          location={location}
-          savedAddressText={location?.area || location?.city || ""}
+          location={activeLocation}
+          savedAddressText={deliveryAddressMode === "saved" ? savedAddressTitle : ""}
           handleLocationClick={openLocationSelector}
           handleSearchFocus={handleSearchFocus}
           placeholderIndex={placeholderIndex}

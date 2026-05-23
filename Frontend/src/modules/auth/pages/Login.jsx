@@ -81,7 +81,7 @@ export default function UnifiedOTPFastLogin() {
       setOtp("")
       setStep(2)
       setResendTimer(RESEND_COOLDOWN_SECONDS)
-      toast.success("OTP sent! Check your phone.")
+      toast.success("OTP has been successfully sent. Please check your phone.")
     } catch (err) {
       const msg = err?.response?.data?.message || err?.message || "Failed to send OTP."
       toast.error(msg)

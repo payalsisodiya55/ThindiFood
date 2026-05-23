@@ -281,7 +281,17 @@ export default function DesktopNavbar({ showLogo = true }) {
                                     </div>
                                     <Switch
                                         checked={vegMode}
-                                        onCheckedChange={setVegMode}
+                                        onCheckedChange={(newValue) => {
+                                            const event = new CustomEvent("thindi:vegModeClick", { 
+                                                detail: { value: newValue },
+                                                cancelable: true
+                                            });
+                                            window.dispatchEvent(event);
+                                            
+                                            if (!event.defaultPrevented) {
+                                                setVegMode(newValue);
+                                            }
+                                        }}
                                         className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-gray-300 dark:data-[state=unchecked]:bg-gray-600 h-5 w-9"
                                     />
                                 </div>

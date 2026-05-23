@@ -910,37 +910,40 @@ export default function Home() {
     }
   };
 
-  // Update popup position on scroll/resize
+  // Close Veg Mode Popup on browser/hardware back button press
   useEffect(() => {
     if (!showVegModePopup) return;
 
-    const updatePosition = () => {
-      if (vegModeToggleRef.current) {
-        const rect = vegModeToggleRef.current.getBoundingClientRect();
-        const screenWidth = window.innerWidth;
-        const popupWidth = Math.min(screenWidth - 32, 320);
-        
-        let left = rect.left + rect.width / 2 - popupWidth / 2;
-        left = Math.max(16, Math.min(left, screenWidth - popupWidth - 16));
-        
-        const triangleLeft = rect.left + rect.width / 2 - left;
-        
-        setPopupPosition({
-          top: rect.bottom + 10,
-          left: left,
-          triangleLeft: triangleLeft
-        });
+    // Push a dummy history state so the next back press pops it instead of navigating the page/app
+    window.history.pushState({ isVegPopupOpen: true }, "");
+
+    const handlePopState = (event) => {
+      setShowVegModePopup(false);
+      setVegModeContext(false);
+      setPrevVegMode(false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // Clean up the dummy state if closed by other means (Apply / Close / Backdrop click)
+      if (window.history.state?.isVegPopupOpen) {
+        window.history.back();
       }
     };
-
-    window.addEventListener("scroll", updatePosition, true);
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.removeEventListener("scroll", updatePosition, true);
-      window.removeEventListener("resize", updatePosition);
-    };
   }, [showVegModePopup]);
+
+  // Intercept Veg Mode clicks from DesktopNavbar
+  useEffect(() => {
+    const handleDesktopVegClick = (e) => {
+      e.preventDefault();
+      handleVegModeChange(e.detail.value);
+    };
+    window.addEventListener("thindi:vegModeClick", handleDesktopVegClick);
+    return () => {
+      window.removeEventListener("thindi:vegModeClick", handleDesktopVegClick);
+    };
+  }, [prevVegMode]);
 
   // Old backend endpoint removed: keep UI stable with empty categories.
   useEffect(() => {
@@ -1240,6 +1243,12 @@ export default function Home() {
     return formatSavedAddress(defaultAddress);
   }, [getDefaultAddress, formatSavedAddress]);
 
+  const savedAddressTitle = useMemo(() => {
+    const defaultAddress = getDefaultAddress?.();
+    if (!defaultAddress) return "";
+    return defaultAddress.additionalDetails || defaultAddress.street || defaultAddress.city || "";
+  }, [getDefaultAddress]);
+
   const defaultSavedAddress = useMemo(
     () => getDefaultAddress?.() || null,
     [getDefaultAddress],
@@ -1298,6 +1307,20 @@ export default function Home() {
     fulfillmentMode === "delivery" &&
     deliveryAddressMode === "saved" &&
     Boolean(defaultSavedAddressLocation);
+
+  const activeLocation = useMemo(() => {
+    if (shouldUseSavedAddressZone && defaultSavedAddress) {
+      return {
+        ...defaultSavedAddress,
+        latitude: defaultSavedAddressLocation.latitude,
+        longitude: defaultSavedAddressLocation.longitude,
+        formattedAddress: savedAddressText,
+        address: defaultSavedAddress.additionalDetails || defaultSavedAddress.street || defaultSavedAddress.city || "Select Location",
+        area: defaultSavedAddress.additionalDetails || ""
+      };
+    }
+    return location;
+  }, [shouldUseSavedAddressZone, defaultSavedAddress, defaultSavedAddressLocation, location, savedAddressText]);
 
   const activeZoneId = shouldUseSavedAddressZone ? savedAddressZoneId : zoneId;
   const activeZoneLoading = shouldUseSavedAddressZone
@@ -2683,8 +2706,8 @@ export default function Home() {
         <HomeHeader 
           activeTab={activeTab}
           setActiveTab={handleTabChange}
-          location={location}
-          savedAddressText={deliveryAddressMode === "saved" ? savedAddressText : ""}
+          location={activeLocation}
+          savedAddressText={deliveryAddressMode === "saved" ? savedAddressTitle : ""}
           handleLocationClick={handleLocationClick}
           handleSearchFocus={handleSearchFocus}
           placeholderIndex={placeholderIndex}
@@ -2705,8 +2728,8 @@ export default function Home() {
         <HomeHeader
           activeTab={activeTab}
           setActiveTab={handleTabChange}
-          location={location}
-          savedAddressText={deliveryAddressMode === "saved" ? savedAddressText : ""}
+          location={activeLocation}
+          savedAddressText={deliveryAddressMode === "saved" ? savedAddressTitle : ""}
           handleLocationClick={handleLocationClick}
           handleSearchFocus={handleSearchFocus}
           placeholderIndex={placeholderIndex}
@@ -3749,29 +3772,30 @@ export default function Home() {
 
               {/* Popup */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                initial={{ opacity: 0, scale: 0.9, y: -20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                exit={{ opacity: 0, scale: 0.9, y: -20 }}
                 transition={{
                   type: "spring",
                   damping: 25,
                   stiffness: 300,
                   mass: 0.8,
                 }}
-                className="fixed z-[9999] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl p-4 w-[calc(100%-2rem)] max-w-xs"
-                style={{
-                  top: `${popupPosition.top}px`,
-                  left: `${popupPosition.left}px`,
-                }}
+                className="fixed z-[9999] top-24 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1a1a1a] rounded-3xl shadow-2xl p-6 w-[calc(100%-2.5rem)] max-w-sm border border-gray-100 dark:border-gray-800"
                 onClick={(e) => e.stopPropagation()}>
-                {/* Pointer Triangle */}
-                <div
-                  className="absolute -top-2 w-3 h-3 bg-white dark:bg-[#1a1a1a] transform rotate-45"
-                  style={{
-                    left: `${popupPosition.triangleLeft - 6}px`,
-                    boxShadow: "-2px -2px 4px rgba(0,0,0,0.1)",
+                
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVegModePopup(false);
+                    setVegModeContext(false);
+                    setPrevVegMode(false);
                   }}
-                />
+                  className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+                >
+                  <X className="h-5 w-5" />
+                </button>
 
                 {/* Title */}
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
@@ -4299,7 +4323,7 @@ export default function Home() {
                 exit={{ y: 100, opacity: 0 }}
                 transition={{ duration: 0.3, type: "spring", damping: 25 }}
                 className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10001] bg-black text-white px-6 py-3 rounded-lg shadow-2xl">
-                <p className="text-sm font-medium">Added to bookmark</p>
+                <p className="text-sm font-medium">Added to your favourites</p>
               </motion.div>
             )}
           </AnimatePresence>,
