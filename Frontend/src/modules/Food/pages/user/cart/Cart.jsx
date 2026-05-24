@@ -2263,13 +2263,7 @@ export default function Cart() {
   }
 
   const handleBack = () => {
-    // Priority: slug > restaurantId (both work for the restaurant details route)
-    const idOrSlug = restaurantData?.slug || restaurantId
-    if (idOrSlug) {
-      navigate(`/food/user/restaurants/${idOrSlug}`)
-    } else {
-      goBack()
-    }
+    goBack()
   }
 
   // Handler to select address by label (Home, Office, Other)
@@ -3513,8 +3507,8 @@ export default function Cart() {
 
               {/* Delivery Time */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
-                <div className="flex items-start gap-3 md:gap-4">
-                  <div className="mt-0.5">
+                <div className="flex items-center gap-3 md:gap-4">
+                  <div>
                     <Zap className="h-5 w-5 text-green-600 fill-green-600/20" />
                   </div>
                   <div className="flex-1">
@@ -3813,15 +3807,16 @@ export default function Cart() {
                         )}
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={fulfillmentMode === "delivery" ? openLocationSelector : undefined}
-                    disabled={fulfillmentMode !== "delivery"}
-                    className="p-2 text-[#00c87e] bg-red-50 rounded-full hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:hover:bg-red-900/40"
-                    aria-label="Open location selector"
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
+                  {fulfillmentMode === "delivery" && (
+                    <button
+                      type="button"
+                      onClick={openLocationSelector}
+                      className="p-2 text-[#00c87e] bg-red-50 rounded-full hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:hover:bg-red-900/40"
+                      aria-label="Open location selector"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
                 </div>
               </div>
 

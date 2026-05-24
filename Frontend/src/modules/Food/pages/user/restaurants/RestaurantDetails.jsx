@@ -2339,21 +2339,9 @@ function RestaurantDetailsContent() {
           </div>
 
           {/* Location */}
-          <div
-            className={`flex items-start gap-1 text-sm text-gray-700 dark:text-gray-300 ${
-              localStorage.getItem("thindi_fulfillment_mode") !== "pickup" ? "cursor-pointer" : ""
-            }`}
-            onClick={() => {
-              if (localStorage.getItem("thindi_fulfillment_mode") !== "pickup") {
-                setShowLocationSheet(true)
-              }
-            }}
-          >
+          <div className="flex items-start gap-1 text-sm text-gray-700 dark:text-gray-300">
             <MapPin className="h-4 w-4 mt-0.5" />
             <span>{restaurant?.distance || "1.2 km"} {restaurant?.location || "Location"}</span>
-            {localStorage.getItem("thindi_fulfillment_mode") !== "pickup" && (
-              <ChevronDown className="h-4 w-4 text-gray-500 mt-0.5" />
-            )}
           </div>
 
           {/* Delivery Time */}
@@ -3348,21 +3336,23 @@ function RestaurantDetailsContent() {
                           <div className="h-4 w-4 rounded-full bg-green-600 dark:bg-green-500" />
                           <span className="font-medium">Veg</span>
                         </button>
-                        <button
-                          onClick={() =>
-                            setFilters((prev) => ({
-                              ...prev,
-                              vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
-                            }))
-                          }
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all flex-1 ${filters.vegNonVeg === "non-veg"
-                            ? "border-amber-700 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-                            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                            }`}
-                        >
-                          <div className="h-4 w-4 rounded-full bg-amber-700 dark:bg-amber-600" />
-                          <span className="font-medium">Non-veg</span>
-                        </button>
+                        {!isPureVeg && (
+                          <button
+                            onClick={() =>
+                              setFilters((prev) => ({
+                                ...prev,
+                                vegNonVeg: prev.vegNonVeg === "non-veg" ? null : "non-veg",
+                              }))
+                            }
+                            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all flex-1 ${filters.vegNonVeg === "non-veg"
+                              ? "border-amber-700 dark:border-amber-600 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+                              : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
+                              }`}
+                          >
+                            <div className="h-4 w-4 rounded-full bg-amber-700 dark:bg-amber-600" />
+                            <span className="font-medium">Non-veg</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
