@@ -2348,12 +2348,12 @@ function RestaurantDetailsContent() {
                     
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-[#00c87e] uppercase tracking-tight ml-9">Outlet Address</p>
+                        <p className="text-[10px] font-bold text-[#00c87e] uppercase tracking-tight ml-[30px]">Outlet Address</p>
                         <div className="flex items-start gap-2.5">
-                          <div className="p-1.5 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 shrink-0">
-                            <MapPin className="h-3.5 w-3.5 text-[#00c87e]" />
+                          <div className="w-5 h-5 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 shrink-0 flex items-center justify-center mt-[1px]">
+                            <MapPin className="h-3 w-3 text-[#00c87e]" />
                           </div>
-                          <p className="text-[11px] text-[#00c87e] font-medium leading-relaxed mt-0.5">
+                          <p className="text-[11px] text-[#00c87e] font-medium leading-relaxed flex-1">
                             {restaurant?.location || "Address not available"}
                           </p>
                         </div>

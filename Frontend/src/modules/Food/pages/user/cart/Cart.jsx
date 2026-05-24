@@ -3804,16 +3804,6 @@ export default function Cart() {
                         )}
                     </div>
                   </div>
-                  {fulfillmentMode === "delivery" && (
-                    <button
-                      type="button"
-                      onClick={openLocationSelector}
-                      className="p-2 text-[#00c87e] bg-red-50 rounded-full hover:bg-red-100 transition-colors dark:bg-red-900/20 dark:hover:bg-red-900/40"
-                      aria-label="Open location selector"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  )}
                 </div>
               </div>
 
