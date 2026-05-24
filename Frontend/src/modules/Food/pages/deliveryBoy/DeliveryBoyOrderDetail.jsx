@@ -22,7 +22,7 @@ const ACTIONS = {
   picked_up_by_boy: {
     label: "Start Delivery",
     action: "out_for_delivery",
-    helper: "Move the order to out-for-delivery.",
+    helper: "Mark this order as out for delivery.",
   },
   out_for_delivery: {
     label: "Complete Delivery",
@@ -172,35 +172,32 @@ export default function DeliveryBoyOrderDetail() {
                       Self delivery order
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right flex items-center justify-end">
                     <p className="text-2xl font-black text-slate-900">
                       {formatMoney(order?.pricing?.total)}
-                    </p>
-                    <p className="text-xs font-semibold text-[#00a86b]">
-                      Delivery Fee {formatMoney(order?.pricing?.deliveryFee)}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-5 grid gap-4 rounded-[24px] bg-[#f0fff8] p-4 text-sm text-slate-700">
                   <div className="flex items-start gap-3">
-                    <User className="mt-0.5 h-4 w-4 text-[#00a86b]" />
-                    <div>
-                      <p className="font-semibold text-slate-900">
+                    <User className="mt-[3px] h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900 leading-tight">
                         {order.userId?.name || "Customer"}
                       </p>
-                      <p>{order.userId?.phone || order.deliveryAddress?.phone || "No phone"}</p>
+                      <p className="mt-1 text-slate-600 leading-none">{order.userId?.phone || order.deliveryAddress?.phone || "No phone"}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <MapPin className="mt-0.5 h-4 w-4 text-[#00a86b]" />
-                    <p>{address}</p>
+                    <MapPin className="mt-[3px] h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
+                    <p className="min-w-0 flex-1 leading-normal">{address}</p>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Package className="mt-0.5 h-4 w-4 text-[#00a86b]" />
-                    <div>
-                      <p className="font-semibold text-slate-900">Items</p>
-                      <p>
+                    <Package className="mt-[3px] h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-slate-900 leading-tight">Items</p>
+                      <p className="mt-1 leading-normal">
                         {Array.isArray(order.items)
                           ? order.items.map((item) => `${item.quantity} x ${item.name}`).join(", ")
                           : "No items"}
@@ -211,17 +208,17 @@ export default function DeliveryBoyOrderDetail() {
               </div>
 
               <div className="rounded-[28px] border border-[#00c87e]/10 bg-white p-6 shadow-sm">
-                <div className="flex items-center gap-3">
+                <div className="flex items-start gap-3.5">
                   {nextAction?.action === "deliver" ? (
-                    <ShieldCheck className="h-5 w-5 text-[#00a86b]" />
+                    <ShieldCheck className="h-5 w-5 text-[#00a86b] mt-[3.5px] shrink-0" />
                   ) : (
-                    <Truck className="h-5 w-5 text-[#00a86b]" />
+                    <Truck className="h-5 w-5 text-[#00a86b] mt-[3.5px] shrink-0" />
                   )}
-                  <div>
-                    <h3 className="text-lg font-black text-slate-900">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-black text-slate-900 leading-tight">
                       {nextAction ? nextAction.label : "Delivery completed"}
                     </h3>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-500 mt-1 leading-normal">
                       {nextAction?.helper || "This order has no pending delivery-boy action."}
                     </p>
                   </div>

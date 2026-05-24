@@ -158,7 +158,7 @@ export default function DeliveryBoyDashboard() {
             <div>
               <h2 className="text-xl font-black text-slate-900">Assigned Orders</h2>
               <p className="text-sm text-slate-500">
-                Open an order to confirm pickup, start delivery, or enter OTP.
+                Open an order to manage pickup, delivery, and OTP verification.
               </p>
             </div>
 
@@ -203,28 +203,25 @@ export default function DeliveryBoyDashboard() {
                         {order.restaurantId?.restaurantName || "Restaurant"}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex items-center justify-end">
                       <p className="text-2xl font-black text-slate-900">
                         {formatMoney(order?.pricing?.total)}
-                      </p>
-                      <p className="text-xs font-semibold text-[#00a86b]">
-                        Fee {formatMoney(order?.pricing?.deliveryFee)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-2 text-sm text-slate-600">
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-[#00a86b]" />
-                      <span>{Array.isArray(order.items) ? order.items.length : 0} item(s)</span>
+                  <div className="mt-4 grid gap-2.5 text-sm text-slate-600">
+                    <div className="flex items-center gap-2.5">
+                      <Package className="h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
+                      <span className="leading-none">{Array.isArray(order.items) ? order.items.length : 0} item(s)</span>
                     </div>
-                    <div className="flex items-start gap-2">
-                      <MapPin className="mt-0.5 h-4 w-4 text-[#00a86b]" />
-                      <span className="line-clamp-2">{address}</span>
+                    <div className="flex items-start gap-2.5">
+                      <MapPin className="mt-0.5 h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
+                      <span className="line-clamp-2 leading-tight">{address}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="h-4 w-4 text-[#00a86b]" />
-                      <span>{order.userId?.phone || order.deliveryAddress?.phone || "No phone"}</span>
+                    <div className="flex items-center gap-2.5">
+                      <Phone className="h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
+                      <span className="leading-none">{order.userId?.phone || order.deliveryAddress?.phone || "No phone"}</span>
                     </div>
                   </div>
 
