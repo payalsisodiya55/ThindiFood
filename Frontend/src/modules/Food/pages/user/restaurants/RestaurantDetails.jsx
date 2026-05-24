@@ -2154,7 +2154,7 @@ function RestaurantDetailsContent() {
   return (
     <AnimatedPage
       id="scrollingelement"
-      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col transition-all duration-300 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
+      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col transition-all duration-300 ${shouldShowGrayscale ? 'grayscale' : ''
         }`}
     >
       {/* Header - Back, Search, Menu (like reference image) */}
@@ -2383,9 +2383,8 @@ function RestaurantDetailsContent() {
           </div>
 
           {/* Filter/Category Buttons */}
-          <div className="border-y border-gray-200 py-3 -mx-4 px-4 overflow-x-auto scrollbar-hide">
-            <div className="flex flex-col gap-2 w-max">
-              <div className="flex items-center gap-2 w-max">
+          <div className="sticky top-0 z-20 border-y border-gray-200 py-3 -mx-4 px-4 bg-white dark:bg-[#1a1a1a] flex flex-col gap-2.5">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
                 <Button
                   variant="outline"
                   size="sm"
@@ -2442,7 +2441,8 @@ function RestaurantDetailsContent() {
               </div>
 
               {menuCategories.length > 0 && (
-                <div className="flex items-center gap-2 w-max">
+                <div className="overflow-x-auto scrollbar-hide -mx-4 px-4">
+                  <div className="flex items-center gap-2 w-max">
                   <button
                     type="button"
                     onClick={() => setSelectedMenuCategory("all")}
@@ -2483,8 +2483,8 @@ function RestaurantDetailsContent() {
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -3141,9 +3141,9 @@ function RestaurantDetailsContent() {
 
       {/* Menu Button - Sticky at page bottom right (hidden when filter or menu sheet open) */}
       {!showFilterSheet && !showMenuSheet && !showMenuOptionsSheet && (
-        <div className="sticky dark:bg-[#1a1a1a] bottom-4 flex justify-end px-4 z-50 mt-auto">
+        <div className="sticky bottom-4 flex justify-end px-4 z-[99] mt-auto pointer-events-none">
           <Button
-            className="bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group"
+            className="bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group pointer-events-auto"
             size="lg"
             onClick={() => setShowMenuSheet(true)}
           >
@@ -3161,7 +3161,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -3171,7 +3171,7 @@ function RestaurantDetailsContent() {
 
                 {/* Menu Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3233,7 +3233,6 @@ function RestaurantDetailsContent() {
                       className="w-full bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-[#00c87e] dark:hover:bg-[#00c87e] text-white border-0 flex items-center justify-center gap-2 py-6 rounded-xl font-bold transition-all shadow-lg"
                       onClick={() => setShowMenuSheet(false)}
                     >
-                      <X className="h-5 w-5" />
                       Close
                     </Button>
                   </div>
@@ -3252,7 +3251,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -3262,7 +3261,7 @@ function RestaurantDetailsContent() {
 
                 {/* Bottom Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[80vh] md:h-auto md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[80vh] md:h-auto md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3416,7 +3415,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -3426,7 +3425,7 @@ function RestaurantDetailsContent() {
 
                 {/* Bottom Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[75vh] md:h-auto md:max-h-[90vh] md:max-w-xl w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[75vh] md:h-auto md:max-h-[90vh] md:max-w-xl w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3521,7 +3520,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -3531,7 +3530,7 @@ function RestaurantDetailsContent() {
 
                 {/* Item Detail Bottom Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] md:max-w-2xl lg:max-w-3xl w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] md:max-w-2xl lg:max-w-3xl w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3783,7 +3782,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -3793,7 +3792,7 @@ function RestaurantDetailsContent() {
 
                 {/* Schedule Bottom Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[60vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[60vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3903,7 +3902,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -3913,7 +3912,7 @@ function RestaurantDetailsContent() {
 
                 {/* Offers Bottom Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -4056,7 +4055,7 @@ function RestaurantDetailsContent() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-[9999]"
+                  className={`fixed inset-0 bg-black/40 z-[9999] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -4066,7 +4065,7 @@ function RestaurantDetailsContent() {
 
                 {/* Menu Options Bottom Sheet */}
                 <motion.div
-                  className="fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[70vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col"
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[70vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -4154,14 +4153,14 @@ function RestaurantDetailsContent() {
             {showShareModal && sharePayload && (
               <>
                 <motion.div
-                  className="fixed inset-0 bg-black/50 z-[10020]"
+                  className={`fixed inset-0 bg-black/50 z-[10020] ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setShowShareModal(false)}
                 />
                 <motion.div
-                  className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10021] w-[92vw] max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl"
+                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10021] w-[92vw] max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}

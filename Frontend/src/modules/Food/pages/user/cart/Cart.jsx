@@ -3507,16 +3507,14 @@ export default function Cart() {
 
               {/* Delivery Time */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
-                <div className="flex items-center gap-3 md:gap-4">
-                  <div>
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2">
                     <Zap className="h-5 w-5 text-green-600 fill-green-600/20" />
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                      {fulfillmentMode === "delivery" ? "Delivery timing" : "Takeaway timing"}
+                    </p>
                   </div>
-                  <div className="flex-1">
-
-                    <div className="mt-2">
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                        {fulfillmentMode === "delivery" ? "Delivery timing" : "Takeaway timing"}
-                      </p>
+                  <div className="pl-7">
                       <div className="mt-3 inline-flex rounded-full bg-slate-100 p-1 dark:bg-gray-800">
                         <button
                           type="button"
@@ -3560,8 +3558,7 @@ export default function Cart() {
                           : takeawayScheduleWindow?.hasSlots
                             ? "Up to 3 hours ahead • 5 min slots"
                             : "No slots available for today"}
-                      </p>
-                    </div>
+                    </p>
                   </div>
                 </div>
 
