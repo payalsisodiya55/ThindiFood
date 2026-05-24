@@ -159,7 +159,7 @@ export default function DeliveryBoyOrderDetail() {
                 Order #{order?.orderId || orderId}
               </h1>
               <p className="mt-1 text-sm text-white/90">
-                {deliveryBoy?.name || "Delivery Boy"} delivery workflow
+                {deliveryBoy?.name || "Delivery Person"} delivery workflow
               </p>
             </div>
             <button
@@ -247,7 +247,7 @@ export default function DeliveryBoyOrderDetail() {
                       {nextAction ? nextAction.label : "Delivery completed"}
                     </h3>
                     <p className="text-sm text-slate-500 mt-1 leading-normal">
-                      {nextAction?.helper || "This order has no pending delivery-boy action."}
+                      {nextAction?.helper || "This order has no pending delivery person action."}
                     </p>
                   </div>
                 </div>

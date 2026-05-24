@@ -104,7 +104,7 @@ export default function DeliveryBoyDashboard() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[0.24em] text-white/80">
-                Delivery Boy Panel
+                Delivery Partner Panel
               </p>
               <h1 className="mt-2 text-3xl font-black">
                 {deliveryBoy?.name || "Delivery Partner"}

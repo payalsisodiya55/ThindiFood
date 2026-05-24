@@ -39,7 +39,7 @@ export default function DeliveryBoyLogin() {
             <Truck className="w-6 h-6 text-orange-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Delivery Boy Login</h1>
+            <h1 className="text-2xl font-bold">Delivery Partner Login</h1>
             <p className="text-sm text-slate-400">Sign in to manage self-delivery orders</p>
           </div>
         </div>
