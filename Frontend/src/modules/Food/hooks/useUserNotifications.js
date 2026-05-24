@@ -131,7 +131,12 @@ export const useUserNotifications = () => {
 
       // Optional: Show toast for important updates (Cancel, Ready, etc.)
       const isImportant = String(data.orderStatus).includes('cancel') || ['ready_for_pickup', 'ready', 'confirmed'].includes(data.orderStatus);
-      if (isImportant) {
+      
+      // Avoid showing socket toast if the user is already on the tracking page for this specific order
+      const isTrackingThisOrder = typeof window !== 'undefined' && 
+        (window.location.pathname.includes(String(data.orderId)) || window.location.pathname.includes(String(data.orderMongoId)));
+
+      if (isImportant && !isTrackingThisOrder) {
         toast.message(title, {
           description: message,
           duration: 10000

@@ -1540,8 +1540,10 @@ export default function OrderTracking() {
         }
       }
 
-      // Show notification toast
-      if (message) {
+      // Show notification toast (skip duplicate cancelled toasts)
+      const isCancelledStatus = String(status || '').toLowerCase().includes('cancel') || 
+                                String(incomingRawStatus || '').toLowerCase().includes('cancel');
+      if (message && !isCancelledStatus) {
         toast.success(message, {
           duration: 5000,
           position: 'top-center',

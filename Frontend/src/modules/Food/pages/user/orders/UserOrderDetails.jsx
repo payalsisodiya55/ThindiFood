@@ -284,6 +284,25 @@ export default function UserOrderDetails() {
   const isTakeawayOrder = String(order.fulfillmentType || "").toLowerCase() === "takeaway"
   const normalizedOrderStatus = String(order.status || "").trim().toLowerCase()
   const normalizedOrderWorkflowStatus = String(order.orderStatus || "").trim().toLowerCase()
+  const isCancelledOrder =
+    normalizedOrderStatus.includes("cancel") ||
+    normalizedOrderWorkflowStatus.includes("cancel")
+  const completedOrderStatuses = new Set([
+    "delivered",
+    "completed",
+    "delivered_self",
+    "delivered self",
+    "completed_self",
+    "completed self",
+    "picked_up",
+    "picked up",
+  ])
+  const isCompletedOrder =
+    completedOrderStatuses.has(normalizedOrderStatus) ||
+    completedOrderStatuses.has(normalizedOrderWorkflowStatus)
+  const showTrackOrder = !isCancelledOrder && !isCompletedOrder
+  const showCutleryPreference = !isTakeawayOrder
+  const showDeliveryFee = !isTakeawayOrder
   const orderStatusLabel = formatOrderStatusLabel(order.status, isTakeawayOrder)
   const deliveryAddress = order.address || order.deliveryAddress || {}
   const complaintEligibleStatuses = new Set([
@@ -323,6 +342,7 @@ export default function UserOrderDetails() {
     (pricing.discount || 0) +
     (pricing.originalItemTotal || 0) -
     (pricing.subtotal || 0)
+  const amountCellClassName = "min-w-[92px] text-right tabular-nums"
 
   // Restaurant phone (multiple fallbacks) - use fetched restaurant data first
   const restaurantPhone = getCleanPhone(
@@ -433,55 +453,53 @@ export default function UserOrderDetails() {
         `Rs. ${Number((item.price || 0) * (item.quantity || item.qty || 1)).toFixed(2)}`
       ])
 
-      // Add Subtotal/Item Total row for clarity
-      tableData.push([
-        '',
-        '',
-        { content: 'Item Total', styles: { halign: 'right', fontStyle: 'bold' } },
-        { content: `Rs. ${Number(pricing.subtotal || pricing.itemTotal || 0).toFixed(2)}`, styles: { halign: 'right', fontStyle: 'bold' } }
-      ]);
+      const pushSummaryRow = (label, value, styles = {}) => {
+        tableData.push([
+          "",
+          "",
+          { content: label, styles: { halign: "right", ...styles } },
+          { content: value, styles: { halign: "right", ...styles } },
+        ])
+      }
+
+      // Keep summary labels in the third column and amounts in the last column.
+      pushSummaryRow(
+        'Item Total',
+        `Rs. ${Number(pricing.subtotal || pricing.itemTotal || 0).toFixed(2)}`,
+        { fontStyle: 'bold' },
+      )
 
       // Add tax and other fees
       if (pricing.tax > 0) {
-        tableData.push([
-          '',
-          '',
-          { content: 'GST (govt. taxes)', styles: { halign: 'right' } },
-          { content: `Rs. ${Number(pricing.tax).toFixed(2)}`, styles: { halign: 'right' } }
-        ])
+        pushSummaryRow('GST (govt. taxes)', `Rs. ${Number(pricing.tax).toFixed(2)}`)
       }
-      if (pricing.deliveryFee > 0) {
-        tableData.push([
-          '',
-          '',
-          { content: 'Delivery Fee', styles: { halign: 'right' } },
-          { content: `Rs. ${Number(pricing.deliveryFee).toFixed(2)}`, styles: { halign: 'right' } }
-        ])
+      if (showDeliveryFee && pricing.deliveryFee > 0) {
+        pushSummaryRow('Delivery Fee', `Rs. ${Number(pricing.deliveryFee).toFixed(2)}`)
       }
       if (pricing.platformFee > 0) {
-        tableData.push([
-          '',
-          '',
-          { content: 'Platform Fee', styles: { halign: 'right' } },
-          { content: `Rs. ${Number(pricing.platformFee).toFixed(2)}`, styles: { halign: 'right' } }
-        ])
+        pushSummaryRow('Platform Fee', `Rs. ${Number(pricing.platformFee).toFixed(2)}`)
       }
       if (pricing.subscriptionFee > 0) {
-        tableData.push([
-          '',
-          '',
-          { content: 'Subscription / Other Fees', styles: { halign: 'right' } },
-          { content: `Rs. ${Number(pricing.subscriptionFee).toFixed(2)}`, styles: { halign: 'right' } }
-        ])
+        pushSummaryRow('Subscription / Other Fees', `Rs. ${Number(pricing.subscriptionFee).toFixed(2)}`)
       }
       if (pricing.discount > 0) {
-        tableData.push([
-          '',
-          '',
-          { content: 'Discount', styles: { halign: 'right', textColor: [0, 150, 0] } },
-          { content: `-Rs. ${Number(pricing.discount).toFixed(2)}`, styles: { halign: 'right', textColor: [0, 150, 0] } }
-        ])
+        pushSummaryRow(
+          'Discount',
+          `-Rs. ${Number(pricing.discount).toFixed(2)}`,
+          { textColor: [0, 150, 0] },
+        )
       }
+
+      pushSummaryRow(
+        'Total Amount Paid:',
+        `Rs. ${Number(pricing.total || 0).toFixed(2)}`,
+        {
+          fontStyle: 'bold',
+          fillColor: [240, 240, 240],
+          textColor: [0, 0, 0],
+          fontSize: 10,
+        },
+      )
 
       autoTable(doc, {
         startY: yPos,
@@ -510,15 +528,6 @@ export default function UserOrderDetails() {
           }
         },
       })
-
-      // Get final Y position after table (autoTable adds lastAutoTable property)
-      const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) ? doc.lastAutoTable.finalY : yPos + (tableData.length * 8) + 20
-
-      // Total
-      doc.setFontSize(12)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Total Amount Paid:', 145, finalY + 10, { align: 'right' })
-      doc.text(`Rs. ${Number(pricing.total || 0).toFixed(2)}`, 195, finalY + 10, { align: 'right' })
 
       // Save PDF instantly
       const fileName = `Order_Summary_${orderIdDisplay}_${Date.now()}.pdf`
@@ -646,20 +655,24 @@ export default function UserOrderDetails() {
           </div>
           <div className="flex-1">
             <h2 className="font-semibold text-gray-800 dark:text-white">
-              {order.status === "delivered"
-                ? "Order was delivered"
+              {isCompletedOrder
+                ? isTakeawayOrder
+                  ? "Order picked up"
+                  : "Order was delivered"
                 : "Order status: " + orderStatusLabel}
             </h2>
           </div>
-          <button
-            type="button"
-            onClick={handleTrackOrder}
-            className="flex items-center gap-1 text-sm font-semibold whitespace-nowrap"
-            style={{ color: RED }}
-          >
-            Track Order
-            <ChevronRight className="w-4 h-4" />
-          </button>
+          {showTrackOrder && (
+            <button
+              type="button"
+              onClick={handleTrackOrder}
+              className="flex items-center gap-1 text-sm font-semibold whitespace-nowrap"
+              style={{ color: RED }}
+            >
+              Track Order
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Restaurant Info Card */}
@@ -703,16 +716,18 @@ export default function UserOrderDetails() {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 mb-4">
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${sendsCutlery
-                  ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
-                  : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
-                }`}
-            >
-              {sendsCutlery ? "Send cutlery" : "Don't send cutlery"}
-            </span>
-          </div>
+          {showCutleryPreference && (
+            <div className="flex items-center gap-2 mb-4">
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${sendsCutlery
+                    ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
+                    : "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800"
+                  }`}
+              >
+                {sendsCutlery ? "Send cutlery" : "Don't send cutlery"}
+              </span>
+            </div>
+          )}
 
           <div className="border-t border-dashed border-gray-200 dark:border-gray-800 my-3" />
 
@@ -758,9 +773,9 @@ export default function UserOrderDetails() {
           </div>
 
           <div className="p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
+            <div className="flex items-start justify-between gap-4">
               <span className="text-gray-500 dark:text-gray-400">Item total</span>
-              <div>
+              <div className={amountCellClassName}>
                 {pricing.originalItemTotal && (
                   <span className="text-gray-400 line-through mr-1">
                     ₹{Number(pricing.originalItemTotal).toFixed(2)}
@@ -771,13 +786,14 @@ export default function UserOrderDetails() {
                 </span>
               </div>
             </div>
-            <div className="flex justify-between">
+            <div className="flex items-center justify-between gap-4">
               <span className="text-gray-500 dark:text-gray-400">GST (govt. taxes)</span>
-              <span className="text-gray-800 dark:text-white">
+              <span className={`text-gray-800 dark:text-white ${amountCellClassName}`}>
                 ₹{Number(pricing.tax || 0).toFixed(2)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
+            {showDeliveryFee && (
+              <div className="flex items-center justify-between gap-4">
               <div className="flex items-center">
                 <span className="text-gray-500 dark:text-gray-400">Delivery fee</span>
                 {pricing.deliveryFee === 0 && (
@@ -786,22 +802,23 @@ export default function UserOrderDetails() {
                   </span>
                 )}
               </div>
-              <span className="font-medium uppercase" style={{ color: RED }}>
+              <span className={`font-medium uppercase ${amountCellClassName}`} style={{ color: RED }}>
                 {pricing.deliveryFee ? `₹${Number(pricing.deliveryFee).toFixed(2)}` : "Free"}
               </span>
-            </div>
+              </div>
+            )}
 
-            <div className="flex justify-between">
+            <div className="flex items-center justify-between gap-4">
               <span className="text-gray-500 dark:text-gray-400">Platform fee</span>
-              <span className="text-gray-800 dark:text-white">
+              <span className={`text-gray-800 dark:text-white ${amountCellClassName}`}>
                 ₹{Number(pricing.platformFee || 0).toFixed(2)}
               </span>
             </div>
 
 
-            <div className="border-t border-gray-100 dark:border-gray-800 my-2 pt-2 flex justify-between items-center">
+            <div className="border-t border-gray-100 dark:border-gray-800 my-2 pt-2 flex items-center justify-between gap-4">
               <span className="font-bold text-gray-800 dark:text-white">Paid</span>
-              <span className="font-bold text-gray-800 dark:text-white">
+              <span className={`font-bold text-gray-800 dark:text-white ${amountCellClassName}`}>
                 ₹{Number(pricing.total || 0).toFixed(2)}
               </span>
             </div>

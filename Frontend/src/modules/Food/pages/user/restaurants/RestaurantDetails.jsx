@@ -2230,7 +2230,7 @@ function RestaurantDetailsContent() {
           )}
 
           {/* Right side: Search pill + menu */}
-          <div className={`flex items-center gap-3 ${showSearch ? 'flex-1' : ''}`}>
+          <div className={`flex items-center gap-3 ${showSearch ? 'flex-1' : ''} ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : ''}`}>
             {!showSearch ? (
               <Button
                 variant="outline"
@@ -2312,10 +2312,10 @@ function RestaurantDetailsContent() {
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{restaurant?.name || "Unknown Restaurant"}</h1>
-              <div className="relative group/info">
+              <div className={`relative group/info ${shouldShowGrayscale ? 'pointer-events-none' : ''}`}>
                 <Info 
                   className={`h-5 w-5 cursor-help transition-colors ${showInfoPopover ? "text-[#00c87e]" : "text-gray-400 hover:text-[#00c87e]"}`} 
-                  onClick={() => setShowInfoPopover(!showInfoPopover)}
+                  onClick={() => !shouldShowGrayscale && setShowInfoPopover(!showInfoPopover)}
                 />
                 
                 {/* Overlay for mobile to close when clicking outside */}
@@ -2440,7 +2440,7 @@ function RestaurantDetailsContent() {
           </div>
 
           {/* Filter/Category Buttons */}
-          <div className="sticky top-0 z-20 border-y border-gray-200 py-3 -mx-4 px-4 bg-white dark:bg-[#1a1a1a] flex flex-col gap-2.5">
+          <div className={`sticky top-0 z-20 border-y border-gray-200 py-3 -mx-4 px-4 bg-white dark:bg-[#1a1a1a] flex flex-col gap-2.5 ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : ''}`}>
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
                 <Button
                   variant="outline"
@@ -3204,9 +3204,10 @@ function RestaurantDetailsContent() {
       {!showFilterSheet && !showMenuSheet && !showMenuOptionsSheet && (
         <div className="sticky bottom-4 flex justify-end px-4 z-[99] mt-auto pointer-events-none">
           <Button
-            className="bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group pointer-events-auto"
+            className={`bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}
             size="lg"
-            onClick={() => setShowMenuSheet(true)}
+            onClick={() => !shouldShowGrayscale && setShowMenuSheet(true)}
+            disabled={shouldShowGrayscale}
           >
             <Utensils className="h-5 w-5 text-[#00c87e] dark:text-white group-hover:rotate-12 transition-transform" />
             <span className="tracking-wide">MENU</span>
