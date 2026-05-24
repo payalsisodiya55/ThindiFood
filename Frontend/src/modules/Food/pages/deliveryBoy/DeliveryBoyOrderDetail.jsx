@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { deliveryBoyAPI } from "@food/api";
 import { clearModuleAuth, getCurrentUser } from "@food/utils/auth";
+import { toast } from "sonner";
 
 const ACTIONS = {
   assigned_to_boy: {
@@ -27,9 +28,29 @@ const ACTIONS = {
   out_for_delivery: {
     label: "Complete Delivery",
     action: "deliver",
-    helper: "Take OTP from customer and complete delivery.",
+    helper: "Verify customer OTP to confirm delivery.",
   },
 };
+
+const STATUS_META = {
+  assigned_to_boy: {
+    label: "Assigned",
+    badge: "bg-[#00c87e]/10 text-[#00a86b]",
+  },
+  picked_up_by_boy: {
+    label: "Picked Up",
+    badge: "bg-amber-100 text-amber-700",
+  },
+  out_for_delivery: {
+    label: "Out for Delivery",
+    badge: "bg-blue-100 text-blue-700",
+  },
+  delivered_self: {
+    label: "Delivered",
+    badge: "bg-emerald-100 text-emerald-700",
+  },
+};
+
 
 const formatMoney = (value) => `₹${Number(value || 0).toFixed(0)}`;
 
@@ -89,15 +110,25 @@ export default function DeliveryBoyOrderDetail() {
     try {
       if (status === "assigned_to_boy") {
         await deliveryBoyAPI.confirmPickup(order._id || order.orderId);
+        toast.success("Order picked up successfully!");
       } else if (status === "picked_up_by_boy") {
         await deliveryBoyAPI.startDelivery(order._id || order.orderId);
+        toast.success("Order is now out for delivery!");
       } else if (status === "out_for_delivery") {
         await deliveryBoyAPI.deliver(order._id || order.orderId, otp);
+        toast.success("Delivery completed successfully!");
       }
       await loadOrder();
       setOtp("");
     } catch (err) {
-      setError(err?.response?.data?.message || err?.message || "Action failed");
+      const isOtpStep = status === "out_for_delivery";
+      let errorMsg = err?.response?.data?.message || err?.message || "Action failed";
+      
+      if (isOtpStep) {
+        errorMsg = "Invalid OTP. Please enter the correct OTP to complete delivery.";
+      }
+      
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
@@ -151,19 +182,16 @@ export default function DeliveryBoyOrderDetail() {
             </div>
           ) : null}
 
-          {error ? (
-            <div className="rounded-[28px] border border-red-200 bg-red-50 px-4 py-3 text-red-600 shadow-sm">
-              {error}
-            </div>
-          ) : null}
 
           {order ? (
             <>
               <div className="rounded-[28px] border border-[#00c87e]/10 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className="inline-flex rounded-full bg-[#00c87e]/10 px-3 py-1 text-xs font-bold text-[#00a86b]">
-                      {String(order.orderStatus || "").replace(/_/g, " ")}
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                      STATUS_META[String(order.orderStatus || "").toLowerCase()]?.badge || "bg-slate-100 text-slate-700"
+                    }`}>
+                      {STATUS_META[String(order.orderStatus || "").toLowerCase()]?.label || order.orderStatus}
                     </span>
                     <h2 className="mt-3 text-2xl font-black text-slate-900">
                       {order.restaurantId?.restaurantName || "Restaurant"}
