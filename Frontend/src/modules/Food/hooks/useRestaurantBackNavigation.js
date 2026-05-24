@@ -139,6 +139,10 @@ export default function useRestaurantBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
-    navigate(resolveRestaurantBackPath(location))
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1)
+    } else {
+      navigate(resolveRestaurantBackPath(location))
+    }
   }, [location, navigate])
 }

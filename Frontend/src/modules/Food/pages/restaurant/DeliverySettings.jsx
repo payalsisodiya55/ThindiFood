@@ -380,24 +380,24 @@ export default function DeliverySettings() {
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Delivery Status</h2>
-                  <p className="text-sm text-gray-500">Control when you receive delivery orders</p>
+                  <p className="text-sm text-gray-500">Manage when you receive delivery orders.</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <p className="text-base font-bold text-gray-900 mb-1.5">Turn on delivery</p>
-                  <motion.div 
-                    className="flex items-center gap-2"
-                    initial={false}
-                    animate={{ scale: deliveryStatus ? 1.05 : 1 }}
-                    transition={{ duration: 0.2 }}
-                  >
+                  <div className="flex items-center gap-2">
+
+
+
+
+
                     <div className={`w-2 h-2 rounded-full ${deliveryStatus ? "bg-green-500 animate-pulse" : "bg-gray-600"}`}></div>
                     <p className="text-sm text-gray-500">
                       {deliveryStatus ? "Receiving orders" : "Not receiving orders"}
                     </p>
-                  </motion.div>
+                  </div>
                   <AnimatePresence>
                     {!canEnableDelivery && !deliveryStatus && (
                       <motion.p 

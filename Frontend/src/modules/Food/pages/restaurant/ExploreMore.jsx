@@ -928,8 +928,8 @@ export default function ExploreMore() {
           <Card className="bg-white border-gray-200 py-3 mb-6 rounded-lg shadow-0">
             <CardContent className="px-4">
               <div className="w-full flex items-center justify-between">
-                <div className="flex items-center gap-3 flex-1">
-                  <div className="p-2 bg-gray-100 rounded-lg">
+                <div className="flex items-start gap-3 flex-1">
+                  <div className="p-2 bg-gray-100 rounded-lg shrink-0 mt-0.5">
                     <Store className="w-5 h-5 text-gray-900" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">

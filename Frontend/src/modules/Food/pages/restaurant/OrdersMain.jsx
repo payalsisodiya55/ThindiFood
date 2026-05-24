@@ -1843,49 +1843,97 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
             onClick={handleCloseAssignBoyModal}
           >
             <motion.div
-              className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
-              initial={{ scale: 0.96, opacity: 0 }}
+              className="w-[95%] max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+              initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="px-4 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-bold text-gray-900">
-                  Assign Delivery Boy
+              {/* Header section with slate tinted background */}
+              <div className="px-6 py-5 bg-slate-50/70 border-b border-slate-100">
+                <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
+                  Assign Delivery Partner
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Choose an active delivery boy for order #{assigningOrder.orderId}
+                <p className="text-xs font-semibold text-slate-500 mt-1">
+                  Select an active partner for order #{assigningOrder.orderId}
                 </p>
               </div>
 
-              <div className="px-4 py-4 space-y-3">
-                <select
-                  value={selectedDeliveryBoyId}
-                  onChange={(e) => setSelectedDeliveryBoyId(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select delivery boy</option>
-                  {deliveryBoys
-                    .filter((boy) => boy?.isActive !== false)
-                    .map((boy) => (
-                      <option key={boy._id || boy.id} value={boy._id || boy.id}>
-                        {boy.name}{boy.phone ? ` • ${boy.phone}` : ""}
-                      </option>
-                    ))}
-                </select>
-                {deliveryBoys.filter((boy) => boy?.isActive !== false).length === 0 && (
-                  <p className="text-xs text-red-600">
-                    No active delivery boys available. Add them from Delivery Settings first.
-                  </p>
+              {/* Delivery boys card options list */}
+              <div className="px-6 py-5 space-y-3">
+                {deliveryBoys.filter((boy) => boy?.isActive !== false).length === 0 ? (
+                  <div className="text-center py-6 px-4 bg-red-50/50 rounded-2xl border border-red-100">
+                    <p className="text-sm font-bold text-red-800">
+                      No active partners available
+                    </p>
+                    <p className="text-xs text-red-500 mt-1">
+                      Please register or activate partners in Delivery Settings first.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                    {deliveryBoys
+                      .filter((boy) => boy?.isActive !== false)
+                      .map((boy) => {
+                        const isSelected = String(selectedDeliveryBoyId) === String(boy._id || boy.id);
+                        const initials = String(boy.name || "DP")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2);
+
+                        return (
+                          <button
+                            key={boy._id || boy.id}
+                            type="button"
+                            onClick={() => setSelectedDeliveryBoyId(String(boy._id || boy.id))}
+                            className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 active:scale-[0.99] ${
+                              isSelected
+                                ? "border-[#00c87e] bg-emerald-50/30 shadow-sm shadow-emerald-500/5"
+                                : "border-slate-100 bg-white hover:border-slate-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              {/* Initials Circle */}
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 transition-colors ${
+                                isSelected ? "bg-[#00c87e] text-white" : "bg-slate-100 text-slate-600"
+                              }`}>
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className={`font-bold text-sm leading-snug ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
+                                  {boy.name}
+                                </p>
+                                {boy.phone && (
+                                  <p className="text-[11px] text-slate-500 mt-0.5 font-bold tracking-wide">
+                                    {boy.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {/* Selection indicator bubble */}
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected ? "border-[#00c87e] bg-[#00c87e] text-white" : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
                 )}
               </div>
 
-              <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+              {/* Action buttons */}
+              <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex gap-3">
                 <button
                   type="button"
                   onClick={handleCloseAssignBoyModal}
                   disabled={isAssigningBoy}
-                  className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors disabled:opacity-60"
+                  className="flex-1 bg-white border border-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-60"
                 >
                   Cancel
                 </button>
@@ -1893,9 +1941,9 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                   type="button"
                   onClick={handleAssignDeliveryBoy}
                   disabled={isAssigningBoy || !selectedDeliveryBoyId}
-                  className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-60"
+                  className="flex-1 bg-[#00c87e] hover:bg-[#00b874] text-white py-3 rounded-2xl font-bold text-sm active:scale-[0.98] transition-all shadow-lg shadow-emerald-500/10 disabled:opacity-40 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                 >
-                  {isAssigningBoy ? "Assigning..." : "Assign"}
+                  {isAssigningBoy ? "Assigning..." : "Assign Partner"}
                 </button>
               </div>
             </motion.div>
@@ -3867,6 +3915,13 @@ export default function OrdersMain() {
           .content-scroll::-webkit-scrollbar {
             display: none;
           }
+          @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.15; }
+          }
+          .animate-blink {
+            animation: blink 1s infinite;
+          }
         `}</style>
 
         {/* Verification Pending Card - Show if onboarding is complete (all 4 steps) and restaurant is not active */}
@@ -4089,13 +4144,19 @@ export default function OrdersMain() {
                                 <Phone className="w-3 h-3 text-emerald-600" />
                               </div>
                               <div className="flex-1">
-                                <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                                  Self Delivery
+                                <p className="text-lg font-extrabold text-red-600 uppercase tracking-wider animate-blink">
+                                  SELF DELIVERY
                                 </p>
                                 {order?.customerAddress && (
-                                  <p className="text-[10px] text-emerald-700 mt-0.5 leading-relaxed line-clamp-1">
-                                    {order.customerAddress.addressLine1 || order.customerAddress.street}
-                                    {order.customerAddress.city ? `, ${order.customerAddress.city}` : ""}
+                                  <p className="text-[10px] text-emerald-700 mt-0.5 leading-relaxed">
+                                    {[
+                                      order.customerAddress.addressLine1 || order.customerAddress.street,
+                                      order.customerAddress.addressLine2,
+                                      order.customerAddress.landmark,
+                                      order.customerAddress.city,
+                                      order.customerAddress.state,
+                                      order.customerAddress.pincode || order.customerAddress.zip
+                                    ].filter(Boolean).join(", ")}
                                   </p>
                                 )}
                               </div>
@@ -4140,17 +4201,20 @@ export default function OrdersMain() {
                             <Phone className="w-4 h-4 text-emerald-600" />
                           </div>
                           <div className="min-w-0 text-left">
-                            <p className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">
-                              Self Delivery
-                            </p>
-                            <p className="text-sm font-semibold text-emerald-900 mt-0.5">
-                              Deliver by boy after preparation
+                            <p className="text-lg font-extrabold text-red-600 uppercase tracking-wider animate-blink">
+                                  SELF DELIVERY
                             </p>
                             {order?.customerAddress && (
-                              <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed line-clamp-1">
+                              <p className="text-[11px] text-emerald-700 mt-1 leading-relaxed">
                                 <span className="font-semibold">Address: </span>
-                                {order.customerAddress.addressLine1 || order.customerAddress.street}
-                                {order.customerAddress.city ? `, ${order.customerAddress.city}` : ""}
+                                {[
+                                  order.customerAddress.addressLine1 || order.customerAddress.street,
+                                  order.customerAddress.addressLine2,
+                                  order.customerAddress.landmark,
+                                  order.customerAddress.city,
+                                  order.customerAddress.state,
+                                  order.customerAddress.pincode || order.customerAddress.zip
+                                ].filter(Boolean).join(", ")}
                               </p>
                             )}
                           </div>
@@ -4204,10 +4268,6 @@ export default function OrdersMain() {
 
                   {/* Customer info */}
                   <div className="mb-2">
-                    <h4 className="text-sm font-semibold text-gray-900">
-                      {(popupOrder || newOrder)?.items?.[0]?.name ||
-                        "New Order"}
-                    </h4>
                     <p className="text-xs text-gray-500 mt-1">
                       {(popupOrder || newOrder)?.createdAt
                         ? new Date(
@@ -5145,9 +5205,11 @@ function OrderCard({
     ? "Live Table" 
     : normalizedStatus === "created"
       ? "Pending Review"
-      : String(status || "")
-          .replace(/_/g, " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase());
+      : normalizedStatus === "assigned_to_boy"
+        ? `Assigned To ${selfDeliveryBoy?.name || "Delivery Boy"}`
+        : String(status || "")
+            .replace(/_/g, " ")
+            .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${isPreparing && onCancel ? "pr-14" : ""}`}>
@@ -5370,7 +5432,7 @@ function OrderCard({
                   }}
                   className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all shadow-sm"
                 >
-                  Assign Boy
+                  Assign To Captain
                 </button>
               )}
               {isPreparing && onMarkReady && (

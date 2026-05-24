@@ -197,7 +197,7 @@ export default function RestaurantLogin() {
             Taamio
           </h1>
           <p className="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-widest">
-            {selectedRole === "delivery" ? "Delivery Login" : "Restaurant Login"}
+            {selectedRole === "delivery" ? "Delivery Partner Login" : "Restaurant Login"}
           </p>
         </div>
 
@@ -224,7 +224,7 @@ export default function RestaurantLogin() {
                     : "text-slate-500"
                 }`}
               >
-                Delivery Boy
+                Delivery Partner
               </button>
             </div>
 
@@ -250,7 +250,7 @@ export default function RestaurantLogin() {
                   value={formData.phone}
                   onChange={handlePhoneChange}
                   onFocus={ensurePhoneFieldVisible}
-                  className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#00c87e] px-2"
+                  className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 placeholder:font-normal caret-[#00c87e] px-2"
                   style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
                 />
               </div>
@@ -271,10 +271,10 @@ export default function RestaurantLogin() {
                     <input
                       type="text"
                       autoComplete="username"
-                      placeholder="Delivery username"
+                      placeholder="User Name"
                       value={deliveryForm.username}
                       onChange={handleDeliveryChange("username")}
-                      className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#00c87e] px-2"
+                      className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 placeholder:font-normal caret-[#00c87e] px-2"
                       style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
                     />
                   </div>
@@ -288,10 +288,10 @@ export default function RestaurantLogin() {
                     <input
                       type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
-                      placeholder="Delivery password"
+                      placeholder="Password"
                       value={deliveryForm.password}
                       onChange={handleDeliveryChange("password")}
-                      className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 caret-[#00c87e] px-2"
+                      className="min-w-0 flex-1 h-12 bg-transparent border-0 outline-none ring-0 shadow-none focus:border-0 focus:outline-none focus:ring-0 focus:shadow-none text-left text-lg font-bold leading-none tracking-[0.02em] text-slate-900 placeholder-slate-300 placeholder:font-normal caret-[#00c87e] px-2"
                       style={{ WebkitTextFillColor: "#0f172a", opacity: 1 }}
                     />
                     <button

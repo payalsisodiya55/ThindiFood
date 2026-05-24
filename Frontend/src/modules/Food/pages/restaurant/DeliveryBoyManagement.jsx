@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
+import { confirmApp } from "@shared/lib/appDialog";
 import { toast } from "sonner";
 
 const EMPTY_FORM = {
@@ -209,8 +210,8 @@ export default function DeliveryBoyManagement() {
   const handleDelete = async (deliveryBoy) => {
     if (!canManageDeliveryBoys) return;
 
-    const confirmed = window.confirm(
-      `Delete ${deliveryBoy?.name || "this delivery boy"}? They will be removed from the database and won't be able to log in again.`,
+    const confirmed = await confirmApp(
+      `Are you sure you want to delete ${deliveryBoy?.name || "this delivery partner"}? This action cannot be undone.`,
     );
     if (!confirmed) return;
 
@@ -275,7 +276,7 @@ export default function DeliveryBoyManagement() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             {[
               ["name", "Name", 40],
-              ["phone", "Phone", 10],
+              ["phone", "Phone Number", 10],
               ["username", "Username", 20],
               ["password", isEditing ? "Password (optional)" : "Password", 32],
             ].map(([key, label, max]) => (
