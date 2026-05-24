@@ -51,6 +51,9 @@ const normalizeOrderStatus = (value) =>
 const isDeliveryOrder = (order) =>
   String(order?.fulfillmentType || order?.orderType || "delivery").toLowerCase() === "delivery"
 
+const isTakeawayOrder = (order) =>
+  String(order?.fulfillmentType || order?.orderType || "").toLowerCase() === "takeaway"
+
 const isDeliveredDeliveryOrder = (order) => {
   if (!isDeliveryOrder(order)) return false
 
@@ -81,6 +84,7 @@ const isCompletedOrder = (order) => {
       "completed",
       "delivered_self",
       "picked_up",
+      "pickedup",
       "picked_up_by_boy",
     ].includes(normalizedStatus) ||
     Boolean(order?.deliveredAt || order?.completedAt || order?.deliveryState?.deliveredAt)
@@ -174,7 +178,10 @@ export default function Orders() {
     if (isDeliveredDeliveryOrder(order)) return 'delivered'
     const status = normalizeOrderStatus(order.status || order.orderStatus)
     if (!status || status === 'pending' || status === 'created') return 'placed'
-    if (status === 'delivered' || status === 'completed' || status === 'delivered_self') return 'delivered'
+    if (status === 'picked_up' || status === 'picked_up_by_boy') return 'pickedUp'
+    if (status === 'delivered' || status === 'completed' || status === 'delivered_self') {
+      return isTakeawayOrder(order) ? 'pickedUp' : 'delivered'
+    }
     if (status === 'out_for_delivery' || status === 'outfordelivery') return 'outForDelivery'
     if (status === 'ready' || status === 'preparing') return 'preparing'
     if (status.includes('cancel')) return 'cancelled'
@@ -787,7 +794,11 @@ Order again from this restaurant in the ${companyName} app.`
                 return "paid"
               }
               // Active COD order → show clean label instead of raw 'cod_pending'
-              if (isCodOrder && (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")) {
+              if (
+                isCodOrder &&
+                !isTakeawayOrder(order) &&
+                (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")
+              ) {
                 return "COD"
               }
               return rawPaymentStatus
@@ -1001,7 +1012,11 @@ Order again from this restaurant in the ${companyName} app.`
                     {order.payment && (
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         Payment: <span className="font-medium uppercase text-gray-700 dark:text-gray-300">
-                          {order.payment.method === 'cash' || order.payment.method === 'cod' ? 'COD' :
+                          {order.payment.method === 'cash' || order.payment.method === 'cod'
+                            ? isTakeawayOrder(order)
+                              ? 'Payment at restaurant'
+                              : 'COD'
+                            :
                             order.payment.method === 'wallet' ? 'Wallet' :
                               order.payment.method === 'razorpay' ? 'Online' :
                                 order.payment.method || 'N/A'}
@@ -1014,7 +1029,9 @@ Order again from this restaurant in the ${companyName} app.`
                       </p>
                     )}
                     {isDelivered && !paymentFailed && (
-                      <p className="text-xs font-medium text-green-600 dark:text-green-500 mt-1">Delivered</p>
+                      <p className="text-xs font-medium text-green-600 dark:text-green-500 mt-1">
+                        {isTakeawayOrder(order) ? 'Picked up' : 'Delivered'}
+                      </p>
                     )}
                     {isRestaurantCancelled && (
                       <p className="text-xs font-medium text-red-500 mt-1">Restaurant Cancelled</p>

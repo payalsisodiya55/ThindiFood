@@ -304,6 +304,12 @@ export default function UserOrderDetails() {
   const showCutleryPreference = !isTakeawayOrder
   const showDeliveryFee = !isTakeawayOrder
   const orderStatusLabel = formatOrderStatusLabel(order.status, isTakeawayOrder)
+  const paymentMethodLabel =
+    paymentMethod.toLowerCase() === "cash" || paymentMethod.toLowerCase() === "cod"
+      ? isTakeawayOrder
+        ? "Payment at restaurant"
+        : "COD"
+      : paymentMethod.toUpperCase()
   const deliveryAddress = order.address || order.deliveryAddress || {}
   const complaintEligibleStatuses = new Set([
     "delivered",
@@ -877,7 +883,7 @@ export default function UserOrderDetails() {
                 Payment method
               </h4>
               <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
-                Paid via: {paymentMethod.toLowerCase() === 'cash' || paymentMethod.toLowerCase() === 'cod' ? 'COD' : paymentMethod.toUpperCase()}
+                Paid via: {paymentMethodLabel}
               </p>
             </div>
           </div>
