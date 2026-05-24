@@ -78,7 +78,7 @@ function RestaurantDetailsContent() {
   const [searchParams] = useSearchParams()
   const showOnlyUnder250 = searchParams.get('under250') === 'true'
   const targetDishId = useMemo(() => String(searchParams.get('dish') || '').trim(), [searchParams])
-  const { addToCart, updateQuantity, removeFromCart, getCartItem, cart } = useCart()
+  const { addToCart, updateQuantity, removeFromCart, getCartItem, cart, clearCart, replaceCart } = useCart()
   const { vegMode, addDishFavorite, removeDishFavorite, isDishFavorite, getDishFavorites, getFavorites, addFavorite, removeFavorite, isFavorite } = useProfile()
   const { location: userLocation } = useLocation() // Get user's current location
   const { zoneId, zone, loading: loadingZone, isOutOfService } = useZone(userLocation) // Get user's zone for zone-based filtering
@@ -88,6 +88,7 @@ function RestaurantDetailsContent() {
   const [showManageCollections, setShowManageCollections] = useState(false)
   const [showItemDetail, setShowItemDetail] = useState(false)
   const [selectedItem, setSelectedItem] = useState(null)
+  const [pendingCartItem, setPendingCartItem] = useState(null)
   const [selectedVariantId, setSelectedVariantId] = useState("")
   const [showFilterSheet, setShowFilterSheet] = useState(false)
   const [showLocationSheet, setShowLocationSheet] = useState(false)
@@ -1353,7 +1354,26 @@ function RestaurantDetailsContent() {
         if (newQuantity > existingCartItem.quantity && sourcePosition) {
           const result = addToCart(cartItem, sourcePosition)
           if (result?.ok === false) {
-            toast.error(result.error || 'Cannot add item from different restaurant. Please clear cart first.')
+            if (result?.code === 'RESTAURANT_MISMATCH') {
+              setPendingCartItem({
+                cartItem,
+                sourcePosition,
+                newQuantity,
+                item,
+                lineItemId
+              })
+              setQuantities((prev) => {
+                const next = { ...prev }
+                if (existingCartItem) {
+                  next[lineItemId] = existingCartItem.quantity
+                } else {
+                  delete next[lineItemId]
+                }
+                return next
+              })
+            } else {
+              toast.error(result.error || 'Cannot add item from different restaurant. Please clear cart first.')
+            }
             return
           }
           if (newQuantity > existingCartItem.quantity + 1) {
@@ -1373,7 +1393,26 @@ function RestaurantDetailsContent() {
         // Pass sourcePosition when adding a new item
         const result = addToCart(cartItem, sourcePosition)
         if (result?.ok === false) {
-          toast.error(result.error || 'Cannot add item from different restaurant. Please clear cart first.')
+          if (result?.code === 'RESTAURANT_MISMATCH') {
+            setPendingCartItem({
+              cartItem,
+              sourcePosition,
+              newQuantity,
+              item,
+              lineItemId
+            })
+            setQuantities((prev) => {
+              const next = { ...prev }
+              if (existingCartItem) {
+                next[lineItemId] = existingCartItem.quantity
+              } else {
+                delete next[lineItemId]
+              }
+              return next
+            })
+          } else {
+            toast.error(result.error || 'Cannot add item from different restaurant. Please clear cart first.')
+          }
           return
         }
         if (newQuantity > 1) {
@@ -1381,6 +1420,24 @@ function RestaurantDetailsContent() {
         }
       }
     }
+  }
+
+  const handleConfirmClearCart = () => {
+    if (pendingCartItem) {
+      const { cartItem, sourcePosition, newQuantity, lineItemId } = pendingCartItem
+      const newItem = {
+        ...cartItem,
+        quantity: newQuantity || 1
+      }
+      replaceCart([newItem])
+      setQuantities({ [lineItemId]: newQuantity })
+      setPendingCartItem(null)
+      toast.success("Cart replaced and item added!")
+    }
+  }
+
+  const handleCancelClearCart = () => {
+    setPendingCartItem(null)
   }
 
   const isRecommendedSection = (section) => {
@@ -2506,11 +2563,15 @@ function RestaurantDetailsContent() {
                 </p>
                 {hasActiveMenuFilters && (
                   <button
-                    onClick={() => setFilters({
-                      sortBy: null,
-                      vegNonVeg: null,
-                      highlyReordered: false,
-                    })}
+                    onClick={() => {
+                      setFilters({
+                        sortBy: null,
+                        vegNonVeg: null,
+                        highlyReordered: false,
+                      })
+                      setSearchQuery("")
+                      setShowSearch(false)
+                    }}
                     className="mt-5 text-sm font-bold text-[#00c87e] hover:underline"
                   >
                     Clear all filters
@@ -3388,6 +3449,8 @@ function RestaurantDetailsContent() {
                           vegNonVeg: null,
                           highlyReordered: false,
                         })
+                        setSearchQuery("")
+                        setShowSearch(false)
                       }}
                       className="text-red-600 dark:text-red-400 font-medium text-sm hover:text-red-700 dark:hover:text-red-500"
                     >
@@ -4232,6 +4295,62 @@ function RestaurantDetailsContent() {
             linkTo="/food/user/cart"
             hideOnPages={true}
           />,
+          document.body
+        )}
+
+      {/* Confirmation Modal for Restaurant Mismatch */}
+      {typeof window !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {pendingCartItem && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  className={`fixed inset-0 bg-black/60 z-[10030] ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={handleCancelClearCart}
+                />
+                {/* Modal Container */}
+                <motion.div
+                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10031] w-[90vw] max-w-sm bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="p-6">
+                    <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center mb-4 mx-auto text-amber-500 animate-pulse">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
+                      Replace cart items?
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center leading-relaxed mb-6">
+                      Your cart contains items from another restaurant. Do you want to clear the existing cart and add this item?
+                    </p>
+                    <div className="flex gap-3">
+                      <Button
+                        variant="outline"
+                        className="flex-1 rounded-xl py-5 font-semibold border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300"
+                        onClick={handleCancelClearCart}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        className="flex-1 rounded-xl py-5 font-semibold bg-red-600 hover:bg-red-700 text-white border-none"
+                        onClick={handleConfirmClearCart}
+                      >
+                        Clear Cart & Continue
+                      </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
           document.body
         )}
     </AnimatedPage>

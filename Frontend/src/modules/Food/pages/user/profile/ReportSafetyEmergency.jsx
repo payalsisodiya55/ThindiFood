@@ -291,19 +291,19 @@ export default function ReportSafetyEmergency() {
 
             {/* History Details Dialog */}
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-              <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-red-600" />
+              <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-6 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl">
+                <DialogHeader className="pr-10 sm:pr-0">
+                  <DialogTitle className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
+                    <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
                     Report Details
                   </DialogTitle>
-                  <DialogDescription>
+                  <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                     Full details of your safety emergency report.
                   </DialogDescription>
                 </DialogHeader>
 
                 {selectedHistoryItem && (
-                  <div className="space-y-4">
+                  <div className="space-y-4 mt-4">
                     <div className="flex flex-wrap items-center gap-2">
                       {getStatusPill(selectedHistoryItem?.status)}
                       {selectedHistoryItem?.priority ? getPriorityPill(selectedHistoryItem?.priority) : null}
@@ -314,8 +314,8 @@ export default function ReportSafetyEmergency() {
                       ) : null}
                     </div>
 
-                    <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f0f] p-4">
-                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
+                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#101010] p-4 shadow-inner">
+                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed break-all">
                         {selectedHistoryItem?.message || "—"}
                       </p>
                     </div>
