@@ -848,34 +848,36 @@ Order again from this restaurant in the ${companyName} app.`
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); toggleMenuForOrder(order.id); }}
-                    className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500" />
-                  </button>
-                </div>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleMenuForOrder(order.id); }}
+                      className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <MoreVertical className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+                    </button>
 
-                {/* Three-dots dropdown menu */}
-                {activeMenuOrderId === order.id && (
-                  <div className="absolute right-3 top-10 z-20 w-40 rounded-xl bg-white dark:bg-[#2a2a2a] shadow-lg border border-gray-100 dark:border-gray-800 py-1 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => handleShareRestaurant(order)}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                    >
-                      Share restaurant
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleViewOrderDetails(order)}
-                      className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
-                    >
-                      Order details
-                    </button>
+                    {/* Three-dots dropdown menu */}
+                    {activeMenuOrderId === order.id && (
+                      <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-xl bg-white dark:bg-[#2a2a2a] shadow-lg border border-gray-100 dark:border-gray-800 py-1 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => handleShareRestaurant(order)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        >
+                          Share restaurant
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleViewOrderDetails(order)}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200"
+                        >
+                          Order details
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {/* Separator */}
                 <div className="border-t border-dashed border-gray-200 dark:border-gray-800 mx-4 my-1"></div>
