@@ -10,6 +10,7 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { restaurantAPI } from "@food/api"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { toast } from "sonner"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -65,9 +66,9 @@ export default function OutletTimings() {
   const [expandedDay, setExpandedDay] = useState("Monday")
   const isInternalUpdate = useRef(false)
   const [days, setDays] = useState(getDefaultDays)
+  const [initialDays, setInitialDays] = useState(null)
   const [loading, setLoading] = useState(true)
-  const saveTimerRef = useRef(null)
-  const latestDaysRef = useRef(getDefaultDays())
+  const [saving, setSaving] = useState(false)
 
   const syncRestaurantAvailabilityFromTimings = async (nextDays) => {
     try {
@@ -115,10 +116,13 @@ export default function OutletTimings() {
         setLoading(true)
         const res = await restaurantAPI.getOutletTimings()
         const outletTimings = res?.data?.data?.outletTimings || res?.data?.outletTimings
-        if (mounted && outletTimings && typeof outletTimings === "object") {
-          const mergedDays = { ...getDefaultDays(), ...outletTimings }
-          latestDaysRef.current = mergedDays
+        if (mounted) {
+          const mergedDays = {
+            ...getDefaultDays(),
+            ...(outletTimings && typeof outletTimings === "object" ? outletTimings : {})
+          }
           setDays(mergedDays)
+          setInitialDays(mergedDays)
         }
       } catch (error) {
         debugError("Error loading outlet timings from backend:", error)
@@ -131,40 +135,28 @@ export default function OutletTimings() {
     }
   }, [])
 
-  // Save to backend whenever days change (debounced).
-  useEffect(() => {
-    latestDaysRef.current = days
-  }, [days])
+  const hasChanges = initialDays ? JSON.stringify(days) !== JSON.stringify(initialDays) : false
 
-  useEffect(() => {
-    if (loading) return
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    saveTimerRef.current = setTimeout(async () => {
-      try {
-        await persistOutletTimings(days)
-      } catch (error) {
-        debugError("Error saving outlet timings to backend:", error)
-      }
-    }, 500)
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-    }
-  }, [days, loading])
-
-  const handleBack = async () => {
+  const handleSave = async () => {
     try {
-      if (saveTimerRef.current) {
-        clearTimeout(saveTimerRef.current)
-        saveTimerRef.current = null
-      }
-      if (!loading) {
-        await persistOutletTimings(latestDaysRef.current)
-      }
+      setSaving(true)
+      await persistOutletTimings(days)
+      setInitialDays(days)
+      toast.success("Outlet timings saved successfully!")
     } catch (error) {
-      debugError("Error flushing outlet timings before navigation:", error)
+      debugError("Error saving outlet timings:", error)
+      toast.error("Failed to save outlet timings. Please try again.")
     } finally {
-      navigate("/food/restaurant/explore")
+      setSaving(false)
     }
+  }
+
+  const handleBack = () => {
+    if (hasChanges) {
+      const confirmLeave = window.confirm("You have unsaved timing changes. Are you sure you want to leave without saving?")
+      if (!confirmLeave) return
+    }
+    navigate("/food/restaurant/explore")
   }
 
   // Lenis smooth scrolling
@@ -268,7 +260,7 @@ export default function OutletTimings() {
         </div>
 
         {/* Main Content */}
-        <div className="px-4 py-6">
+        <div className="px-4 py-6 pb-28">
           {/* Restaurant Timing Section Header */}
           <div className="mb-6">
             <div className="text-center mb-2">
@@ -461,6 +453,37 @@ export default function OutletTimings() {
                 </motion.div>
               )
             })}
+          </div>
+        </div>
+
+        {/* Sticky Save Changes Bar */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.08)] px-6">
+          <div className="text-sm text-gray-600 font-medium">
+            {hasChanges ? "You have unsaved changes in outlet timings." : "Outlet timings are up to date."}
+          </div>
+          <div className="w-full sm:w-auto flex gap-3">
+            {hasChanges && (
+              <button
+                type="button"
+                onClick={() => setDays(initialDays)}
+                disabled={saving}
+                className="w-full sm:w-auto border border-gray-300 text-gray-700 font-medium py-2.5 px-5 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer text-sm"
+              >
+                Discard
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+              className={`w-full sm:w-auto font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
+                hasChanges 
+                  ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                  : "bg-gray-200 text-gray-500"
+              }`}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           </div>
         </div>
       </div>
