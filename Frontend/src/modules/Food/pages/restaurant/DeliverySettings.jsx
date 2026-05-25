@@ -473,7 +473,7 @@ export default function DeliverySettings() {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">Enable your own delivery boys for nearby orders</p>
+                  <p className="text-sm text-gray-500">Enable your own delivery partners for nearby orders</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {isPendingApproval && (
@@ -575,7 +575,7 @@ export default function DeliverySettings() {
                   className="flex-1 rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-900 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Users className="w-4 h-4" />
-                  Manage Delivery Boys
+                  Manage Delivery Partners
                 </button>
               </div>
             </CardContent>

@@ -510,7 +510,7 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     selfDelivery: apiOrder?.selfDelivery || safePreviousOrder?.selfDelivery || null,
     selfDeliveryBoy: apiOrder?.selfDelivery?.deliveryBoyId
       ? {
-          name: apiOrder.selfDelivery.deliveryBoyId.name || 'Delivery Boy',
+          name: apiOrder.selfDelivery.deliveryBoyId.name || 'Delivery Partner',
           phone: apiOrder.selfDelivery.deliveryBoyId.phone || '',
           username: apiOrder.selfDelivery.deliveryBoyId.username || '',
         }
@@ -1910,17 +1910,17 @@ export default function OrderTracking() {
       iconType: 'food'
     },
     assigned: {
-      title: isTakeawayOrder ? "Pickup handover soon" : isSelfDeliveryOrder ? "Delivery boy assigned" : "Rider is arriving",
+      title: isTakeawayOrder ? "Pickup handover soon" : isSelfDeliveryOrder ? "Delivery partner assigned" : "Rider is arriving",
       subtitle: isTakeawayOrder
         ? "Restaurant is getting your order ready for pickup"
         : isSelfDeliveryOrder
-          ? "Your restaurant delivery boy has been assigned"
+          ? "Your restaurant delivery partner has been assigned"
           : "A delivery partner is arriving at the restaurant",
       color: "bg-[#00c87e]",
       iconType: isTakeawayOrder ? 'food' : 'rider'
     },
     at_pickup: {
-      title: isTakeawayOrder ? "Pickup counter ready" : isSelfDeliveryOrder ? "Order picked by delivery boy" : "Rider at restaurant",
+      title: isTakeawayOrder ? "Pickup counter ready" : isSelfDeliveryOrder ? "Order picked by delivery partner" : "Rider at restaurant",
       subtitle: isTakeawayOrder
         ? "Please reach the restaurant for handover"
         : isSelfDeliveryOrder
@@ -2146,7 +2146,7 @@ export default function OrderTracking() {
                 <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-gray-900 dark:text-white">{order.selfDeliveryBoy.name || "Delivery Boy"}</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{order.selfDeliveryBoy.name || "Delivery Partner"}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {order.selfDeliveryBoy.phone || "Contact number will appear here"}
                 </p>

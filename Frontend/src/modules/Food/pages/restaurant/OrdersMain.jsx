@@ -227,7 +227,7 @@ const normalizeOrderForPopup = (orderLike) => {
               orderLike.selfDelivery.deliveryBoyId._id ||
               orderLike.selfDelivery.deliveryBoyId.id ||
               null,
-            name: orderLike.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+            name: orderLike.selfDelivery.deliveryBoyId.name || "Delivery Partner",
             phone: orderLike.selfDelivery.deliveryBoyId.phone || "",
           }
         : null,
@@ -401,7 +401,7 @@ const transformOrderForList = (order) => ({
             order.selfDelivery.deliveryBoyId._id ||
             order.selfDelivery.deliveryBoyId.id ||
             null,
-          name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+          name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
           phone: order.selfDelivery.deliveryBoyId.phone || "",
         }
       : null,
@@ -663,7 +663,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                       order.selfDelivery.deliveryBoyId._id ||
                       order.selfDelivery.deliveryBoyId.id ||
                       null,
-                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
                     phone: order.selfDelivery.deliveryBoyId.phone || "",
                   }
                 : null,
@@ -840,7 +840,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
                         </p>
                         {showDeliveryBoyName && (
                           <p className="text-[11px] text-blue-600 font-medium">
-                            Delivery Boy: {order.selfDeliveryBoy.name}
+                            Delivery Partner: {order.selfDeliveryBoy.name}
                           </p>
                         )}
                       </div>
@@ -1646,7 +1646,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
     }
 
     if (!selectedDeliveryBoyId) {
-      toast.error("Please select a delivery boy");
+      toast.error("Please select a delivery partner");
       return;
     }
 
@@ -1678,14 +1678,14 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
                           null,
                         name:
                           assignedOrder.selfDelivery.deliveryBoyId.name ||
-                          "Delivery Boy",
+                          "Delivery Partner",
                         phone:
                           assignedOrder.selfDelivery.deliveryBoyId.phone || "",
                       }
                     : matchedBoy
                       ? {
                           id: matchedBoy._id || matchedBoy.id || null,
-                          name: matchedBoy.name || "Delivery Boy",
+                          name: matchedBoy.name || "Delivery Partner",
                           phone: matchedBoy.phone || "",
                         }
                       : order.selfDeliveryBoy,
@@ -1693,11 +1693,11 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0 }) {
             : order,
         ),
       );
-      toast.success("Delivery boy assigned successfully");
+      toast.success("Delivery partner assigned successfully");
       handleCloseAssignBoyModal();
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to assign delivery boy",
+        error?.response?.data?.message || "Failed to assign delivery partner",
       );
     } finally {
       setIsAssigningBoy(false);
@@ -5206,7 +5206,7 @@ function OrderCard({
     : normalizedStatus === "created"
       ? "Pending Review"
       : normalizedStatus === "assigned_to_boy"
-        ? `Assigned To ${selfDeliveryBoy?.name || "Delivery Boy"}`
+        ? `Assigned To ${selfDeliveryBoy?.name || "Delivery Partner"}`
         : String(status || "")
             .replace(/_/g, " ")
             .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -5913,7 +5913,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
               order.selfDelivery?.deliveryBoyId && typeof order.selfDelivery.deliveryBoyId === "object"
                 ? {
                     id: order.selfDelivery.deliveryBoyId._id || order.selfDelivery.deliveryBoyId.id || null,
-                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
                     phone: order.selfDelivery.deliveryBoyId.phone || "",
                   }
                 : null,
@@ -6038,7 +6038,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
       return;
     }
     if (!selectedDeliveryBoyId) {
-      toast.error("Please select a delivery boy");
+      toast.error("Please select a delivery partner");
       return;
     }
 
@@ -6070,14 +6070,14 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
                           null,
                         name:
                           assignedOrder.selfDelivery.deliveryBoyId.name ||
-                          "Delivery Boy",
+                          "Delivery Partner",
                         phone:
                           assignedOrder.selfDelivery.deliveryBoyId.phone || "",
                       }
                     : matchedBoy
                       ? {
                           id: matchedBoy._id || matchedBoy.id || null,
-                          name: matchedBoy.name || "Delivery Boy",
+                          name: matchedBoy.name || "Delivery Partner",
                           phone: matchedBoy.phone || "",
                         }
                       : order.selfDeliveryBoy,
@@ -6085,12 +6085,12 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged }) {
             : order,
         ),
       );
-      toast.success("Delivery boy assigned successfully");
+      toast.success("Delivery partner assigned successfully");
       handleCloseAssignBoyModal();
       onStatusChanged?.();
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to assign delivery boy",
+        error?.response?.data?.message || "Failed to assign delivery partner",
       );
     } finally {
       setIsAssigningBoy(false);
@@ -6301,7 +6301,7 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0 }) {
                         order.selfDelivery.deliveryBoyId._id ||
                         order.selfDelivery.deliveryBoyId.id ||
                         null,
-                      name: order.selfDelivery.deliveryBoyId.name || "Delivery Boy",
+                      name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
                       phone: order.selfDelivery.deliveryBoyId.phone || "",
                     }
                   : null,

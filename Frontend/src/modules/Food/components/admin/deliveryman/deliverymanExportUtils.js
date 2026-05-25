@@ -243,7 +243,7 @@ export const exportReviewsToJSON = (reviews, filename = "deliveryman_reviews") =
 
 // Export utilities for bonus transactions
 export const exportBonusToCSV = (transactions, filename = "deliveryman_bonus") => {
-  const headers = ["S.No", "Transaction ID", "Delivery Boy ID", "Deliveryman", "Bonus", "Reference", "Created At"]
+  const headers = ["S.No", "Transaction ID", "Delivery Partner ID", "Deliveryman", "Bonus", "Reference", "Created At"]
   const rows = transactions.map((transaction) => [
     transaction.sl,
     transaction.transactionId,
@@ -307,7 +307,7 @@ export const exportBonusToExcel = (transactions, filename = "deliveryman_bonus")
     return
   }
 
-  const headers = ["S.No", "Transaction ID", "Delivery Boy ID", "Deliveryman", "Bonus", "Reference", "Created At"]
+  const headers = ["S.No", "Transaction ID", "Delivery Partner ID", "Deliveryman", "Bonus", "Reference", "Created At"]
   const rows = transactions.map((transaction) => [
     transaction.sl || 'N/A',
     transaction.transactionId || 'N/A',
@@ -424,7 +424,7 @@ export const exportBonusToPDF = (transactions, filename = "deliveryman_bonus") =
 
         // Add table using autoTable
         autoTable(doc, {
-          head: [["S.No", "Transaction ID", "Delivery Boy ID", "Deliveryman", "Bonus", "Reference", "Created At"]],
+          head: [["S.No", "Transaction ID", "Delivery Partner ID", "Deliveryman", "Bonus", "Reference", "Created At"]],
           body: tableData,
           startY: 28,
           styles: {
@@ -442,7 +442,7 @@ export const exportBonusToPDF = (transactions, filename = "deliveryman_bonus") =
           columnStyles: {
             0: { cellWidth: 12 }, // SI
             1: { cellWidth: 40 }, // Transaction ID
-            2: { cellWidth: 30 }, // Delivery Boy ID
+            2: { cellWidth: 30 }, // Delivery Partner ID
             3: { cellWidth: 35 }, // Deliveryman
             4: { cellWidth: 20 }, // Bonus
             5: { cellWidth: 35 }, // Reference

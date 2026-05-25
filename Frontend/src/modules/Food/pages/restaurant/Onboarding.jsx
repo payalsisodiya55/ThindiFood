@@ -3405,7 +3405,7 @@ export default function RestaurantOnboarding() {
               />
             </div>
             <p className="text-[11px] text-gray-500">
-              Turn this on if your restaurant uses its own delivery boys.
+              Turn this on if your restaurant uses its own delivery partners.
             </p>
           </div>
 

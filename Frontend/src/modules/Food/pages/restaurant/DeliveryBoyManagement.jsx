@@ -55,8 +55,8 @@ export default function DeliveryBoyManagement() {
   const canManageDeliveryBoys = selfDeliveryApprovalStatus === "approved";
   const isEditing = Boolean(editingId);
 
-  const titleText = isEditing ? "Edit Delivery Boy" : "Add Delivery Boy";
-  const submitText = isEditing ? "Save Changes" : "Create Delivery Boy";
+  const titleText = isEditing ? "Edit Delivery Partner" : "Add Delivery Partner";
+  const submitText = isEditing ? "Save Changes" : "Create Delivery Partner";
 
   const normalizedPhoneMap = useMemo(
     () =>
@@ -180,16 +180,16 @@ export default function DeliveryBoyManagement() {
 
       if (isEditing) {
         await restaurantAPI.updateDeliveryBoy(editingId, payload);
-        toast.success("Delivery boy updated successfully");
+        toast.success("Delivery partner updated successfully");
       } else {
         await restaurantAPI.createDeliveryBoy({ ...payload, password: form.password });
-        toast.success("Delivery boy created successfully");
+        toast.success("Delivery partner created successfully");
       }
 
       resetForm();
       await loadDeliveryBoys();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to save delivery boy");
+      toast.error(error?.response?.data?.message || "Failed to save delivery partner");
     } finally {
       setSubmitting(false);
     }
@@ -224,10 +224,10 @@ export default function DeliveryBoyManagement() {
       if (editingId === targetId) {
         resetForm();
       }
-      toast.success("Delivery boy deleted successfully");
+      toast.success("Delivery partner deleted successfully");
       await loadDeliveryBoys();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to delete delivery boy");
+      toast.error(error?.response?.data?.message || "Failed to delete delivery partner");
     } finally {
       setDeletingId("");
     }
@@ -241,7 +241,7 @@ export default function DeliveryBoyManagement() {
             <ArrowLeft className="h-5 w-5 text-gray-900" />
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Delivery Boy Management</h1>
+            <h1 className="text-xl font-bold text-gray-900">Delivery Partner Management</h1>
             <p className="text-sm text-gray-500">Create, edit and manage your self-delivery team</p>
           </div>
         </div>
@@ -251,7 +251,7 @@ export default function DeliveryBoyManagement() {
             <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
               <p className="text-sm text-amber-800">
-                Delivery boys can be managed only after self-delivery is approved by admin.
+                Delivery partners can be managed only after self-delivery is approved by admin.
               </p>
             </div>
           ) : null}
@@ -336,10 +336,10 @@ export default function DeliveryBoyManagement() {
         </form>
 
         <div className="rounded-3xl border border-gray-200 bg-white p-5">
-          <h2 className="mb-4 font-semibold text-gray-900">Delivery Boys</h2>
+          <h2 className="mb-4 font-semibold text-gray-900">Delivery Partners</h2>
           {loading ? <p className="text-sm text-gray-500">Loading...</p> : null}
           {!loading && deliveryBoys.length === 0 ? (
-            <p className="text-sm text-gray-500">No delivery boys added yet.</p>
+            <p className="text-sm text-gray-500">No delivery partners added yet.</p>
           ) : null}
 
           <div className="space-y-3">

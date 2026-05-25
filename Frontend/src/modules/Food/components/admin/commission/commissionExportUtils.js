@@ -1,7 +1,7 @@
 // Export utility functions for commission rules
 import { downloadPDF } from "@food/utils/pdfExportHelper"
 
-export const exportCommissionToCSV = (commissions, filename = "delivery-boy-commission") => {
+export const exportCommissionToCSV = (commissions, filename = "delivery-partner-commission") => {
   const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km (₹)", "Base Payout (₹)", "Status"]
   const rows = commissions.map((commission) => [
     commission.sl,
@@ -29,7 +29,7 @@ export const exportCommissionToCSV = (commissions, filename = "delivery-boy-comm
   document.body.removeChild(link)
 }
 
-export const exportCommissionToExcel = (commissions, filename = "delivery-boy-commission") => {
+export const exportCommissionToExcel = (commissions, filename = "delivery-partner-commission") => {
   const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km (₹)", "Base Payout (₹)", "Status"]
   const rows = commissions.map((commission) => [
     commission.sl,
@@ -57,7 +57,7 @@ export const exportCommissionToExcel = (commissions, filename = "delivery-boy-co
   document.body.removeChild(link)
 }
 
-export const exportCommissionToPDF = (commissions, filename = "delivery-boy-commission") => {
+export const exportCommissionToPDF = (commissions, filename = "delivery-partner-commission") => {
   const headers = ["SI", "Name", "Min Distance (km)", "Max Distance (km)", "Commission Per Km (Rs.)", "Base Payout (Rs.)", "Status"]
   const bodyRows = commissions.map((commission) => [
     commission.sl,
@@ -69,10 +69,10 @@ export const exportCommissionToPDF = (commissions, filename = "delivery-boy-comm
     commission.status ? "Active" : "Inactive"
   ])
   
-  downloadPDF("Delivery Boy Commission Report", headers, bodyRows, filename)
+  downloadPDF("Delivery Partner Commission Report", headers, bodyRows, filename)
 }
 
-export const exportCommissionToJSON = (commissions, filename = "delivery-boy-commission") => {
+export const exportCommissionToJSON = (commissions, filename = "delivery-partner-commission") => {
   const jsonContent = JSON.stringify(commissions, null, 2)
   const blob = new Blob([jsonContent], { type: "application/json" })
   const link = document.createElement("a")

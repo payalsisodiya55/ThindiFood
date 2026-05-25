@@ -302,12 +302,12 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order }) {
             </div>
           )}
 
-          {/* Bill Image (Captured by Delivery Boy) */}
+          {/* Bill Image (Captured by Delivery Partner) */}
           {(order.billImageUrl || order.billImage || order.deliveryState?.billImageUrl) && (
             <div className="border-t border-slate-200 pt-4">
               <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-orange-600" />
-                Bill Image (Captured by Delivery Boy)
+                Bill Image (Captured by Delivery Partner)
               </h3>
               <div className="space-y-3">
                 <div className="relative w-full max-w-2xl border-2 border-slate-300 rounded-xl overflow-hidden bg-white shadow-sm">
