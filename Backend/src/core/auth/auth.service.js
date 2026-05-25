@@ -27,6 +27,12 @@ const ROLES = {
   ADMIN: "ADMIN",
 };
 
+const wasTokenIssuedBeforePasswordChange = (payload, passwordChangedAt) => {
+  if (!payload?.iat || !passwordChangedAt) return false;
+  const changedAtSeconds = Math.floor(new Date(passwordChangedAt).getTime() / 1000);
+  return payload.iat < changedAtSeconds;
+};
+
 export const requestUserOtp = async (phone) => {
   if (!phone) {
     throw new ValidationError("Phone is required");
@@ -934,6 +940,18 @@ export const refreshAccessToken = async (token) => {
     const u = await FoodUser.findById(payload.userId).select("isActive").lean();
     if (!u || u.isActive === false) {
       throw new AuthError("User account is deactivated");
+    }
+  }
+
+  if (payload?.role === ROLES.DELIVERY_BOY) {
+    const deliveryBoy = await FoodDeliveryBoy.findById(payload.userId)
+      .select("isActive passwordChangedAt")
+      .lean();
+    if (!deliveryBoy || deliveryBoy.isActive === false) {
+      throw new AuthError("Delivery boy account is inactive");
+    }
+    if (wasTokenIssuedBeforePasswordChange(payload, deliveryBoy.passwordChangedAt)) {
+      throw new AuthError("Session expired. Please log in again.");
     }
   }
 

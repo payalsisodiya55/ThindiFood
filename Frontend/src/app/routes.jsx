@@ -56,6 +56,14 @@ const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/user/auth/*" element={<AuthApp />} />
+      <Route
+        path="/delivery/auth"
+        element={<Navigate to="/food/restaurant/login?role=delivery" replace />}
+      />
+      <Route
+        path="/delivery/auth/*"
+        element={<Navigate to="/food/restaurant/login?role=delivery" replace />}
+      />
 
       <Route
         path="/admin/*"

@@ -115,7 +115,7 @@ function getCurrentPageModule() {
   if (typeof window === "undefined") return "user";
   const path = window.location.pathname.toLowerCase();
   if (path.startsWith("/food/restaurant") || path.startsWith("/restaurant")) return "restaurant";
-  if (path.startsWith("/food/delivery") || path.startsWith("/delivery")) return "delivery";
+  if (path.startsWith("/food/delivery") || path.startsWith("/food/delivery-boy") || path.startsWith("/delivery")) return "delivery";
   if (path.startsWith("/admin") || path.startsWith("/food/admin")) return "admin";
   return "user";
 }
@@ -124,7 +124,7 @@ function redirectToModuleLogin(module) {
   if (typeof window === "undefined") return;
   const loginPaths = {
     restaurant: "/food/restaurant/login",
-    delivery: "/delivery/auth",
+    delivery: "/food/restaurant/login?role=delivery",
     admin: "/admin/auth",
     user: "/user/auth/login",
   };

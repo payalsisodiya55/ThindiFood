@@ -12,6 +12,12 @@ export const requireAdmin = (req, res, next) => {
     next();
 };
 
+const wasTokenIssuedBeforePasswordChange = (decoded, passwordChangedAt) => {
+    if (!decoded?.iat || !passwordChangedAt) return false;
+    const changedAtSeconds = Math.floor(new Date(passwordChangedAt).getTime() / 1000);
+    return decoded.iat < changedAtSeconds;
+};
+
 export const authMiddleware = (req, res, next) => {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
@@ -66,9 +72,12 @@ export const authMiddleware = (req, res, next) => {
                 userId: decoded.userId,
                 role: decoded.role
             };
-            FoodDeliveryBoy.findById(decoded.userId).select('isActive').lean().then((doc) => {
+            FoodDeliveryBoy.findById(decoded.userId).select('isActive passwordChangedAt').lean().then((doc) => {
                 if (!doc || doc.isActive === false) {
                     return sendError(res, 401, 'Delivery boy account is inactive');
+                }
+                if (wasTokenIssuedBeforePasswordChange(decoded, doc.passwordChangedAt)) {
+                    return sendError(res, 401, 'Session expired. Please log in again.');
                 }
                 next();
             }).catch(() => sendError(res, 401, 'Authentication failed'));

@@ -14,6 +14,10 @@ const deliveryBoySchema = new mongoose.Schema(
     phone: { type: String, required: true, trim: true },
     username: { type: String, required: true, trim: true, unique: true },
     password: { type: String, required: true },
+    passwordChangedAt: {
+      type: Date,
+      default: Date.now,
+    },
     isActive: { type: Boolean, default: true, index: true },
     availabilityStatus: {
       type: String,
@@ -39,6 +43,7 @@ const deliveryBoySchema = new mongoose.Schema(
 
 deliveryBoySchema.pre("save", async function hashPassword(next) {
   if (!this.isModified("password")) return next();
+  this.passwordChangedAt = new Date();
   const salt = await bcrypt.genSalt(config.bcryptSaltRounds);
   this.password = await bcrypt.hash(this.password, salt);
   next();

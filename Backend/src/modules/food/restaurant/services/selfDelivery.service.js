@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ValidationError, NotFoundError, ForbiddenError, AuthError } from "../../../../core/auth/errors.js";
+import { FoodRefreshToken } from "../../../../core/refreshTokens/refreshToken.model.js";
 import { FoodRestaurant } from "../models/restaurant.model.js";
 import { FoodDeliveryBoy } from "../models/deliveryBoy.model.js";
 import { FoodOrder } from "../../orders/models/order.model.js";
@@ -316,9 +317,13 @@ export async function updateDeliveryBoy(restaurantId, deliveryBoyId, payload = {
     }
   }
   if (payload?.isActive !== undefined) deliveryBoy.isActive = payload.isActive === true;
-  if (payload?.password) deliveryBoy.password = String(payload.password);
+  const passwordUpdated = Boolean(payload?.password);
+  if (passwordUpdated) deliveryBoy.password = String(payload.password);
 
   await deliveryBoy.save();
+  if (passwordUpdated) {
+    await FoodRefreshToken.deleteMany({ userId: deliveryBoy._id });
+  }
   return deliveryBoy.toObject();
 }
 
