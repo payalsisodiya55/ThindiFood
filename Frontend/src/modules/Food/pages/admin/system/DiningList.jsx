@@ -160,8 +160,27 @@ export default function DiningList() {
     }, [restaurants, searchQuery, selectedCategory])
 
     const formatRestaurantId = (id) => {
-        if (!id) return "REST000000"
-        return `REST${String(id).slice(-6).toUpperCase()}`
+        if (!id) return "REST10000"
+
+        const idString = String(id)
+        
+        // If it's already in the format "RESTxxxxx", extract the xxxxx part
+        const restMatch = idString.match(/^#?REST(\d+)$/i)
+        if (restMatch) {
+            return `REST${restMatch[1]}`
+        }
+
+        // Generate a deterministic 5-digit sequence number starting from 10000 using a stable hash
+        let hash = 0
+        for (let i = 0; i < idString.length; i++) {
+            hash = (hash << 5) - hash + idString.charCodeAt(i)
+            hash = hash & hash // Convert to 32bit integer
+        }
+        
+        const offset = Math.abs(hash) % 90000 // 0 to 89999
+        const sequentialNum = 10000 + offset
+        
+        return `REST${sequentialNum}`
     }
 
     const renderStars = (rating) => {

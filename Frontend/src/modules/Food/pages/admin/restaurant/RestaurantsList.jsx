@@ -267,45 +267,29 @@ export default function RestaurantsList() {
   const locationSearchInputRef = useRef(null)
   const placesAutocompleteRef = useRef(null)
 
-  // Format Restaurant ID to REST format (e.g., REST422829)
+  // Format Restaurant ID to REST format (e.g., REST10000)
   const formatRestaurantId = (id) => {
-    if (!id) return "REST000000"
+    if (!id) return "REST10000"
 
     const idString = String(id)
-    // Extract last 6 digits from the ID
-    // Handle formats like "REST-1768045396242-2829" or "1768045396242-2829"
-    const parts = idString.split(/[-.]/)
-    let lastDigits = ""
-
-    // Get the last part and extract digits
-    if (parts.length > 0) {
-      const lastPart = parts[parts.length - 1]
-      // Extract only digits from the last part
-      const digits = lastPart.match(/\d+/g)
-      if (digits && digits.length > 0) {
-        // Get last 6 digits from all digits found
-        const allDigits = digits.join("")
-        lastDigits = allDigits.slice(-6).padStart(6, "0")
-      } else {
-        // If no digits in last part, look for digits in all parts
-        const allParts = parts.join("")
-        const allDigits = allParts.match(/\d+/g)
-        if (allDigits && allDigits.length > 0) {
-          const combinedDigits = allDigits.join("")
-          lastDigits = combinedDigits.slice(-6).padStart(6, "0")
-        }
-      }
+    
+    // If it's already in the format "RESTxxxxx", extract the xxxxx part
+    const restMatch = idString.match(/^#?REST(\d+)$/i)
+    if (restMatch) {
+      return `REST${restMatch[1]}`
     }
 
-    // If no digits found, use a hash of the ID
-    if (!lastDigits) {
-      const hash = idString.split("").reduce((acc, char) => {
-        return ((acc << 5) - acc) + char.charCodeAt(0) | 0
-      }, 0)
-      lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0")
+    // Generate a deterministic 5-digit sequence number starting from 10000 using a stable hash
+    let hash = 0
+    for (let i = 0; i < idString.length; i++) {
+      hash = (hash << 5) - hash + idString.charCodeAt(i)
+      hash = hash & hash // Convert to 32bit integer
     }
-
-    return `REST${lastDigits}`
+    
+    const offset = Math.abs(hash) % 90000 // 0 to 89999
+    const sequentialNum = 10000 + offset
+    
+    return `REST${sequentialNum}`
   }
 
   // Fetch restaurants from backend API
@@ -1370,7 +1354,7 @@ export default function RestaurantsList() {
                             </div>
                             <div className="flex flex-col min-w-0">
                               <span 
-                                className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors max-w-[200px] xl:max-w-[300px] break-all whitespace-normal"
+                                className="text-sm font-medium text-slate-900 cursor-pointer hover:text-blue-600 transition-colors block max-w-[200px] xl:max-w-[300px] break-words whitespace-normal"
                                 onClick={() => handleViewDetails(restaurant)}
                               >
                                 {restaurant.name}
@@ -1382,8 +1366,8 @@ export default function RestaurantsList() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-medium text-slate-900 max-w-[150px] xl:max-w-[250px] break-all whitespace-normal">{restaurant.ownerName}</span>
-                            <span className="text-xs text-slate-500 max-w-[150px] xl:max-w-[250px] break-all whitespace-normal">{formatPhone(restaurant.ownerPhone)}</span>
+                            <span className="text-sm font-medium text-slate-900 block max-w-[150px] xl:max-w-[250px] break-words whitespace-normal">{restaurant.ownerName}</span>
+                            <span className="text-xs text-slate-500 whitespace-nowrap">{formatPhone(restaurant.ownerPhone)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

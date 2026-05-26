@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { getSequentialRestaurantId } from '../../restaurant/services/restaurant.service.js';
 import { FoodDiningCategory } from '../models/diningCategory.model.js';
 import { FoodDiningRestaurant } from '../models/diningRestaurant.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
@@ -191,6 +192,7 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
     return {
         _id: restaurant._id,
         id: restaurant._id,
+        restaurantId: getSequentialRestaurantId(restaurant._id),
         name: restaurant.restaurantName || restaurant.name || 'N/A',
         restaurantName: restaurant.restaurantName || restaurant.name || 'N/A',
         ownerName: restaurant.ownerName || 'N/A',

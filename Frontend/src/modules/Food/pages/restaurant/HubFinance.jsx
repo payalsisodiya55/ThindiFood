@@ -157,23 +157,29 @@ export default function HubFinance() {
     }
   }, [financeData])
 
-  // Format restaurant ID to REST###### format (e.g., REST005678)
+  // Format Restaurant ID to REST format (e.g., REST10000)
   const formatRestaurantId = (restaurantId) => {
-    if (!restaurantId) return ''
+    if (!restaurantId) return "REST10000"
+
+    const idString = String(restaurantId)
     
-    // Extract numeric part from the end (e.g., "REST-1768762345335-5678" -> "5678")
-    const strId = String(restaurantId)
-    const numericMatch = strId.match(/(\d+)$/)
-    
-    if (numericMatch) {
-      const numericPart = numericMatch[1]
-      // Take last 6 digits and pad with zeros if needed
-      const lastDigits = numericPart.slice(-6).padStart(6, '0')
-      return `REST${lastDigits}`
+    // If it's already in the format "RESTxxxxx", extract the xxxxx part
+    const restMatch = idString.match(/^#?REST(\d+)$/i)
+    if (restMatch) {
+      return `REST${restMatch[1]}`
+    }
+
+    // Generate a deterministic 5-digit sequence number starting from 10000 using a stable hash
+    let hash = 0
+    for (let i = 0; i < idString.length; i++) {
+      hash = (hash << 5) - hash + idString.charCodeAt(i)
+      hash = hash & hash // Convert to 32bit integer
     }
     
-    // Fallback: if no numeric part found, use original
-    return strId
+    const offset = Math.abs(hash) % 90000 // 0 to 89999
+    const sequentialNum = 10000 + offset
+    
+    return `REST${sequentialNum}`
   }
 
   // Get current cycle dates from API response or use default

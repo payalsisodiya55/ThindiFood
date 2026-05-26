@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { getSequentialRestaurantId } from './restaurant.service.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodTableSession } from '../../dineIn/models/tableSession.model.js';
 import { getWalletBalance } from '../../../../core/payments/wallet.service.js';
@@ -665,7 +666,7 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
     return {
         restaurant: {
             name: restaurant?.restaurantName || '',
-            restaurantId: restaurant?._id ? `REST${restaurant._id.toString().slice(-6).padStart(6, '0')}` : 'N/A',
+            restaurantId: restaurant?._id ? getSequentialRestaurantId(restaurant._id) : 'N/A',
             address
         },
         currentCycle,

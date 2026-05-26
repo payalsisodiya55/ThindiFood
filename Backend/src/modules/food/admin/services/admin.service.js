@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodAdmin } from '../../../../core/admin/admin.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
+import { getSequentialRestaurantId } from '../../restaurant/services/restaurant.service.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
 import { FoodZone } from '../models/zone.model.js';
@@ -370,7 +371,11 @@ export async function getRestaurants(query, scope = {}) {
             .lean(),
         FoodRestaurant.countDocuments(filter)
     ]);
-    return { restaurants, total, page, limit };
+    const mappedRestaurants = restaurants.map((r) => ({
+        ...r,
+        restaurantId: getSequentialRestaurantId(r._id)
+    }));
+    return { restaurants: mappedRestaurants, total, page, limit };
 }
 
 const CANCELLED_ORDER_STATUSES = ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
@@ -2535,7 +2540,7 @@ export async function getRestaurantCommissionBootstrap() {
     const restaurants = (restaurantsData.restaurants || []).map((r) => ({
         _id: r._id,
         name: r.restaurantName || r.name || '',
-        restaurantId: r._id ? `REST${r._id.toString().slice(-6).padStart(6, '0')}` : '',
+        restaurantId: r._id ? getSequentialRestaurantId(r._id) : '',
         ownerName: r.ownerName || '',
         hasCommissionSetup: commissionByRestaurantId.has(String(r._id))
     }));
@@ -2576,7 +2581,7 @@ export async function getDiningRestaurantCommissionBootstrap() {
     const restaurants = (restaurantsData.restaurants || []).map((r) => ({
         _id: r._id,
         name: r.restaurantName || r.name || '',
-        restaurantId: r._id ? `REST${r._id.toString().slice(-6).padStart(6, '0')}` : '',
+        restaurantId: r._id ? getSequentialRestaurantId(r._id) : '',
         ownerName: r.ownerName || '',
         hasCommissionSetup: commissionByRestaurantId.has(String(r._id))
     }));
@@ -3262,13 +3267,19 @@ export async function getRestaurantReviews(query = {}, scope = {}) {
 export async function getRestaurantById(id, scope = {}) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     if (!(await ensureRestaurantWithinScope(id, scope))) return null;
-    return FoodRestaurant.findById(id)
+    const doc = await FoodRestaurant.findById(id)
         .select('-__v')
         .populate('zoneId', 'name zoneName serviceLocation isActive')
         .populate('locationChangeRequest.previousZoneId', 'name zoneName serviceLocation isActive')
         .populate('locationChangeRequest.nextZoneId', 'name zoneName serviceLocation isActive')
         .lean();
+    if (!doc) return null;
+    return {
+        ...doc,
+        restaurantId: getSequentialRestaurantId(doc._id)
+    };
 }
+
 
 export async function getRestaurantAnalytics(restaurantId, scope = {}) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
@@ -3399,7 +3410,14 @@ export async function getRestaurantAnalytics(restaurantId, scope = {}) {
         platformNetProfit: sum(completedTx, (tx) => tx?.amounts?.platformNetProfit),
     };
 
-    return { restaurant, analytics, paymentSummary };
+    return {
+        restaurant: {
+            ...restaurant,
+            restaurantId: getSequentialRestaurantId(restaurant._id)
+        },
+        analytics,
+        paymentSummary
+    };
 }
 
 export async function getRestaurantMenuById(id) {
@@ -3430,6 +3448,7 @@ export async function getPendingRestaurants(scope = {}) {
         .lean();
     return restaurants.map((r, i) => ({
         ...r,
+        restaurantId: getSequentialRestaurantId(r._id),
         sl: i + 1,
         zone: r.zoneId?.serviceLocation || r.zoneId?.zoneName || r.zoneId?.name || null,
         requestType:
@@ -3548,7 +3567,12 @@ export async function updateRestaurantById(id, body = {}, scope = {}) {
     }
 
     await doc.save();
-    return FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
+    const updated = await FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
+    if (!updated) return null;
+    return {
+        ...updated,
+        restaurantId: getSequentialRestaurantId(updated._id)
+    };
 }
 
 export async function updateRestaurantStatus(id, body = {}, scope = {}) {
@@ -3558,7 +3582,7 @@ export async function updateRestaurantStatus(id, body = {}, scope = {}) {
     const isActive = parseBooleanLike(raw, 'status');
     const status = isActive ? 'approved' : 'rejected';
 
-    return FoodRestaurant.findByIdAndUpdate(
+    const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
         {
             $set: {
@@ -3571,6 +3595,11 @@ export async function updateRestaurantStatus(id, body = {}, scope = {}) {
         },
         { new: true, runValidators: false }
     ).lean();
+    if (!updated) return null;
+    return {
+        ...updated,
+        restaurantId: getSequentialRestaurantId(updated._id)
+    };
 }
 
 export async function updateRestaurantLocation(id, body = {}, scope = {}) {
@@ -3638,7 +3667,12 @@ export async function updateRestaurantLocation(id, body = {}, scope = {}) {
     }
 
     await doc.save();
-    return FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
+    const updated = await FoodRestaurant.findById(id).select('-__v').populate('zoneId', 'name zoneName serviceLocation isActive').lean();
+    if (!updated) return null;
+    return {
+        ...updated,
+        restaurantId: getSequentialRestaurantId(updated._id)
+    };
 }
 
 // ----- Categories -----
@@ -6277,7 +6311,7 @@ export async function getWithdrawals(query = {}) {
         ...w,
         id: w._id,
         restaurantName: w.restaurantId?.restaurantName || 'N/A',
-        restaurantIdString: w.restaurantId ? `REST${w.restaurantId._id.toString().slice(-6).padStart(6, '0')}` : 'N/A',
+        restaurantIdString: w.restaurantId ? getSequentialRestaurantId(w.restaurantId._id) : 'N/A',
         restaurantBankDetails: {
             accountHolderName: w.restaurantId?.accountHolderName || '',
             accountNumber: w.restaurantId?.accountNumber || '',

@@ -216,6 +216,45 @@ const serializeSelfDeliveryForPublic = (doc) => {
     };
 };
 
+// Global memory cache for chronological sequential restaurant IDs starting from 10000
+const restaurantIdCache = new Map();
+let isCacheInitializing = false;
+
+const refreshCacheBackground = () => {
+    if (isCacheInitializing) return;
+    isCacheInitializing = true;
+    FoodRestaurant.find({}, '_id').sort({ _id: 1 }).lean()
+        .then(restaurants => {
+            restaurantIdCache.clear();
+            restaurants.forEach((r, index) => {
+                restaurantIdCache.set(String(r._id), `REST${10000 + index}`);
+            });
+        })
+        .catch(err => {
+            console.error("Failed to refresh restaurant ID cache:", err);
+        })
+        .finally(() => {
+            isCacheInitializing = false;
+        });
+};
+
+// Initialize the cache on load
+refreshCacheBackground();
+
+export const getSequentialRestaurantId = (id) => {
+    if (!id) return '';
+    const idStr = String(id);
+    if (restaurantIdCache.has(idStr)) {
+        return restaurantIdCache.get(idStr);
+    }
+    // Trigger background refresh
+    refreshCacheBackground();
+    // Deterministic temp assignment to avoid gaps during first load
+    const seqId = `REST${10000 + restaurantIdCache.size}`;
+    restaurantIdCache.set(idStr, seqId);
+    return seqId;
+};
+
 const toRestaurantProfile = (doc) => {
     if (!doc) return null;
     const loc = doc.location && typeof doc.location === 'object' ? doc.location : null;
@@ -263,7 +302,7 @@ const toRestaurantProfile = (doc) => {
     return {
         id: doc._id,
         _id: doc._id,
-        restaurantId: doc.restaurantId || undefined,
+        restaurantId: getSequentialRestaurantId(doc._id),
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
         zoneId: doc.zoneId ? String(doc.zoneId) : '',
