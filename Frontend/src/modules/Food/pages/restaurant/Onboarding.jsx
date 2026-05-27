@@ -1561,8 +1561,6 @@ export default function RestaurantOnboarding() {
     if (normalizedOpeningTime && normalizedClosingTime) {
       if (normalizedOpeningTime === normalizedClosingTime) {
         errors.push("Opening time and closing time cannot be the same")
-      } else if (normalizedClosingTime < normalizedOpeningTime) {
-        errors.push("Closing time cannot be less than opening time")
       }
     }
     if (!step2.openDays || step2.openDays.length === 0) {
@@ -1589,8 +1587,6 @@ export default function RestaurantOnboarding() {
       if (start && end) {
         if (start === end) {
           errors.push("Self delivery start and end time cannot be the same")
-        } else if (end < start) {
-          errors.push("Closing time cannot be less than opening time")
         }
       }
     }

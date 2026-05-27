@@ -931,10 +931,6 @@ export default function RestaurantsList() {
           toast.error("Opening time and closing time cannot be same")
           return
         }
-        if (closingMinutes < openingMinutes) {
-          toast.error("Closing time cannot be less than opening time")
-          return
-        }
       }
 
       const payload = {

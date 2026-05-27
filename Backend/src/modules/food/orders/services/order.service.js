@@ -2855,7 +2855,7 @@ export async function cancelOrder(orderId, userId, reason, refundPreference = ""
     ],
     {
       title: "Order Cancelled ❌",
-      body: `Order #${order.orderId} has been cancelled successfully.${refundDetail}`,
+      body: `Your order has been cancelled successfully.${refundDetail}`,
       image: "https://i.ibb.co/3m2Yh7r/Appzeto-Brand-Image.png",
       data: {
         type: "order_cancelled",
@@ -2878,7 +2878,8 @@ export async function cancelOrder(orderId, userId, reason, refundPreference = ""
         cancelledAt: new Date().toISOString(),
         refundStatus: refundOutcome.refundStatus,
         refundPolicyMode: refundOutcome.mode,
-        message: `Order #${order.orderId} has been cancelled successfully.${refundDetail}`
+        title: "Order Cancelled",
+        message: `Your order has been cancelled successfully.${refundDetail}`
       };
       io.to(rooms.user(userId)).emit("order_status_update", payload);
       io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", payload);

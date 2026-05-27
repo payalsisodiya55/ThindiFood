@@ -126,7 +126,12 @@ export const useUserNotifications = () => {
     socketRef.current.on('order_status_update', (data) => {
       debugLog('🔔 Order status update received:', data);
       
-      const title = data.title || `Order #${data.orderId || 'Update'}`;
+      let title = data.title;
+      if (!title) {
+        const isCancelled = String(data.orderStatus || '').toLowerCase().includes('cancel');
+        const isDelivered = String(data.orderStatus || '').toLowerCase().includes('deliver');
+        title = isCancelled ? 'Order Cancelled' : isDelivered ? 'Order Delivered' : 'Order Update';
+      }
       const message = data.message || `Your order status is now ${String(data.orderStatus || '').replace(/_/g, ' ')}`;
 
       // Optional: Show toast for important updates (Cancel, Ready, etc.)

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
-import { ChevronLeft, Loader2, Send, Mail, Phone } from "lucide-react"
+import { ArrowLeft, Loader2, Send, Mail, Phone } from "lucide-react"
 
 import { restaurantAPI } from "@food/api"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
@@ -128,10 +128,10 @@ export default function RestaurantSupport() {
         <div className="px-4 py-3 flex items-center gap-3">
           <button
             onClick={goBack}
-            className="p-1 hover:bg-slate-100 rounded-full transition-colors"
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
             aria-label="Go back"
           >
-            <ChevronLeft className="w-6 h-6 text-slate-900" />
+            <ArrowLeft className="w-6 h-6 text-slate-900" />
           </button>
           <div>
             <h1 className="text-lg font-bold text-slate-900">Support</h1>

@@ -898,7 +898,7 @@ export default function AddressSelectorPage() {
           <Button variant="ghost" size="icon" onClick={handleCancelAddressForm} className="rounded-full">
             <ChevronLeft className="h-6 w-6" />
           </Button>
-          <h1 className="text-lg font-bold">Add delivery location</h1>
+          <h1 className="text-lg font-bold">Add Address</h1>
         </div>
 
         <div
@@ -1028,7 +1028,7 @@ export default function AddressSelectorPage() {
 
               <Label className="text-sm font-bold mb-2 block text-[#00c87e]">Secondary Address (House No. / Flat / Floor)</Label>
               <Input 
-                placeholder="E.g. Flat 402, 4th Floor, AppZeto Building" 
+                placeholder="E.g. Flat 402, 4th Floor" 
                 value={addressFormData.additionalDetails} 
                 onChange={e => setAddressFormData({...addressFormData, additionalDetails: e.target.value})}
                 onFocus={() => scrollFieldIntoView("additionalDetails")}

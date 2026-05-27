@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle2, X } from "lucide-react"
+import { CheckCircle2, X, ArrowLeft } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { API_ENDPOINTS } from "@food/api/config"
 import api from "@food/api"
@@ -55,8 +55,15 @@ export default function ShareFeedback() {
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-4 pb-3">
-        <h1 className="text-xl font-semibold text-gray-900">
+      <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+        <button
+          onClick={handleClose}
+          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+          aria-label="Go back"
+        >
+          <ArrowLeft className="w-6 h-6 text-gray-900" />
+        </button>
+        <h1 className="text-xl font-semibold text-gray-900 flex-1">
           Share your feedback
         </h1>
         <button

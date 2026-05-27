@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
     Plus, QrCode, Users, Trash2, Download, Pencil,
     Loader2, AlertCircle, CheckCircle2, MoreVertical, 
-    Info, Search, Utensils, ChevronLeft
+    Info, Search, Utensils, ChevronLeft, ArrowLeft
 } from "lucide-react";
 import { Button } from "@food/components/ui/button";
 import { Card, CardContent } from "@food/components/ui/card";
@@ -350,10 +350,11 @@ const DineInTableManagement = () => {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate(-1)}
-                        className="p-3 bg-white border border-gray-100 rounded-2xl text-gray-400 hover:text-gray-900 hover:shadow-md transition-all active:scale-95 cursor-pointer"
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
                         title="Go back"
+                        aria-label="Go back"
                     >
-                        <ChevronLeft className="w-6 h-6" />
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
                     <div>
                         <h1 className="text-3xl font-black text-gray-900">Table Management</h1>
