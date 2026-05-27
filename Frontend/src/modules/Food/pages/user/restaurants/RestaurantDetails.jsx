@@ -235,6 +235,20 @@ function RestaurantDetailsContent() {
   }, [])
 
   useEffect(() => {
+    // Dynamically constrain body and html overflow to strictly prevent any horizontal scrolling on mobile viewports
+    const originalBodyOverflowX = document.body.style.overflowX
+    const originalDocOverflowX = document.documentElement.style.overflowX
+
+    document.body.style.overflowX = "hidden"
+    document.documentElement.style.overflowX = "hidden"
+
+    return () => {
+      document.body.style.overflowX = originalBodyOverflowX
+      document.documentElement.style.overflowX = originalDocOverflowX
+    }
+  }, [])
+
+  useEffect(() => {
     setSelectedMenuCategory("all")
   }, [slug])
 
