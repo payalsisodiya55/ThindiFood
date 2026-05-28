@@ -223,6 +223,8 @@ export default function FoodsList() {
   const [categoryOptions, setCategoryOptions] = useState([]);
   const [categorySearch, setCategorySearch] = useState("");
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false);
+  const [restaurantSearch, setRestaurantSearch] = useState("");
+  const [restaurantPopoverOpen, setRestaurantPopoverOpen] = useState(false);
   const [selectedImageFile, setSelectedImageFile] = useState(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -888,7 +890,7 @@ export default function FoodsList() {
   };
 
   return (
-    <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
+    <div className="p-4 lg:p-6 bg-slate-50 min-h-screen pb-64">
       {/* Header Section */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
@@ -903,53 +905,120 @@ export default function FoodsList() {
           <h1 className="text-2xl font-bold text-slate-900">Food</h1>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div className="flex items-center gap-2.5 whitespace-nowrap shrink-0">
             <h2 className="text-lg font-semibold text-slate-900">Food List</h2>
             <span className="px-3 py-1 rounded-full text-sm font-semibold bg-slate-100 text-slate-700">
               {filteredFoods.length}
             </span>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setShowBulkImportModal(true)}
-              className="px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 inline-flex items-center gap-2">
-              
-              <Upload className="w-4 h-4" />
-              <span>Bulk Import</span>
-            </button>
-            <button
-              type="button"
-              onClick={openAddFoodModal}
-              className="px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 inline-flex items-center gap-2">
-              
-              <Plus className="w-4 h-4" />
-              <span>Add Food</span>
-            </button>
-            <div className="relative flex-1 sm:flex-initial min-w-[200px]">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 w-full xl:w-auto md:flex-nowrap">
+            {/* Search Input */}
+            <div className="relative w-full md:w-[240px] shrink-0">
               <input
                 type="text"
-                placeholder="Ex : Foods"
+                placeholder="Search food by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400" />
+                className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all" />
               
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
-            <select
-              value={selectedRestaurant}
-              onChange={(e) => setSelectedRestaurant(e.target.value)}
-              className="px-4 py-2.5 min-w-[220px] text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400">
+
+            {/* Restaurant Filter Dropdown */}
+            <Popover open={restaurantPopoverOpen} onOpenChange={setRestaurantPopoverOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="px-4 py-2.5 w-full md:w-[240px] text-sm rounded-lg border border-slate-300 bg-white text-left flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all shrink-0">
+                  <span className="truncate">
+                    {selectedRestaurant === "all"
+                      ? "All Restaurants"
+                      : restaurantOptions.find((r) => r.id === selectedRestaurant)?.name || "All Restaurants"}
+                  </span>
+                  <ChevronDown className="w-4 h-4 text-slate-500 shrink-0 ml-2" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[var(--radix-popover-trigger-width)] md:w-[240px] p-2 !z-[100]" align="start">
+                <div className="relative mb-2">
+                  <input
+                    type="text"
+                    value={restaurantSearch}
+                    onChange={(e) => setRestaurantSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Search restaurant..."
+                    autoFocus />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+                </div>
+                
+                <div ref={scrollContainerRef} className="max-h-60 overflow-y-auto space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedRestaurant("all");
+                      setRestaurantPopoverOpen(false);
+                      setRestaurantSearch("");
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-100 transition-colors ${
+                      selectedRestaurant === "all" ? "bg-slate-100 font-semibold text-blue-600" : "text-slate-700"
+                    }`}>
+                    All Restaurants
+                  </button>
+                  
+                  {restaurantOptions
+                    .filter((restaurant) => {
+                      const q = String(restaurantSearch || "").trim().toLowerCase();
+                      if (!q) return true;
+                      return String(restaurant.name || "").toLowerCase().includes(q);
+                    })
+                    .map((restaurant) => (
+                      <button
+                        key={restaurant.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRestaurant(restaurant.id);
+                          setRestaurantPopoverOpen(false);
+                          setRestaurantSearch("");
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-md text-xs hover:bg-slate-100 transition-colors truncate ${
+                          selectedRestaurant === restaurant.id ? "bg-slate-100 font-semibold text-blue-600" : "text-slate-700"
+                        }`}>
+                        {restaurant.name}
+                      </button>
+                    ))}
+                  
+                  {restaurantOptions.filter((restaurant) => {
+                    const q = String(restaurantSearch || "").trim().toLowerCase();
+                    if (!q) return true;
+                    return String(restaurant.name || "").toLowerCase().includes(q);
+                  }).length === 0 && (
+                    <div className="px-3 py-2 text-xs text-slate-400 text-center">No restaurants found</div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Buttons Group */}
+            <div className="flex items-center gap-2.5 shrink-0 w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setShowBulkImportModal(true)}
+                className="flex-1 md:flex-initial px-4 py-2.5 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-sm font-medium hover:bg-emerald-100 inline-flex items-center justify-center gap-2 transition-all">
+                
+                <Upload className="w-4 h-4" />
+                <span>Bulk Import</span>
+              </button>
               
-              <option value="all">All Restaurants</option>
-              {restaurantOptions.map((restaurant) =>
-              <option key={restaurant.id} value={restaurant.id}>
-                  {restaurant.name}
-                </option>
-              )}
-            </select>
+              <button
+                type="button"
+                onClick={openAddFoodModal}
+                className="flex-1 md:flex-initial px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 inline-flex items-center justify-center gap-2 transition-all shadow-sm shadow-blue-100">
+                
+                <Plus className="w-4 h-4" />
+                <span>Add Food</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1212,7 +1281,7 @@ export default function FoodsList() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Restaurant</label>
-                <select
+                 <select
                   value={foodForm.restaurantId}
                   onChange={(e) => setFoodForm((prev) => ({ ...prev, restaurantId: e.target.value, categoryId: "", categoryName: "" }))}
                   disabled={foodFormMode === "edit"}
@@ -1221,7 +1290,7 @@ export default function FoodsList() {
                   <option value="">Select restaurant</option>
                   {restaurantOptions.map((restaurant) =>
                   <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name}
+                      {restaurant.name.length > 35 ? restaurant.name.substring(0, 35) + "..." : restaurant.name}
                     </option>
                   )}
                 </select>
