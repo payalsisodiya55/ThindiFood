@@ -9,6 +9,8 @@ import {
   outForDeliverySelfOrderController,
   deliverSelfDeliveryOrderController,
   updateDeliveryBoyAvailabilityController,
+  acceptSelfDeliveryOrderController,
+  rejectSelfDeliveryOrderController,
 } from "../controllers/selfDelivery.controller.js";
 
 const router = express.Router();
@@ -20,6 +22,8 @@ router.use(authMiddleware, requireRoles("DELIVERY_BOY"));
 router.patch("/availability", updateDeliveryBoyAvailabilityController);
 router.get("/orders", listDeliveryBoyOrdersController);
 router.get("/orders/:orderId", getDeliveryBoyOrderByIdController);
+router.patch("/orders/:orderId/accept", acceptSelfDeliveryOrderController);
+router.patch("/orders/:orderId/reject", rejectSelfDeliveryOrderController);
 router.patch("/orders/:orderId/pickup", pickupSelfDeliveryOrderController);
 router.patch(
   "/orders/:orderId/out-for-delivery",

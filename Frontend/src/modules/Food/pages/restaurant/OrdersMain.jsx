@@ -2729,6 +2729,12 @@ export default function OrdersMain() {
   const [ordersRefreshToken, setOrdersRefreshToken] = useState(0);
   const requestOrdersRefresh = () => setOrdersRefreshToken((t) => t + 1);
 
+  useEffect(() => {
+    if (latestOrderStatusUpdate) {
+      requestOrdersRefresh();
+    }
+  }, [latestOrderStatusUpdate]);
+
   // Check for confirmed orders that haven't been shown in popup yet, or scheduled orders whose time has come
   useEffect(() => {
     const checkOrdersToPopup = async () => {
@@ -5153,6 +5159,7 @@ function OrderCard({
   fulfillmentType,
   deliveryType,
   selfDeliveryBoy,
+  selfDelivery,
   tableOrToken,
   timePlaced,
   eta,
@@ -5206,7 +5213,9 @@ function OrderCard({
     : normalizedStatus === "created"
       ? "Pending Review"
       : normalizedStatus === "assigned_to_boy"
-        ? `Assigned To ${selfDeliveryBoy?.name || "Delivery Partner"}`
+        ? (selfDelivery?.status === "accepted"
+            ? `Assigned To ${selfDeliveryBoy?.name || "Delivery Partner"}`
+            : `Request Sent To ${selfDeliveryBoy?.name || "Delivery Partner"}`)
         : String(status || "")
             .replace(/_/g, " ")
             .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -5318,6 +5327,11 @@ function OrderCard({
         />
         {isActiveDineIn ? "DINE-IN ACTIVE" : statusLabel}
       </div>
+      {selfDelivery?.status === "rejected" && (
+        <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tight bg-rose-100 text-rose-700 border border-rose-200 animate-pulse">
+          Partner Rejected
+        </span>
+      )}
               {hasLiveDineInRound && !isFinalizedDineInStatus && typeof onSelect === "function" && (
                 <button
                   type="button"
@@ -5430,9 +5444,13 @@ function OrderCard({
                     e.stopPropagation();
                     onAssignBoy({ orderId, mongoId, customerName });
                   }}
-                  className="px-3 py-1.5 rounded-lg text-[11px] font-bold border border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100 active:scale-95 transition-all shadow-sm"
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-black border transition-all active:scale-95 shadow-sm ${
+                    selfDelivery?.status === "rejected"
+                      ? "border-rose-600 text-white bg-rose-500 hover:bg-rose-600"
+                      : "border-blue-600 text-blue-700 bg-blue-50 hover:bg-blue-100"
+                  }`}
                 >
-                  Assign To Captain
+                  {selfDelivery?.status === "rejected" ? "Reassign Captain" : "Assign To Captain"}
                 </button>
               )}
               {isPreparing && onMarkReady && (

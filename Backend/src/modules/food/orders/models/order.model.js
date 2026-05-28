@@ -209,10 +209,20 @@ const selfDeliverySchema = new mongoose.Schema(
     {
         deliveryBoyId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryBoy', default: null },
         assignedAt: { type: Date, default: null },
+        acceptedAt: { type: Date, default: null },
+        rejectedAt: { type: Date, default: null },
+        status: { type: String, enum: ['assigned', 'accepted', 'rejected'], default: 'assigned' },
         pickedUpAt: { type: Date, default: null },
         outForDeliveryAt: { type: Date, default: null },
         deliveredAt: { type: Date, default: null },
-        otpVerified: { type: Boolean, default: false }
+        otpVerified: { type: Boolean, default: false },
+        rejectedHistory: {
+            type: [{
+                deliveryBoyId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryBoy' },
+                rejectedAt: { type: Date, default: Date.now }
+            }],
+            default: []
+        }
     },
     { _id: false }
 );

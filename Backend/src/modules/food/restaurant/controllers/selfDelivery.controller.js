@@ -231,3 +231,29 @@ export async function rejectDeliveryConfigController(req, res, next) {
     next(error);
   }
 }
+
+export async function acceptSelfDeliveryOrderController(req, res, next) {
+  try {
+    const deliveryBoyId = req.user?.userId;
+    const order = await selfDeliveryService.acceptSelfDeliveryOrder(
+      req.params.orderId,
+      deliveryBoyId,
+    );
+    return sendResponse(res, 200, "Order accepted successfully", { order });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function rejectSelfDeliveryOrderController(req, res, next) {
+  try {
+    const deliveryBoyId = req.user?.userId;
+    const order = await selfDeliveryService.rejectSelfDeliveryOrder(
+      req.params.orderId,
+      deliveryBoyId,
+    );
+    return sendResponse(res, 200, "Order rejected successfully", { order });
+  } catch (error) {
+    next(error);
+  }
+}

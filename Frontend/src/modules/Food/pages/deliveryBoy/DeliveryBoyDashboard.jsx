@@ -9,9 +9,11 @@ import {
   Package,
   Phone,
   Truck,
+  XCircle,
 } from "lucide-react";
 import { deliveryBoyAPI } from "@food/api";
 import { clearModuleAuth, getCurrentUser } from "@food/utils/auth";
+import { toast } from "sonner";
 
 const STATUS_META = {
   assigned_to_boy: {
@@ -34,6 +36,21 @@ const STATUS_META = {
     hint: "Completed",
     badge: "bg-emerald-100 text-emerald-700",
   },
+  cancelled_by_user: {
+    label: "Cancelled (User)",
+    hint: "Cancelled by customer",
+    badge: "bg-slate-100 text-slate-500 border border-slate-200",
+  },
+  cancelled_by_restaurant: {
+    label: "Cancelled (Restaurant)",
+    hint: "Cancelled by restaurant",
+    badge: "bg-slate-100 text-slate-500 border border-slate-200",
+  },
+  cancelled_by_admin: {
+    label: "Cancelled (Admin)",
+    hint: "Cancelled by administrator",
+    badge: "bg-slate-100 text-slate-500 border border-slate-200",
+  },
 };
 
 const formatAddress = (address) => {
@@ -55,37 +72,105 @@ export default function DeliveryBoyDashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submittingId, setSubmittingId] = useState(null);
   const deliveryBoy = getCurrentUser("delivery");
+
+  const loadOrders = async () => {
+    try {
+      const response = await deliveryBoyAPI.getOrders();
+      setOrders(response?.data?.data?.orders || []);
+    } catch (err) {
+      console.error("Failed to load orders:", err);
+    }
+  };
 
   useEffect(() => {
     let active = true;
     const load = async () => {
       try {
         await deliveryBoyAPI.updateAvailability("online");
-        const response = await deliveryBoyAPI.getOrders();
-        const nextOrders = response?.data?.data?.orders || [];
-        if (active) setOrders(nextOrders);
+        if (active) {
+          await loadOrders();
+        }
       } finally {
         if (active) setLoading(false);
       }
     };
     load();
+
+    const intervalId = setInterval(() => {
+      if (active) {
+        loadOrders();
+      }
+    }, 5000);
+
     return () => {
       active = false;
+      clearInterval(intervalId);
     };
   }, []);
 
+  const handleAcceptRequest = async (e, orderId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSubmittingId(orderId);
+    try {
+      await deliveryBoyAPI.acceptOrder(orderId);
+      toast.success("Order assignment accepted!");
+      await loadOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to accept order");
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
+  const handleRejectRequest = async (e, orderId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSubmittingId(orderId);
+    try {
+      await deliveryBoyAPI.rejectOrder(orderId);
+      toast.success("Order assignment rejected");
+      await loadOrders();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to reject order");
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
   const stats = useMemo(() => {
     const total = orders.length;
+    
     const completed = orders.filter(
       (order) => String(order?.orderStatus || "").toLowerCase() === "delivered_self",
     ).length;
+    
     const outForDelivery = orders.filter(
       (order) => String(order?.orderStatus || "").toLowerCase() === "out_for_delivery",
     ).length;
-    const pending = Math.max(0, total - completed);
-    return { total, completed, pending, outForDelivery };
-  }, [orders]);
+    
+    const cancelled = orders.filter((order) => {
+      const status = String(order?.orderStatus || "").toLowerCase();
+      const isRejected = order?.selfDelivery?.rejectedHistory?.some(
+        (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
+      ) &&
+      String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
+      return status.startsWith("cancelled") || isRejected;
+    }).length;
+    
+    const pending = orders.filter((order) => {
+      const status = String(order?.orderStatus || "").toLowerCase();
+      const isRejected = order?.selfDelivery?.rejectedHistory?.some(
+        (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
+      ) &&
+      String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
+      return status !== "delivered_self" && !status.startsWith("cancelled") && !isRejected;
+    }).length;
+
+    return { total, completed, pending, outForDelivery, cancelled };
+  }, [orders, deliveryBoy]);
 
   const handleLogout = async () => {
     try {
@@ -123,7 +208,7 @@ export default function DeliveryBoyDashboard() {
             </button>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <div className="rounded-3xl bg-white/15 p-4 backdrop-blur">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">
                 Total
@@ -147,6 +232,12 @@ export default function DeliveryBoyDashboard() {
                 Completed
               </p>
               <p className="mt-2 text-2xl font-black">{stats.completed}</p>
+            </div>
+            <div className="rounded-3xl bg-white/15 p-4 backdrop-blur">
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">
+                Cancelled
+              </p>
+              <p className="mt-2 text-2xl font-black">{stats.cancelled}</p>
             </div>
           </div>
         </div>
@@ -179,16 +270,42 @@ export default function DeliveryBoyDashboard() {
           <div className="space-y-4">
             {orders.map((order) => {
               const normalizedStatus = String(order?.orderStatus || "").toLowerCase();
-              const meta = STATUS_META[normalizedStatus] || {
-                label: order?.orderStatus || "Assigned",
-                hint: "View order",
-                badge: "bg-slate-100 text-slate-700",
-              };
+              const isRejectedByMe =
+                order?.selfDelivery?.rejectedHistory?.some(
+                  (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
+                ) &&
+                String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
+
+              const isPendingAcceptance =
+                !isRejectedByMe &&
+                normalizedStatus === "assigned_to_boy" &&
+                order?.selfDelivery?.status !== "accepted";
+
+              const meta = isRejectedByMe
+                ? {
+                    label: "Rejected by You",
+                    hint: "You rejected this assignment",
+                    badge: "bg-rose-100 text-rose-905 border border-rose-250 font-extrabold",
+                  }
+                : isPendingAcceptance
+                ? {
+                    label: "Pending Acceptance",
+                    hint: "Please accept or reject this assignment",
+                    badge: "bg-amber-100 text-amber-900 border border-amber-200 animate-pulse font-extrabold",
+                  }
+                : STATUS_META[normalizedStatus] || {
+                    label: order?.orderStatus || "Assigned",
+                    hint: "View order",
+                    badge: "bg-slate-100 text-slate-700",
+                  };
+
               const address = formatAddress(order?.deliveryAddress);
+              const orderKey = order._id || order.orderId;
+              
               return (
                 <Link
-                  key={order._id || order.orderId}
-                  to={`/food/delivery-boy/orders/${order._id || order.orderId}`}
+                  key={orderKey}
+                  to={`/food/delivery-boy/orders/${orderKey}`}
                   className="block rounded-[28px] border border-[#00c87e]/10 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -225,22 +342,65 @@ export default function DeliveryBoyDashboard() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#f0fff8] px-4 py-3">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                      {normalizedStatus === "out_for_delivery" ? (
-                        <CheckCircle2 className="h-4 w-4 text-[#00a86b]" />
-                      ) : normalizedStatus === "picked_up_by_boy" ? (
-                        <Truck className="h-4 w-4 text-[#00a86b]" />
-                      ) : (
-                        <ClipboardList className="h-4 w-4 text-[#00a86b]" />
-                      )}
-                      <span>{meta.hint}</span>
+                  {isRejectedByMe ? (
+                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-rose-50 border border-rose-100 px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-rose-700">
+                        <XCircle className="h-4 w-4 text-rose-500" />
+                        <span>{meta.hint}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-sm font-bold text-rose-700">
+                        Details
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
                     </div>
-                    <span className="inline-flex items-center gap-1 text-sm font-bold text-[#00a86b]">
-                      Open
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
+                  ) : normalizedStatus.startsWith("cancelled") ? (
+                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+                        <XCircle className="h-4 w-4 text-slate-450" />
+                        <span>{meta.hint}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-sm font-bold text-slate-500">
+                        Closed
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  ) : isPendingAcceptance ? (
+                    <div className="mt-4 flex gap-3">
+                      <button
+                        type="button"
+                        onClick={(e) => handleAcceptRequest(e, orderKey)}
+                        disabled={submittingId !== null}
+                        className="flex-1 rounded-2xl bg-[#00c87e] hover:bg-[#00b874] py-3 text-sm font-black text-white active:scale-95 transition-all shadow-md shadow-[#00c87e]/10 disabled:opacity-60 text-center"
+                      >
+                        {submittingId === orderKey ? "Accepting..." : "Accept"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => handleRejectRequest(e, orderKey)}
+                        disabled={submittingId !== null}
+                        className="flex-1 rounded-2xl bg-rose-500 hover:bg-rose-600 py-3 text-sm font-black text-white active:scale-95 transition-all shadow-md shadow-rose-500/10 disabled:opacity-60 text-center"
+                      >
+                        {submittingId === orderKey ? "Rejecting..." : "Reject"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-4 flex items-center justify-between rounded-2xl bg-[#f0fff8] px-4 py-3">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                        {normalizedStatus === "out_for_delivery" ? (
+                          <CheckCircle2 className="h-4 w-4 text-[#00a86b]" />
+                        ) : normalizedStatus === "picked_up_by_boy" ? (
+                          <Truck className="h-4 w-4 text-[#00a86b]" />
+                        ) : (
+                          <ClipboardList className="h-4 w-4 text-[#00a86b]" />
+                        )}
+                        <span>{meta.hint}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 text-sm font-bold text-[#00a86b]">
+                        Open
+                        <ArrowRight className="h-4 w-4" />
+                      </span>
+                    </div>
+                  )}
                 </Link>
               );
             })}

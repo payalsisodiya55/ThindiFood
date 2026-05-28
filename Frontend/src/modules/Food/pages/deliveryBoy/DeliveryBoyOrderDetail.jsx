@@ -9,6 +9,7 @@ import {
   ShieldCheck,
   Truck,
   User,
+  XCircle,
 } from "lucide-react";
 import { deliveryBoyAPI } from "@food/api";
 import { clearModuleAuth, getCurrentUser } from "@food/utils/auth";
@@ -48,6 +49,18 @@ const STATUS_META = {
   delivered_self: {
     label: "Delivered",
     badge: "bg-emerald-100 text-emerald-700",
+  },
+  cancelled_by_user: {
+    label: "Cancelled (User)",
+    badge: "bg-slate-100 text-slate-500 border border-slate-200",
+  },
+  cancelled_by_restaurant: {
+    label: "Cancelled (Restaurant)",
+    badge: "bg-slate-100 text-slate-500 border border-slate-200",
+  },
+  cancelled_by_admin: {
+    label: "Cancelled (Admin)",
+    badge: "bg-slate-100 text-slate-500 border border-slate-200",
   },
 };
 
@@ -101,6 +114,36 @@ export default function DeliveryBoyOrderDetail() {
       active = false;
     };
   }, [orderId]);
+ 
+  const handleAcceptOrder = async () => {
+    if (!order) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await deliveryBoyAPI.acceptOrder(order._id || order.orderId);
+      toast.success("Order assignment accepted!");
+      await loadOrder();
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to accept order");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleRejectOrder = async () => {
+    if (!order) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      await deliveryBoyAPI.rejectOrder(order._id || order.orderId);
+      toast.success("Order assignment rejected");
+      navigate("/food/delivery-boy/orders", { replace: true });
+    } catch (err) {
+      toast.error(err?.response?.data?.message || err?.message || "Failed to reject order");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleAction = async () => {
     if (!order) return;
@@ -138,6 +181,46 @@ export default function DeliveryBoyOrderDetail() {
     clearModuleAuth("delivery");
     navigate("/food/restaurant/login?role=delivery", { replace: true });
   };
+
+  const isRejectedByMe = useMemo(() => {
+    return order?.selfDelivery?.rejectedHistory?.some(
+      (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
+    ) &&
+    String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
+  }, [order, deliveryBoy]);
+
+  const isCancelled = useMemo(() => {
+    return String(order?.orderStatus || "").toLowerCase().startsWith("cancelled");
+  }, [order]);
+
+  const statusMeta = useMemo(() => {
+    if (!order) return { label: "", badge: "" };
+    if (isRejectedByMe) {
+      return {
+        label: "Rejected by You",
+        badge: "bg-rose-100 text-rose-900 border border-rose-250 font-extrabold",
+      };
+    }
+    const status = String(order.orderStatus || "").toLowerCase();
+    if (status === "assigned_to_boy") {
+      if (order.selfDelivery?.status === "accepted") {
+        return {
+          label: "Accepted",
+          badge: "bg-emerald-100 text-emerald-850 font-bold",
+        };
+      }
+      return {
+        label: "Pending Acceptance",
+        badge: "bg-amber-100 text-amber-900 font-bold animate-pulse",
+      };
+    }
+    return STATUS_META[status] || { label: order.orderStatus, badge: "bg-slate-100 text-slate-700" };
+  }, [order, isRejectedByMe]);
+
+  const isPendingAcceptance = useMemo(() => {
+    if (isRejectedByMe || isCancelled) return false;
+    return String(order?.orderStatus || "") === "assigned_to_boy" && order?.selfDelivery?.status !== "accepted";
+  }, [order, isRejectedByMe, isCancelled]);
 
   const nextAction = ACTIONS[String(order?.orderStatus || "")] || null;
   const address = useMemo(() => formatAddress(order?.deliveryAddress), [order]);
@@ -188,10 +271,8 @@ export default function DeliveryBoyOrderDetail() {
               <div className="rounded-[28px] border border-[#00c87e]/10 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-                      STATUS_META[String(order.orderStatus || "").toLowerCase()]?.badge || "bg-slate-100 text-slate-700"
-                    }`}>
-                      {STATUS_META[String(order.orderStatus || "").toLowerCase()]?.label || order.orderStatus}
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusMeta.badge}`}>
+                      {statusMeta.label}
                     </span>
                     <h2 className="mt-3 text-2xl font-black text-slate-900">
                       {order.restaurantId?.restaurantName || "Restaurant"}
@@ -227,8 +308,8 @@ export default function DeliveryBoyOrderDetail() {
                       <p className="font-semibold text-slate-900 leading-tight">Items</p>
                       <p className="mt-1 leading-normal">
                         {Array.isArray(order.items)
-                          ? order.items.map((item) => `${item.quantity} x ${item.name}`).join(", ")
-                          : "No items"}
+                           ? order.items.map((item) => `${item.quantity} x ${item.name}`).join(", ")
+                           : "No items"}
                       </p>
                     </div>
                   </div>
@@ -236,52 +317,112 @@ export default function DeliveryBoyOrderDetail() {
               </div>
 
               <div className="rounded-[28px] border border-[#00c87e]/10 bg-white p-6 shadow-sm">
-                <div className="flex items-start gap-3.5">
-                  {nextAction?.action === "deliver" ? (
-                    <ShieldCheck className="h-5 w-5 text-[#00a86b] mt-[3.5px] shrink-0" />
-                  ) : (
-                    <Truck className="h-5 w-5 text-[#00a86b] mt-[3.5px] shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-black text-slate-900 leading-tight">
-                      {nextAction ? nextAction.label : "Delivery completed"}
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-1 leading-normal">
-                      {nextAction?.helper || "This order has no pending delivery person action."}
-                    </p>
+                {isRejectedByMe ? (
+                  <div className="flex items-start gap-3.5">
+                    <XCircle className="h-5 w-5 text-rose-500 mt-[3.5px] shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-black text-rose-700 leading-tight">
+                        Assignment Rejected
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 leading-normal">
+                        You rejected this delivery assignment. The restaurant has been notified to re-assign a different delivery partner.
+                      </p>
+                    </div>
                   </div>
-                </div>
-
-                {nextAction?.action === "deliver" ? (
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm font-semibold text-slate-700">
-                      Customer OTP
-                    </label>
-                    <input
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                      className="w-full rounded-3xl border border-[#00c87e]/20 bg-[#f8faf8] px-4 py-4 text-center text-lg font-black tracking-[0.4em] outline-none focus:border-[#00c87e] focus:ring-4 focus:ring-[#00c87e]/10"
-                      placeholder="0000"
-                    />
-                    <p className="mt-2 text-xs text-slate-500">
-                      Please collect the OTP from the customer and enter it here.
-                    </p>
+                ) : isCancelled ? (
+                  <div className="flex items-start gap-3.5">
+                    <XCircle className="h-5 w-5 text-slate-500 mt-[3.5px] shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-base font-black text-slate-700 leading-tight">
+                        Order Cancelled
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1 leading-normal">
+                        This order was cancelled. You do not need to take any action.
+                      </p>
+                    </div>
                   </div>
-                ) : null}
-
-                {nextAction ? (
-                  <button
-                    type="button"
-                    onClick={handleAction}
-                    disabled={submitting || (nextAction.action === "deliver" && otp.length < 4)}
-                    className="mt-5 w-full rounded-3xl bg-[#00c87e] py-4 text-base font-black text-white transition hover:bg-[#00b874] disabled:opacity-60"
-                  >
-                    {submitting ? "Updating..." : nextAction.label}
-                  </button>
+                ) : isPendingAcceptance ? (
+                  <>
+                    <div className="flex items-start gap-3.5">
+                      <Truck className="h-5 w-5 text-amber-500 mt-[3.5px] shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base font-black text-slate-900 leading-tight">
+                          New Delivery Assignment!
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1 leading-normal">
+                          You have been assigned this delivery. Please accept to proceed or reject if you are unavailable.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-5 grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={handleAcceptOrder}
+                        disabled={submitting}
+                        className="w-full rounded-3xl bg-[#00c87e] py-4 text-base font-black text-white transition hover:bg-[#00b874] disabled:opacity-60 shadow-md shadow-[#00c87e]/10"
+                      >
+                        {submitting ? "Accepting..." : "Accept Order"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRejectOrder}
+                        disabled={submitting}
+                        className="w-full rounded-3xl bg-rose-500 py-4 text-base font-black text-white transition hover:bg-rose-600 disabled:opacity-60 shadow-md shadow-rose-500/10"
+                      >
+                        {submitting ? "Rejecting..." : "Reject Order"}
+                      </button>
+                    </div>
+                  </>
                 ) : (
-                  <div className="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                    Order delivered successfully.
-                  </div>
+                  <>
+                    <div className="flex items-start gap-3.5">
+                      {nextAction?.action === "deliver" ? (
+                        <ShieldCheck className="h-5 w-5 text-[#00a86b] mt-[3.5px] shrink-0" />
+                      ) : (
+                        <Truck className="h-5 w-5 text-[#00a86b] mt-[3.5px] shrink-0" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-base font-black text-slate-900 leading-tight">
+                          {nextAction ? nextAction.label : "Delivery completed"}
+                        </h3>
+                        <p className="text-sm text-slate-500 mt-1 leading-normal">
+                          {nextAction?.helper || "This order has no pending delivery person action."}
+                        </p>
+                      </div>
+                    </div>
+
+                    {nextAction?.action === "deliver" ? (
+                      <div className="mt-5">
+                        <label className="mb-2 block text-sm font-semibold text-slate-700">
+                          Customer OTP
+                        </label>
+                        <input
+                          value={otp}
+                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                          className="w-full rounded-3xl border border-[#00c87e]/20 bg-[#f8faf8] px-4 py-4 text-center text-lg font-black tracking-[0.4em] outline-none focus:border-[#00c87e] focus:ring-4 focus:ring-[#00c87e]/10"
+                          placeholder="0000"
+                        />
+                        <p className="mt-2 text-xs text-slate-500">
+                          Please collect the OTP from the customer and enter it here.
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {nextAction ? (
+                      <button
+                        type="button"
+                        onClick={handleAction}
+                        disabled={submitting || (nextAction.action === "deliver" && otp.length < 4)}
+                        className="mt-5 w-full rounded-3xl bg-[#00c87e] py-4 text-base font-black text-white transition hover:bg-[#00b874] disabled:opacity-60"
+                      >
+                        {submitting ? "Updating..." : nextAction.label}
+                      </button>
+                    ) : (
+                      <div className="mt-5 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                        Order delivered successfully.
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 

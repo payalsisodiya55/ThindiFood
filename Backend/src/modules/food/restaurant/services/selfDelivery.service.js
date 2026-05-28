@@ -409,6 +409,8 @@ export async function assignDeliveryBoyToOrder(restaurantId, orderId, deliveryBo
     assignedAt: new Date(),
     otpVerified: Boolean(order.selfDelivery?.otpVerified),
   };
+  order.selfDelivery.status = "assigned";
+  order.markModified("selfDelivery");
   order.orderStatus = "assigned_to_boy";
   pushStatusHistory(order, {
     byRole: "RESTAURANT",
@@ -429,7 +431,10 @@ export async function assignDeliveryBoyToOrder(restaurantId, orderId, deliveryBo
 export async function listOrdersForDeliveryBoy(deliveryBoyId) {
   const boyObjectId = toObjectId(deliveryBoyId, "Delivery boy id");
   return FoodOrder.find({
-    "selfDelivery.deliveryBoyId": boyObjectId,
+    $or: [
+      { "selfDelivery.deliveryBoyId": boyObjectId },
+      { "selfDelivery.rejectedHistory.deliveryBoyId": boyObjectId }
+    ],
     fulfillmentType: "delivery",
     deliveryType: "self",
   })
@@ -442,7 +447,10 @@ export async function listOrdersForDeliveryBoy(deliveryBoyId) {
 export async function getOrderForDeliveryBoy(orderId, deliveryBoyId) {
   const order = await FoodOrder.findOne({
     _id: toObjectId(orderId, "Order id"),
-    "selfDelivery.deliveryBoyId": toObjectId(deliveryBoyId, "Delivery boy id"),
+    $or: [
+      { "selfDelivery.deliveryBoyId": toObjectId(deliveryBoyId, "Delivery boy id") },
+      { "selfDelivery.rejectedHistory.deliveryBoyId": toObjectId(deliveryBoyId, "Delivery boy id") }
+    ],
   })
     .populate("restaurantId", "restaurantName ownerPhone location area city")
     .populate("userId", "name phone")
@@ -561,4 +569,172 @@ export async function deliverSelfDeliveryOrder(orderId, deliveryBoyId, otp) {
   }
 
   return order.toObject();
+}
+
+export async function acceptSelfDeliveryOrder(orderId, deliveryBoyId) {
+  const boyObjectId = toObjectId(deliveryBoyId, "Delivery boy id");
+  const order = await FoodOrder.findOne({
+    _id: toObjectId(orderId, "Order id"),
+    "selfDelivery.deliveryBoyId": boyObjectId,
+  });
+
+  if (!order) throw new NotFoundError("Order not found");
+  if (!isSelfDeliveryOrder(order)) {
+    throw new ValidationError("This order is not a self-delivery order");
+  }
+  if (String(order.orderStatus || "").toLowerCase() !== "assigned_to_boy") {
+    throw new ValidationError("Order status must be assigned_to_boy");
+  }
+  if (order.selfDelivery?.status === "accepted") {
+    throw new ValidationError("Order is already accepted");
+  }
+
+  const from = order.orderStatus;
+  
+  order.selfDelivery = {
+    ...(order.selfDelivery?.toObject?.() || order.selfDelivery || {}),
+    status: "accepted",
+    acceptedAt: new Date(),
+  };
+
+  pushStatusHistory(order, {
+    byRole: "DELIVERY_BOY",
+    byId: boyObjectId,
+    from,
+    to: "assigned_to_boy",
+    note: "Order assignment accepted by delivery partner",
+  });
+
+  await order.save();
+
+  try {
+    const { getIO, rooms } = await import("../../../../config/socket.js");
+    const io = getIO();
+    if (io) {
+      const payload = {
+        orderId: order.orderId || order.order_id || order._id.toString(),
+        orderMongoId: order._id.toString(),
+        orderStatus: "assigned_to_boy",
+        selfDelivery: order.selfDelivery,
+      };
+      io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", payload);
+      io.to(rooms.user(order.userId)).emit("order_status_update", payload);
+    }
+  } catch (err) {
+    // Non-blocking socket sync
+  }
+
+  try {
+    const { notifyOwnersSafely } = await import("../../orders/services/order.helpers.js");
+    const deliveryBoy = await FoodDeliveryBoy.findById(boyObjectId).lean();
+    await notifyOwnersSafely(
+      [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
+      {
+        title: "Delivery partner accepted order! 🛵",
+        body: `Your delivery partner ${deliveryBoy?.name || "Captain"} has accepted order #${order.orderId || order._id}.`,
+        data: {
+          type: "self_delivery_accepted",
+          orderId: order._id.toString(),
+          orderMongoId: order._id.toString(),
+        },
+      }
+    );
+  } catch (err) {
+    // Non-blocking notification sync
+  }
+
+  return FoodOrder.findById(order._id)
+    .populate("selfDelivery.deliveryBoyId", "name phone username isActive currentOrderId")
+    .lean();
+}
+
+export async function rejectSelfDeliveryOrder(orderId, deliveryBoyId) {
+  const boyObjectId = toObjectId(deliveryBoyId, "Delivery boy id");
+  const order = await FoodOrder.findOne({
+    _id: toObjectId(orderId, "Order id"),
+    "selfDelivery.deliveryBoyId": boyObjectId,
+  });
+
+  if (!order) throw new NotFoundError("Order not found");
+  if (!isSelfDeliveryOrder(order)) {
+    throw new ValidationError("This order is not a self-delivery order");
+  }
+  if (String(order.orderStatus || "").toLowerCase() !== "assigned_to_boy") {
+    throw new ValidationError("Order status must be assigned_to_boy to reject");
+  }
+
+  const from = order.orderStatus;
+  const deliveryBoy = await FoodDeliveryBoy.findOne({
+    _id: boyObjectId,
+    restaurantId: order.restaurantId,
+  });
+  const boyName = deliveryBoy ? deliveryBoy.name : "Delivery partner";
+
+  order.selfDelivery.status = "rejected";
+  order.selfDelivery.rejectedAt = new Date();
+  order.selfDelivery.deliveryBoyId = null;
+  if (!order.selfDelivery.rejectedHistory) {
+    order.selfDelivery.rejectedHistory = [];
+  }
+  order.selfDelivery.rejectedHistory.push({
+    deliveryBoyId: boyObjectId,
+    rejectedAt: new Date(),
+  });
+  order.markModified("selfDelivery");
+  order.orderStatus = "ready_for_pickup";
+
+  pushStatusHistory(order, {
+    byRole: "DELIVERY_BOY",
+    byId: boyObjectId,
+    from,
+    to: "ready_for_pickup",
+    note: `Order assignment rejected by ${boyName}`,
+  });
+
+  if (deliveryBoy) {
+    deliveryBoy.currentOrderId = null;
+    await deliveryBoy.save();
+  }
+  await order.save();
+
+  try {
+    const { getIO, rooms } = await import("../../../../config/socket.js");
+    const io = getIO();
+    if (io) {
+      const payload = {
+        orderId: order.orderId || order.order_id || order._id.toString(),
+        orderMongoId: order._id.toString(),
+        orderStatus: "ready_for_pickup",
+        selfDelivery: order.selfDelivery,
+        rejectedBoyId: boyObjectId.toString(),
+        rejectedBoyName: boyName,
+      };
+      io.to(rooms.restaurant(order.restaurantId)).emit("order_status_update", payload);
+      io.to(rooms.user(order.userId)).emit("order_status_update", payload);
+    }
+  } catch (err) {
+    // Non-blocking socket sync
+  }
+
+  try {
+    const { notifyOwnersSafely } = await import("../../orders/services/order.helpers.js");
+    await notifyOwnersSafely(
+      [{ ownerType: "RESTAURANT", ownerId: order.restaurantId }],
+      {
+        title: "Delivery partner rejected order! ❌",
+        body: `Your delivery partner ${boyName} has rejected order #${order.orderId || order._id}.`,
+        data: {
+          type: "self_delivery_rejected",
+          orderId: order._id.toString(),
+          orderMongoId: order._id.toString(),
+        },
+      }
+    );
+  } catch (err) {
+    // Non-blocking notification sync
+  }
+
+  return FoodOrder.findById(order._id)
+    .populate("selfDelivery.deliveryBoyId", "name phone username isActive currentOrderId")
+    .lean();
 }

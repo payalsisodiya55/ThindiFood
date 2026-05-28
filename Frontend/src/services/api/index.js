@@ -2748,6 +2748,18 @@ export const deliveryBoyAPI = {
       { status: String(status || "").trim().toLowerCase() === "online" ? "online" : "offline" },
       { contextModule: "delivery" },
     ),
+  acceptOrder: (orderId) =>
+    apiClient.patch(
+      `/food/delivery-boy/orders/${String(orderId)}/accept`,
+      {},
+      { contextModule: "delivery" },
+    ),
+  rejectOrder: (orderId) =>
+    apiClient.patch(
+      `/food/delivery-boy/orders/${String(orderId)}/reject`,
+      {},
+      { contextModule: "delivery" },
+    ),
 };
 
 const DINING_BOOKINGS_STORAGE_KEY = "food_dining_bookings_v1";
