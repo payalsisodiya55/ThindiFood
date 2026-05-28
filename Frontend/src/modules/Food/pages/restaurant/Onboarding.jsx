@@ -908,7 +908,7 @@ export default function RestaurantOnboarding() {
           ? ""
           : "Account type must be either Saving or Current"
       case "estimatedDeliveryTime":
-        return step4Data.estimatedDeliveryTime?.trim() ? "" : "Estimated delivery time is required"
+        return step4Data.estimatedDeliveryTime?.trim() ? "" : "Estimated preparation time is required"
       case "featuredDish":
         if (!step4Data.featuredDish?.trim()) return "Featured dish name is required"
         return FEATURED_DISH_NAME_REGEX.test(step4Data.featuredDish.trim())
@@ -1573,7 +1573,7 @@ export default function RestaurantOnboarding() {
   const validateStep4 = () => {
     const errors = []
     if (!step4.estimatedDeliveryTime || !step4.estimatedDeliveryTime.trim()) {
-      errors.push("Estimated delivery time is required")
+      errors.push("Estimated preparation time is required")
     }
     if (!step4.featuredDish || !step4.featuredDish.trim()) {
       errors.push("Featured dish name is required")
@@ -3308,7 +3308,7 @@ export default function RestaurantOnboarding() {
         </p>
 
         <div>
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Estimated Delivery Time<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Estimated Preparation Time<span className="text-rose-500 ml-0.5">*</span></Label>
           <Select
             value={step4.estimatedDeliveryTime || ""}
             onValueChange={(value) => {

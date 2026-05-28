@@ -15,6 +15,7 @@ const debugError = (...args) => {}
 
 export default function RestaurantCommission() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [dialogSearchQuery, setDialogSearchQuery] = useState("")
   const [commissions, setCommissions] = useState([])
   const [approvedRestaurants, setApprovedRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
@@ -100,17 +101,17 @@ export default function RestaurantCommission() {
   }
 
   const filteredRestaurants = useMemo(() => {
-    if (!searchQuery.trim()) {
+    if (!dialogSearchQuery.trim()) {
       return approvedRestaurants
     }
     
-    const query = searchQuery.toLowerCase().trim()
+    const query = dialogSearchQuery.toLowerCase().trim()
     return approvedRestaurants.filter(restaurant =>
       restaurant.name?.toLowerCase().includes(query) ||
       restaurant.restaurantId?.toLowerCase().includes(query) ||
       restaurant.ownerName?.toLowerCase().includes(query)
     )
-  }, [approvedRestaurants, searchQuery])
+  }, [approvedRestaurants, dialogSearchQuery])
 
   // Fetch data on component mount
   useEffect(() => {
@@ -228,10 +229,19 @@ export default function RestaurantCommission() {
       notes: ""
     })
     setFormErrors({})
+    setDialogSearchQuery("")
     setIsRestaurantSelectOpen(true)
   }
 
   const handleSelectRestaurant = (restaurant) => {
+    if (restaurant.hasCommissionSetup) {
+      const existingComm = commissions.find(c => String(c.restaurantId) === String(restaurant._id))
+      if (existingComm) {
+        setIsRestaurantSelectOpen(false)
+        handleEdit(existingComm)
+        return
+      }
+    }
     setSelectedRestaurant(restaurant)
     setFormData(prev => ({
       ...prev,
@@ -585,31 +595,34 @@ export default function RestaurantCommission() {
               <input
                 type="text"
                 placeholder="Search restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={dialogSearchQuery}
+                onChange={(e) => setDialogSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
             <div className="max-h-80 overflow-y-auto space-y-2">
-              {filteredRestaurants
-                .filter(r => !r.hasCommissionSetup)
-                .map((restaurant) => (
-                  <button
-                    key={restaurant._id}
-                    onClick={() => handleSelectRestaurant(restaurant)}
-                    className="w-full p-3 text-left rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-sm text-slate-900">{restaurant.name}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{restaurant.restaurantId}</p>
-                      </div>
-                      <Building2 className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </button>
-                ))}
-              {filteredRestaurants.filter(r => !r.hasCommissionSetup).length === 0 && (
+              {filteredRestaurants.map((restaurant) => (
+                <button
+                  key={restaurant._id}
+                  onClick={() => handleSelectRestaurant(restaurant)}
+                  className="w-full p-3 text-left rounded-lg border border-slate-200 hover:bg-blue-50 hover:border-blue-300 transition-all flex items-center justify-between"
+                >
+                  <div>
+                    <p className="font-medium text-sm text-slate-900">{restaurant.name}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{restaurant.restaurantId}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {restaurant.hasCommissionSetup && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-600 border border-emerald-100 uppercase tracking-wide">
+                        Configured
+                      </span>
+                    )}
+                    <Building2 className="w-4 h-4 text-slate-400" />
+                  </div>
+                </button>
+              ))}
+              {filteredRestaurants.length === 0 && (
                 <p className="text-center text-sm text-slate-500 py-4">No restaurants available</p>
               )}
             </div>
@@ -716,31 +729,47 @@ export default function RestaurantCommission() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
-        <DialogContent className="max-w-md bg-white">
-          <DialogHeader>
-            <DialogTitle>Delete Restaurant Commission</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-slate-700">
-              Are you sure you want to delete commission for "{selectedCommission?.restaurantName || selectedCommission?.restaurant?.name}"? This action cannot be undone.
-            </p>
+        <DialogContent className="max-w-md bg-white p-6 rounded-2xl border border-slate-100 shadow-xl">
+          <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-4">
+            {/* Warning Icon Container */}
+            <div className="p-3 bg-red-50 text-red-600 rounded-full">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            
+            <div className="space-y-2 w-full">
+              <h2 className="text-xl font-semibold text-slate-900">
+                Delete Restaurant Commission
+              </h2>
+              <p className="text-sm text-slate-650 leading-relaxed">
+                Are you sure you want to delete the commission settings for{" "}
+                <span className="font-bold text-slate-900">
+                  "{selectedCommission?.restaurantName || selectedCommission?.restaurant?.name || "this restaurant"}"
+                </span>
+                ? This action cannot be undone and will immediately affect their commission calculations.
+              </p>
+            </div>
           </div>
-          <DialogFooter>
+          
+          <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
             <button
               onClick={() => setIsDeleteOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
+              className="px-4.5 py-2.5 text-sm font-medium rounded-xl border border-slate-200 bg-white text-slate-750 hover:bg-slate-50 hover:text-slate-900 transition-all focus:outline-none focus:ring-2 focus:ring-slate-100"
             >
-              Cancel
+              Cancel, Keep it
             </button>
             <button
               onClick={confirmDelete}
               disabled={deleting}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-5 py-2.5 text-sm font-semibold rounded-xl bg-red-600 hover:bg-red-700 text-white transition-all shadow-md shadow-red-100 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
             >
-              {deleting && <Loader2 className="w-4 h-4 animate-spin" />}
-              Delete
+              {deleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+              Yes, Delete Commission
             </button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
