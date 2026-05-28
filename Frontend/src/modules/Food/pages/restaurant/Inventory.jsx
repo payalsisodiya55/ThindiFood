@@ -1112,9 +1112,21 @@ export default function Inventory() {
       toast.error("Please enter add-on name")
       return
     }
+    if (addonName.trim().length > 50) {
+      toast.error("Add-on name cannot exceed 50 characters")
+      return
+    }
+    if (addonDescription.trim().length > 200) {
+      toast.error("Description cannot exceed 200 characters")
+      return
+    }
     const parsedPrice = parseFloat(addonPrice)
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
       toast.error("Please enter a valid price")
+      return
+    }
+    if (parsedPrice > 99999) {
+      toast.error("Price cannot exceed ₹99,999")
       return
     }
     setSavingAddon(true)
@@ -2086,23 +2098,36 @@ export default function Inventory() {
                 <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
                   <div className="grid grid-cols-1 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        {editingAddon ? "Edit Add-on Name *" : "Add-on Name *"}
-                      </label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          {editingAddon ? "Edit Add-on Name " : "Add-on Name "}
+                          <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-xs text-gray-400">
+                          {addonName.length}/50
+                        </span>
+                      </div>
                       <input
                         type="text"
                         value={addonName}
                         onChange={(e) => setAddonName(e.target.value)}
+                        maxLength={50}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:outline-none"
                         style={{ "--restaurant-brand": RESTAURANT_THEME.brand }}
                         placeholder="e.g., Coke, Chips"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="block text-sm font-medium text-gray-700">Description</label>
+                        <span className="text-xs text-gray-400">
+                          {addonDescription.length}/200
+                        </span>
+                      </div>
                       <textarea
                         value={addonDescription}
                         onChange={(e) => setAddonDescription(e.target.value)}
+                        maxLength={200}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:outline-none resize-none"
                         style={{ "--restaurant-brand": RESTAURANT_THEME.brand }}
                         rows={3}
@@ -2110,14 +2135,22 @@ export default function Inventory() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹) *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Price (₹) <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="number"
                         value={addonPrice}
-                        onChange={(e) => setAddonPrice(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val.length <= 6) {
+                            setAddonPrice(val);
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:outline-none"
                         style={{ "--restaurant-brand": RESTAURANT_THEME.brand }}
                         min="0"
+                        max="99999"
                         step="0.01"
                         placeholder="0.00"
                       />
@@ -2146,11 +2179,17 @@ export default function Inventory() {
                         onClick={() => addonImageInputRef.current?.click()}
                         className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-left transition-colors hover:bg-gray-100"
                       >
-                        <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                          <Upload className="h-4 w-4 text-gray-500" />
+                        <span className={`flex items-center gap-2 text-sm font-medium ${
+                          addonImageFile || (editingAddon && addonImagePreview) ? "text-gray-900" : "text-gray-400"
+                        }`}>
+                          <Upload className={`h-4 w-4 ${
+                            addonImageFile || (editingAddon && addonImagePreview) ? "text-gray-500" : "text-gray-400"
+                          }`} />
                           {addonImageFile?.name || (editingAddon && addonImagePreview ? "Current image selected" : "Upload image")}
                         </span>
-                        <span className="mt-1 block text-xs text-gray-500">
+                        <span className={`mt-1 block text-xs ${
+                          addonImageFile || (editingAddon && addonImagePreview) ? "text-gray-500" : "text-gray-400"
+                        }`}>
                           {addonImageFile
                             ? "Image selected successfully"
                             : editingAddon
@@ -2221,7 +2260,7 @@ export default function Inventory() {
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="mb-2 flex items-center gap-2 flex-wrap">
-                            <h3 className="text-base font-semibold text-slate-950">{addon.name}</h3>
+                            <h3 className="text-base font-semibold text-slate-950 break-all">{addon.name}</h3>
                             <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                               isAddonLive
                                 ? "bg-emerald-50 text-emerald-700"
@@ -2240,11 +2279,11 @@ export default function Inventory() {
                             )}
                           </div>
                           {addon.description && (
-                            <p className="mb-2 text-sm leading-6 text-slate-600">{addon.description}</p>
+                            <p className="mb-2 text-sm leading-6 text-slate-600 break-all">{addon.description}</p>
                           )}
                           <p className="text-base font-bold text-slate-950">Rs. {addon.price}</p>
                           {addon.approvalStatus === 'rejected' && addon.rejectionReason && (
-                            <p className="mt-2 text-xs font-medium text-red-600">Reason: {addon.rejectionReason}</p>
+                            <p className="mt-2 text-xs font-medium text-red-600 break-all">Reason: {addon.rejectionReason}</p>
                           )}
                         </div>
                         <div className="flex items-start gap-3">
