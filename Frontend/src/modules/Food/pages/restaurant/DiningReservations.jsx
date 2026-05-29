@@ -358,7 +358,7 @@ export default function DiningReservations() {
                 primaryCategoryId: diningEnabled ? selectedDiningCategoryIds[0] : null,
             })
             syncRestaurantMediaState(getRestaurantFromResponse(response))
-            setDiningSettingsMessage("Dining request sent to admin. Changes will apply after approval.")
+            setDiningSettingsMessage("Your dining update request is awaiting admin approval.")
             toast.success("Dining request sent for approval")
         } catch (error) {
             const message = error?.response?.data?.message || "Failed to submit dining request."
@@ -440,19 +440,13 @@ export default function DiningReservations() {
                 <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium leading-relaxed sm:leading-6 text-slate-500">Save your dining changes as an approval request. They will go live for customers only after admin approval.</p>
             </div>
 
-            {(diningSettingsMessage || diningSettingsError) && (
+            {(diningSettingsMessage || diningSettingsError || restaurant?.pendingDiningRequest?.requestedAt) && (
                 <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
                     diningSettingsError
                         ? "border-rose-100 bg-rose-50 text-rose-600"
-                        : "border-emerald-100 bg-emerald-50 text-emerald-700"
+                        : "border-amber-200 bg-amber-50 text-amber-700"
                 }`}>
-                    {diningSettingsError || diningSettingsMessage}
-                </div>
-            )}
-
-            {restaurant?.pendingDiningRequest?.requestedAt && (
-                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-semibold text-amber-700">
-                    A dining update request is currently pending admin approval.
+                    {diningSettingsError || (restaurant?.pendingDiningRequest?.requestedAt ? "Your dining update request is awaiting admin approval." : diningSettingsMessage)}
                 </div>
             )}
 

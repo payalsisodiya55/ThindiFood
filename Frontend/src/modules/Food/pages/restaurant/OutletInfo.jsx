@@ -45,12 +45,29 @@ const debugError = (...args) => {};
 
 const CUISINES_STORAGE_KEY = "restaurant_cuisines";
 
+const DAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
+const formatTime12Hour = (time24) => {
+  if (!time24 || typeof time24 !== "string" || !time24.includes(":")) return "";
+  const [hoursStr, minutesStr] = time24.split(":");
+  const hours = Number(hoursStr);
+  const minutes = Number(minutesStr);
+  if (isNaN(hours) || isNaN(minutes)) return time24;
+  const period = hours >= 12 ? "PM" : "AM";
+  const hours12 = hours % 12 || 12;
+  const minutesPad = minutes.toString().padStart(2, "0");
+  const hoursPad = hours12.toString().padStart(2, "0");
+  return `${hoursPad}:${minutesPad} ${period}`;
+};
+
+
 export default function OutletInfo() {
   const navigate = useNavigate();
   const goBack = useRestaurantBackNavigation();
 
   // State management
   const [restaurantData, setRestaurantData] = useState(null);
+  const [outletTimings, setOutletTimings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [restaurantName, setRestaurantName] = useState("");
   const [cuisineTags, setCuisineTags] = useState("");
@@ -106,7 +123,10 @@ export default function OutletInfo() {
     const fetchRestaurantData = async () => {
       try {
         setLoading(true);
-        const response = await restaurantAPI.getCurrentRestaurant();
+        const [response, timingsResponse] = await Promise.all([
+          restaurantAPI.getCurrentRestaurant(),
+          restaurantAPI.getOutletTimings()
+        ]);
         const data = response?.data?.data?.restaurant || response?.data?.restaurant;
         if (data) {
           setRestaurantData(data);
@@ -132,6 +152,10 @@ export default function OutletInfo() {
             setCoverImages([]);
           }
         }
+        const timings = timingsResponse?.data?.data?.outletTimings || timingsResponse?.data?.outletTimings;
+        if (timings) {
+          setOutletTimings(timings);
+        }
       } catch (error) {
         if (error.code !== 'ERR_NETWORK' && error.code !== 'ECONNABORTED' && !error.message?.includes('timeout')) {
           debugError("Error fetching restaurant data:", error);
@@ -145,13 +169,16 @@ export default function OutletInfo() {
 
     const handleCuisinesUpdate = () => { fetchRestaurantData(); };
     const handleAddressUpdate = () => { fetchRestaurantData(); };
+    const handleTimingsUpdate = () => { fetchRestaurantData(); };
 
     window.addEventListener("cuisinesUpdated", handleCuisinesUpdate);
     window.addEventListener("addressUpdated", handleAddressUpdate);
+    window.addEventListener("outletTimingsUpdated", handleTimingsUpdate);
 
     return () => {
       window.removeEventListener("cuisinesUpdated", handleCuisinesUpdate);
       window.removeEventListener("addressUpdated", handleAddressUpdate);
+      window.removeEventListener("outletTimingsUpdated", handleTimingsUpdate);
     };
   }, []);
 
@@ -565,22 +592,39 @@ export default function OutletInfo() {
         <div className="px-4 py-3">
           <h2 className="text-base font-bold text-gray-900 text-center mb-4">Operational Details</h2>
           <div className="space-y-3">
-            <InfoCard label="Estimated Delivery Time" value={restaurantData?.estimatedDeliveryTime || null} loading={loading} />
-            <InfoCard
-              label="Open Days"
-              value={restaurantData?.openDays && Array.isArray(restaurantData.openDays) ? restaurantData.openDays.join(", ") : null}
-              loading={loading}
-            />
-            <InfoCard
-              label="Opening Time"
-              value={restaurantData?.openingTime || null}
-              loading={loading}
-            />
-            <InfoCard
-              label="Closing Time"
-              value={restaurantData?.closingTime || null}
-              loading={loading}
-            />
+            <InfoCard label="Estimated Preparation Time" value={restaurantData?.estimatedDeliveryTime || null} loading={loading} />
+            {outletTimings ? (
+              DAY_NAMES.map((day) => {
+                const time = outletTimings[day];
+                if (!time) return null;
+                return (
+                  <InfoCard
+                    key={day}
+                    label={day}
+                    value={time.isOpen ? `${formatTime12Hour(time.openingTime)} - ${formatTime12Hour(time.closingTime)}` : "Closed"}
+                    loading={loading}
+                  />
+                );
+              })
+            ) : (
+              <>
+                <InfoCard
+                  label="Open Days"
+                  value={restaurantData?.openDays && Array.isArray(restaurantData.openDays) ? restaurantData.openDays.join(", ") : null}
+                  loading={loading}
+                />
+                <InfoCard
+                  label="Opening Time"
+                  value={restaurantData?.openingTime ? formatTime12Hour(restaurantData.openingTime) : null}
+                  loading={loading}
+                />
+                <InfoCard
+                  label="Closing Time"
+                  value={restaurantData?.closingTime ? formatTime12Hour(restaurantData.closingTime) : null}
+                  loading={loading}
+                />
+              </>
+            )}
           </div>
         </div>
       </div>
