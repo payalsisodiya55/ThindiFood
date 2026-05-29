@@ -3733,7 +3733,7 @@ function RestaurantDetailsContent() {
                                 key={variant.id}
                                 type="button"
                                 onClick={() => setSelectedVariantId(variant.id)}
-                                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors ${
+                                className={`rounded-full border px-3 py-1.5 text-sm font-medium transition-colors break-all ${
                                   String(selectedVariantId || "") === String(variant.id)
                                     ? "border-[#00c87e] bg-[#FEF2F2] text-[#00c87e] dark:border-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e]"
                                     : "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-[#2a2a2a] dark:text-gray-300"

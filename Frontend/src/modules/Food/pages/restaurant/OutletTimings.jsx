@@ -239,7 +239,7 @@ export default function OutletTimings() {
     <LocalizationProvider 
       dateAdapter={AdapterDateFns}
       localeText={{
-        fieldMeridiemPlaceholder: () => "AM/PM",
+        fieldMeridiemPlaceholder: () => "AM",
         fieldHoursPlaceholder: () => "HH",
         fieldMinutesPlaceholder: () => "MM",
       }}
@@ -354,9 +354,11 @@ export default function OutletTimings() {
                                         sx: {
                                           "& .MuiOutlinedInput-root": {
                                             height: "36px",
-                                            fontSize: "12px",
+                                            fontSize: "9.5px",
                                             backgroundColor: "white",
                                             cursor: "pointer",
+                                            paddingLeft: "4px",
+                                            paddingRight: "2px",
                                             "& fieldset": {
                                               borderColor: "#e5e7eb",
                                             },
@@ -371,8 +373,19 @@ export default function OutletTimings() {
                                             },
                                           },
                                           "& .MuiInputBase-input": {
-                                            padding: "8px 12px",
-                                            fontSize: "12px",
+                                            padding: "8px 0px 8px 2px",
+                                            fontSize: "9.5px",
+                                            letterSpacing: "-0.03em",
+                                          },
+                                          "& .MuiInputAdornment-root": {
+                                            marginLeft: "0px",
+                                            marginRight: "0px",
+                                          },
+                                          "& .MuiIconButton-root": {
+                                            padding: "1px",
+                                          },
+                                          "& .MuiSvgIcon-root": {
+                                            fontSize: "14px",
                                           },
                                         },
                                       },
@@ -416,8 +429,10 @@ export default function OutletTimings() {
                                         sx: {
                                           "& .MuiOutlinedInput-root": {
                                             height: "36px",
-                                            fontSize: "12px",
+                                            fontSize: "9.5px",
                                             backgroundColor: "white",
+                                            paddingLeft: "4px",
+                                            paddingRight: "2px",
                                             "& fieldset": {
                                               borderColor: "#e5e7eb",
                                             },
@@ -429,8 +444,19 @@ export default function OutletTimings() {
                                             },
                                           },
                                           "& .MuiInputBase-input": {
-                                            padding: "8px 12px",
-                                            fontSize: "12px",
+                                            padding: "8px 0px 8px 2px",
+                                            fontSize: "9.5px",
+                                            letterSpacing: "-0.03em",
+                                          },
+                                          "& .MuiInputAdornment-root": {
+                                            marginLeft: "0px",
+                                            marginRight: "0px",
+                                          },
+                                          "& .MuiIconButton-root": {
+                                            padding: "1px",
+                                          },
+                                          "& .MuiSvgIcon-root": {
+                                            fontSize: "14px",
                                           },
                                         },
                                       },

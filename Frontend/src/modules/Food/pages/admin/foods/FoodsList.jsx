@@ -1480,13 +1480,28 @@ export default function FoodsList() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">Variant name</label>
-                          <input
-                        type="text"
-                        value={variant.name}
-                        onChange={(e) => handleVariantChange(variant.id, "name", e.target.value)}
-                        placeholder={index === 0 ? "Full" : "Half"}
-                        className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white" />
-                      
+                          <div className="relative">
+                            <select
+                              value={variant.name}
+                              onChange={(e) => handleVariantChange(variant.id, "name", e.target.value)}
+                              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                              <option value="">Select variant</option>
+                              {["Full", "Half", "Small", "Medium", "Large"].map((opt) => (
+                                <option key={opt} value={opt}>
+                                  {opt}
+                                </option>
+                              ))}
+                              {variant.name && !["Full", "Half", "Small", "Medium", "Large"].includes(variant.name) && (
+                                <option value={variant.name}>{variant.name}</option>
+                              )}
+                            </select>
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </div>
+                          </div>
                         </div>
                         <div>
                           <label className="block text-xs font-medium text-slate-600 mb-1">Variant price</label>

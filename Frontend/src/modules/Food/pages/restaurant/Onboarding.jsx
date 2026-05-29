@@ -579,8 +579,10 @@ function TimeSelector({ label, value, onChange }) {
             sx: {
               "& .MuiOutlinedInput-root": {
                 height: "36px",
-                fontSize: "12px",
+                fontSize: "9.5px",
                 backgroundColor: "white",
+                paddingLeft: "4px",
+                paddingRight: "2px",
                 "& fieldset": {
                   borderColor: "#e5e7eb",
                 },
@@ -590,12 +592,22 @@ function TimeSelector({ label, value, onChange }) {
                 "&.Mui-focused fieldset": {
                   borderColor: "#00c87e",
                 },
-
               },
               "& .MuiInputBase-input": {
-                padding: "8px 12px",
-                fontSize: "12px",
+                padding: "8px 0px 8px 2px",
+                fontSize: "9.5px",
+                letterSpacing: "-0.03em",
                 cursor: "pointer",
+              },
+              "& .MuiInputAdornment-root": {
+                marginLeft: "0px",
+                marginRight: "0px",
+              },
+              "& .MuiIconButton-root": {
+                padding: "1px",
+              },
+              "& .MuiSvgIcon-root": {
+                fontSize: "14px",
               },
             },
             onBlur: (event) => {
@@ -914,6 +926,21 @@ export default function RestaurantOnboarding() {
         return FEATURED_DISH_NAME_REGEX.test(step4Data.featuredDish.trim())
           ? ""
           : "Featured dish name must contain only letters"
+      case "selfDeliveryRadius":
+        if (!step4Data.selfDeliveryEnabled) return ""
+        return step4Data.selfDeliveryRadius?.trim() ? "" : "Self delivery radius is required"
+      case "selfDeliveryFee":
+        if (!step4Data.selfDeliveryEnabled) return ""
+        return step4Data.selfDeliveryFee?.trim() ? "" : "Delivery fee is required"
+      case "selfDeliveryMinOrderAmount":
+        if (!step4Data.selfDeliveryEnabled) return ""
+        return step4Data.selfDeliveryMinOrderAmount?.trim() ? "" : "Minimum order amount is required"
+      case "selfDeliveryStart":
+        if (!step4Data.selfDeliveryEnabled) return ""
+        return step4Data.selfDeliveryStart?.trim() ? "" : "Start time is required"
+      case "selfDeliveryEnd":
+        if (!step4Data.selfDeliveryEnabled) return ""
+        return step4Data.selfDeliveryEnd?.trim() ? "" : "End time is required"
       default:
         return ""
     }
@@ -974,7 +1001,17 @@ export default function RestaurantOnboarding() {
       return <p className="mt-1 text-[10px] font-medium text-red-500">{fieldErrors[fieldName]}</p>
     }
     if (status === "success") {
-      return <p className="mt-1 text-[10px] font-medium text-emerald-600">Looks good</p>
+      if (fieldName === "accountNumber" || fieldName === "confirmAccountNumber") {
+        const step3Data = overrides.step3 || step3
+        if (
+          step3Data.accountNumber &&
+          step3Data.confirmAccountNumber &&
+          step3Data.accountNumber === step3Data.confirmAccountNumber
+        ) {
+          return <p className="mt-1 text-[10px] font-medium text-emerald-600">Account number matched</p>
+        }
+      }
+      return null
     }
     return null
   }
@@ -1005,7 +1042,13 @@ export default function RestaurantOnboarding() {
         "accountType",
         ...(step3.gstRegistered ? ["gstNumber", "gstLegalName", "gstAddress"] : []),
       ],
-      4: ["estimatedDeliveryTime", "featuredDish"],
+      4: [
+        "estimatedDeliveryTime",
+        "featuredDish",
+        ...(step4.selfDeliveryEnabled
+          ? ["selfDeliveryRadius", "selfDeliveryFee", "selfDeliveryMinOrderAmount", "selfDeliveryStart", "selfDeliveryEnd"]
+          : [])
+      ],
     }
 
     const fields = stepFieldMap[stepNumber] || []
@@ -1582,8 +1625,23 @@ export default function RestaurantOnboarding() {
     }
 
     if (step4.selfDeliveryEnabled) {
+      if (!step4.selfDeliveryRadius || !String(step4.selfDeliveryRadius).trim()) {
+        errors.push("Self delivery radius is required")
+      }
+      if (!step4.selfDeliveryFee || !String(step4.selfDeliveryFee).trim()) {
+        errors.push("Delivery fee is required")
+      }
+      if (!step4.selfDeliveryMinOrderAmount || !String(step4.selfDeliveryMinOrderAmount).trim()) {
+        errors.push("Minimum order amount is required")
+      }
       const start = normalizeTimeValue(step4.selfDeliveryStart)
       const end = normalizeTimeValue(step4.selfDeliveryEnd)
+      if (!start) {
+        errors.push("Self delivery start time is required")
+      }
+      if (!end) {
+        errors.push("Self delivery end time is required")
+      }
       if (start && end) {
         if (start === end) {
           errors.push("Self delivery start and end time cannot be the same")
@@ -3360,7 +3418,7 @@ export default function RestaurantOnboarding() {
         </div>
 
         <div>
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Special Offer/Promotion</Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Special Offer/Promotion (Optional)</Label>
           <Input
             value={step4.offer || ""}
             onChange={(e) => setStep4({ ...step4, offer: e.target.value.slice(0, 80) })}
@@ -3407,27 +3465,37 @@ export default function RestaurantOnboarding() {
 
           <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 transition-opacity ${!step4.selfDeliveryEnabled ? "opacity-40 pointer-events-none" : ""}`}>
             <div>
-              <Label className="text-xs font-bold text-gray-700 block mb-1">Self Delivery Radius (km)</Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">
+                Self Delivery Radius (km)
+                {step4.selfDeliveryEnabled && <span className="text-rose-500 ml-0.5">*</span>}
+              </Label>
               <Input
                 type="number"
                 min="0"
                 value={step4.selfDeliveryRadius || ""}
                 onChange={(e) => {
                   const val = e.target.value.slice(0, 2);
-                  setStep4({
+                  const nextStep4 = {
                     ...step4,
                     selfDeliveryRadius: val,
-                  });
+                  }
+                  setStep4(nextStep4);
+                  revalidateTouchedField("selfDeliveryRadius", { step4: nextStep4 })
                 }}
+                onBlur={() => handleFieldBlur("selfDeliveryRadius")}
                 disabled={!step4.selfDeliveryEnabled}
-                className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className={getFieldClassName("selfDeliveryRadius", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed")}
                 placeholder="Enter delivery radius (e.g. 5)"
               />
+              {renderFieldMessage("selfDeliveryRadius")}
               <p className="text-[11px] text-gray-500 mt-1">Maximum 2 digits allowed</p>
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-gray-700 block mb-1">Delivery Fee</Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">
+                Delivery Fee
+                {step4.selfDeliveryEnabled && <span className="text-rose-500 ml-0.5">*</span>}
+              </Label>
               <Input
                 type="number"
                 min="0"
@@ -3438,20 +3506,27 @@ export default function RestaurantOnboarding() {
                     val = val.replace(/^0+/, "");
                   }
                   val = val.slice(0, 4);
-                  setStep4({
+                  const nextStep4 = {
                     ...step4,
                     selfDeliveryFee: val,
-                  });
+                  }
+                  setStep4(nextStep4);
+                  revalidateTouchedField("selfDeliveryFee", { step4: nextStep4 })
                 }}
+                onBlur={() => handleFieldBlur("selfDeliveryFee")}
                 disabled={!step4.selfDeliveryEnabled}
-                className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className={getFieldClassName("selfDeliveryFee", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed")}
                 placeholder="Enter delivery fee (e.g. 10)"
               />
+              {renderFieldMessage("selfDeliveryFee")}
               <p className="text-[11px] text-gray-500 mt-1">Maximum 4 digits allowed</p>
             </div>
 
             <div>
-              <Label className="text-xs font-bold text-gray-700 block mb-1">Minimum Order Amount</Label>
+              <Label className="text-xs font-bold text-gray-700 block mb-1">
+                Minimum Order Amount
+                {step4.selfDeliveryEnabled && <span className="text-rose-500 ml-0.5">*</span>}
+              </Label>
               <Input
                 type="number"
                 min="0"
@@ -3462,15 +3537,19 @@ export default function RestaurantOnboarding() {
                     val = val.replace(/^0+/, "");
                   }
                   val = val.slice(0, 5);
-                  setStep4({
+                  const nextStep4 = {
                     ...step4,
                     selfDeliveryMinOrderAmount: val,
-                  });
+                  }
+                  setStep4(nextStep4);
+                  revalidateTouchedField("selfDeliveryMinOrderAmount", { step4: nextStep4 })
                 }}
+                onBlur={() => handleFieldBlur("selfDeliveryMinOrderAmount")}
                 disabled={!step4.selfDeliveryEnabled}
-                className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
+                className={getFieldClassName("selfDeliveryMinOrderAmount", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed")}
                 placeholder="Enter minimum order amount (e.g. 100)"
               />
+              {renderFieldMessage("selfDeliveryMinOrderAmount")}
               <p className="text-[11px] text-gray-500 mt-1">Maximum 5 digits allowed</p>
             </div>
 
@@ -3478,16 +3557,20 @@ export default function RestaurantOnboarding() {
               <TimeSelector
                 label="Start Time*"
                 value={step4.selfDeliveryStart || ""}
-                onChange={(val) =>
-                  setStep4((prev) => ({ ...prev, selfDeliveryStart: normalizeTimeValue(val) || "" }))
-                }
+                onChange={(val) => {
+                  const nextStep4 = { ...step4, selfDeliveryStart: normalizeTimeValue(val) || "" }
+                  setStep4(nextStep4)
+                  revalidateTouchedField("selfDeliveryStart", { step4: nextStep4 })
+                }}
               />
               <TimeSelector
                 label="End Time*"
                 value={step4.selfDeliveryEnd || ""}
-                onChange={(val) =>
-                  setStep4((prev) => ({ ...prev, selfDeliveryEnd: normalizeTimeValue(val) || "" }))
-                }
+                onChange={(val) => {
+                  const nextStep4 = { ...step4, selfDeliveryEnd: normalizeTimeValue(val) || "" }
+                  setStep4(nextStep4)
+                  revalidateTouchedField("selfDeliveryEnd", { step4: nextStep4 })
+                }}
               />
             </div>
           </div>
@@ -3507,39 +3590,38 @@ export default function RestaurantOnboarding() {
     <LocalizationProvider 
       dateAdapter={AdapterDateFns}
       localeText={{
-        fieldMeridiemPlaceholder: () => "AM/PM",
+        fieldMeridiemPlaceholder: () => "AM",
         fieldHoursPlaceholder: () => "HH",
         fieldMinutesPlaceholder: () => "MM",
       }}
     >
-      <div className="min-h-screen bg-gray-100 flex flex-col">
-        <header className="px-4 py-4 sm:px-6 sm:py-5 bg-white flex items-center justify-between border-b">
-          <div className="flex items-center gap-3">
+      <div className="flex flex-col bg-gray-100 overflow-hidden" style={{ height: "100dvh" }}>
+        <header className="px-3 py-3 sm:px-6 sm:py-5 bg-white flex items-center justify-between border-b">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={handleCloseOnboarding}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+              className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors cursor-pointer text-gray-600 hover:text-gray-700"
               aria-label="Close onboarding"
             >
-              <X className="w-5 h-5 text-gray-600" />
+              <X className="w-5 h-5" />
             </button>
-            <div className="text-lg font-extrabold text-black">Restaurant onboarding</div>
+            <div className="text-base sm:text-lg font-extrabold text-black h-9 flex items-center whitespace-nowrap">Restaurant onboarding</div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {!loading && !isEditing && (
               <Button
                 onClick={() => setIsEditing(true)}
                 variant="outline"
                 size="sm"
-                className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5 cursor-pointer"
+                className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5 cursor-pointer h-9 px-3"
                 title="Edit Details"
-
               >
                 <Sparkles className="w-3 h-3" />
                 Edit Details
               </Button>
             )}
-            <div className="flex items-center gap-3">
-              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider text-right">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider text-right h-9 flex items-center justify-end whitespace-nowrap">
                 Step {step} of 4
               </div>
               <Button
@@ -3547,7 +3629,7 @@ export default function RestaurantOnboarding() {
                 disabled={isLoggingOut}
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer"
+                className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer flex items-center justify-center"
                 title="Logout"
               >
                 <LogOut className="w-4 h-4" />
@@ -3558,7 +3640,7 @@ export default function RestaurantOnboarding() {
         </header>
 
         <main
-          className="flex-1 px-4 sm:px-6 py-4 space-y-4"
+          className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
           style={{ paddingBottom: keyboardInset ? `${keyboardInset + 20}px` : undefined }}
           onFocusCapture={(e) => {
             const target = e.target

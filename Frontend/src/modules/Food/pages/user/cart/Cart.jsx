@@ -79,6 +79,81 @@ const formatFullAddress = (address) => {
 }
 
 const RUPEE_SYMBOL = "\u20B9"
+
+const CustomSelect = ({ value, onChange, options, placeholder, className = "" }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const containerRef = useRef(null)
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
+
+  const selectedOption = options.find((opt) => opt.value === value)
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between text-sm p-2.5 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] transition-all cursor-pointer h-10 px-3.5 ${className}`}
+      >
+        <span className={!selectedOption ? "text-gray-400 dark:text-gray-500 font-medium" : "font-medium"}>
+          {selectedOption ? selectedOption.label : placeholder}
+        </span>
+        <ChevronDown
+          className={`h-4.5 w-4.5 text-gray-500 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-[#00c87e]" : ""
+          }`}
+        />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 left-0 right-0 mt-1.5 max-h-60 overflow-y-auto bg-white dark:bg-[#151515] border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="py-1">
+            {options.map((option) => {
+              const isSelected = option.value === value
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value)
+                    setIsOpen(false)
+                  }}
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-colors cursor-pointer ${
+                    isSelected
+                      ? "bg-[#00c87e]/15 text-[#00c87e] font-semibold"
+                      : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
+                  }`}
+                >
+                  <span className="truncate pr-2">{option.label}</span>
+                  <div
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      isSelected
+                        ? "border-[#00c87e] bg-[#00c87e]/5"
+                        : "border-gray-300 dark:border-gray-600"
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="w-2.5 h-2.5 rounded-full bg-[#00c87e] animate-in zoom-in-50 duration-200" />
+                    )}
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const toRadians = (value) => (Number(value) * Math.PI) / 180
 const calculateDistanceKm = (from, to) => {
   if (!Array.isArray(from) || !Array.isArray(to) || from.length < 2 || to.length < 2) {
@@ -859,6 +934,20 @@ export default function Cart() {
       return true
     })
   }, [availablePickupTimeSlots, pickupHour12])
+
+  const hourOptions = useMemo(() => {
+    return [
+      { value: "", label: "HH" },
+      ...availablePickupHourOptions.map(slot => ({ value: slot.hour12, label: slot.hour12 }))
+    ]
+  }, [availablePickupHourOptions])
+
+  const minuteOptions = useMemo(() => {
+    return [
+      { value: "", label: "MM" },
+      ...availablePickupMinuteOptions.map(slot => ({ value: slot.minute, label: slot.minute }))
+    ]
+  }, [availablePickupMinuteOptions])
 
   // Reset scheduledTime if it's no longer valid in the new slots
   useEffect(() => {
@@ -3578,18 +3667,12 @@ export default function Cart() {
                     <div className="flex-1">
                       <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Time</label>
                       {availableTimeSlots.length > 0 ? (
-                        <div className="relative">
-                          <select
-                            value={scheduledTime}
-                            onChange={(e) => setScheduledTime(e.target.value)}
-                            className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
-                          >
-                            {availableTimeSlots.map(slot => (
-                              <option key={slot.value} value={slot.value}>{slot.label}</option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                        </div>
+                        <CustomSelect
+                          value={scheduledTime}
+                          onChange={setScheduledTime}
+                          options={availableTimeSlots}
+                          placeholder="Select Time"
+                        />
                       ) : (
                         <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">
                           {scheduledDate ? "No slots available" : "Select date first"}
@@ -3610,36 +3693,18 @@ export default function Cart() {
                         </div>
                       ) : availablePickupTimeSlots.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2">
-                          <div className="relative">
-                            <select
-                              value={pickupHour12}
-                              onChange={(e) => setPickupHour12(e.target.value)}
-                              className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
-                            >
-                              <option value="">HH</option>
-                              {availablePickupHourOptions.map((slot) => (
-                                <option key={slot.hour12} value={slot.hour12}>
-                                  {slot.hour12}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                          </div>
-                          <div className="relative">
-                            <select
-                              value={pickupMinute}
-                              onChange={(e) => setPickupMinute(e.target.value)}
-                              className="w-full text-sm p-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#0a0a0a] text-gray-800 dark:text-gray-200 focus:outline-none focus:border-[#00c87e] appearance-none pr-8"
-                            >
-                              <option value="">MM</option>
-                              {availablePickupMinuteOptions.map((slot) => (
-                                <option key={`${slot.value}-minute`} value={slot.minute}>
-                                  {slot.minute}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
-                          </div>
+                          <CustomSelect
+                            value={pickupHour12}
+                            onChange={setPickupHour12}
+                            options={hourOptions}
+                            placeholder="HH"
+                          />
+                          <CustomSelect
+                            value={pickupMinute}
+                            onChange={setPickupMinute}
+                            options={minuteOptions}
+                            placeholder="MM"
+                          />
                         </div>
                       ) : (
                         <div className="w-full text-sm p-2 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-md text-center border border-gray-200 dark:border-gray-700">

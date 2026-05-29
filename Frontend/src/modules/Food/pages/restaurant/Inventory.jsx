@@ -245,17 +245,21 @@ const getRuleStatusLabel = (rule) => {
     return "Out of stock"
   }
 
-  const formatted = resumeAt.toLocaleString("en-IN", {
+  const formattedDayMonth = resumeAt.toLocaleString("en-IN", {
     day: "2-digit",
     month: "short",
+  })
+  const formattedTime = resumeAt.toLocaleString("en-IN", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
-  })
+  }).toUpperCase()
 
-  if (rule.mode === "specific-time") return `Out of stock until ${formatted}`
-  if (rule.mode === "next-business-day") return `Back next business day at ${formatted}`
-  if (rule.mode === "custom-date-time") return `Out of stock until ${formatted}`
+  const formatted = `${formattedDayMonth} at ${formattedTime}`
+
+  if (rule.mode === "specific-time") return `Available again on ${formatted}`
+  if (rule.mode === "next-business-day") return `Available again on ${formatted}`
+  if (rule.mode === "custom-date-time") return `Available again on ${formatted}`
   return "Out of stock"
 }
 
@@ -2179,17 +2183,11 @@ export default function Inventory() {
                         onClick={() => addonImageInputRef.current?.click()}
                         className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-left transition-colors hover:bg-gray-100"
                       >
-                        <span className={`flex items-center gap-2 text-sm font-medium ${
-                          addonImageFile || (editingAddon && addonImagePreview) ? "text-gray-900" : "text-gray-400"
-                        }`}>
-                          <Upload className={`h-4 w-4 ${
-                            addonImageFile || (editingAddon && addonImagePreview) ? "text-gray-500" : "text-gray-400"
-                          }`} />
+                        <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                          <Upload className="h-4 w-4 text-gray-500" />
                           {addonImageFile?.name || (editingAddon && addonImagePreview ? "Current image selected" : "Upload image")}
                         </span>
-                        <span className={`mt-1 block text-xs ${
-                          addonImageFile || (editingAddon && addonImagePreview) ? "text-gray-500" : "text-gray-400"
-                        }`}>
+                        <span className="mt-1 block text-xs text-gray-500">
                           {addonImageFile
                             ? "Image selected successfully"
                             : editingAddon
@@ -2693,25 +2691,25 @@ export default function Inventory() {
                 <div className="space-y-0 mb-6">
                   {/* Option 1: For specific time */}
                   <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
-                    <div className="flex items-center gap-3 flex-1">
+                    <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
                     
-                      <span className="text-base text-gray-900">For specific time</span>
+                      <span className="text-xs sm:text-base text-gray-900 font-medium truncate shrink-0">For specific time</span>
                       {selectedOption === "specific-time" && (
-                        <div className="ml-auto py-3 flex items-center justify-center gap-4">
+                        <div className="ml-auto flex items-center justify-center gap-1.5 sm:gap-3 shrink-0">
                           <button
                             onClick={() => setHours(Math.max(MIN_SPECIFIC_TIME_HOURS, hours - 1))}
-                            className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                           >
-                            <Minus className="w-4 h-4 text-gray-700" />
+                            <Minus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700" />
                           </button>
-                          <span className="text-base font-medium text-gray-900 min-w-[60px] text-center">
+                          <span className="text-xs sm:text-base font-medium text-gray-900 min-w-[50px] sm:min-w-[60px] text-center">
                             {hours} hour{hours !== 1 ? 's' : ''}
                           </span>
                           <button
                             onClick={() => setHours(Math.min(MAX_SPECIFIC_TIME_HOURS, hours + 1))}
-                            className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 transition-colors"
                           >
-                            <Plus className="w-4 h-4 text-gray-700" />
+                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 text-gray-700" />
                           </button>
                         </div>
                       )}
@@ -2721,7 +2719,7 @@ export default function Inventory() {
                         checked={selectedOption === "specific-time"}
                         onChange={() => setSelectedOption("specific-time")}
                         style={{ accentColor: RESTAURANT_THEME.brand, "--restaurant-brand": RESTAURANT_THEME.brand }}
-                        className="ml-auto w-5 h-5 !border-gray-300 !focus:ring-[var(--restaurant-brand)]"
+                        className="ml-auto w-5 h-5 shrink-0 !border-gray-300 !focus:ring-[var(--restaurant-brand)]"
                       />
                     </div>
                   </label>
@@ -2730,7 +2728,7 @@ export default function Inventory() {
                   <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
                     <div className="flex items-center gap-3 flex-1">
                    
-                      <span className="text-base text-gray-900">Next business day - Opening time</span>
+                      <span className="text-xs sm:text-base text-gray-900">Next business day - Opening time</span>
                       <input
                         type="radio"
                         name="outOfStockOption"
@@ -2746,7 +2744,7 @@ export default function Inventory() {
                   <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
                     <div className="flex items-center gap-3 flex-1">
                     
-                      <span className="text-base text-gray-900">Custom date & time</span>
+                      <span className="text-xs sm:text-base text-gray-900">Custom date & time</span>
                       <input
                         type="radio"
                         name="outOfStockOption"
@@ -2791,7 +2789,7 @@ export default function Inventory() {
                     <div className="flex flex-col gap-1 flex-1">
                       <div className="flex items-center gap-3">
                        
-                        <span className="text-base text-gray-900">I will turn it on manually</span>
+                        <span className="text-xs sm:text-base text-gray-900">I will turn it on manually</span>
                         <input
                           type="radio"
                           name="outOfStockOption"
@@ -2801,8 +2799,8 @@ export default function Inventory() {
                           className="ml-auto w-5 h-5 !border-gray-300 !focus:ring-[var(--restaurant-brand)]"
                         />
                       </div>
-                      <p className="text-sm text-gray-500">
-                        Item won't be visible to customers on Zomato app till you mark it back in stock
+                      <p className="text-xs text-gray-500">
+                        Item won't be visible to customers on taamio app till you mark it back in stock
                       </p>
                     </div>
                   </label>
