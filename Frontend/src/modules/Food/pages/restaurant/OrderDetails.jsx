@@ -48,6 +48,8 @@ const firstText = (...values) => {
 
 const formatMoney = (value) => `₹${Number(value || 0).toFixed(2)}`
 const formatDiscount = (value) => `-₹${Math.abs(Number(value || 0)).toFixed(2)}`
+const formatMoneyPDF = (value) => `Rs. ${Number(value || 0).toFixed(2)}`
+const formatDiscountPDF = (value) => `-Rs. ${Math.abs(Number(value || 0)).toFixed(2)}`
 
 
 export default function OrderDetails() {
@@ -441,10 +443,10 @@ export default function OrderDetails() {
 
     // Items Table
     const itemsTableData = orderData.items.map(item => [
-      `${item.quantity}x`,
+      `${item.quantity}`,
       formatOrderItemLabel(item),
       item.type || "-",
-      formatMoney(item.price)
+      formatMoneyPDF(item.price)
     ])
 
     // Use autoTable with the doc instance
@@ -481,44 +483,44 @@ export default function OrderDetails() {
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
     const billRows = [
-      ["Item Subtotal:", formatMoney(orderData.billing.itemSubtotal)],
-      ["Taxes:", formatMoney(orderData.billing.taxes)],
+      ["Item Subtotal:", formatMoneyPDF(orderData.billing.itemSubtotal)],
+      ["Taxes:", formatMoneyPDF(orderData.billing.taxes)],
     ]
     if (Number(orderData.billing.packagingFee) > 0) {
-      billRows.push(["Packaging Fee:", formatMoney(orderData.billing.packagingFee)])
+      billRows.push(["Packaging Fee:", formatMoneyPDF(orderData.billing.packagingFee)])
     }
     if (Number(orderData.billing.deliveryFee) > 0) {
-      billRows.push(["Delivery Fee:", formatMoney(orderData.billing.deliveryFee)])
+      billRows.push(["Delivery Fee:", formatMoneyPDF(orderData.billing.deliveryFee)])
     }
     if (Number(orderData.billing.platformFee) > 0) {
-      billRows.push(["Platform Fee:", formatMoney(orderData.billing.platformFee)])
+      billRows.push(["Platform Fee:", formatMoneyPDF(orderData.billing.platformFee)])
     }
     if (Number(orderData.billing.discount) > 0) {
-      billRows.push(["Discount:", formatDiscount(orderData.billing.discount)])
+      billRows.push(["Discount:", formatDiscountPDF(orderData.billing.discount)])
     }
     if (Number(orderData.billing.platformCouponDiscount) > 0) {
-      billRows.push(["Platform Coupon:", formatDiscount(orderData.billing.platformCouponDiscount)])
+      billRows.push(["Platform Coupon:", formatDiscountPDF(orderData.billing.platformCouponDiscount)])
     }
     if (Number(orderData.billing.restaurantCouponDiscount) > 0) {
-      billRows.push(["Restaurant Coupon:", formatDiscount(orderData.billing.restaurantCouponDiscount)])
+      billRows.push(["Restaurant Coupon:", formatDiscountPDF(orderData.billing.restaurantCouponDiscount)])
     }
     if (Number(orderData.billing.restaurantOfferDiscount) > 0) {
-      billRows.push(["Restaurant Offer:", formatDiscount(orderData.billing.restaurantOfferDiscount)])
+      billRows.push(["Restaurant Offer:", formatDiscountPDF(orderData.billing.restaurantOfferDiscount)])
     }
     if (Number(orderData.billing.couponDiscount) > 0) {
-      billRows.push(["Coupon Discount:", formatDiscount(orderData.billing.couponDiscount)])
+      billRows.push(["Coupon Discount:", formatDiscountPDF(orderData.billing.couponDiscount)])
     }
     if (Number(orderData.billing.commissionBaseAmount) > 0) {
-      billRows.push(["Commission Base:", formatMoney(orderData.billing.commissionBaseAmount)])
+      billRows.push(["Commission Base:", formatMoneyPDF(orderData.billing.commissionBaseAmount)])
     }
     if (Number(orderData.billing.restaurantCommission) > 0) {
-      billRows.push(["Commission Paid:", formatDiscount(orderData.billing.restaurantCommission)])
+      billRows.push(["Commission Paid:", formatDiscountPDF(orderData.billing.restaurantCommission)])
     }
     if (Number(orderData.billing.restaurantNetPayout) > 0) {
-      billRows.push(["Restaurant Payout:", formatMoney(orderData.billing.restaurantNetPayout)])
+      billRows.push(["Restaurant Payout:", formatMoneyPDF(orderData.billing.restaurantNetPayout)])
     }
     if (Number(orderData.billing.referralDiscount) > 0) {
-      billRows.push(["Referral Discount:", formatDiscount(orderData.billing.referralDiscount)])
+      billRows.push(["Referral Discount:", formatDiscountPDF(orderData.billing.referralDiscount)])
     }
     billRows.forEach(([label, value]) => {
       doc.text(label, 15, yPosition)
@@ -535,13 +537,13 @@ export default function OrderDetails() {
     doc.setFont("helvetica", "bold")
     doc.setFontSize(11)
     doc.text("Total Bill:", leftMargin, yPosition)
-    doc.text(formatMoney(orderData.billing.total), pageWidth - rightMargin, yPosition, { align: "right" })
+    doc.text(formatMoneyPDF(orderData.billing.total), pageWidth - rightMargin, yPosition, { align: "right" })
     yPosition += 6
     if (Number(orderData.billing.paidAmount) > 0) {
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text("Amount Paid:", leftMargin, yPosition)
-      doc.text(formatMoney(orderData.billing.paidAmount), pageWidth - rightMargin, yPosition, { align: "right" })
+      doc.text(formatMoneyPDF(orderData.billing.paidAmount), pageWidth - rightMargin, yPosition, { align: "right" })
       yPosition += 6
     }
 
@@ -797,12 +799,12 @@ export default function OrderDetails() {
               <hr className="border-gray-200 my-3" />
               
             </div>
-               <div className="flex items-center gap-3">
-              <MapPin className="w-5 h-5 text-gray-600" />
+               <div className="flex items-start gap-3">
+              <MapPin className="w-5 h-5 text-gray-600 shrink-0 mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm text-gray-900">{orderData.customer.location}</p>
               </div>
-              <p className="text-sm text-gray-600">{orderData.customer.distance}</p>
+              <p className="text-sm text-gray-600 shrink-0 mt-0.5">{orderData.customer.distance}</p>
             </div>
           </div>
 

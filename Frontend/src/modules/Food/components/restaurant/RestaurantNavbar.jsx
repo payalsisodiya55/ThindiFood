@@ -23,6 +23,9 @@ const RESTAURANT_ONLINE_STATUS_KEY = "restaurant_online_status"
 
 
 export default function RestaurantNavbar({
+  searchValue: propSearchValue,
+  onSearchChange,
+  onSearchActiveChange,
   restaurantName: propRestaurantName,
   location: propLocation,
   showSearch = true,
@@ -30,8 +33,11 @@ export default function RestaurantNavbar({
   showNotifications = true,
 }) {
   const navigate = useNavigate()
-  const [isSearchActive, setIsSearchActive] = useState(false)
-  const [searchValue, setSearchValue] = useState("")
+  const [localSearchActive, setLocalSearchActive] = useState(false)
+  const [localSearchValue, setLocalSearchValue] = useState("")
+
+  const isSearchActive = onSearchActiveChange !== undefined ? (localSearchActive || !!propSearchValue) : localSearchActive
+  const searchValue = propSearchValue !== undefined ? propSearchValue : localSearchValue
   const [status, setStatus] = useState("Offline")
   const [restaurantData, setRestaurantData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -310,16 +316,28 @@ export default function RestaurantNavbar({
   }
 
   const handleSearchClick = () => {
-    setIsSearchActive(true)
+    if (onSearchActiveChange) {
+      onSearchActiveChange(true)
+    }
+    setLocalSearchActive(true)
   }
 
   const handleSearchClose = () => {
-    setIsSearchActive(false)
-    setSearchValue("")
+    if (onSearchActiveChange) {
+      onSearchActiveChange(false)
+    }
+    setLocalSearchActive(false)
+    if (onSearchChange) {
+      onSearchChange("")
+    }
+    setLocalSearchValue("")
   }
 
   const handleSearchChange = (e) => {
-    setSearchValue(e.target.value)
+    if (onSearchChange) {
+      onSearchChange(e.target.value)
+    }
+    setLocalSearchValue(e.target.value)
   }
 
   const handleMenuClick = () => {

@@ -434,14 +434,14 @@ export default function DiningReservations() {
 
     const diningControlsSection = (
         <section className="bg-white p-5 sm:p-6 rounded-[28px] shadow-sm border border-slate-100">
-            <div className="mb-5">
-                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-slate-300">Dining Controls</p>
-                <h2 className="mt-2 max-w-xl text-[27px] leading-8 font-black text-slate-900 tracking-tight">Manage dining availability and booking limit</h2>
-                <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-slate-500">Save your dining changes as an approval request. They will go live for customers only after admin approval.</p>
+            <div className="mb-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Dining Controls</p>
+                <h2 className="mt-1.5 max-w-xl text-lg sm:text-[23px] font-black text-slate-900 tracking-tight leading-snug sm:leading-7">Manage dining availability and Booking limit</h2>
+                <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium leading-relaxed sm:leading-6 text-slate-500">Save your dining changes as an approval request. They will go live for customers only after admin approval.</p>
             </div>
 
             {(diningSettingsMessage || diningSettingsError) && (
-                <div className={`mb-6 rounded-2xl border px-4 py-3 text-sm font-semibold ${
+                <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
                     diningSettingsError
                         ? "border-rose-100 bg-rose-50 text-rose-600"
                         : "border-emerald-100 bg-emerald-50 text-emerald-700"
@@ -451,7 +451,7 @@ export default function DiningReservations() {
             )}
 
             {restaurant?.pendingDiningRequest?.requestedAt && (
-                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs font-semibold text-amber-700">
                     A dining update request is currently pending admin approval.
                 </div>
             )}
@@ -463,7 +463,7 @@ export default function DiningReservations() {
                 </div>
 
                 <div className="inline-flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 shadow-sm">
-                    <span className="text-sm font-semibold text-slate-700">Turn dining on/off</span>
+                    <span className="text-sm font-semibold text-slate-700">Turn dining ON/OFF</span>
                     <button
                         onClick={() => {
                             setDiningEnabled((prev) => {
@@ -521,9 +521,9 @@ export default function DiningReservations() {
                 </div>
             </div>
 
-            <p className={`mt-3 text-xs font-semibold flex items-center gap-1.5 transition-colors ${diningEnabled ? "text-slate-500" : "text-slate-400"}`}>
-                <Info className="h-4 w-4 text-emerald-500" />
-                Note: Max sitting capacity defines the maximum number of guests that can be accommodated at a single table.
+            <p className={`mt-3 text-xs font-semibold flex items-start gap-1.5 transition-colors ${diningEnabled ? "text-slate-500" : "text-slate-400"}`}>
+                <Info className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                <span>Note: Max sitting capacity defines the maximum number of guests that can be accommodated at a single table.</span>
             </p>
 
             <div className="mt-5 rounded-[26px] border border-slate-200 bg-white p-4 sm:p-5">
