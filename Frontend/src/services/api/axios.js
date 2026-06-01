@@ -142,6 +142,17 @@ function isAuthEndpoint(url = "") {
 function handleAuthFailure(module) {
   clearModuleAuth(module);
   if (getCurrentPageModule() === module) {
+    const currentPath = window.location.pathname.toLowerCase();
+    const publicPaths = [
+      "/support",
+      "/food/support",
+      "/user/support",
+      "/food/restaurant/support",
+      "/restaurant/support"
+    ];
+    if (publicPaths.some(p => currentPath === p || currentPath.startsWith(p))) {
+      return; // Do not redirect on public support pages
+    }
     redirectToModuleLogin(module);
   }
 }

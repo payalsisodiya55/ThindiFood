@@ -76,6 +76,7 @@ const AddPayment = lazy(() => import("@food/pages/user/profile/AddPayment"))
 const EditPayment = lazy(() => import("@food/pages/user/profile/EditPayment"))
 const Favorites = lazy(() => import("@food/pages/user/profile/Favorites"))
 const Support = lazy(() => import("@food/pages/user/profile/Support"))
+const SupportPublic = lazy(() => import("@food/pages/user/SupportPublic"))
 const Coupons = lazy(() => import("@food/pages/user/profile/Coupons"))
 const About = lazy(() => import("@food/pages/user/profile/About"))
 const Terms = lazy(() => import("@food/pages/user/profile/Terms"))
@@ -295,6 +296,7 @@ export default function UserRouter() {
           />
 
           {/* Support & Legal - Direct Routes */}
+          <Route path="support" element={<SupportPublic />} />
           <Route
             path="about"
             element={

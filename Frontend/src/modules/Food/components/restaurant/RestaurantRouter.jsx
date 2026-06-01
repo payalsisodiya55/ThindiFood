@@ -60,6 +60,7 @@ const OTP = lazy(() => import("@food/pages/restaurant/auth/OTP"))
 const Signup = lazy(() => import("@food/pages/restaurant/auth/Signup"))
 const ForgotPassword = lazy(() => import("@food/pages/restaurant/auth/ForgotPassword"))
 const VerificationPending = lazy(() => import("@food/pages/restaurant/auth/VerificationPending"))
+const SupportPublic = lazy(() => import("@food/pages/user/SupportPublic"))
 
 function RestaurantApprovedRoute({ children }) {
   const restaurant = getCurrentUser("restaurant")
@@ -112,6 +113,7 @@ export default function RestaurantRouter() {
         <Route path="signup" element={<Signup />} />
         <Route path="forgot-password" element={<ForgotPassword />} />
         <Route path="pending-verification" element={<VerificationPending />} />
+        <Route path="support" element={<SupportPublic />} />
 
         {/* Protected Routes */}
         <Route element={restaurantRoute(<OrdersMain />)} path="" />
