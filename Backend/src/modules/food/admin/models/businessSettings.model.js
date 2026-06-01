@@ -27,6 +27,9 @@ const businessSettingsSchema = new mongoose.Schema(
         },
         selfDelivery: {
             globalEnabled: { type: Boolean, default: true }
+        },
+        locationPrompt: {
+            enabled: { type: Boolean, default: true }
         }
     },
     { timestamps: true }

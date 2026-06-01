@@ -34,7 +34,8 @@ export async function updateBusinessSettings(req, res, next) {
             pincode,
             region,
             logoUrl,
-            faviconUrl
+            faviconUrl,
+            locationPromptEnabled
         } = data;
 
         // Validation
@@ -96,6 +97,11 @@ export async function updateBusinessSettings(req, res, next) {
         if (state !== undefined) settings.state = state;
         if (pincode !== undefined) settings.pincode = pincode;
         if (region) settings.region = region;
+        if (locationPromptEnabled !== undefined) {
+            settings.locationPrompt = {
+                enabled: Boolean(locationPromptEnabled)
+            };
+        }
         if (logoUrl !== undefined) {
             settings.logo = {
                 url: String(logoUrl || '').trim(),

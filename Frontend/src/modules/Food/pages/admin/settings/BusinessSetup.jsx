@@ -27,6 +27,7 @@ export default function BusinessSetup() {
     state: "",
     pincode: "",
     region: "",
+    locationPromptEnabled: true,
   });
 
   // Fetch business settings on mount
@@ -50,6 +51,7 @@ export default function BusinessSetup() {
           state: settings.state || "",
           pincode: settings.pincode || "",
           region: settings.region || "India",
+          locationPromptEnabled: settings.locationPrompt?.enabled !== false,
         });
 
         // Set logo and favicon previews if they exist
@@ -127,6 +129,7 @@ export default function BusinessSetup() {
         state: formData.state.trim(),
         pincode: formData.pincode.trim(),
         region: formData.region,
+        locationPromptEnabled: formData.locationPromptEnabled,
       };
 
       // Prepare files
@@ -340,6 +343,25 @@ export default function BusinessSetup() {
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-3">
+                <span className="text-xs font-semibold text-slate-700">Location popup</span>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("locationPromptEnabled", !formData.locationPromptEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.locationPromptEnabled ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      formData.locationPromptEnabled ? "translate-x-5" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </label>
             </div>
 
             {/* Logo & favicon upload */}

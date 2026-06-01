@@ -3,13 +3,31 @@ import { MapPin, X } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
 import { useLocation } from "@food/hooks/useLocation"
+import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 
 export default function LocationPrompt() {
   const { location, loading, permissionGranted, requestLocation } = useLocation()
   const [showPrompt, setShowPrompt] = useState(false)
+  const [promptEnabled, setPromptEnabled] = useState(() => getCachedSettings()?.locationPrompt?.enabled !== false)
   const cardRef = useRef(null)
 
   useEffect(() => {
+    let active = true
+    loadBusinessSettings().then((settings) => {
+      if (active) setPromptEnabled(settings?.locationPrompt?.enabled !== false)
+    })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!promptEnabled) {
+      setShowPrompt(false)
+      document.body.style.overflow = ""
+      return
+    }
+
     // Check if location permission was already granted
     const storedLocation = localStorage.getItem("userLocation")
     const promptDismissed = localStorage.getItem("locationPromptDismissed")
@@ -49,7 +67,7 @@ export default function LocationPrompt() {
         document.body.style.overflow = ""
       }
     }
-  }, [permissionGranted])
+  }, [permissionGranted, promptEnabled])
 
   // Close prompt when location is successfully obtained
   useEffect(() => {
