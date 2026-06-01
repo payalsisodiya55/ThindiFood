@@ -352,7 +352,7 @@ export default function DiningReservations() {
         try {
             const response = await restaurantAPI.updateDiningSettings({
                 isEnabled: Boolean(diningEnabled),
-                maxGuests: diningEnabled ? parsedLimit : 0,
+                maxGuests: diningEnabled ? parsedLimit : 1,
                 mealTypes: diningEnabled ? selectedMealTypes : [],
                 categoryIds: diningEnabled ? selectedDiningCategoryIds : [],
                 primaryCategoryId: diningEnabled ? selectedDiningCategoryIds[0] : null,
