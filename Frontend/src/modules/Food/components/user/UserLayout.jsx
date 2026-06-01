@@ -4,6 +4,7 @@ import { ProfileProvider } from "@food/context/ProfileContext"
 import LocationPrompt from "./LocationPrompt"
 import { CartProvider } from "@food/context/CartContext"
 import { OrdersProvider } from "@food/context/OrdersContext"
+import { LoginRequiredProvider } from "@food/context/LoginRequiredContext"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -183,6 +184,7 @@ export default function UserLayout() {
       <CartProvider>
         <ProfileProvider>
           <OrdersProvider>
+            <LoginRequiredProvider>
               <SearchOverlayProvider>
                 <LocationSelectorProvider>
                   {/* <Navbar /> */}
@@ -190,7 +192,7 @@ export default function UserLayout() {
                   <div className="hidden md:block">
                     {showBottomNav && <DesktopNavbar showLogo={!isUnder250} />}
                   </div>
-                  <LocationPrompt />
+                  {/* <LocationPrompt /> */}
                   <GlobalReviewPrompt />
                   <main className={showBottomNav ? "pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-0 md:pt-40" : ""}>
                     <Outlet />
@@ -198,6 +200,7 @@ export default function UserLayout() {
                   {showBottomNav && <BottomNavigation />}
                 </LocationSelectorProvider>
               </SearchOverlayProvider>
+            </LoginRequiredProvider>
           </OrdersProvider>
         </ProfileProvider>
       </CartProvider>
