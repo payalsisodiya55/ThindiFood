@@ -9,12 +9,16 @@ const debugError = (...args) => {}
 const ORDER_REVIEW_STORAGE_KEY = "shownRatingForOrders"
 const DINING_REVIEW_STORAGE_KEY = "shownDiningReviewSessions"
 const DINING_REVIEW_PENDING_STORAGE_KEY = "pendingDiningReviewSessions"
+const ORDER_REVIEW_RECENT_WINDOW_MS = 6 * 60 * 60 * 1000
 
 const normalizeStatus = (value) =>
   String(value || "").trim().toLowerCase().replace(/\s+/g, "_")
 
 const isDeliveryOrder = (order) =>
   String(order?.fulfillmentType || order?.orderType || "delivery").toLowerCase() === "delivery"
+
+const isTakeawayOrder = (order) =>
+  String(order?.fulfillmentType || order?.orderType || "").toLowerCase() === "takeaway"
 
 const isDeliveredDeliveryOrder = (order) => {
   if (!isDeliveryOrder(order)) return false
@@ -40,10 +44,58 @@ const isCompletedOrder = (order) => {
 
   if (isDeliveredDeliveryOrder(order)) return true
 
+  if (["delivered", "completed", "delivered_self"].includes(normalizedStatus)) {
+    return true
+  }
+
+  if (isTakeawayOrder(order) && normalizedStatus === "picked_up") {
+    return true
+  }
+
   return (
-    ["delivered", "completed", "delivered_self", "picked_up", "picked_up_by_boy"].includes(normalizedStatus) ||
     Boolean(order?.deliveredAt || order?.completedAt || order?.deliveryState?.deliveredAt)
   )
+}
+
+const parseDateMs = (value) => {
+  const timestamp = value ? new Date(value).getTime() : NaN
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+const getOrderCompletionTimestamp = (order) => {
+  const directTimestamp =
+    parseDateMs(order?.deliveredAt) ||
+    parseDateMs(order?.completedAt) ||
+    parseDateMs(order?.deliveryState?.deliveredAt) ||
+    parseDateMs(order?.selfDelivery?.deliveredAt) ||
+    parseDateMs(order?.tracking?.delivered?.timestamp) ||
+    parseDateMs(order?.tracking?.completed?.timestamp)
+
+  if (directTimestamp) return directTimestamp
+
+  const completedStatuses = new Set(["delivered", "completed", "delivered_self", "picked_up"])
+  const statusHistory = Array.isArray(order?.statusHistory) ? [...order.statusHistory].reverse() : []
+  const completedHistory = statusHistory.find((entry) => {
+    const toStatus = normalizeStatus(entry?.to || entry?.status || entry?.orderStatus)
+    return completedStatuses.has(toStatus)
+  })
+
+  return (
+    parseDateMs(completedHistory?.timestamp) ||
+    parseDateMs(completedHistory?.createdAt) ||
+    parseDateMs(completedHistory?.updatedAt) ||
+    parseDateMs(completedHistory?.date) ||
+    parseDateMs(completedHistory?.at) ||
+    parseDateMs(order?.updatedAt)
+  )
+}
+
+const isRecentlyCompletedOrder = (order) => {
+  const completedAt = getOrderCompletionTimestamp(order)
+  if (!completedAt) return false
+
+  const ageMs = Date.now() - completedAt
+  return ageMs >= 0 && ageMs <= ORDER_REVIEW_RECENT_WINDOW_MS
 }
 
 const readStoredSet = (key) => {
@@ -124,6 +176,49 @@ const markOrderPromptHandled = (storeRef, order) => {
 const hasSeenOrderPrompt = (storeRef, order) =>
   collectOrderPromptKeys(order).some((key) => storeRef.current.has(key))
 
+const shouldCheckOrderReviewsOnCurrentRoute = () => {
+  if (typeof window === "undefined") return false
+
+  const currentPath = String(window.location.pathname || "").toLowerCase()
+  const currentSearch = new URLSearchParams(window.location.search || "")
+  if (!currentPath) return false
+
+  if (currentSearch.get("confirmed") === "true") return false
+
+  if (
+    currentPath.includes("/auth") ||
+    currentPath.includes("address-selector") ||
+    currentPath.includes("/cart") ||
+    currentPath.includes("/checkout")
+  ) {
+    return false
+  }
+
+  return true
+}
+
+const buildOrderReviewPrompt = (order) => {
+  const id =
+    order?._id?.toString?.() ||
+    order?.id ||
+    order?.orderId ||
+    order?.mongoId
+
+  return {
+    _id: order?._id,
+    id,
+    orderId: order?.orderId,
+    mongoId: order?.mongoId,
+    restaurant:
+      order?.restaurantId?.restaurantName ||
+      order?.restaurantId?.name ||
+      order?.restaurantName ||
+      "Restaurant",
+    restaurantRating: order?.ratings?.restaurant?.rating || null,
+    ratings: order?.ratings || {},
+  }
+}
+
 export default function GlobalReviewPrompt() {
   const [orderReviewState, setOrderReviewState] = useState({
     open: false,
@@ -171,6 +266,7 @@ export default function GlobalReviewPrompt() {
 
     reviewCheckTimeoutRef.current = window.setTimeout(() => {
       if (!mountedRef.current) return
+      if (!shouldCheckOrderReviewsOnCurrentRoute()) return
       setOrderReviewState({
         open: true,
         order,
@@ -256,27 +352,20 @@ export default function GlobalReviewPrompt() {
           ordersResponse?.data?.orders ||
           (Array.isArray(ordersResponse?.data?.data) ? ordersResponse.data.data : [])
 
+        if (!shouldCheckOrderReviewsOnCurrentRoute()) return
+
         const pendingOrderReview = (Array.isArray(orders) ? orders : []).find((order) => {
           if (collectOrderPromptKeys(order).length === 0 || hasSeenOrderPrompt(shownOrderRatingsRef, order)) {
             return false
           }
 
           const hasRestaurantRating = Number.isFinite(Number(order?.ratings?.restaurant?.rating))
-          return isCompletedOrder(order) && !hasRestaurantRating
+          return isCompletedOrder(order) && isRecentlyCompletedOrder(order) && !hasRestaurantRating
         })
 
         if (!pendingOrderReview) return
 
-        scheduleOpenOrderReview({
-          id: pendingOrderReview._id?.toString() || pendingOrderReview.id || pendingOrderReview.orderId,
-          restaurant:
-            pendingOrderReview?.restaurantId?.restaurantName ||
-            pendingOrderReview?.restaurantId?.name ||
-            pendingOrderReview?.restaurantName ||
-            "Restaurant",
-          restaurantRating: pendingOrderReview?.ratings?.restaurant?.rating || null,
-          ratings: pendingOrderReview?.ratings || {},
-        })
+        scheduleOpenOrderReview(buildOrderReviewPrompt(pendingOrderReview))
       } catch (error) {
         debugError("Global review check failed:", error)
       }
