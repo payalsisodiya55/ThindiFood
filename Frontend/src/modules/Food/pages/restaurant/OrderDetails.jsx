@@ -539,11 +539,12 @@ export default function OrderDetails() {
     doc.text("Total Bill:", leftMargin, yPosition)
     doc.text(formatMoneyPDF(orderData.billing.total), pageWidth - rightMargin, yPosition, { align: "right" })
     yPosition += 6
-    if (Number(orderData.billing.paidAmount) > 0) {
+    const isCancelled = String(orderData.status || "").toUpperCase().includes("CANCEL") || String(orderData.status || "").toUpperCase() === "REJECTED";
+    if (isCancelled || Number(orderData.billing.paidAmount) > 0) {
       doc.setFont("helvetica", "normal")
       doc.setFontSize(10)
       doc.text("Amount Paid:", leftMargin, yPosition)
-      doc.text(formatMoneyPDF(orderData.billing.paidAmount), pageWidth - rightMargin, yPosition, { align: "right" })
+      doc.text(isCancelled ? "NA" : formatMoneyPDF(orderData.billing.paidAmount), pageWidth - rightMargin, yPosition, { align: "right" })
       yPosition += 6
     }
 
@@ -702,6 +703,8 @@ export default function OrderDetails() {
       </div>
     )
   }
+
+  const isCancelled = String(orderData?.status || "").toUpperCase().includes("CANCEL") || String(orderData?.status || "").toUpperCase() === "REJECTED";
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -924,10 +927,12 @@ export default function OrderDetails() {
               </div>
               <span className="text-sm font-semibold text-gray-900">{formatMoney(orderData.billing.total)}</span>
             </div>
-            {Number(orderData.billing.paidAmount) > 0 && (
+            {(Number(orderData.billing.paidAmount) > 0 || isCancelled) && (
               <div className="flex items-center justify-between mt-2">
                 <span className="text-sm text-gray-600">Amount paid</span>
-                <span className="text-sm font-medium text-gray-900">{formatMoney(orderData.billing.paidAmount)}</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {isCancelled ? "NA" : formatMoney(orderData.billing.paidAmount)}
+                </span>
               </div>
             )}
             {Number(orderData.billing.restaurantNetPayout) > 0 && (
@@ -948,7 +953,7 @@ export default function OrderDetails() {
                   Platform compensation: {formatMoney(orderData.billing.platformDiscountCompensation)}. Wallet adjustment: {formatMoney(orderData.billing.walletNetAdjustment)}.
                 </p>
                 <p className="mt-1 text-[11px] text-amber-700">
-                  Settlement status: {orderData.billing.settlementApplied ? "Applied" : "Pending"}.
+                  Settlement status: {isCancelled ? "NA" : (orderData.billing.settlementApplied ? "Applied" : "Pending")}.
                 </p>
               </div>
             )}
