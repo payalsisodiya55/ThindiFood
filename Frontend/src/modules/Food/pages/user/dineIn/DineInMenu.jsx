@@ -79,6 +79,12 @@ const DineInMenu = () => {
                     setSessionData(sRes.data.data);
                 }
             } catch (err) {
+                const statusCode = err?.response?.status;
+                if (statusCode === 400 || statusCode === 404) {
+                    localStorage.removeItem("activeDineInSessionId");
+                    navigate("/food/user/dining");
+                    return;
+                }
                 console.warn("Polling failed", err);
             }
         }, 5000);
@@ -150,7 +156,13 @@ const DineInMenu = () => {
             setRestaurantOfferPreview(activeDisplayOffer || null);
 
         } catch (err) {
-            setError(err.message || "Failed to load session data");
+            const statusCode = err?.response?.status;
+            if (statusCode === 400 || statusCode === 404) {
+                localStorage.removeItem("activeDineInSessionId");
+                navigate("/food/user/dining");
+                return;
+            }
+            setError(err?.response?.data?.message || err.message || "Failed to load session data");
         } finally {
             setLoading(false);
         }

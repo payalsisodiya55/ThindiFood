@@ -150,7 +150,14 @@ const DineInBill = () => {
                 throw new Error(res.data?.message || "Failed to fetch bill");
             }
         } catch (err) {
-            setError(err.message);
+            const statusCode = err?.response?.status;
+            const message = err?.response?.data?.message || err.message || "Failed to fetch bill";
+            if (statusCode === 400 || statusCode === 404) {
+                localStorage.removeItem("activeDineInSessionId");
+                clearInterval(pollIntervalRef.current);
+                clearInterval(countdownIntervalRef.current);
+            }
+            setError(message);
         } finally {
             setLoading(false);
         }
@@ -282,8 +289,14 @@ const DineInBill = () => {
                     localStorage.removeItem("activeDineInSessionId");
                     await fetchBill({ showSuccessState: true });
                 }
-            } catch {
-                // Keep polling silently
+            } catch (err) {
+                const statusCode = err?.response?.status;
+                if (statusCode === 400 || statusCode === 404) {
+                    localStorage.removeItem("activeDineInSessionId");
+                    clearInterval(pollIntervalRef.current);
+                    clearInterval(countdownIntervalRef.current);
+                    setError(err?.response?.data?.message || "Session not found");
+                }
             }
         }, 8000); // Poll every 8 seconds
     };

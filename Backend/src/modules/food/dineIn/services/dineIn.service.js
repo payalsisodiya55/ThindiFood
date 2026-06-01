@@ -697,11 +697,15 @@ async function recalculateSessionTotal(sessionId) {
  * Get final aggregated bill for a session.
  */
 export async function getSessionBill(sessionId) {
+    if (!mongoose.Types.ObjectId.isValid(String(sessionId || ''))) {
+        throw createHttpError('Invalid session id', 400);
+    }
+
     const session = await FoodTableSession.findById(sessionId)
         .populate('orders')
         .populate('restaurantId', 'restaurantName profileImage rating totalRatings')
         .lean();
-    if (!session) throw new Error('Session not found');
+    if (!session) throw createHttpError('Session not found', 404);
 
     // Itemized aggregation
     const itemMap = {};
