@@ -50,6 +50,7 @@ import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
+import { useLoginRequired } from "@food/context/LoginRequiredContext"
 import {
   buildCartLineId,
   getDefaultFoodVariant,
@@ -79,6 +80,7 @@ function RestaurantDetailsContent() {
   const showOnlyUnder250 = searchParams.get('under250') === 'true'
   const targetDishId = useMemo(() => String(searchParams.get('dish') || '').trim(), [searchParams])
   const { addToCart, updateQuantity, removeFromCart, getCartItem, cart, clearCart, replaceCart } = useCart()
+  const { triggerLoginRequired } = useLoginRequired()
   const { vegMode, addDishFavorite, removeDishFavorite, isDishFavorite, getDishFavorites, getFavorites, addFavorite, removeFavorite, isFavorite } = useProfile()
   const { location: userLocation } = useLocation() // Get user's current location
   const { zoneId, zone, loading: loadingZone, isOutOfService } = useZone(userLocation) // Get user's zone for zone-based filtering
@@ -1230,8 +1232,7 @@ function RestaurantDetailsContent() {
   const updateItemQuantity = (item, newQuantity, event = null, preferredVariant = null) => {
     // Check authentication
     if (!isModuleAuthenticated('user')) {
-      toast.error("Please login to add items to cart")
-      navigate('/user/auth/login', { state: { from: location.pathname } })
+      navigate(`/user/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)
       return
     }
 
@@ -1583,8 +1584,7 @@ function RestaurantDetailsContent() {
   const handleBookmarkClick = (item) => {
     // Check authentication first
     if (!isModuleAuthenticated('user')) {
-      toast.error("Please login to save favourites")
-      navigate('/user/auth/login', { state: { from: window.location.pathname } })
+      navigate(`/user/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)
       return
     }
 

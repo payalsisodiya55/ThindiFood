@@ -4,6 +4,7 @@ import { useCart } from "@food/context/CartContext"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { useNavigate, useLocation } from "react-router-dom"
 import { toast } from "sonner"
+import { useLoginRequired } from "@food/context/LoginRequiredContext"
 
 export default function AddToCartButton({ item, className = "" }) {
   const { addToCart, isInCart, getCartItem, updateQuantity } = useCart()
@@ -11,14 +12,14 @@ export default function AddToCartButton({ item, className = "" }) {
   const cartItem = getCartItem(item.id)
   const navigate = useNavigate()
   const location = useLocation()
+  const { triggerLoginRequired } = useLoginRequired()
 
   const handleAddToCart = (e) => {
     e.preventDefault()
     e.stopPropagation()
 
     if (!isModuleAuthenticated('user')) {
-      toast.error("Please login to add items to cart")
-      navigate('/user/auth/login', { state: { from: location.pathname } })
+      navigate(`/user/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)
       return
     }
 

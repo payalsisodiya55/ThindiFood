@@ -118,8 +118,22 @@ export default function UserRouter() {
           <Route path="delivery" element={<Delivery />} />
           <Route path="dining" element={<Dining />} />
           <Route path="dine-in" element={<DineInRootRedirect />} />
-          <Route path="dine-in/scan" element={<ScanAndDine />} />
-          <Route path="dine-in/entry" element={<DineInSessionEntry />} />
+          <Route
+            path="dine-in/scan"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <ScanAndDine />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dine-in/entry"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <DineInSessionEntry />
+              </ProtectedRoute>
+            }
+          />
           <Route path="dine-in/menu" element={<DineInMenu />} />
           <Route path="dine-in/bill" element={<DineInBill />} />
           <Route path="dining/restaurants" element={<DiningRestaurants />} />
@@ -128,9 +142,30 @@ export default function UserRouter() {
           <Route path="dining/explore/near-rated" element={<DiningExploreNear />} />
           <Route path="dining/coffee" element={<Coffee />} />
           <Route path="dining/:diningType/:slug" element={<DiningRestaurantDetails />} />
-          <Route path="dining/book/:slug" element={<TableBooking />} />
-          <Route path="dining/book-confirmation" element={<TableBookingConfirmation />} />
-          <Route path="dining/book-success" element={<TableBookingSuccess />} />
+          <Route
+            path="dining/book/:slug"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <TableBooking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dining/book-confirmation"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <TableBookingConfirmation />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dining/book-success"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <TableBookingSuccess />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="bookings"
             element={

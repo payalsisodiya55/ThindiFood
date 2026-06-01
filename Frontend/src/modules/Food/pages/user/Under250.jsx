@@ -20,6 +20,7 @@ import { isModuleAuthenticated } from "@food/utils/auth"
 import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
 import { calculateDistance, formatDistance } from "@food/utils/common"
 import { RED } from "@food/constants/color"
+import { useLoginRequired } from "@food/context/LoginRequiredContext"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -69,6 +70,7 @@ export default function Under250() {
   const { openLocationSelector } = useLocationSelector()
   const { openSearch, setSearchValue } = useSearchOverlay()
   const { addToCart, updateQuantity, removeFromCart, getCartItem, cart } = useCart()
+  const { triggerLoginRequired } = useLoginRequired()
   const [activeCategory, setActiveCategory] = useState(initialFiltersRef.current.activeCategory)
   const [showSortPopup, setShowSortPopup] = useState(false)
   const [selectedSort, setSelectedSort] = useState(initialFiltersRef.current.selectedSort)
@@ -652,8 +654,7 @@ export default function Under250() {
   const updateItemQuantity = (item, newQuantity, event = null, restaurantName = null) => {
     // Check authentication
     if (!isModuleAuthenticated('user')) {
-      toast.error("Please login to add items to cart")
-      navigate('/user/auth/login', { state: { from: location.pathname } })
+      navigate(`/user/auth/login?redirect=${encodeURIComponent(location.pathname + location.search)}`)
       return
     }
 

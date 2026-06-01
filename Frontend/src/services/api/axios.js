@@ -153,6 +153,23 @@ function handleAuthFailure(module) {
     if (publicPaths.some(p => currentPath === p || currentPath.startsWith(p))) {
       return; // Do not redirect on public support pages
     }
+    
+    // For user module, do not auto-redirect on 401 if they are on a public/guest page
+    if (module === "user") {
+      const isProtected = (
+        currentPath.includes("/profile") ||
+        currentPath.includes("/cart") ||
+        currentPath.includes("/orders") ||
+        currentPath.includes("/bookings") ||
+        currentPath.includes("/dining/book") ||
+        currentPath.includes("/dine-in/entry") ||
+        currentPath.includes("/dine-in/scan")
+      );
+      if (!isProtected) {
+        return; // Do not redirect guest users on public pages
+      }
+    }
+
     redirectToModuleLogin(module);
   }
 }

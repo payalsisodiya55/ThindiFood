@@ -349,17 +349,29 @@ export default function UnifiedOTPFastLogin() {
         </div>
       </div>
 
-      <div className="flex-1 max-w-[480px] mx-auto w-full px-6 py-4 flex flex-col justify-center -mt-8 relative z-20">
+      <div className="flex-1 max-w-[480px] mx-auto w-full px-6 py-2 flex flex-col justify-center -mt-12 relative z-20">
         {/* Main Card */}
-        <div className="bg-white dark:bg-[#1a1a1a] rounded-[2rem] p-6 sm:p-8 md:p-12 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.15)] dark:shadow-none border border-gray-50 dark:border-gray-800">
-           <div className="text-center mb-6 space-y-2">
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white">Login or Signup</h2>
-              <div className="h-1 w-12 bg-[#00c87e] mx-auto rounded-full" />
-           </div>
+         <div className="bg-white dark:bg-[#1a1a1a] rounded-[2rem] p-5 sm:p-6 md:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.12)] dark:shadow-none border border-gray-50 dark:border-gray-800">
+            <div className="text-center mb-4 space-y-2">
+               <h2 className="text-2xl font-black text-gray-900 dark:text-white">Login or Signup</h2>
+               <div className="h-1 w-12 bg-[#00c87e] mx-auto rounded-full" />
+            </div>
 
-          <form onSubmit={step === 1 ? handleSendOTP : step === 2 ? handleVerifyOTP : handleSubmitName} className="space-y-5">
+            {step === 1 && (new URLSearchParams(window.location.search).get("next") || new URLSearchParams(window.location.search).get("redirect")) && (
+              <div className="mb-6 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 flex items-start gap-3">
+                <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="text-left">
+                  <h4 className="font-bold text-amber-800 dark:text-amber-300 text-sm">Login Required</h4>
+                  <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Please sign in to access your account, place orders, book tables, and view your cart.</p>
+                </div>
+              </div>
+            )}
+
+           <form onSubmit={step === 1 ? handleSendOTP : step === 2 ? handleVerifyOTP : handleSubmitName} className="space-y-5">
             {step === 1 ? (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div className="space-y-4">
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-1 flex items-center pointer-events-none">
@@ -380,6 +392,9 @@ export default function UnifiedOTPFastLogin() {
                     />
                   </div>
                 </div>
+                
+
+
                 <p className="text-[11px] text-gray-400 text-center leading-relaxed">
                   We will send success notifications and order updates via SMS
                 </p>
@@ -523,10 +538,52 @@ export default function UnifiedOTPFastLogin() {
                 step === 1 ? "Get Verification Code" : step === 2 ? "Continue" : "Save Name & Continue"
               )}
             </button>
+
+            {step === 1 && (
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const searchParams = new URLSearchParams(window.location.search);
+                    const nextParamRaw = String(
+                      searchParams.get("next") || searchParams.get("redirect") || ""
+                    ).trim()
+                    let redirectTo = ""
+                    if (nextParamRaw) {
+                      try {
+                        redirectTo = decodeURIComponent(nextParamRaw)
+                      } catch (_) {
+                        redirectTo = nextParamRaw
+                      }
+                    }
+                    // Avoid infinite redirect loop for protected URLs on skip
+                    const isProtected = redirectTo && (
+                      redirectTo.includes("/profile") ||
+                      redirectTo.includes("/cart") ||
+                      redirectTo.includes("/orders") ||
+                      redirectTo.includes("/bookings") ||
+                      redirectTo.includes("/dining/book") ||
+                      redirectTo.includes("/dine-in/entry") ||
+                      redirectTo.includes("/dine-in/scan")
+                    );
+                    if (redirectTo && !isProtected) {
+                      navigate(redirectTo, { replace: true })
+                    } else {
+                      navigate("/food/user", { replace: true })
+                    }
+                  }}
+                  className="text-sm font-bold text-gray-400 hover:text-[#00c87e] dark:text-gray-500 dark:hover:text-[#00c87e] transition-colors cursor-pointer inline-flex items-center gap-1 group pb-1 border-b border-dashed border-transparent hover:border-[#00c87e]"
+                >
+                  Skip for Now
+                  <span className="group-hover:translate-x-0.5 transition-transform text-xs">→</span>
+                </button>
+              </div>
+            )}
+
           </form>
         </div>
 
-        <div className="mt-6 text-center space-y-2">
+        <div className="mt-4 text-center space-y-2">
            {/* Consent checkbox — only shown on step 1 */}
            {step === 1 && (
              <label className={`flex items-center justify-center gap-2.5 cursor-pointer px-1 ${termsError ? 'animate-shake' : ''}`}>

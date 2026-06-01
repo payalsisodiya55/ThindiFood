@@ -157,6 +157,16 @@ export default function SignIn() {
             </p>
           </div>
 
+          {(searchParams.get("next") || searchParams.get("redirect")) && (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-amber-800 dark:text-amber-300 text-sm">Login Required</h4>
+                <p className="text-amber-600 dark:text-amber-400 text-xs mt-0.5">Please sign in to access your account, place orders, book tables, and view your cart.</p>
+              </div>
+            </div>
+          )}
+
           <form id="user-signin-form" onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <div className="relative flex items-center">
@@ -201,6 +211,41 @@ export default function SignIn() {
                 "Continue"
               )}
             </Button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const nextParamRaw = String(
+                  searchParams.get("next") || searchParams.get("redirect") || ""
+                ).trim()
+                let redirectTo = ""
+                if (nextParamRaw) {
+                  try {
+                    redirectTo = decodeURIComponent(nextParamRaw)
+                  } catch (_) {
+                    redirectTo = nextParamRaw
+                  }
+                }
+                // Avoid infinite redirect loop for protected URLs on skip
+                const isProtected = redirectTo && (
+                  redirectTo.includes("/profile") ||
+                  redirectTo.includes("/cart") ||
+                  redirectTo.includes("/orders") ||
+                  redirectTo.includes("/bookings") ||
+                  redirectTo.includes("/dining/book") ||
+                  redirectTo.includes("/dine-in/entry") ||
+                  redirectTo.includes("/dine-in/scan")
+                );
+                if (redirectTo && !isProtected) {
+                  navigate(redirectTo, { replace: true })
+                } else {
+                  navigate("/food/user", { replace: true })
+                }
+              }}
+              className="w-full h-12 md:h-14 bg-transparent border border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#222] text-gray-700 dark:text-gray-200 font-bold text-base md:text-lg rounded-lg transition-colors active:scale-[0.98] cursor-pointer flex items-center justify-center"
+            >
+              Skip for Now
+            </button>
           </form>
 
           {/* Social login separator */}
