@@ -637,20 +637,20 @@ export default function DiningReservations() {
         <div className="min-h-screen bg-slate-50 pb-20">
             <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-30 border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => navigate("/food/restaurant/explore")}
-                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                            aria-label="Go back"
-                        >
-                            <ArrowLeft className="w-6 h-6 text-gray-900" />
-                        </button>
-                        <div>
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => navigate("/food/restaurant/explore")}
+                                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer shrink-0 text-gray-900"
+                                aria-label="Go back"
+                            >
+                                <ArrowLeft className="w-6 h-6" />
+                            </button>
                             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                                 Dining Reservations <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                             </h1>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Live Queue Management</p>
                         </div>
+                        <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 pl-[48px]">Live Queue Management</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <div className="relative group">

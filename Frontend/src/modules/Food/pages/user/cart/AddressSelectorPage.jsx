@@ -894,7 +894,7 @@ export default function AddressSelectorPage() {
       <AnimatedPage
         className="fixed inset-0 z-50 bg-white dark:bg-[#0a0a0a] flex flex-col h-screen overflow-hidden"
       >
-        <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center gap-4">
+        <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 px-4 py-3 flex items-center gap-1">
           <Button variant="ghost" size="icon" onClick={handleCancelAddressForm} className="rounded-full">
             <ChevronLeft className="h-6 w-6" />
           </Button>
@@ -1009,73 +1009,75 @@ export default function AddressSelectorPage() {
             <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 rounded-xl p-4 flex gap-3">
                <MapPin className="h-5 w-5 text-[#00c87e] mt-0.5" />
                <div className="min-w-0">
-                  <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200 uppercase mb-1">Pinnned Location</p>
+                  <p className="text-xs font-bold text-emerald-800 dark:text-emerald-200 uppercase mb-1">Pinned Location</p>
                   <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">{currentAddress || "Select a location on map"}</p>
                </div>
             </div>
 
             <div>
-              <Label className="text-sm font-bold mb-2 block">Primary Address (Street / Area / Landmark)</Label>
+              <Label className="text-sm font-bold text-gray-900 mb-2 block">Primary Address (Street / Area / Landmark)</Label>
               <Input 
                 placeholder="Search or drag to update street/area" 
                 value={addressFormData.street} 
                 onChange={e => setAddressFormData({...addressFormData, street: e.target.value})}
                 onFocus={() => scrollFieldIntoView("street")}
                 ref={(el) => { manualFieldRefs.current.street = el }}
-                className="mb-4 h-12 rounded-xl bg-gray-50 dark:bg-gray-800/50"
+                className="mb-4 h-12 rounded-xl border border-gray-200 bg-white dark:bg-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                 required
               />
 
-              <Label className="text-sm font-bold mb-2 block text-[#00c87e]">Secondary Address (House No. / Flat / Floor)</Label>
+              <Label className="text-sm font-bold text-gray-900 mb-2 block">Secondary Address (House No. / Flat / Floor)</Label>
               <Input 
                 placeholder="E.g. Flat 402, 4th Floor" 
                 value={addressFormData.additionalDetails} 
                 onChange={e => setAddressFormData({...addressFormData, additionalDetails: e.target.value})}
                 onFocus={() => scrollFieldIntoView("additionalDetails")}
                 ref={(el) => { manualFieldRefs.current.additionalDetails = el }}
-                className="h-12 rounded-xl border-emerald-200 dark:border-emerald-900/40 focus:ring-[#00c87e]"
+                className="h-12 rounded-xl border border-gray-200 bg-white dark:bg-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs mb-1 block">City</Label>
+                <Label className="text-sm font-bold text-gray-900 mb-2 block">City</Label>
                 <Input 
+                  placeholder="Enter city"
                   value={addressFormData.city} 
                   onChange={e => setAddressFormData({...addressFormData, city: e.target.value})} 
                   onFocus={() => scrollFieldIntoView("city")}
                   ref={(el) => { manualFieldRefs.current.city = el }}
-                  className="h-12 rounded-xl"
+                  className="h-12 rounded-xl border border-gray-200 bg-white dark:bg-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   required 
                 />
               </div>
               <div>
-                <Label className="text-xs mb-1 block">State</Label>
+                <Label className="text-sm font-bold text-gray-900 mb-2 block">State</Label>
                 <Input 
+                  placeholder="Enter state"
                   value={addressFormData.state} 
                   onChange={e => setAddressFormData({...addressFormData, state: e.target.value})} 
                   onFocus={() => scrollFieldIntoView("state")}
                   ref={(el) => { manualFieldRefs.current.state = el }}
-                  className="h-12 rounded-xl"
+                  className="h-12 rounded-xl border border-gray-200 bg-white dark:bg-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
                   required 
                 />
               </div>
             </div>
 
             <div>
-              <Label className="text-xs mb-1 block">Pincode / ZIP</Label>
+              <Label className="text-sm font-bold text-gray-900 mb-2 block">Pincode / ZIP</Label>
               <Input 
-                placeholder="Pincode" 
+                placeholder="Enter pincode" 
                 value={addressFormData.zipCode || ""} 
                 onChange={e => setAddressFormData({...addressFormData, zipCode: e.target.value})} 
                 onFocus={() => scrollFieldIntoView("zipCode")}
                 ref={(el) => { manualFieldRefs.current.zipCode = el }}
-                className="h-12 rounded-xl"
+                className="h-12 rounded-xl border border-gray-200 bg-white dark:bg-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500"
               />
             </div>
 
             <div>
-               <Label className="text-sm font-bold mb-2 block">Save address as</Label>
+               <Label className="text-sm font-bold text-gray-900 mb-2 block">Save Address As</Label>
                <div className="flex gap-2">
                  {["Home", "Work", "Other"].map(l => (
                    <Button 
@@ -1112,7 +1114,7 @@ export default function AddressSelectorPage() {
 
   return (
     <AnimatedPage className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col">
-      <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 px-4 py-4 flex items-center gap-4">
+      <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 px-4 py-4 flex items-center gap-1">
         <Button variant="ghost" size="icon" onClick={handleBack} className="rounded-full">
           <ChevronLeft className="h-6 w-6" />
         </Button>
