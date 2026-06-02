@@ -647,7 +647,7 @@ export default function DiningReservations() {
                         </button>
                         <div>
                             <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                                Table Reservations <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                                Dining Reservations <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                             </h1>
                             <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1">Live Queue Management</p>
                         </div>

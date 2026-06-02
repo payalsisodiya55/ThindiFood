@@ -349,17 +349,17 @@ const DineInTableManagement = () => {
             
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-4">
                     <button 
                         onClick={() => navigate(-1)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+                        className="mt-1 p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
                         title="Go back"
                         aria-label="Go back"
                     >
                         <ArrowLeft className="w-6 h-6" />
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black text-gray-900">Table Management</h1>
+                        <h1 className="text-2xl font-black text-gray-900">Table Management</h1>
                         <p className="text-gray-500 font-medium">Create and manage QR codes for your restaurant tables.</p>
                     </div>
                 </div>
@@ -529,12 +529,12 @@ const DineInTableManagement = () => {
                             className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-10 overflow-hidden"
                         >
                             <form onSubmit={handleAddTable} className="p-10">
-                                <div className="flex items-center justify-between mb-8">
+                                <div className="flex items-start justify-between mb-8">
                                     <h2 className="text-2xl font-black text-gray-900">New Table</h2>
                                     <button 
                                         type="button"
                                         onClick={() => setShowAddModal(false)}
-                                        className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-colors"
+                                        className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-colors shrink-0 mt-0.5"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>
@@ -596,15 +596,15 @@ const DineInTableManagement = () => {
                             className="bg-white w-full max-w-md rounded-[3rem] shadow-2xl relative z-10 overflow-hidden"
                         >
                             <form onSubmit={handleEditTable} className="p-10">
-                                <div className="flex items-center justify-between mb-8">
-                                    <div>
+                                <div className="flex items-start justify-between mb-8">
+                                    <div className="pr-4">
                                         <h2 className="text-2xl font-black text-gray-900">Edit Table</h2>
                                         <p className="text-sm text-gray-500 font-medium mt-1">The QR link will refresh automatically when you save these changes.</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={closeEditModal}
-                                        className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-colors"
+                                        className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-900 transition-colors shrink-0 mt-0.5"
                                     >
                                         <X className="w-5 h-5" />
                                     </button>

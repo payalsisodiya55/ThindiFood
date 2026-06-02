@@ -142,10 +142,10 @@ export default function OutletTimings() {
       setSaving(true)
       await persistOutletTimings(days)
       setInitialDays(days)
-      toast.success("Outlet timings saved successfully!")
+      toast.success("Outlet Timings Saved Successfully!")
     } catch (error) {
       debugError("Error saving outlet timings:", error)
-      toast.error("Failed to save outlet timings. Please try again.")
+      toast.error("Failed To Save Outlet Timings. Please Try Again.")
     } finally {
       setSaving(false)
     }
@@ -153,7 +153,7 @@ export default function OutletTimings() {
 
   const handleBack = () => {
     if (hasChanges) {
-      const confirmLeave = window.confirm("You have unsaved timing changes. Are you sure you want to leave without saving?")
+      const confirmLeave = window.confirm("You Have Unsaved Timing Changes. Are You Sure You Want To Leave Without Saving?")
       if (!confirmLeave) return
     }
     navigate("/food/restaurant/explore")
@@ -230,7 +230,7 @@ export default function OutletTimings() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-sm text-gray-600">Loading outlet timings...</div>
+        <div className="text-sm text-gray-600">Loading Outlet Timings...</div>
       </div>
     )
   }
@@ -255,7 +255,7 @@ export default function OutletTimings() {
             >
               <ArrowLeft className="w-6 h-6 text-gray-900" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">Outlet timings</h1>
+            <h1 className="text-lg font-bold text-gray-900">Outlet Timings</h1>
           </div>
         </div>
 
@@ -321,7 +321,7 @@ export default function OutletTimings() {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                   <Clock className="w-4 h-4" />
-                                  Opening time
+                                  Opening Time
                                 </label>
                                 <div className="border border-gray-200 rounded-md px-3 py-2 bg-gray-50/60">
                                   <MobileTimePicker
@@ -396,7 +396,7 @@ export default function OutletTimings() {
                               <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
                                   <Clock className="w-4 h-4" />
-                                  Closing time
+                                  Closing Time
                                 </label>
                                 <div className="border border-gray-200 rounded-md px-3 py-2 bg-gray-50/60">
                                   <MobileTimePicker
@@ -464,7 +464,7 @@ export default function OutletTimings() {
                               </div>
                             </>
                           ) : (
-                            <p className="text-sm text-gray-500 pl-6">This day is closed</p>
+                            <p className="text-sm text-gray-500 pl-6">This Day Is Closed</p>
                           )}
                         </div>
                       </motion.div>
@@ -479,7 +479,7 @@ export default function OutletTimings() {
         {/* Sticky Save Changes Bar */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 z-40 shadow-[0_-4px_10px_rgba(0,0,0,0.08)] px-6">
           <div className="text-sm text-gray-600 font-medium">
-            {hasChanges ? "You have unsaved changes in outlet timings." : "Outlet timings are up to date."}
+            {hasChanges ? "You Have Unsaved Changes In Outlet Timings." : "Outlet Timings Are Up To Date."}
           </div>
           <div className="w-full sm:w-auto flex gap-3">
             {hasChanges && (

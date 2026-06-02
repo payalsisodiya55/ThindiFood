@@ -399,11 +399,11 @@ export default function OutletInfo() {
               <button onClick={goBack} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer">
                 <ArrowLeft className="w-6 h-6 text-gray-900" />
               </button>
-              <h1 className="text-lg font-bold text-gray-900">Outlet info</h1>
+              <h1 className="text-lg font-bold text-gray-900">Outlet Info</h1>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-900 font-normal">
-                Restaurant id: {loading ? "Loading..." : restaurantMongoId && restaurantMongoId.length >= 5 ? restaurantMongoId.slice(-5) : restaurantId || "N/A"}
+                Restaurant ID: {loading ? "Loading..." : restaurantMongoId && restaurantMongoId.length >= 5 ? restaurantMongoId.slice(-5) : restaurantId || "N/A"}
               </span>
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function OutletInfo() {
             disabled={uploadingImage}
             className="absolute bottom-4 right-4 bg-black/90 hover:bg-black px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium text-white transition-colors shadow-lg z-20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
             <Plus className="w-4 h-4" />
-            <span>{uploadingImage && imageType === 'menu' ? `Uploading ${uploadingCount}...` : 'Add image'}</span>
+            <span>{uploadingImage && imageType === 'menu' ? `Uploading ${uploadingCount}...` : 'Add Image'}</span>
           </button>
           <input ref={menuImageInputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => handleCoverImageAdd(Array.from(e.target.files || []))} />
 
@@ -480,7 +480,7 @@ export default function OutletInfo() {
         <div className="px-4 py-3">
           <h2 className="text-base font-bold text-gray-900 text-center mb-4">Restaurant Information</h2>
           <div className="space-y-3">
-            <EditableInfoCard label="Restaurant's name" value={restaurantName} onEdit={handleOpenEditDialog} loading={loading} />
+            <EditableInfoCard label="Restaurant's Name" value={restaurantName} onEdit={handleOpenEditDialog} loading={loading} />
             <InfoCard label="Pure Veg" value={restaurantData?.pureVegRestaurant === true ? "Yes, Pure Veg" : restaurantData?.pureVegRestaurant === false ? "No, Mixed Menu" : null} loading={loading} />
             <EditableInfoCard
               label="Address"
@@ -533,7 +533,7 @@ export default function OutletInfo() {
               imageUrl={getImageUrl(restaurantData?.panImage)}
               loading={loading}
             />
-            <ApprovalInfoCard label="Name on PAN" fieldKey="nameOnPan" value={restaurantData?.nameOnPan || null} loading={loading} />
+            <ApprovalInfoCard label="Name On PAN" fieldKey="nameOnPan" value={restaurantData?.nameOnPan || null} loading={loading} />
 
             {/* GST Details */}
             <ApprovalInfoCard
@@ -632,8 +632,8 @@ export default function OutletInfo() {
       {/* Edit Name Dialog */}
       <Dialog open={showEditNameDialog} onOpenChange={setShowEditNameDialog}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%]">
-          <DialogHeader className="p-4 border-b border-gray-100"><DialogTitle className="text-lg font-bold">Edit restaurant name</DialogTitle></DialogHeader>
-          <div className="p-4"><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Enter restaurant name" className="w-full" maxLength={100} /></div>
+          <DialogHeader className="p-4 border-b border-gray-100"><DialogTitle className="text-lg font-bold">Edit Restaurant Name</DialogTitle></DialogHeader>
+          <div className="p-4"><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Enter Restaurant Name" className="w-full" maxLength={100} /></div>
           <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3">
             <Button variant="outline" onClick={() => setShowEditNameDialog(false)} className="cursor-pointer">Cancel</Button>
             <Button onClick={handleSaveName} disabled={!editNameValue.trim()} className="bg-blue-600 text-white cursor-pointer disabled:cursor-not-allowed">Save</Button>
