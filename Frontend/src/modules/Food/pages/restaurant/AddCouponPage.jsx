@@ -70,6 +70,7 @@ export default function AddCouponPage(props = {}) {
   const [submitting, setSubmitting] = useState(false)
   const [loadingCoupon, setLoadingCoupon] = useState(isEditMode)
   const [error, setError] = useState("")
+  const [showErrors, setShowErrors] = useState(false)
 
   const isPercentage = form.discountType === "percentage"
 
@@ -154,6 +155,7 @@ export default function AddCouponPage(props = {}) {
   }
 
   const handleSubmit = async () => {
+    setShowErrors(true)
     if (validationError || submitting || loadingCoupon) return
     try {
       setSubmitting(true)
@@ -358,13 +360,13 @@ export default function AddCouponPage(props = {}) {
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-3 py-3">
         <div className="mx-auto w-full max-w-md md:max-w-3xl">
-          {!!(error || validationError) && (
+          {!!(error || (showErrors && validationError)) && (
             <p className="mb-2 text-xs font-medium text-red-600">{error || validationError}</p>
           )}
           <Button
             type="button"
             className="h-12 w-full bg-[#00c87e] text-white hover:bg-[#00b06f]"
-            disabled={Boolean(validationError) || submitting || loadingCoupon}
+            disabled={submitting || loadingCoupon}
             onClick={handleSubmit}
           >
             {submitting ? (isEditMode ? "Updating..." : "Submitting...") : isEditMode ? "Update Coupon" : "Submit for Approval"}
