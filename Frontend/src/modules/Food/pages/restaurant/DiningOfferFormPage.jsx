@@ -5,6 +5,8 @@ import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
+import { Calendar } from "@food/components/ui/calendar"
 
 const toInputDate = (value) => {
   if (!value) return ""
@@ -21,6 +23,25 @@ const getTodayDateString = () => {
   const month = String(today.getMonth() + 1).padStart(2, "0")
   const day = String(today.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+const parseLocalDate = (value) => {
+  if (!value) return undefined
+  const parts = value.split("-").map(Number)
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return undefined
+  const [year, month, day] = parts
+  return new Date(year, month - 1, day)
+}
+
+const formatDisplayDate = (value) => {
+  if (!value) return "Select date"
+  const date = parseLocalDate(value)
+  if (!date) return "Select date"
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
 }
 
 const createInitialForm = () => ({
@@ -59,6 +80,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
   const [loadingOffer, setLoadingOffer] = useState(isEditMode)
   const [error, setError] = useState("")
   const [showErrors, setShowErrors] = useState(false)
+  const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false)
+  const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false)
   const isPercentage = form.discountType === "percentage"
 
   useEffect(() => {
@@ -246,18 +269,74 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Start Date</label>
-                <div className="relative">
-                  <Input type="date" min={getTodayDateString()} value={form.startDate} onChange={(e) => setField("startDate", e.target.value)} className="h-12 pr-10" />
-                  <CalendarDays className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-slate-400" />
-                </div>
+                <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
+                    >
+                      <span className={form.startDate ? "text-slate-800" : "text-muted-foreground"}>
+                        {form.startDate ? formatDisplayDate(form.startDate) : "Select start date"}
+                      </span>
+                      <CalendarDays className="h-5 w-5 text-slate-400" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                    <div className="bg-white rounded-md shadow-lg border border-gray-200">
+                      <Calendar
+                        mode="single"
+                        selected={parseLocalDate(form.startDate)}
+                        onSelect={(date) => {
+                          if (!date) return
+                          setField("startDate", toInputDate(date))
+                          setIsStartCalendarOpen(false)
+                        }}
+                        disabled={(date) => {
+                          const today = new Date()
+                          today.setHours(0, 0, 0, 0)
+                          return date < today
+                        }}
+                        initialFocus
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">End Date</label>
-                <div className="relative">
-                  <Input type="date" min={form.startDate || getTodayDateString()} value={form.endDate} onChange={(e) => setField("endDate", e.target.value)} className="h-12 pr-10" />
-                  <CalendarDays className="pointer-events-none absolute right-3 top-3.5 h-5 w-5 text-slate-400" />
-                </div>
+                <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
+                    >
+                      <span className={form.endDate ? "text-slate-800" : "text-muted-foreground"}>
+                        {form.endDate ? formatDisplayDate(form.endDate) : "Select end date"}
+                      </span>
+                      <CalendarDays className="h-5 w-5 text-slate-400" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                    <div className="bg-white rounded-md shadow-lg border border-gray-200">
+                      <Calendar
+                        mode="single"
+                        selected={parseLocalDate(form.endDate)}
+                        onSelect={(date) => {
+                          if (!date) return
+                          setField("endDate", toInputDate(date))
+                          setIsEndCalendarOpen(false)
+                        }}
+                        disabled={(date) => {
+                          const limitDate = parseLocalDate(form.startDate) || new Date()
+                          limitDate.setHours(0, 0, 0, 0)
+                          return date < limitDate
+                        }}
+                        initialFocus
+                      />
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           )}
