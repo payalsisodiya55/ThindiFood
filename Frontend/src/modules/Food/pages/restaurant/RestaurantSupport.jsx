@@ -208,7 +208,7 @@ export default function RestaurantSupport() {
             <select
               value={form.category}
               onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-500"
             >
               {CATEGORY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -219,7 +219,7 @@ export default function RestaurantSupport() {
             <select
               value={form.priority}
               onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-500"
             >
               {PRIORITY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -232,28 +232,28 @@ export default function RestaurantSupport() {
             value={form.issueType}
             onChange={(e) => setForm((prev) => ({ ...prev, issueType: e.target.value }))}
             placeholder="Issue type (required)"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500"
             maxLength={120}
           />
           <input
             value={form.subject}
             onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
             placeholder="Short subject"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500"
             maxLength={180}
           />
           <input
             value={form.orderRef}
             onChange={(e) => setForm((prev) => ({ ...prev, orderRef: e.target.value }))}
             placeholder="Order ID (optional)"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500"
             maxLength={80}
           />
           <textarea
             value={form.description}
             onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
             placeholder="Describe your issue"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-24 resize-none"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-24 resize-none text-slate-700 placeholder:text-slate-500"
             maxLength={1000}
           />
           <button
@@ -292,9 +292,9 @@ export default function RestaurantSupport() {
               No support tickets found.
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="flex flex-wrap gap-4">
               {tickets.map((ticket) => (
-                <div key={ticket._id} className="rounded-xl border border-slate-200 p-3">
+                <div key={ticket._id} className="rounded-xl border border-slate-200 p-3 w-full md:w-[30%] flex-shrink-0 flex-grow-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-slate-500">
                       #{String(ticket._id).slice(-6)} • {new Date(ticket.createdAt).toLocaleString()}

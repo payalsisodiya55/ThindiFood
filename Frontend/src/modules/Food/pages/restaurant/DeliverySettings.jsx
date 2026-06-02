@@ -495,6 +495,7 @@ export default function DeliverySettings() {
                     checked={selfDelivery.enabled}
                     onCheckedChange={(checked) => handleSelfDeliveryField("enabled", checked)}
                     disabled={selfDeliveryFieldsDisabled}
+                    className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-gray-300"
                   />
                 </div>
               </div>
