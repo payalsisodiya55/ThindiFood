@@ -70,6 +70,70 @@ const mapOfferToForm = (offer) => ({
   endDate: toInputDate(offer?.endDate),
 })
 
+const discountTypeOptions = [
+  { value: "percentage", label: "Percentage" },
+  { value: "flat", label: "Flat Amount" },
+]
+
+const CustomSelect = ({ value, onChange, options, className = "" }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedOption = options.find((opt) => opt.value === value) || options[0]
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".custom-select-container")) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  return (
+    <div className="relative custom-select-container w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] focus:ring-1 focus:ring-[#00c87e] transition-all ${
+          isOpen ? "border-[#00c87e] ring-1 ring-[#00c87e]" : ""
+        } ${className}`}
+      >
+        <span className="text-slate-800">{selectedOption?.label}</span>
+        <svg
+          className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[52px] z-50 rounded-xl border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-top-1 duration-100">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value)
+                setIsOpen(false)
+              }}
+              className={`flex w-full items-center px-3 py-2.5 text-left text-sm hover:bg-[#00c87e]/10 hover:text-[#00c87e] transition-colors cursor-pointer ${
+                opt.value === value ? "bg-[#00c87e]/5 text-[#00c87e] font-semibold" : "text-slate-700"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DiningOfferFormPage({ mode = "create" }) {
   const isEditMode = mode === "edit"
   const { id: offerId } = useParams()
@@ -122,21 +186,58 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
   const validationError = useMemo(() => {
     if (!String(form.title || "").trim()) return "Title is required"
-    if (!Number.isFinite(Number(form.discountValue)) || Number(form.discountValue) <= 0) {
+    
+    const discVal = Number(form.discountValue || 0)
+    if (!Number.isFinite(discVal) || discVal <= 0) {
       return "Discount value must be greater than 0"
     }
-    if (isPercentage && form.maxDiscount !== "" && (!Number.isFinite(Number(form.maxDiscount)) || Number(form.maxDiscount) < 0)) {
-      return "Max discount must be 0 or more"
+    if (isPercentage && discVal > 1000) {
+      return "Percentage discount cannot exceed 1,000%"
     }
-    if (form.minBillAmount !== "" && (!Number.isFinite(Number(form.minBillAmount)) || Number(form.minBillAmount) < 0)) {
-      return "Minimum bill amount must be 0 or more"
+    if (discVal > 100000000) {
+      return "Discount value cannot exceed 100,000,000"
     }
-    if (form.usageLimit !== "" && (!Number.isInteger(Number(form.usageLimit)) || Number(form.usageLimit) < 1)) {
-      return "Usage limit must be at least 1"
+
+    if (isPercentage && form.maxDiscount !== "") {
+      const maxD = Number(form.maxDiscount)
+      if (!Number.isFinite(maxD) || maxD < 0) {
+        return "Max discount must be 0 or more"
+      }
+      if (maxD > 100000000) {
+        return "Max discount cannot exceed 100,000,000"
+      }
     }
-    if (form.perUserLimit !== "" && (!Number.isInteger(Number(form.perUserLimit)) || Number(form.perUserLimit) < 1)) {
-      return "Per user redeem limit must be at least 1"
+
+    if (form.minBillAmount !== "") {
+      const minB = Number(form.minBillAmount)
+      if (!Number.isFinite(minB) || minB < 0) {
+        return "Minimum bill amount must be 0 or more"
+      }
+      if (minB > 100000000) {
+        return "Minimum bill amount cannot exceed 100,000,000"
+      }
     }
+
+    if (form.usageLimit !== "") {
+      const usageL = Number(form.usageLimit)
+      if (!Number.isInteger(usageL) || usageL < 1) {
+        return "Usage limit must be at least 1"
+      }
+      if (usageL > 10000000) {
+        return "Usage limit cannot exceed 10,000,000"
+      }
+    }
+
+    if (form.perUserLimit !== "") {
+      const perUserL = Number(form.perUserLimit)
+      if (!Number.isInteger(perUserL) || perUserL < 1) {
+        return "Per user redeem limit must be at least 1"
+      }
+      if (perUserL > 100000) {
+        return "Per user redeem limit cannot exceed 100,000"
+      }
+    }
+
     const todayStr = getTodayDateString()
     if (!isEditMode && form.startDate && form.startDate < todayStr) {
       return "Start date cannot be in the past"
@@ -203,7 +304,9 @@ export default function DiningOfferFormPage({ mode = "create" }) {
           ) : (
             <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-800">Title *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">
+                  Title <span className="text-red-500 font-bold">*</span>
+                </label>
                 <Input value={form.title} onChange={(e) => setField("title", e.target.value)} placeholder="e.g. Weekend Dining Special" className="h-12" />
               </div>
 
@@ -219,27 +322,54 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Discount Type</label>
-                <select
-                  className="h-12 w-full rounded-xl border border-slate-200 px-3 text-slate-800 outline-none focus:border-[#00c87e]"
+                <CustomSelect
                   value={form.discountType}
-                  onChange={(e) => setField("discountType", e.target.value)}
-                >
-                  <option value="percentage">Percentage</option>
-                  <option value="flat">Flat Amount</option>
-                </select>
+                  onChange={(val) => setField("discountType", val)}
+                  options={discountTypeOptions}
+                />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">
-                  {isPercentage ? "Discount (%) *" : "Discount Amount *"}
+                  {isPercentage ? (
+                    <>Discount (%) <span className="text-red-500 font-bold">*</span></>
+                  ) : (
+                    <>Discount Amount <span className="text-red-500 font-bold">*</span></>
+                  )}
                 </label>
-                <Input type="number" min="0" value={form.discountValue} onChange={(e) => setField("discountValue", e.target.value)} className="h-12" />
+                <Input
+                  type="text"
+                  value={form.discountValue}
+                  maxLength={isPercentage ? 6 : 10}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const sanitized = val.replace(/[^0-9.]/g, "")
+                    const parts = sanitized.split(".")
+                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                    setField("discountValue", finalVal)
+                  }}
+                  placeholder={isPercentage ? "e.g. 10" : "e.g. 50"}
+                  className="h-12"
+                />
               </div>
 
               {isPercentage ? (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-800">Max Discount</label>
-                  <Input type="number" min="0" value={form.maxDiscount} onChange={(e) => setField("maxDiscount", e.target.value)} className="h-12" />
+                  <Input
+                    type="text"
+                    value={form.maxDiscount}
+                    maxLength={10}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const sanitized = val.replace(/[^0-9.]/g, "")
+                      const parts = sanitized.split(".")
+                      const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                      setField("maxDiscount", finalVal)
+                    }}
+                    placeholder="e.g. 100"
+                    className="h-12"
+                  />
                 </div>
               ) : (
                 <div className="hidden md:block"></div>
@@ -247,17 +377,44 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Minimum Bill Amount</label>
-                <Input type="number" min="0" value={form.minBillAmount} onChange={(e) => setField("minBillAmount", e.target.value)} placeholder="e.g. 500" className="h-12" />
+                <Input
+                  type="text"
+                  value={form.minBillAmount}
+                  maxLength={10}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const sanitized = val.replace(/[^0-9.]/g, "")
+                    const parts = sanitized.split(".")
+                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                    setField("minBillAmount", finalVal)
+                  }}
+                  placeholder="e.g. 500"
+                  className="h-12"
+                />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Usage Limit (global)</label>
-                <Input type="number" min="1" value={form.usageLimit} onChange={(e) => setField("usageLimit", e.target.value)} placeholder="Leave empty for unlimited" className="h-12" />
+                <Input
+                  type="text"
+                  value={form.usageLimit}
+                  maxLength={8}
+                  onChange={(e) => setField("usageLimit", e.target.value.replace(/\D/g, ""))}
+                  placeholder="Leave empty for unlimited"
+                  className="h-12"
+                />
               </div>
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Per User Redeem Limit</label>
-                <Input type="number" min="1" value={form.perUserLimit} onChange={(e) => setField("perUserLimit", e.target.value)} placeholder="Leave empty for unlimited" className="h-12" />
+                <Input
+                  type="text"
+                  value={form.perUserLimit}
+                  maxLength={6}
+                  onChange={(e) => setField("perUserLimit", e.target.value.replace(/\D/g, ""))}
+                  placeholder="Leave empty for unlimited"
+                  className="h-12"
+                />
               </div>
 
               <div className="md:col-span-2">

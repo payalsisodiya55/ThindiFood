@@ -305,8 +305,10 @@ const DineInTableManagement = () => {
                     .qr { width: 100%; height: auto; display: block; }
                     .meta { margin-top: 14px; font-size: 13px; color: #475569; line-height: 1.5; word-break: break-all; }
                     .actions { margin-top: 16px; display: flex; gap: 10px; }
-                    .btn { border: 0; border-radius: 10px; padding: 10px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
-                    .btn-download { background: #e2e8f0; color: #0f172a; }
+                    .btn { border: 0; border-radius: 12px; padding: 12px 20px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+                    .btn-download { background: #00c87e; color: #ffffff; box-shadow: 0 4px 12px rgba(0, 200, 126, 0.2); }
+                    .btn-download:hover { background: #00b06f; transform: translateY(-1px); }
+                    .btn-download:active { transform: translateY(0); }
                     @media print {
                         body { background: #fff; }
                         .wrap { padding: 0; }
@@ -454,7 +456,7 @@ const DineInTableManagement = () => {
                             <div className="grid grid-cols-1 gap-3 mb-6">
                                 <Button 
                                     onClick={() => downloadQR(table)}
-                                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl font-bold h-12 gap-2 text-xs"
+                                    className="bg-[#00c87e] hover:bg-[#00b06f] text-white rounded-2xl font-bold h-12 gap-2 text-xs transition-all active:scale-[0.98] shadow-md shadow-green-100"
                                 >
                                     <Download className="w-4 h-4" /> Download
                                 </Button>

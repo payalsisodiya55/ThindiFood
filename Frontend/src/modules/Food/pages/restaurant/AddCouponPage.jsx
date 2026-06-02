@@ -81,6 +81,75 @@ const mapCouponToForm = (coupon) => ({
   isFirstOrderOnly: Boolean(coupon?.isFirstOrderOnly),
 })
 
+const discountTypeOptions = [
+  { value: "percentage", label: "Percentage (%)" },
+  { value: "flat-price", label: "Flat Price" },
+]
+
+const customerScopeOptions = [
+  { value: "all", label: "All customers" },
+  { value: "first-time", label: "First time only" },
+]
+
+const CustomSelect = ({ value, onChange, options, className = "" }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const selectedOption = options.find((opt) => opt.value === value) || options[0]
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest(".custom-select-container")) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
+
+  return (
+    <div className="relative custom-select-container w-full">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] focus:ring-1 focus:ring-[#00c87e] transition-all ${
+          isOpen ? "border-[#00c87e] ring-1 ring-[#00c87e]" : ""
+        } ${className}`}
+      >
+        <span className="text-slate-800">{selectedOption?.label}</span>
+        <svg
+          className={`h-4 w-4 text-slate-500 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-[52px] z-50 rounded-xl border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-top-1 duration-100">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => {
+                onChange(opt.value)
+                setIsOpen(false)
+              }}
+              className={`flex w-full items-center px-3 py-2.5 text-left text-sm hover:bg-[#00c87e]/10 hover:text-[#00c87e] transition-colors cursor-pointer ${
+                opt.value === value ? "bg-[#00c87e]/5 text-[#00c87e] font-semibold" : "text-slate-700"
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function AddCouponPage(props = {}) {
   const { mode = "create", couponId = "" } = props
   const isEditMode = mode === "edit"
@@ -99,23 +168,58 @@ export default function AddCouponPage(props = {}) {
 
   const validationError = useMemo(() => {
     if (!String(form.couponCode || "").trim()) return "Coupon code is required"
-    if (!Number.isFinite(Number(form.discountValue)) || Number(form.discountValue) <= 0) {
+    
+    const discVal = Number(form.discountValue || 0)
+    if (!Number.isFinite(discVal) || discVal <= 0) {
       return "Discount value must be greater than 0"
     }
+    if (isPercentage && discVal > 1000) {
+      return "Percentage discount cannot exceed 1,000%"
+    }
+    if (discVal > 100000000) {
+      return "Discount value cannot exceed 100,000,000"
+    }
+
     if (isPercentage) {
-      if (!Number.isFinite(Number(form.maxDiscount)) || Number(form.maxDiscount) < 0) {
+      const maxD = Number(form.maxDiscount || 0)
+      if (!Number.isFinite(maxD) || maxD < 0) {
         return "Max discount is required for percentage coupons"
       }
+      if (maxD > 100000000) {
+        return "Max discount cannot exceed 100,000,000"
+      }
     }
-    if (form.minOrderValue !== "" && (!Number.isFinite(Number(form.minOrderValue)) || Number(form.minOrderValue) < 0)) {
-      return "Min order must be 0 or more"
+
+    if (form.minOrderValue !== "") {
+      const minO = Number(form.minOrderValue)
+      if (!Number.isFinite(minO) || minO < 0) {
+        return "Min order must be 0 or more"
+      }
+      if (minO > 100000000) {
+        return "Min order cannot exceed 100,000,000"
+      }
     }
-    if (form.usageLimit !== "" && (!Number.isFinite(Number(form.usageLimit)) || Number(form.usageLimit) < 0)) {
-      return "Usage limit must be 0 or more"
+
+    if (form.usageLimit !== "") {
+      const usageL = Number(form.usageLimit)
+      if (!Number.isFinite(usageL) || usageL < 0) {
+        return "Usage limit must be 0 or more"
+      }
+      if (usageL > 10000000) {
+        return "Usage limit cannot exceed 10,000,000"
+      }
     }
-    if (form.perUserLimit !== "" && (!Number.isFinite(Number(form.perUserLimit)) || Number(form.perUserLimit) < 0)) {
-      return "Per user limit must be 0 or more"
+
+    if (form.perUserLimit !== "") {
+      const perUserL = Number(form.perUserLimit)
+      if (!Number.isFinite(perUserL) || perUserL < 0) {
+        return "Per user limit must be 0 or more"
+      }
+      if (perUserL > 100000) {
+        return "Per user limit cannot exceed 100,000"
+      }
     }
+
     const todayStr = getTodayDateString()
     if (!isEditMode && form.startDate && form.startDate < todayStr) {
       return "Start date cannot be in the past"
@@ -229,7 +333,9 @@ export default function AddCouponPage(props = {}) {
           ) : (
             <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
               <div className="md:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-800">Coupon Code *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">
+                  Coupon Code <span className="text-red-500 font-bold">*</span>
+                </label>
                 <div className="flex gap-2">
                   <Input
                     value={form.couponCode}
@@ -250,23 +356,28 @@ export default function AddCouponPage(props = {}) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Discount Type</label>
-                <select
-                  className="h-12 w-full rounded-xl border border-slate-200 px-3 text-slate-800 outline-none focus:border-[#00c87e]"
+                <CustomSelect
                   value={form.discountType}
-                  onChange={(e) => setField("discountType", e.target.value)}
-                >
-                  <option value="percentage">Percentage (%)</option>
-                  <option value="flat-price">Flat Price</option>
-                </select>
+                  onChange={(val) => setField("discountType", val)}
+                  options={discountTypeOptions}
+                />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Discount Value *</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">
+                  Discount Value <span className="text-red-500 font-bold">*</span>
+                </label>
                 <Input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={form.discountValue}
-                  onChange={(e) => setField("discountValue", e.target.value)}
+                  maxLength={isPercentage ? 6 : 10}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const sanitized = val.replace(/[^0-9.]/g, "")
+                    const parts = sanitized.split(".")
+                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                    setField("discountValue", finalVal)
+                  }}
                   placeholder="e.g. 20"
                   className="h-12"
                 />
@@ -274,13 +385,19 @@ export default function AddCouponPage(props = {}) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">
-                  Max Discount {isPercentage ? "*" : "(optional)"}
+                  Max Discount {isPercentage ? <span className="text-red-500 font-bold">*</span> : "(optional)"}
                 </label>
                 <Input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={form.maxDiscount}
-                  onChange={(e) => setField("maxDiscount", e.target.value)}
+                  maxLength={10}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const sanitized = val.replace(/[^0-9.]/g, "")
+                    const parts = sanitized.split(".")
+                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                    setField("maxDiscount", finalVal)
+                  }}
                   placeholder="e.g. 150"
                   disabled={!isPercentage}
                   className="h-12 disabled:bg-slate-100"
@@ -290,10 +407,16 @@ export default function AddCouponPage(props = {}) {
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Min Order (optional)</label>
                 <Input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={form.minOrderValue}
-                  onChange={(e) => setField("minOrderValue", e.target.value)}
+                  maxLength={10}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    const sanitized = val.replace(/[^0-9.]/g, "")
+                    const parts = sanitized.split(".")
+                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                    setField("minOrderValue", finalVal)
+                  }}
                   placeholder="e.g. 299"
                   className="h-12"
                 />
@@ -302,10 +425,10 @@ export default function AddCouponPage(props = {}) {
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Usage Limit (optional)</label>
                 <Input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={form.usageLimit}
-                  onChange={(e) => setField("usageLimit", e.target.value)}
+                  maxLength={8}
+                  onChange={(e) => setField("usageLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="e.g. 100"
                   className="h-12"
                 />
@@ -314,10 +437,10 @@ export default function AddCouponPage(props = {}) {
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Per User Limit (optional)</label>
                 <Input
-                  type="number"
-                  min="0"
+                  type="text"
                   value={form.perUserLimit}
-                  onChange={(e) => setField("perUserLimit", e.target.value)}
+                  maxLength={6}
+                  onChange={(e) => setField("perUserLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="e.g. 1"
                   className="h-12"
                 />
@@ -325,14 +448,11 @@ export default function AddCouponPage(props = {}) {
 
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Customer Scope</label>
-                <select
-                  className="h-12 w-full rounded-xl border border-slate-200 px-3 text-slate-800 outline-none focus:border-[#00c87e]"
+                <CustomSelect
                   value={form.customerScope}
-                  onChange={(e) => setField("customerScope", e.target.value)}
-                >
-                  <option value="all">All customers</option>
-                  <option value="first-time">First time only</option>
-                </select>
+                  onChange={(val) => setField("customerScope", val)}
+                  options={customerScopeOptions}
+                />
               </div>
 
               <div className="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
