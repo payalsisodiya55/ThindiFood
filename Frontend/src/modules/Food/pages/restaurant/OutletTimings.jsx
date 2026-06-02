@@ -261,13 +261,7 @@ export default function OutletTimings() {
 
         {/* Main Content */}
         <div className="px-4 py-6 pb-28">
-          {/* Restaurant Timing Section Header */}
-          <div className="mb-6">
-            <div className="text-center mb-2">
-              <h2 className="text-base font-semibold text-blue-600">Restaurant Timing</h2>
-            </div>
-            <div className="h-0.5 bg-blue-600"></div>
-          </div>
+
 
           {/* Day-wise Accordion */}
           <div className="space-y-2">

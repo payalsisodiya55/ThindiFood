@@ -591,8 +591,8 @@ export default function MenuCategoriesPage() {
                     <button
                       type="button"
                       onClick={handleImageClick}
-                      className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-400 bg-white hover:bg-slate-50 cursor-pointer">
-                      <Upload className="h-4 w-4" />
+                      className="flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-slate-900 hover:border-slate-400 transition-all duration-200 shadow-sm cursor-pointer active:scale-95">
+                      <Upload className="h-4 w-4 text-slate-500" />
                       Upload Image
                     </button>
                     <p className="text-[10px] text-slate-500 mt-1 px-0.5">Max size 5MB allowed</p>
