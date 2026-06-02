@@ -229,7 +229,7 @@ export default function OfferFormPage({ mode = "create" }) {
   return (
     <div className="min-h-screen bg-[#f3f6f8] pb-36">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white px-4 py-3">
-        <div className="mx-auto flex w-full max-w-md items-center gap-3">
+        <div className="mx-auto flex w-full max-w-md md:max-w-3xl items-center gap-3">
           <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -240,13 +240,13 @@ export default function OfferFormPage({ mode = "create" }) {
       </header>
 
       <main className="px-3 py-4">
-        <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mx-auto w-full max-w-md md:max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           {loadingOffer ? (
             <div className="py-8 text-center text-sm text-slate-600">Loading offer...</div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
               {/* Title */}
-              <div>
+              <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Title *</label>
                 <Input
                   value={form.title}
@@ -257,7 +257,7 @@ export default function OfferFormPage({ mode = "create" }) {
               </div>
 
               {/* Food/Dishes Selection */}
-              <div>
+              <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Select Food/Dishes</label>
                 <div className="relative">
                   <div
@@ -414,8 +414,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 />
               </div>
 
-              {/* Max Discount (Only for Percentage) */}
-              {isPercentage && (
+              {isPercentage ? (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-800">
                     Max Discount *
@@ -429,6 +428,8 @@ export default function OfferFormPage({ mode = "create" }) {
                     className="h-12"
                   />
                 </div>
+              ) : (
+                <div className="hidden md:block"></div>
               )}
 
               {/* Max Items Per Order */}
@@ -493,7 +494,7 @@ export default function OfferFormPage({ mode = "create" }) {
         </div>
 
         {isEditMode && (
-          <div className="mx-auto mt-3 w-full max-w-md rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <div className="mx-auto mt-3 w-full max-w-md md:max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-xs text-amber-700 font-medium">
               ⚠️ Editing this offer will reset it to Pending status. Admin will need to re-approve it before it applies to products in the user app.
             </p>
@@ -502,7 +503,7 @@ export default function OfferFormPage({ mode = "create" }) {
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-3 py-3">
-        <div className="mx-auto w-full max-w-md">
+        <div className="mx-auto w-full max-w-md md:max-w-3xl">
           {!!(error || validationError) && (
             <p className="mb-2 text-xs font-medium text-red-600">{error || validationError}</p>
           )}

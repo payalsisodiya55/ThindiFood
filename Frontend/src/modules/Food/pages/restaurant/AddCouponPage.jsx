@@ -189,7 +189,7 @@ export default function AddCouponPage(props = {}) {
   return (
     <div className="min-h-screen bg-[#f3f6f8] pb-24">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white px-4 py-3">
-        <div className="mx-auto flex w-full max-w-md items-center gap-3">
+        <div className="mx-auto flex w-full max-w-md md:max-w-3xl items-center gap-3">
           <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -198,12 +198,12 @@ export default function AddCouponPage(props = {}) {
       </header>
 
       <main className="px-3 py-4">
-        <div className="mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mx-auto w-full max-w-md md:max-w-3xl rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           {loadingCoupon ? (
             <div className="py-8 text-center text-sm text-slate-600">Loading coupon...</div>
           ) : (
-            <div className="space-y-4">
-              <div>
+            <div className="space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-4">
+              <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Coupon Code *</label>
                 <div className="flex gap-2">
                   <Input
@@ -298,7 +298,7 @@ export default function AddCouponPage(props = {}) {
                 />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Customer Scope</label>
                 <select
                   className="h-12 w-full rounded-xl border border-slate-200 px-3 text-slate-800 outline-none focus:border-[#00c87e]"
@@ -310,7 +310,7 @@ export default function AddCouponPage(props = {}) {
                 </select>
               </div>
 
-              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
+              <div className="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
                 This coupon will be treated as `restaurant-funded`. Its discount will reduce your payout in finance reports.
               </div>
 
@@ -342,7 +342,7 @@ export default function AddCouponPage(props = {}) {
                 </div>
               </div>
 
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <label className="md:col-span-2 flex items-center gap-2 text-sm text-slate-700">
                 <input
                   type="checkbox"
                   checked={form.isFirstOrderOnly}
@@ -357,7 +357,7 @@ export default function AddCouponPage(props = {}) {
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-3 py-3">
-        <div className="mx-auto w-full max-w-md">
+        <div className="mx-auto w-full max-w-md md:max-w-3xl">
           {!!(error || validationError) && (
             <p className="mb-2 text-xs font-medium text-red-600">{error || validationError}</p>
           )}
