@@ -44,7 +44,7 @@ export default function RestaurantLogin() {
     const updateKeyboardInset = () => {
       const viewport = window.visualViewport
       const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
-      setKeyboardInset(inset > 0 ? inset : 0)
+      setKeyboardInset(inset > 150 ? inset : 0)
     }
 
     updateKeyboardInset()
