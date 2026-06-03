@@ -291,11 +291,11 @@ export default function SignIn() {
           <div className="text-center text-xs md:text-sm text-gray-500 dark:text-gray-400 pt-2">
             <p className="mb-2">By continuing, you agree to our</p>
             <div className="flex justify-center gap-2 flex-wrap">
-              <Link to="/profile/terms" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+              <Link to="/user/terms" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
                 Terms of Service
               </Link>
               <span className="text-gray-300 dark:text-gray-700">•</span>
-              <Link to="/profile/privacy" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
+              <Link to="/user/privacy" className="underline hover:text-gray-900 dark:hover:text-gray-100 transition-colors">
                 Privacy Policy
               </Link>
               <span className="text-gray-300 dark:text-gray-700">•</span>

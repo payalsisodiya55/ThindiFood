@@ -584,45 +584,45 @@ export default function UnifiedOTPFastLogin() {
         </div>
 
         <div className="mt-4 text-center space-y-2">
-           {/* Consent checkbox — only shown on step 1 */}
-           {step === 1 && (
-             <label className={`flex items-center justify-center gap-2.5 cursor-pointer px-1 ${termsError ? 'animate-shake' : ''}`}>
-               <input
-                 type="checkbox"
-                 checked={termsAccepted}
-                 onChange={(e) => {
-                   setTermsAccepted(e.target.checked)
-                   if (e.target.checked) setTermsError(false)
-                 }}
-                 className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 accent-[#00c87e] cursor-pointer"
-                 aria-label="Accept Terms of Service and Privacy Policy"
-               />
-               <span className={`text-[11px] font-semibold leading-relaxed ${termsError ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
-                 I agree to the{' '}
-                 <Link
-                   to="/food/user/profile/terms"
-                   onClick={(e) => e.stopPropagation()}
-                   className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors"
-                 >
-                   Terms of Service
-                 </Link>
-                 {' & '}
-                 <Link
-                   to="/food/user/profile/privacy"
-                   onClick={(e) => e.stopPropagation()}
-                   className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors"
-                 >
-                   Privacy Policy
-                 </Link>
-               </span>
-             </label>
-           )}
-           {step !== 1 && (
-             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
-               By continuing, you agree to our <br />
-               <Link to="/food/user/profile/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Terms of Service</Link> & <Link to="/food/user/profile/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Privacy Policy</Link>
-             </p>
-           )}
+            {/* Consent checkbox — only shown on step 1 */}
+            {step === 1 && (
+              <label className={`flex items-center justify-center gap-2.5 cursor-pointer px-1 ${termsError ? 'animate-shake' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => {
+                    setTermsAccepted(e.target.checked)
+                    if (e.target.checked) setTermsError(false)
+                  }}
+                  className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 accent-[#00c87e] cursor-pointer"
+                  aria-label="Accept Terms of Service and Privacy Policy"
+                />
+                <span className={`text-[11px] font-semibold leading-relaxed ${termsError ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}>
+                  I agree to the{' '}
+                  <Link
+                    to="/user/terms"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors"
+                  >
+                    Terms of Service
+                  </Link>
+                  {' & '}
+                  <Link
+                    to="/user/privacy"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors"
+                  >
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+            )}
+            {step !== 1 && (
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em] leading-relaxed">
+                By continuing, you agree to our <br />
+                <Link to="/user/terms" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Terms of Service</Link> & <Link to="/user/privacy" className="text-gray-900 dark:text-white underline cursor-pointer hover:text-[#00c87e] transition-colors">Privacy Policy</Link>
+              </p>
+            )}
         </div>
       </div>
     </div>

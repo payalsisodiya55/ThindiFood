@@ -400,6 +400,11 @@ export default function UserRouter() {
           {/* Public Legal Policies (stay public) */}
           <Route path="profile/terms" element={<Terms />} />
           <Route path="profile/privacy" element={<Privacy />} />
+          <Route path="terms" element={<Terms />} />
+          <Route path="privacy" element={<Privacy />} />
+          <Route path="refund" element={<Refund />} />
+          <Route path="shipping" element={<Shipping />} />
+          <Route path="cancellation" element={<Cancellation />} />
           <Route path="profile/refund" element={<Refund />} />
           <Route path="profile/shipping" element={<Shipping />} />
           <Route path="profile/cancellation" element={<Cancellation />} />
