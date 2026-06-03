@@ -87,6 +87,8 @@ export default function OutletInfo() {
   const [editDocDialog, setEditDocDialog] = useState(null); // { field, label, value }
   const [editDocValue, setEditDocValue] = useState("");
   const [savingDoc, setSavingDoc] = useState(false);
+  const [averageRating, setAverageRating] = useState("0.0");
+  const [totalRatingsCount, setTotalRatingsCount] = useState(0);
 
   const profileImageInputRef = useRef(null);
   const menuImageInputRef = useRef(null);
@@ -181,6 +183,66 @@ export default function OutletInfo() {
       window.removeEventListener("outletTimingsUpdated", handleTimingsUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    const fetchRatingSummary = async () => {
+      try {
+        let allOrders = []
+        let page = 1
+        let hasMore = true
+        const limit = 1000
+        const maxPages = 50
+
+        while (hasMore && page <= maxPages) {
+          try {
+            const response = await restaurantAPI.getOrders({ 
+              page, 
+              limit,
+              status: 'delivered'
+            })
+            
+            if (response.data?.success && response.data.data?.orders) {
+              const orders = response.data.data.orders
+              allOrders = [...allOrders, ...orders]
+              const totalPages = response.data.data.pagination?.totalPages || response.data.data.totalPages || 1
+              if (orders.length < limit || (totalPages > 0 && page >= totalPages)) {
+                hasMore = false
+              } else {
+                page++
+              }
+            } else {
+              hasMore = false
+            }
+          } catch (pageError) {
+            hasMore = false
+          }
+        }
+
+        const ratings = allOrders
+          .map(order => {
+            const rawRating = order?.review?.rating ??
+              order?.ratings?.restaurant?.rating ??
+              order?.feedback?.rating ??
+              order?.rating
+            if (rawRating === null || rawRating === undefined || rawRating === "") return null
+            const parsed = Number(rawRating)
+            if (!Number.isFinite(parsed) || parsed <= 0) return null
+            return Math.min(5, Math.round(parsed * 10) / 10)
+          })
+          .filter(r => r !== null)
+
+        if (ratings.length > 0) {
+          const avg = (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
+          setAverageRating(avg)
+          setTotalRatingsCount(ratings.length)
+        }
+      } catch (error) {
+        // quiet fail
+      }
+    }
+
+    fetchRatingSummary()
+  }, [])
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -466,10 +528,10 @@ export default function OutletInfo() {
             <div className="flex flex-col gap-2">
               <button onClick={() => navigate("/restaurant/ratings-reviews")} className="flex items-center gap-2 text-left w-full cursor-pointer">
                 <div className="bg-green-700 px-2.5 py-1.5 rounded flex items-center gap-1 shrink-0">
-                  <span className="text-white text-sm font-bold">{restaurantData?.rating?.toFixed(1) || "0.0"}</span>
+                  <span className="text-white text-sm font-bold">{averageRating}</span>
                   <Star className="w-3.5 h-3.5 text-white fill-white" />
                 </div>
-                <span className="text-gray-800 text-sm font-normal">{restaurantData?.totalRatings || 0} DELIVERY REVIEWS</span>
+                <span className="text-gray-800 text-sm font-normal">{totalRatingsCount} DELIVERY REVIEWS</span>
                 <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 ml-auto" />
               </button>
             </div>

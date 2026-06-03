@@ -12,6 +12,7 @@ import {
   ThumbsDown,
 } from "lucide-react"
 import BottomPopup from "@food/components/BottomPopup"
+import { restaurantAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -59,6 +60,66 @@ export default function RatingsReviews() {
   const [showThankYouPopup, setShowThankYouPopup] = useState(false)
   const [showNotHelpfulPopup, setShowNotHelpfulPopup] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [rating, setRating] = useState("0.0")
+
+  useEffect(() => {
+    const fetchRating = async () => {
+      try {
+        let allOrders = []
+        let page = 1
+        let hasMore = true
+        const limit = 1000
+        const maxPages = 50
+
+        while (hasMore && page <= maxPages) {
+          try {
+            const response = await restaurantAPI.getOrders({ 
+              page, 
+              limit,
+              status: 'delivered'
+            })
+            
+            if (response.data?.success && response.data.data?.orders) {
+              const orders = response.data.data.orders
+              allOrders = [...allOrders, ...orders]
+              const totalPages = response.data.data.pagination?.totalPages || response.data.data.totalPages || 1
+              if (orders.length < limit || (totalPages > 0 && page >= totalPages)) {
+                hasMore = false
+              } else {
+                page++
+              }
+            } else {
+              hasMore = false
+            }
+          } catch (pageError) {
+            hasMore = false
+          }
+        }
+
+        const ratings = allOrders
+          .map(order => {
+            const rawRating = order?.review?.rating ??
+              order?.ratings?.restaurant?.rating ??
+              order?.feedback?.rating ??
+              order?.rating
+            if (rawRating === null || rawRating === undefined || rawRating === "") return null
+            const parsed = Number(rawRating)
+            if (!Number.isFinite(parsed) || parsed <= 0) return null
+            return Math.min(5, Math.round(parsed * 10) / 10)
+          })
+          .filter(r => r !== null)
+
+        if (ratings.length > 0) {
+          const avg = (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1)
+          setRating(avg)
+        }
+      } catch (error) {
+        debugError("Error fetching ratings:", error)
+      }
+    }
+
+    fetchRating()
+  }, [])
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -140,7 +201,7 @@ export default function RatingsReviews() {
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-gray-900">Your restaurant's rating</h2>
           <div className="bg-green-600 px-3 py-1.5 rounded-lg flex items-center gap-1">
-            <span className="text-white text-sm font-bold">4.0</span>
+            <span className="text-white text-sm font-bold">{rating}</span>
             <Star className="w-4 h-4 text-white fill-white" />
           </div>
         </div>
