@@ -59,7 +59,8 @@ const extractReviewText = (order) => {
     order?.feedback?.text ??
     ""
   const normalized = String(raw || "").trim()
-  return normalized || "No review text"
+  if (!normalized) return "No review text"
+  return normalized.charAt(0).toUpperCase() + normalized.slice(1)
 }
 
 const toComparableId = (value) =>
@@ -762,7 +763,7 @@ export default function Feedback() {
           <div className="flex gap-3">
             <button
               onClick={handleComplaintsFilterReset}
-              className="flex-1 py-4 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 cursor-pointer"
+              className="flex-1 py-4 rounded-2xl text-sm font-bold text-gray-500 border border-gray-300 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
             >
               Reset
             </button>
@@ -777,7 +778,7 @@ export default function Feedback() {
       </BottomPopup>
 
       {/* Reviews Filter Popup */}
-      <BottomPopup isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} title="Filter reviews">
+      <BottomPopup isOpen={isFilterOpen} onClose={() => setIsFilterOpen(false)} title="Filter Reviews">
         <div className="p-4 space-y-6">
           <div>
             <p className="text-xs font-black text-gray-400 uppercase mb-3">Sort By</p>
@@ -805,7 +806,7 @@ export default function Feedback() {
           <div className="flex gap-3">
             <button
               onClick={handleFilterReset}
-              className="flex-1 py-4 rounded-2xl text-sm font-bold text-gray-500 hover:bg-gray-50 cursor-pointer"
+              className="flex-1 py-4 rounded-2xl text-sm font-bold text-gray-500 border border-gray-300 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer"
             >
               Reset
             </button>

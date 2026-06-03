@@ -122,7 +122,7 @@ export default function RatingsReviews() {
           >
             <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
-          <h1 className="text-lg font-bold text-gray-900">Ratings, reviews</h1>
+          <h1 className="text-lg font-bold text-gray-900">Ratings & Review</h1>
         </div>
       </div>
 

@@ -193,7 +193,7 @@ export default function OrderDetails() {
           const rawPaymentStatus = String(
             order.payment?.status || order.paymentStatus || ""
           ).toLowerCase()
-          const paymentMethod = String(order.payment?.method || "").toLowerCase()
+          const paymentMethod = String(order.paymentMethod || order.payment?.method || "").toLowerCase()
 
           let paymentStatus = "PENDING"
           if (["completed", "paid", "captured", "success", "succeeded"].includes(rawPaymentStatus)) {
@@ -202,7 +202,7 @@ export default function OrderDetails() {
             paymentStatus = "FAILED"
           } else if (["refunded", "refund"].includes(rawPaymentStatus)) {
             paymentStatus = "REFUNDED"
-          } else if (paymentMethod === "cash") {
+          } else if (["cash", "counter", "cod"].includes(paymentMethod)) {
             paymentStatus = orderStatusRaw === "delivered" ? "PAID" : "COD"
           }
           
@@ -746,6 +746,27 @@ export default function OrderDetails() {
 
       {/* Main Content */}
       <div className="px-4 py-4 space-y-4">
+        {(() => {
+          const pMethod = String(orderData?.billing?.paymentMethod || "").toLowerCase().trim();
+          const isPoc = ["cash", "cod", "counter"].includes(pMethod);
+          const showCollectibleBanner = isPoc && !["COMPLETED", "DELIVERED", "CANCELLED", "REJECTED"].includes(String(orderData?.status || "").toUpperCase());
+          if (!showCollectibleBanner) return null;
+          return (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                  Collect at Counter
+                </p>
+                <p className="text-lg font-black text-amber-950 mt-0.5">
+                  {formatMoney(orderData.billing.total)}
+                </p>
+              </div>
+              <div className="bg-amber-100 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-800 border border-amber-200 uppercase tracking-wider">
+                Pay on Counter
+              </div>
+            </div>
+          );
+        })()}
         {/* Order Summary Card */}
         <div className="bg-white rounded-lg p-4">
           {/* Status and Order ID Row */}

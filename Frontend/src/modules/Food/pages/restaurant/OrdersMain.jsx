@@ -423,6 +423,8 @@ const transformOrderForList = (order) => ({
   paymentMethod: order.paymentMethod || order.payment?.method || null,
   deliveryPartnerId: order.deliveryPartnerId || null,
   dispatchStatus: order.dispatch?.status || null,
+  total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
+  pricing: order.pricing || null,
   pickupAt: order.pickupAt || null,
   scheduledAt: order.scheduledAt || null,
   preparingTimestamp: order.tracking?.preparing?.timestamp
@@ -516,6 +518,8 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     sortTimestamp: new Date(displayTimeSource || Date.now()).getTime(),
     deliveredAt: session?.closedAt || session?.paidAt || session?.updatedAt || session?.createdAt,
     amount: Number(session?.totalAmount || 0),
+    total: Number(session?.totalAmount || 0),
+    pricing: session?.pricing || null,
     paymentMethod: session?.paymentMethod || session?.paymentMode || null,
     closureType: session?.closureType || "",
     closeReason: session?.closeReason || "",
@@ -5162,6 +5166,31 @@ export default function OrdersMain() {
                 })()}
               </div>
 
+              {(() => {
+                const raw = selectedOrder.paymentMethod;
+                const normalized = raw != null ? String(raw).toLowerCase().trim() : "";
+                const isPoc = ["cash", "cod", "counter"].includes(normalized);
+                const orderStatus = String(selectedOrder.status || "").toLowerCase();
+                const showPoc = isPoc && !["completed", "delivered", "cancelled", "rejected"].includes(orderStatus);
+                if (!showPoc) return null;
+                const displayTotal = selectedOrder.total || selectedOrder.pricing?.total || 0;
+                return (
+                  <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 p-3.5 flex items-center justify-between shadow-sm">
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">
+                        Amount to Collect
+                      </p>
+                      <p className="text-base font-black text-amber-900 mt-0.5">
+                        ₹{Number(displayTotal).toFixed(2)}
+                      </p>
+                    </div>
+                    <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800 border border-amber-200 uppercase tracking-wider">
+                      Pay on Counter
+                    </span>
+                  </div>
+                );
+              })()}
+
               {/* ACTION BUTTONS FOR DINE-IN */}
               { (selectedOrder.isDineIn || String(selectedOrder.orderId).includes("Table")) && (
                 <div className="space-y-3 mb-4">
@@ -5250,8 +5279,22 @@ function OrderCard({
   isVerifyingOtp = false,
   isMarkingReady = false,
   isDineIn = false,
+  total,
+  pricing,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
+  const normalizedPaymentMethod = String(paymentMethod || "").toLowerCase().trim();
+  const isPoc = ["cash", "cod", "counter"].includes(normalizedPaymentMethod);
+  const showPocAmount = isPoc && [
+    "confirmed",
+    "preparing",
+    "ready",
+    "ready_for_pickup",
+    "assigned_to_boy",
+    "out_for_delivery",
+    "picked_up_by_boy",
+    "scheduled",
+  ].includes(normalizedStatus);
   const isReady = normalizedStatus === "ready" || normalizedStatus === "ready_for_pickup";
   const isPreparing = normalizedStatus === "preparing";
   const isConfirmed = normalizedStatus === "confirmed";
@@ -5319,6 +5362,8 @@ function OrderCard({
             itemsSummary,
             paymentMethod,
             customerPhone,
+            total,
+            pricing,
           })
         }
         className="w-full text-left flex gap-3 items-stretch cursor-pointer">
@@ -5347,6 +5392,13 @@ function OrderCard({
               <p className="text-sm font-semibold text-black leading-tight">
                 Order #{orderId}
               </p>
+              {showPocAmount && (
+                <div className="mt-1 flex items-center gap-1">
+                  <span className="inline-flex items-center rounded-lg bg-amber-50 border border-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-800 uppercase tracking-wider shadow-sm animate-pulse">
+                    Collect: ₹{Number(total || pricing?.total || 0).toFixed(2)}
+                  </span>
+                </div>
+              )}
               {shouldShowCustomerContact && (
                 <div className="mt-1.5 flex flex-col gap-1 w-full min-w-0">
                   {customerName && (
@@ -5419,6 +5471,8 @@ function OrderCard({
                       itemsSummary,
                       paymentMethod,
                       customerPhone,
+                      total,
+                      pricing,
                     });
                   }}
                   className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -5630,6 +5684,8 @@ function PreparingOrders({
               dispatchStatus: order.dispatch?.status || null,
               paymentMethod:
                 order.paymentMethod || order.payment?.method || null,
+              total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
+              pricing: order.pricing || null,
             };
           });
 
@@ -5938,6 +5994,8 @@ function PreparingOrders({
                 deliveryPartnerId={order.deliveryPartnerId}
                 dispatchStatus={order.dispatchStatus}
                 onSelect={onSelectOrder}
+                total={order.total}
+                pricing={order.pricing}
                 onCancel={order.isDineIn ? undefined : onCancel}
                 onMarkReady={order.isDineIn ? undefined : handleMarkReady}
                 isMarkingReady={Boolean(
@@ -6023,6 +6081,8 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
+            pricing: order.pricing || null,
             fulfillmentType: order.fulfillmentType || "delivery",
             deliveryType: order.deliveryType || null,
             selfDeliveryBoy:
@@ -6456,6 +6516,8 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
               paymentMethod: order.paymentMethod || order.payment?.method || null,
               deliveryPartnerId: order.deliveryPartnerId || null,
               dispatchStatus: order.dispatch?.status || null,
+              total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
+              pricing: order.pricing || null,
               order_type: order.order_type,
               pickupAt: order.pickupAt || null,
               scheduledAt: order.scheduledAt || null,
