@@ -177,8 +177,8 @@ export default function UserLayout() {
 
   return (
     <div
-      className={`min-h-screen bg-[#f5f5f5] transition-colors duration-200 ${
-        appearance === "dark" ? "dark bg-[#0a0a0a]" : ""
+      className={`min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200 ${
+        appearance === "dark" ? "dark" : ""
       }`}
     >
       <CartProvider>
@@ -194,7 +194,7 @@ export default function UserLayout() {
                   </div>
                   <LocationPrompt />
                   <GlobalReviewPrompt />
-                  <main className={showBottomNav ? "pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-0 md:pt-40" : ""}>
+                  <main className={showBottomNav ? "pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-0 md:pt-[140px]" : ""}>
                     <Outlet />
                   </main>
                   {showBottomNav && <BottomNavigation />}

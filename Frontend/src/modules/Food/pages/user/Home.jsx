@@ -533,6 +533,7 @@ export default function Home() {
   const publicCategoriesCacheRef = useRef(new Map());
   const publicCategoriesInFlightRef = useRef(new Map());
   const isHandlingSwitchOff = useRef(false);
+  const toastTimerRef = useRef(null);
   const heroShellRef = useRef(null);
   const stickyHeaderRef = useRef(null);
   const headerBannerShellRef = useRef(null);
@@ -868,6 +869,14 @@ export default function Home() {
     setShowSwitchOffPopup(false);
     setVegModeOption("all");
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
   }, []);
 
   // Handle vegMode toggle - show popup when turned ON or OFF
@@ -3124,8 +3133,11 @@ export default function Home() {
                           priceRange: restaurant.priceRange,
                           image: restaurant.image,
                         });
+                        if (toastTimerRef.current) {
+                          clearTimeout(toastTimerRef.current);
+                        }
                         setShowToast(true);
-                        setTimeout(() => {
+                        toastTimerRef.current = setTimeout(() => {
                           setShowToast(false);
                         }, 3000);
                       }
@@ -4318,16 +4330,21 @@ export default function Home() {
           <AnimatePresence>
             {showToast && (
               <motion.div
-                initial={{ y: 100, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: 100, opacity: 0 }}
+                initial={{ y: 100, x: "-50%", opacity: 0 }}
+                animate={{ y: 0, x: "-50%", opacity: 1 }}
+                exit={{ y: 100, x: "-50%", opacity: 0 }}
                 transition={{ duration: 0.3, type: "spring", damping: 25 }}
-                className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10001] bg-black text-white px-6 py-3 rounded-lg shadow-2xl">
-                <p className="text-sm font-medium">Added to your favourite restaurants collection</p>
+                className="fixed bottom-20 left-1/2 z-[10001] flex items-center gap-3 bg-white/95 dark:bg-[#1a1a1a]/95 text-gray-900 dark:text-gray-100 pl-4 pr-5 py-3 rounded-full border border-gray-100 dark:border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md transition-colors duration-300">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#FFF2EB] dark:bg-[#EB590E]/15 text-[#EB590E] shrink-0">
+                  <Bookmark className="h-4 w-4 fill-current" />
+                </div>
+                <p className="text-xs md:text-sm font-semibold tracking-wide whitespace-nowrap">
+                  Added to your favourite restaurants collection
+                </p>
               </motion.div>
             )}
           </AnimatePresence>,
-          document.body,
+          document.body
         )}
 
 

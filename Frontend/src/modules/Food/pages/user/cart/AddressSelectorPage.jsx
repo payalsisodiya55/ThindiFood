@@ -1096,8 +1096,11 @@ export default function AddressSelectorPage() {
         </div>
 
         <div
-          className="fixed left-0 right-0 p-4 bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 transition-[bottom] duration-150"
-          style={{ bottom: `${keyboardInset}px` }}
+          className="fixed left-0 right-0 px-4 pt-4 bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 transition-[bottom] duration-150"
+          style={{ 
+            bottom: `${keyboardInset}px`,
+            paddingBottom: `calc(1.5rem + env(safe-area-inset-bottom))`
+          }}
         >
           <Button 
             className="w-full h-12 text-white font-bold text-lg" 

@@ -42,19 +42,21 @@ const CATEGORY_PAGE_FILTERS_STORAGE_KEY = "food-category-page-filters-v1"
 export default function CategoryPage() {
   const { category } = useParams()
   const navigate = useNavigate()
-  const { vegMode } = useProfile()
+  const { vegMode, isFavorite, addFavorite, removeFavorite } = useProfile()
   const { location } = useLocation()
   const { zoneId, isOutOfService } = useZone(location)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState(category?.toLowerCase() || 'all')
   const [activeFilters, setActiveFilters] = useState(new Set())
-  const [favorites, setFavorites] = useState(new Set())
+  const [showToast, setShowToast] = useState(false)
   const [sortBy, setSortBy] = useState(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [activeFilterTab, setActiveFilterTab] = useState('sort')
   const [activeScrollSection, setActiveScrollSection] = useState('sort')
   const [isLoadingFilterResults, setIsLoadingFilterResults] = useState(false)
   const filterSectionRefs = useRef({})
+  const toastTimerRef = useRef(null)
+  const isScrollingRef = useRef(false)
   const rightContentRef = useRef(null)
   const categoryScrollRef = useRef(null)
   const menuEnrichmentRequestRef = useRef(0)
@@ -1118,11 +1120,12 @@ export default function CategoryPage() {
 
     const observerOptions = {
       root: rightContentRef.current,
-      rootMargin: '-20% 0px -70% 0px',
+      rootMargin: '-10% 0px -60% 0px',
       threshold: 0
     }
 
     const observer = new IntersectionObserver((entries) => {
+      if (isScrollingRef.current) return // Skip observer updates during tab click scrolling
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           const sectionId = entry.target.getAttribute('data-section-id')
@@ -1141,17 +1144,39 @@ export default function CategoryPage() {
     return () => observer.disconnect()
   }, [isFilterOpen])
 
-  const toggleFavorite = (id) => {
-    setFavorites(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(id)) {
-        newSet.delete(id)
-      } else {
-        newSet.add(id)
+  const toggleFavorite = (restaurant) => {
+    const restaurantSlug = restaurant.name.toLowerCase().replace(/\s+/g, "-")
+    const favorite = isFavorite(restaurantSlug)
+    if (favorite) {
+      removeFavorite(restaurantSlug)
+    } else {
+      addFavorite({
+        slug: restaurantSlug,
+        name: restaurant.name,
+        cuisine: restaurant.cuisine,
+        rating: restaurant.rating,
+        deliveryTime: restaurant.deliveryTime,
+        distance: restaurant.distance,
+        priceRange: restaurant.priceRange,
+        image: restaurant.image,
+      })
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current)
       }
-      return newSet
-    })
+      setShowToast(true)
+      toastTimerRef.current = setTimeout(() => {
+        setShowToast(false)
+      }, 3000)
+    }
   }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current)
+      }
+    }
+  }, [])
 
   // Filter restaurants based on active filters and selected category
   // If category is selected, expand restaurants into dish cards (one card per matching dish)
@@ -1562,7 +1587,7 @@ export default function CategoryPage() {
             <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 lg:gap-6 xl:gap-7 items-stretch ${showRestaurantSkeleton ? 'opacity-50' : 'opacity-100'} transition-opacity duration-300`}>
               {filteredAllRestaurants.map((restaurant) => {
                 const restaurantSlug = restaurant.name.toLowerCase().replace(/\s+/g, "-")
-                const isFavorite = favorites.has(restaurant.id)
+                const favorite = isFavorite(restaurantSlug)
 
                 return (
                   <Link key={restaurant.id} to={`/user/restaurants/${restaurantSlug}`} className="h-full flex">
@@ -1592,9 +1617,9 @@ export default function CategoryPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 bg-white/90 text-gray-500 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-all"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(restaurant.id) }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(restaurant) }}
                           >
-                            <Bookmark className={`h-4 w-4 ${isFavorite ? "fill-gray-900 text-gray-900" : ""}`} />
+                            <Bookmark className={`h-4 w-4 ${favorite ? "fill-gray-900 text-gray-900" : ""}`} />
                           </Button>
                         </div>
                       </div>
@@ -1713,16 +1738,28 @@ export default function CategoryPage() {
                         { id: 'trust', label: 'Trust', icon: ShieldCheck },
                       ].map((tab) => {
                         const Icon = tab.icon
-                        const isActive = activeScrollSection === tab.id || activeFilterTab === tab.id
+                        const isActive = activeFilterTab === tab.id
                         return (
                           <button
                             key={tab.id}
                             onClick={() => {
                               setActiveFilterTab(tab.id)
+                              isScrollingRef.current = true
                               const section = filterSectionRefs.current[tab.id]
-                              if (section) {
-                                section.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                              if (section && rightContentRef.current) {
+                                const container = rightContentRef.current
+                                const containerTop = container.getBoundingClientRect().top
+                                const sectionTop = section.getBoundingClientRect().top
+                                const scrollTarget = container.scrollTop + (sectionTop - containerTop)
+                                container.scrollTo({
+                                  top: scrollTarget,
+                                  behavior: 'smooth'
+                                })
                               }
+                              // Clear the scrolling lock once smooth scroll completes
+                              setTimeout(() => {
+                                isScrollingRef.current = false
+                              }, 800)
                             }}
                             className={`flex flex-col items-center gap-1 py-4 px-2 text-center relative transition-colors ${isActive ? 'bg-white dark:bg-[#1a1a1a] text-[#EB590E]' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
                               }`}
@@ -1988,6 +2025,28 @@ export default function CategoryPage() {
                   </div>
                 </div>
               </div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
+      {typeof window !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {showToast && (
+              <motion.div
+                initial={{ y: 100, x: "-50%", opacity: 0 }}
+                animate={{ y: 0, x: "-50%", opacity: 1 }}
+                exit={{ y: 100, x: "-50%", opacity: 0 }}
+                transition={{ duration: 0.3, type: "spring", damping: 25 }}
+                className="fixed bottom-20 left-1/2 z-[10001] flex items-center gap-3 bg-white/95 dark:bg-[#1a1a1a]/95 text-gray-900 dark:text-gray-100 pl-4 pr-5 py-3 rounded-full border border-gray-100 dark:border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md transition-colors duration-300">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#FFF2EB] dark:bg-[#EB590E]/15 text-[#EB590E] shrink-0">
+                  <Bookmark className="h-4 w-4 fill-current" />
+                </div>
+                <p className="text-xs md:text-sm font-semibold tracking-wide whitespace-nowrap">
+                  Added to your favourite restaurants collection
+                </p>
+              </motion.div>
             )}
           </AnimatePresence>,
           document.body
