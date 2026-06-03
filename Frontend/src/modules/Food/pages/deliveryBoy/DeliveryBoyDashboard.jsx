@@ -233,12 +233,12 @@ export default function DeliveryBoyDashboard() {
               </p>
               <p className="mt-2 text-2xl font-black">{stats.completed}</p>
             </div>
-            <div className="rounded-3xl bg-white/15 p-4 backdrop-blur">
+            {/* <div className="rounded-3xl bg-white/15 p-4 backdrop-blur">
               <p className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">
                 Cancelled
               </p>
               <p className="mt-2 text-2xl font-black">{stats.cancelled}</p>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
