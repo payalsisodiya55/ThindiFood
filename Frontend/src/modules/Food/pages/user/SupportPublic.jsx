@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Card, CardContent } from "@food/components/ui/card"
-import { Mail, ArrowLeft, Headphones, CheckCircle2, ChevronRight, AlertCircle, Info, ShieldAlert, Award } from "lucide-react"
+import { Mail, ArrowLeft, Headphones, CheckCircle2, ChevronRight, AlertCircle, Info, ShieldAlert, Award, Phone, Globe } from "lucide-react"
 
 export default function SupportPublic() {
   const helpItems = [
@@ -181,25 +181,49 @@ export default function SupportPublic() {
             <div className="bg-[#f8fafc] dark:bg-[#161616] border border-slate-100 dark:border-zinc-800 rounded-2xl p-6 sm:p-8 space-y-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-950 dark:text-white">
-                  Contact Support
+                  Contact Us
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
-                  For all support-related inquiries, please contact:
+                  For support or queries, users may contact:
                 </p>
               </div>
 
               <div className="flex flex-col gap-4">
-                <h4 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white leading-none">
-                  Ismail Basha
-                </h4>
-                <div>
-                  <a
-                    href="mailto:taamio.food@gmail.com"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#202020] border border-slate-200/60 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:border-[#00c87e] dark:hover:border-[#00c87e] hover:bg-[#00c87e]/5 dark:hover:bg-[#00c87e]/5 transition-all duration-300 shadow-sm"
-                  >
-                    <Mail className="h-4.5 w-4.5 text-[#00c87e]" />
-                    <span className="text-sm font-bold tracking-tight">taamio.food@gmail.com</span>
-                  </a>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Email</span>
+                    <a
+                      href="mailto:support@taamio.com"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#202020] border border-slate-200/60 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:border-[#00c87e] dark:hover:border-[#00c87e] hover:bg-[#00c87e]/5 dark:hover:bg-[#00c87e]/5 transition-all duration-300 shadow-sm w-full justify-start"
+                    >
+                      <Mail className="h-4.5 w-4.5 text-[#00c87e]" />
+                      <span className="text-sm font-bold tracking-tight text-left">support@taamio.com</span>
+                    </a>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Customer Support</span>
+                    <a
+                      href="tel:8667540557"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#202020] border border-slate-200/60 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:border-[#00c87e] dark:hover:border-[#00c87e] hover:bg-[#00c87e]/5 dark:hover:bg-[#00c87e]/5 transition-all duration-300 shadow-sm w-full justify-start"
+                    >
+                      <Phone className="h-4.5 w-4.5 text-[#00c87e]" />
+                      <span className="text-sm font-bold tracking-tight">86675 40557</span>
+                    </a>
+                  </div>
+
+                  <div className="flex flex-col gap-2 sm:col-span-2">
+                    <span className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">Website</span>
+                    <a
+                      href="https://www.taamio.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-[#202020] border border-slate-200/60 dark:border-zinc-800 text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white hover:border-[#00c87e] dark:hover:border-[#00c87e] hover:bg-[#00c87e]/5 dark:hover:bg-[#00c87e]/5 transition-all duration-300 shadow-sm w-full justify-start"
+                    >
+                      <Globe className="h-4.5 w-4.5 text-[#00c87e]" />
+                      <span className="text-sm font-bold tracking-tight">www.taamio.com</span>
+                    </a>
+                  </div>
                 </div>
               </div>
             </div>
