@@ -2610,7 +2610,7 @@ export default function RestaurantOnboarding() {
 
         {/* Menu images */}
         <div className="space-y-2">
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Menu Images<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-base font-extrabold text-gray-900 block mb-1">Menu Images<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -2741,7 +2741,7 @@ export default function RestaurantOnboarding() {
 
         {/* Profile image */}
         <div className="space-y-2">
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Profile Image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-base font-extrabold text-gray-900 block mb-1">Restaurant Profile Image<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
@@ -3605,7 +3605,7 @@ export default function RestaurantOnboarding() {
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="text-base sm:text-lg font-extrabold text-black h-9 flex items-center whitespace-nowrap">Restaurant onboarding</div>
+            <div className="text-base sm:text-lg font-extrabold text-black h-9 flex items-center whitespace-nowrap">Restaurant Onboarding</div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             {!loading && !isEditing && (

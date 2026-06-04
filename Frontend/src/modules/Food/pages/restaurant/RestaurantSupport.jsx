@@ -294,7 +294,7 @@ export default function RestaurantSupport() {
           ) : (
             <div className="flex flex-wrap gap-4">
               {tickets.map((ticket) => (
-                <div key={ticket._id} className="rounded-xl border border-slate-200 p-3 w-full md:w-[30%] flex-shrink-0 flex-grow-0">
+                <div key={ticket._id} className="rounded-xl border border-slate-200 p-3 w-full md:w-[30%] flex-shrink-0 flex-grow-0 break-words">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-xs font-semibold text-slate-500">
                       #{String(ticket._id).slice(-6)} • {new Date(ticket.createdAt).toLocaleString()}
@@ -303,28 +303,28 @@ export default function RestaurantSupport() {
                       {ticket.status}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                  <p className="mt-2 text-sm font-semibold text-slate-900 break-words">
                     {ticket.issueType}
                   </p>
                   {ticket.subject ? (
-                    <p className="text-xs text-slate-600 mt-1">
+                    <p className="text-xs text-slate-600 mt-1 break-words">
                       Subject: {ticket.subject}
                     </p>
                   ) : null}
                   {ticket.orderRef ? (
-                    <p className="text-xs text-slate-600 mt-1">
+                    <p className="text-xs text-slate-600 mt-1 break-words">
                       Order: {ticket.orderRef}
                     </p>
                   ) : null}
                   {ticket.description ? (
-                    <p className="text-sm text-slate-700 mt-2 whitespace-pre-wrap">
+                    <p className="text-sm text-slate-700 mt-2 whitespace-pre-wrap break-words">
                       {ticket.description}
                     </p>
                   ) : null}
                   {ticket.adminResponse ? (
-                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-2.5">
+                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-2.5 break-words">
                       <p className="text-[11px] font-semibold text-blue-700 uppercase">Admin response</p>
-                      <p className="text-sm text-blue-900 mt-1 whitespace-pre-wrap">{ticket.adminResponse}</p>
+                      <p className="text-sm text-blue-900 mt-1 whitespace-pre-wrap break-words">{ticket.adminResponse}</p>
                     </div>
                   ) : null}
                 </div>

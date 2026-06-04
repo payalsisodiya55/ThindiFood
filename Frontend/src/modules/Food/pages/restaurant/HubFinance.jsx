@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Bell, Menu, ChevronDown, Calendar, Download, ArrowRight, FileText, Wallet, X } from "lucide-react"
+import { Bell, Menu, ChevronDown, Calendar, Download, ArrowRight, FileText, Wallet, X, ArrowLeft } from "lucide-react"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { restaurantAPI } from "@food/api"
 const debugLog = (...args) => {}
@@ -51,6 +52,7 @@ const formatCurrencyByOrder = (order, amount) =>
 
 export default function HubFinance() {
   const navigate = useNavigate()
+  const goBack = useRestaurantBackNavigation()
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get("tab")
@@ -868,6 +870,13 @@ export default function HubFinance() {
       <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex-1 min-w-0 flex items-start gap-2">
+            <button
+              onClick={goBack}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer shrink-0 mt-0.5"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-6 h-6 text-gray-900" />
+            </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-1">
                 <p className="text-lg font-bold text-gray-900 truncate">

@@ -731,7 +731,7 @@ function QrCanvas({ url }) {
             errorCorrectionLevel: "H",
         }).catch(() => {});
     }, [url]);
-    return React.createElement("canvas", { ref: canvasRef, className: "w-full h-auto rounded-xl" });
+    return React.createElement("canvas", { ref: canvasRef, className: "mx-auto block rounded-xl" });
 }
 // Internal Close component
 const X = ({ className }) => (

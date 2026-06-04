@@ -122,7 +122,9 @@ export default function ItemDetailsPage() {
   "Please enter an item name" :
   null;
   const descriptionError =
-  itemDescription.trim() && itemDescription.trim().length < minDescriptionLength ?
+  !itemDescription.trim() ?
+  "Please enter an item description" :
+  itemDescription.trim().length < minDescriptionLength ?
   "Min 5 characters required" :
   null;
   const categoryError =
@@ -134,9 +136,13 @@ export default function ItemDetailsPage() {
   "Please upload a menu item image" :
   null;
   const basePriceError =
-  variants.length === 0 && !isBasePriceValid ?
-  "Please enter a base price greater than 0" :
-  null;
+  variants.length === 0 ? (
+    !basePrice.trim() ?
+    "Please enter a base price" :
+    !isBasePriceValid ?
+    "Please enter a base price greater than 0" :
+    null
+  ) : null;
 
   const shouldShowFieldError = (field, hasValue = false) =>
   Boolean(saveAttempted || touchedFields[field] || hasValue);
@@ -167,6 +173,37 @@ export default function ItemDetailsPage() {
     const errors = getVariantErrors(variant, variants);
     return Boolean(errors.name || errors.price);
   });
+
+  const validateMandatoryFieldsForUpload = () => {
+    setTouchedFields((prev) => ({
+      ...prev,
+      itemName: true,
+      itemDescription: true,
+      category: true,
+      basePrice: true,
+    }));
+
+    const errors = [];
+    if (nameError) errors.push(nameError);
+    if (descriptionError) errors.push(descriptionError);
+    if (categoryError) errors.push(categoryError);
+    if (!foodType) errors.push("Please select food type");
+    if (variants.length === 0) {
+      if (basePriceError) errors.push(basePriceError);
+    } else {
+      variants.forEach((v, index) => {
+        const vErrors = getVariantErrors(v, variants);
+        if (vErrors.name) errors.push(`Variant ${index + 1}: ${vErrors.name}`);
+        if (vErrors.price) errors.push(`Variant ${index + 1}: ${vErrors.price}`);
+      });
+    }
+
+    if (errors.length > 0) {
+      errors.forEach((err) => toast.error(err));
+      return false;
+    }
+    return true;
+  };
 
   const populateFormFromItem = (item = {}) => {
     setItemData(item);
@@ -446,6 +483,12 @@ export default function ItemDetailsPage() {
 
   const handleImageAdd = (file) => {
     if (!file) return;
+    if (!validateMandatoryFieldsForUpload()) {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
       toast.error("Image size should be less than 5MB");
       return;
@@ -473,6 +516,9 @@ export default function ItemDetailsPage() {
   };
 
   const handleCameraClick = () => {
+    if (!validateMandatoryFieldsForUpload()) {
+      return;
+    }
     if (isFlutterBridgeAvailable()) {
       setIsPhotoPickerOpen(true);
     } else {
