@@ -1757,7 +1757,9 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
       handleCloseAssignBoyModal();
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to assign delivery partner",
+        error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to assign delivery partner",
       );
     } finally {
       setIsAssigningBoy(false);
@@ -6266,7 +6268,9 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
       onStatusChanged?.();
     } catch (error) {
       toast.error(
-        error?.response?.data?.message || "Failed to assign delivery partner",
+        error?.response?.data?.error ||
+          error?.response?.data?.message ||
+          "Failed to assign delivery partner",
       );
     } finally {
       setIsAssigningBoy(false);
@@ -6371,6 +6375,121 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
       )}
 
       <AnimatePresence>
+        {assigningOrder && (
+          <motion.div
+            className="fixed inset-0 z-[79] bg-black/60 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleCloseAssignBoyModal}
+          >
+            <motion.div
+              className="w-[95%] max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header section with slate tinted background */}
+              <div className="px-6 py-5 bg-slate-50/70 border-b border-slate-100">
+                <h3 className="text-lg font-extrabold text-slate-900 tracking-tight">
+                  Assign Delivery Partner
+                </h3>
+                <p className="text-xs font-semibold text-slate-500 mt-1">
+                  Select an active partner for order #{assigningOrder.orderId}
+                </p>
+              </div>
+
+              {/* Delivery boys card options list */}
+              <div className="px-6 py-5 space-y-3">
+                {deliveryBoys.filter((boy) => boy?.isActive !== false).length === 0 ? (
+                  <div className="text-center py-6 px-4 bg-red-50/50 rounded-2xl border border-red-100">
+                    <p className="text-sm font-bold text-red-800">
+                      No active partners available
+                    </p>
+                    <p className="text-xs text-red-500 mt-1">
+                      Please register or activate partners in Delivery Settings first.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                    {deliveryBoys
+                      .filter((boy) => boy?.isActive !== false)
+                      .map((boy) => {
+                        const isSelected = String(selectedDeliveryBoyId) === String(boy._id || boy.id);
+                        const initials = String(boy.name || "DP")
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2);
+
+                        return (
+                          <button
+                            key={boy._id || boy.id}
+                            type="button"
+                            onClick={() => setSelectedDeliveryBoyId(String(boy._id || boy.id))}
+                            className={`w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-3 active:scale-[0.99] ${
+                              isSelected
+                                ? "border-[#00c87e] bg-emerald-50/30 shadow-sm shadow-emerald-500/5"
+                                : "border-slate-100 bg-white hover:border-slate-200"
+                            }`}
+                          >
+                            <div className="flex items-center gap-3.5 min-w-0">
+                              {/* Initials Circle */}
+                              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-xs shrink-0 transition-colors ${
+                                isSelected ? "bg-[#00c87e] text-white" : "bg-slate-100 text-slate-600"
+                              }`}>
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className={`font-bold text-sm leading-snug ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
+                                  {boy.name}
+                                </p>
+                                {boy.phone && (
+                                  <p className="text-[11px] text-slate-500 mt-0.5 font-bold tracking-wide">
+                                    {boy.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            {/* Selection indicator bubble */}
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
+                              isSelected ? "border-[#00c87e] bg-[#00c87e] text-white" : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="px-6 py-5 bg-slate-50 border-t border-slate-100 flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleCloseAssignBoyModal}
+                  disabled={isAssigningBoy}
+                  className="flex-1 bg-white border border-slate-200 text-slate-700 py-3 rounded-2xl font-bold text-sm hover:bg-slate-50 active:scale-[0.98] transition-all disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAssignDeliveryBoy}
+                  disabled={isAssigningBoy || !selectedDeliveryBoyId}
+                  className="flex-1 bg-[#00c87e] hover:bg-[#00b874] text-white py-3 rounded-2xl font-bold text-sm active:scale-[0.98] transition-all shadow-lg shadow-emerald-500/10 disabled:opacity-40 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                >
+                  {isAssigningBoy ? "Assigning..." : "Assign Partner"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
         {otpModalOrder && (
           <motion.div
             className="fixed inset-0 z-[80] bg-black/60 flex items-center justify-center p-4"

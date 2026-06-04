@@ -72,8 +72,8 @@ export default function OutletInfo() {
   const [restaurantName, setRestaurantName] = useState("");
   const [cuisineTags, setCuisineTags] = useState("");
   const [address, setAddress] = useState("");
-  const [mainImage, setMainImage] = useState("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=400&fit=crop");
-  const [thumbnailImage, setThumbnailImage] = useState("https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200&h=200&fit=crop");
+  const [mainImage, setMainImage] = useState(null);
+  const [thumbnailImage, setThumbnailImage] = useState(null);
   const [coverImages, setCoverImages] = useState([]);
   const [showEditNameDialog, setShowEditNameDialog] = useState(false);
   const [editNameValue, setEditNameValue] = useState("");
@@ -143,6 +143,8 @@ export default function OutletInfo() {
           }
           if (data.profileImage?.url) {
             setThumbnailImage(data.profileImage.url);
+          } else {
+            setThumbnailImage(null);
           }
           if (data.coverImages && Array.isArray(data.coverImages) && data.coverImages.length > 0) {
             setCoverImages(data.coverImages.map((img) => ({ url: img.url || img, publicId: img.publicId })));
@@ -152,6 +154,7 @@ export default function OutletInfo() {
             setMainImage(data.menuImages[0].url);
           } else {
             setCoverImages([]);
+            setMainImage(null);
           }
         }
         const timings = timingsResponse?.data?.data?.outletTimings || timingsResponse?.data?.outletTimings;
@@ -345,7 +348,7 @@ export default function OutletInfo() {
       if (indexToDelete === 0 && updatedImages.length > 0) {
         setMainImage(updatedImages[0].url);
       } else if (updatedImages.length === 0) {
-        setMainImage("https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&h=400&fit=crop");
+        setMainImage(null);
       }
       toast.success("Image deleted successfully");
     } catch (error) {
@@ -472,11 +475,21 @@ export default function OutletInfo() {
         </div>
 
         {/* Main Image Section */}
-        <div className="relative w-full h-[200px] overflow-visible">
-          <img src={mainImage} alt="Restaurant banner" className="w-full h-full object-cover" />
+        <div className="relative w-full h-[200px] overflow-visible bg-gray-100">
+          {loading ? (
+            <div className="w-full h-full bg-gray-200 animate-pulse flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-gray-400" />
+            </div>
+          ) : mainImage ? (
+            <img src={mainImage} alt="Restaurant banner" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+              <Building2 className="w-8 h-8 text-gray-400" />
+            </div>
+          )}
           <button
             onClick={() => handleImageClick('cover', menuImageInputRef, "Add Cover Image", true)}
-            disabled={uploadingImage}
+            disabled={uploadingImage || loading}
             className="absolute bottom-4 right-4 bg-black/90 hover:bg-black px-3.5 py-2.5 rounded-xl flex items-center gap-2 text-sm font-medium text-white transition-colors shadow-lg z-20 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer">
             <Plus className="w-4 h-4" />
             <span>{uploadingImage && imageType === 'menu' ? `Uploading ${uploadingCount}...` : 'Add Image'}</span>
@@ -509,12 +522,22 @@ export default function OutletInfo() {
 
           {/* Thumbnail Section */}
           <div className="absolute bottom-0 left-4 -mb-[45px] flex flex-col gap-2 shrink-0 z-10">
-            <div className="relative w-[70px] h-[70px] rounded overflow-hidden">
-              <img src={thumbnailImage} alt="Restaurant thumbnail" className="w-full h-full rounded-xl object-cover" />
+            <div className="relative w-[70px] h-[70px] rounded overflow-hidden shadow border border-gray-200 bg-white">
+              {loading ? (
+                <div className="w-full h-full bg-gray-200 animate-pulse" />
+              ) : thumbnailImage ? (
+                <img src={thumbnailImage} alt="Restaurant thumbnail" className="w-full h-full rounded object-cover" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                  <span className="text-white text-xl font-bold uppercase">
+                    {restaurantName ? restaurantName.slice(0, 2) : "RT"}
+                  </span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => handleImageClick('profile', profileImageInputRef, "Update Profile Photo")}
-              disabled={uploadingImage}
+              disabled={uploadingImage || loading}
               className="text-blue-600 text-sm font-semibold hover:text-blue-700 transition-colors text-left cursor-pointer disabled:cursor-not-allowed">
               {uploadingImage && imageType === 'profile' ? 'Uploading...' : 'Edit Logo'}
             </button>
