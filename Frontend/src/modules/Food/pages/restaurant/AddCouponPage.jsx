@@ -168,22 +168,28 @@ export default function AddCouponPage(props = {}) {
 
   const validationError = useMemo(() => {
     if (!String(form.couponCode || "").trim()) return "Coupon code is required"
+    if (String(form.couponCode || "").trim().length > 15) {
+      return "Coupon code cannot exceed 15 letters"
+    }
     
     const discVal = Number(form.discountValue || 0)
     if (!Number.isFinite(discVal) || discVal <= 0) {
       return "Discount value must be greater than 0"
     }
-    if (isPercentage && discVal > 1000) {
-      return "Percentage discount cannot exceed 1,000%"
+    if (isPercentage && (discVal < 1 || discVal > 99)) {
+      return "Percentage discount must be between 1% and 99%"
     }
     if (discVal > 100000000) {
       return "Discount value cannot exceed 100,000,000"
     }
 
     if (isPercentage) {
-      const maxD = Number(form.maxDiscount || 0)
-      if (!Number.isFinite(maxD) || maxD < 0) {
+      if (!form.maxDiscount || String(form.maxDiscount).trim() === "") {
         return "Max discount is required for percentage coupons"
+      }
+      const maxD = Number(form.maxDiscount)
+      if (Number.isNaN(maxD) || maxD <= 0) {
+        return "Max discount must be greater than 0"
       }
       if (maxD > 100000000) {
         return "Max discount cannot exceed 100,000,000"
@@ -339,8 +345,9 @@ export default function AddCouponPage(props = {}) {
                 <div className="flex gap-2">
                   <Input
                     value={form.couponCode}
-                    onChange={(e) => setField("couponCode", e.target.value.toUpperCase())}
+                    onChange={(e) => setField("couponCode", e.target.value.slice(0, 15).toUpperCase())}
                     placeholder="e.g. SAVE50"
+                    maxLength={15}
                     className="h-12"
                   />
                   <button
@@ -358,7 +365,19 @@ export default function AddCouponPage(props = {}) {
                 <label className="mb-1 block text-sm font-medium text-slate-800">Discount Type</label>
                 <CustomSelect
                   value={form.discountType}
-                  onChange={(val) => setField("discountType", val)}
+                  onChange={(val) => {
+                    setForm((prev) => {
+                      const newDiscVal = val === "percentage" && prev.discountValue.length > 2
+                        ? prev.discountValue.slice(0, 2)
+                        : prev.discountValue
+                      return {
+                        ...prev,
+                        discountType: val,
+                        discountValue: newDiscVal,
+                      }
+                    })
+                    if (error) setError("")
+                  }}
                   options={discountTypeOptions}
                 />
               </div>
@@ -370,7 +389,7 @@ export default function AddCouponPage(props = {}) {
                 <Input
                   type="text"
                   value={form.discountValue}
-                  maxLength={isPercentage ? 6 : 10}
+                  maxLength={isPercentage ? 2 : 10}
                   onChange={(e) => {
                     const val = e.target.value
                     const sanitized = val.replace(/[^0-9.]/g, "")
