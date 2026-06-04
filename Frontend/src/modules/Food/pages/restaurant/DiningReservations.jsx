@@ -653,16 +653,6 @@ export default function DiningReservations() {
                         <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 pl-[48px]">Live Queue Management</p>
                     </div>
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                        <div className="relative group">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                            <input
-                                type="text"
-                                placeholder="Search guests..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full sm:w-64 pl-11 pr-4 py-2.5 bg-slate-100/50 border-2 border-transparent rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:bg-white focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
-                            />
-                        </div>
                         <div className="flex items-center gap-1 bg-slate-100/50 p-1 rounded-2xl border border-slate-200/50">
                             <button onClick={() => setActiveSection("reservations")} className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${activeSection === "reservations" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Queue</button>
                             <button onClick={() => setActiveSection("media")} className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-xl transition-all cursor-pointer ${activeSection === "media" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}>Media</button>
@@ -707,18 +697,30 @@ export default function DiningReservations() {
                         {diningControlsSection}
 
                         <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-bold text-slate-800">Reservation Queue</h2>
-                                <div className="flex items-center gap-2 rounded-xl bg-white border border-slate-200 p-1">
-                                    {["priority", "new", "today"].map(view => (
-                                        <button
-                                            key={view}
-                                            onClick={() => setActiveView(view)}
-                                            className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${activeView === view ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}
-                                        >
-                                            {view.charAt(0).toUpperCase() + view.slice(1)} {view === 'new' ? `(${newRequestsCount})` : ''}
-                                        </button>
-                                    ))}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <h2 className="text-lg font-black text-slate-900">Reservation Queue</h2>
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                    <div className="relative group">
+                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search guests..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full sm:w-64 pl-11 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-semibold placeholder:text-slate-400 focus:border-blue-500/20 focus:ring-4 focus:ring-blue-500/5 transition-all outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex items-center justify-between sm:justify-end gap-1.5 bg-white p-1 rounded-xl border border-slate-200">
+                                        {["priority", "new", "today"].map(view => (
+                                            <button
+                                                key={view}
+                                                onClick={() => setActiveView(view)}
+                                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${activeView === view ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                                            >
+                                                {view.charAt(0).toUpperCase() + view.slice(1)} {view === 'new' ? `(${newRequestsCount})` : ''}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
 
