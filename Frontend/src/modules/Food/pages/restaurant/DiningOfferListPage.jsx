@@ -96,17 +96,17 @@ export default function DiningOfferListPage() {
 
   return (
     <div className="min-h-screen bg-[#eef2f6] pb-8">
-      <div className="mx-auto max-w-md md:max-w-6xl px-4">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4">
-          <div className="flex items-center gap-3">
-            <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="text-2xl font-semibold text-slate-900">Dining Offers</h1>
-          </div>
-        </header>
+      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 w-full">
+        <div className="mx-auto max-w-md md:max-w-6xl flex items-center gap-3">
+          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <h1 className="text-2xl font-semibold text-slate-900">Dining Offers</h1>
+        </div>
+      </header>
 
-        <section className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4 px-3 py-3">
+      <div className="mx-auto max-w-md md:max-w-6xl px-4 py-3">
+        <section className="space-y-3 md:space-y-0 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-4">
           {loading &&
           <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600 md:col-span-2 lg:col-span-3">
               Loading dining offers...
