@@ -234,6 +234,12 @@ export const useDeliveryNotifications = () => {
       alertLoopTimerRef.current = null;
     }
     alertLoopStartedAtRef.current = 0;
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
+    }
   }, []);
 
   const startAlertLoop = useCallback((playSoundFn) => {
@@ -247,9 +253,7 @@ export const useDeliveryNotifications = () => {
         return;
       }
 
-      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
-        playSoundFn(activeOrderRef.current);
-      }
+      playSoundFn(activeOrderRef.current);
     }, ALERT_LOOP_INTERVAL_MS);
   }, [stopAlertLoop]);
   
@@ -1013,6 +1017,18 @@ export const useDeliveryNotifications = () => {
     setNewOrder(null);
   };
 
+  const triggerIncomingAlert = useCallback((orderData) => {
+    activeOrderRef.current = orderData || { id: Date.now() };
+    playNotificationSound(orderData);
+    startAlertLoop(playNotificationSound);
+  }, [playNotificationSound, startAlertLoop]);
+
+  const stopIncomingAlert = useCallback(() => {
+    stopAlertLoop();
+    activeOrderRef.current = null;
+    setNewOrder(null);
+  }, [stopAlertLoop]);
+
   const clearOrderReady = () => {
     setOrderReady(null);
   };
@@ -1033,6 +1049,8 @@ export const useDeliveryNotifications = () => {
   return {
     newOrder,
     clearNewOrder,
+    triggerIncomingAlert,
+    stopIncomingAlert,
     orderReady,
     clearOrderReady,
     orderStatusUpdate,

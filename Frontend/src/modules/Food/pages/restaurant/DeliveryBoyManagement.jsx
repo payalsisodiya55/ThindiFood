@@ -246,6 +246,10 @@ export default function DeliveryBoyManagement() {
         </div>
 
         <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 rounded-3xl border border-gray-200 bg-white p-5">
+          {/* Dummy inputs to prevent browser autofill */}
+          <input style={{ display: "none" }} type="text" name="chrome-autofill-dummy-username" autoComplete="new-password" />
+          <input style={{ display: "none" }} type="password" name="chrome-autofill-dummy-password" autoComplete="new-password" />
+
           {!canManageDeliveryBoys ? (
             <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />

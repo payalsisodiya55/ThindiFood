@@ -14,6 +14,7 @@ import {
 import { deliveryBoyAPI } from "@food/api";
 import { clearModuleAuth, getCurrentUser } from "@food/utils/auth";
 import { toast } from "sonner";
+import { useDeliveryNotifications } from "@food/hooks/useDeliveryNotifications";
 
 const STATUS_META = {
   assigned_to_boy: {
@@ -75,6 +76,8 @@ export default function DeliveryBoyDashboard() {
   const [submittingId, setSubmittingId] = useState(null);
   const deliveryBoy = getCurrentUser("delivery");
 
+  const { triggerIncomingAlert, stopIncomingAlert } = useDeliveryNotifications();
+
   const loadOrders = async () => {
     try {
       const response = await deliveryBoyAPI.getOrders();
@@ -83,6 +86,31 @@ export default function DeliveryBoyDashboard() {
       console.error("Failed to load orders:", err);
     }
   };
+
+  const pendingOrders = useMemo(() => {
+    return orders.filter((order) => {
+      const normalizedStatus = String(order?.orderStatus || "").toLowerCase();
+      const isRejectedByMe =
+        order?.selfDelivery?.rejectedHistory?.some(
+          (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
+        ) &&
+        String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
+
+      return (
+        !isRejectedByMe &&
+        normalizedStatus === "assigned_to_boy" &&
+        order?.selfDelivery?.status !== "accepted"
+      );
+    });
+  }, [orders, deliveryBoy]);
+
+  useEffect(() => {
+    if (pendingOrders.length > 0) {
+      triggerIncomingAlert(pendingOrders[0]);
+    } else {
+      stopIncomingAlert();
+    }
+  }, [pendingOrders, triggerIncomingAlert, stopIncomingAlert]);
 
   useEffect(() => {
     let active = true;
@@ -113,6 +141,7 @@ export default function DeliveryBoyDashboard() {
   const handleAcceptRequest = async (e, orderId) => {
     e.preventDefault();
     e.stopPropagation();
+    stopIncomingAlert();
     setSubmittingId(orderId);
     try {
       await deliveryBoyAPI.acceptOrder(orderId);
@@ -128,6 +157,7 @@ export default function DeliveryBoyDashboard() {
   const handleRejectRequest = async (e, orderId) => {
     e.preventDefault();
     e.stopPropagation();
+    stopIncomingAlert();
     setSubmittingId(orderId);
     try {
       await deliveryBoyAPI.rejectOrder(orderId);

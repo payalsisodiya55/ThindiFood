@@ -14,6 +14,7 @@ import {
 import { deliveryBoyAPI } from "@food/api";
 import { clearModuleAuth, getCurrentUser } from "@food/utils/auth";
 import { toast } from "sonner";
+import { useDeliveryNotifications } from "@food/hooks/useDeliveryNotifications";
 
 const ACTIONS = {
   assigned_to_boy: {
@@ -91,10 +92,36 @@ export default function DeliveryBoyOrderDetail() {
   const [error, setError] = useState("");
   const deliveryBoy = getCurrentUser("delivery");
 
+  const { triggerIncomingAlert, stopIncomingAlert } = useDeliveryNotifications();
+
   const loadOrder = async () => {
     const response = await deliveryBoyAPI.getOrderById(orderId);
     setOrder(response?.data?.data?.order || null);
   };
+
+  const isRejectedByMe = useMemo(() => {
+    return order?.selfDelivery?.rejectedHistory?.some(
+      (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
+    ) &&
+    String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
+  }, [order, deliveryBoy]);
+
+  const isCancelled = useMemo(() => {
+    return String(order?.orderStatus || "").toLowerCase().startsWith("cancelled");
+  }, [order]);
+
+  const isPendingAcceptance = useMemo(() => {
+    if (isRejectedByMe || isCancelled) return false;
+    return String(order?.orderStatus || "") === "assigned_to_boy" && order?.selfDelivery?.status !== "accepted";
+  }, [order, isRejectedByMe, isCancelled]);
+
+  useEffect(() => {
+    if (isPendingAcceptance && order) {
+      triggerIncomingAlert(order);
+    } else {
+      stopIncomingAlert();
+    }
+  }, [isPendingAcceptance, order, triggerIncomingAlert, stopIncomingAlert]);
 
   useEffect(() => {
     let active = true;
@@ -117,6 +144,7 @@ export default function DeliveryBoyOrderDetail() {
  
   const handleAcceptOrder = async () => {
     if (!order) return;
+    stopIncomingAlert();
     setSubmitting(true);
     setError("");
     try {
@@ -132,6 +160,7 @@ export default function DeliveryBoyOrderDetail() {
 
   const handleRejectOrder = async () => {
     if (!order) return;
+    stopIncomingAlert();
     setSubmitting(true);
     setError("");
     try {
@@ -182,17 +211,6 @@ export default function DeliveryBoyOrderDetail() {
     navigate("/food/restaurant/login?role=delivery", { replace: true });
   };
 
-  const isRejectedByMe = useMemo(() => {
-    return order?.selfDelivery?.rejectedHistory?.some(
-      (h) => String(h.deliveryBoyId?._id || h.deliveryBoyId) === String(deliveryBoy?.id || deliveryBoy?._id)
-    ) &&
-    String(order?.selfDelivery?.deliveryBoyId?._id || order?.selfDelivery?.deliveryBoyId) !== String(deliveryBoy?.id || deliveryBoy?._id);
-  }, [order, deliveryBoy]);
-
-  const isCancelled = useMemo(() => {
-    return String(order?.orderStatus || "").toLowerCase().startsWith("cancelled");
-  }, [order]);
-
   const statusMeta = useMemo(() => {
     if (!order) return { label: "", badge: "" };
     if (isRejectedByMe) {
@@ -216,11 +234,6 @@ export default function DeliveryBoyOrderDetail() {
     }
     return STATUS_META[status] || { label: order.orderStatus, badge: "bg-slate-100 text-slate-700" };
   }, [order, isRejectedByMe]);
-
-  const isPendingAcceptance = useMemo(() => {
-    if (isRejectedByMe || isCancelled) return false;
-    return String(order?.orderStatus || "") === "assigned_to_boy" && order?.selfDelivery?.status !== "accepted";
-  }, [order, isRejectedByMe, isCancelled]);
 
   const nextAction = ACTIONS[String(order?.orderStatus || "")] || null;
   const address = useMemo(() => formatAddress(order?.deliveryAddress), [order]);
