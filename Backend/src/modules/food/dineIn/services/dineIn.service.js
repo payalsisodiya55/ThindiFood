@@ -1304,7 +1304,7 @@ export async function addTable(data) {
     const table = await FoodRestaurantTable.create({
         restaurantId: normalizedRestaurantId,
         tableNumber: normalizedTableNumber,
-        tableLabel: tableLabel || `Table ${normalizedTableNumber}`,
+        tableLabel: tableLabel || '',
         capacity: capacity || 4,
         qrCodeUrl
     });
@@ -1447,7 +1447,7 @@ export async function updateTable(tableId, data = {}) {
     }
 
     table.tableNumber = normalizedTableNumber;
-    table.tableLabel = normalizedTableLabel || `Table ${normalizedTableNumber}`;
+    table.tableLabel = normalizedTableLabel || '';
     table.capacity = normalizedCapacity;
     table.qrCodeUrl = buildTableQrUrl(String(table.restaurantId), normalizedTableNumber, frontendBaseUrl);
     await table.save();

@@ -174,6 +174,24 @@ export default function ItemDetailsPage() {
     return Boolean(errors.name || errors.price);
   });
 
+  const matchedCategory = Array.isArray(categories) ?
+    categories.find((c) => String(c?.id || "") === String(selectedCategoryId || "")) :
+    null;
+  const hasFoodTypeMismatch = Boolean(
+    matchedCategory?.foodTypeScope &&
+    matchedCategory.foodTypeScope !== "Both" &&
+    matchedCategory.foodTypeScope !== foodType
+  );
+
+  const hasValidationErrors = Boolean(
+    nameError ||
+    descriptionError ||
+    categoryError ||
+    imageError ||
+    hasFoodTypeMismatch ||
+    (variants.length === 0 ? basePriceError : hasIncompleteVariant)
+  );
+
   const validateMandatoryFieldsForUpload = () => {
     setTouchedFields((prev) => ({
       ...prev,
@@ -1620,9 +1638,9 @@ export default function ItemDetailsPage() {
           }
           <button
             onClick={handleSave}
-            disabled={uploadingImages}
-            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!uploadingImages ?
-            "bg-black text-white hover:bg-black" :
+            disabled={uploadingImages || hasValidationErrors}
+            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!(uploadingImages || hasValidationErrors) ?
+            "bg-black text-white hover:bg-black cursor-pointer" :
             "bg-gray-300 text-gray-500 cursor-not-allowed"}`
             }>
             

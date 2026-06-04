@@ -49,7 +49,7 @@ export default function RestaurantSupport() {
     issueType: "",
     subject: "",
     orderRef: "",
-    priority: "medium",
+    priority: "",
     description: "",
   })
 
@@ -102,6 +102,10 @@ export default function RestaurantSupport() {
       toast.error("Issue type is required")
       return
     }
+    if (!form.priority) {
+      toast.error("Please select a priority level")
+      return
+    }
     try {
       setSubmitting(true)
       await restaurantAPI.createSupportTicket({
@@ -113,7 +117,7 @@ export default function RestaurantSupport() {
         description: form.description.trim(),
       })
       toast.success("Support ticket submitted")
-      setForm((prev) => ({ ...prev, issueType: "", subject: "", orderRef: "", description: "" }))
+      setForm((prev) => ({ ...prev, issueType: "", subject: "", orderRef: "", priority: "", description: "" }))
       await loadTickets()
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to submit support ticket")
@@ -221,6 +225,7 @@ export default function RestaurantSupport() {
               onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-500"
             >
+              <option value="" disabled>Priority</option>
               {PRIORITY_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}

@@ -1124,11 +1124,13 @@ export default function Inventory() {
       toast.error("Description cannot exceed 200 characters")
       return
     }
-    const parsedPrice = parseFloat(addonPrice)
+    let parsedPrice = parseFloat(addonPrice)
     if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
       toast.error("Please enter a valid price")
       return
     }
+    // Automatically round to 2 decimal places if user enters more precision
+    parsedPrice = Math.round(parsedPrice * 100) / 100
     if (parsedPrice > 99999) {
       toast.error("Price cannot exceed ₹99,999")
       return
@@ -2146,8 +2148,14 @@ export default function Inventory() {
                         type="number"
                         value={addonPrice}
                         onChange={(e) => {
-                          const val = e.target.value;
-                          if (val.length <= 6) {
+                          let val = e.target.value;
+                          if (val.includes(".")) {
+                            const [integer, decimal] = val.split(".");
+                            if (decimal && decimal.length > 2) {
+                              val = `${integer}.${decimal.slice(0, 2)}`;
+                            }
+                          }
+                          if (val.length <= 8) {
                             setAddonPrice(val);
                           }
                         }}
@@ -2624,17 +2632,20 @@ export default function Inventory() {
                 </div>
 
                 <div className="flex gap-3">
-                  {selectedFilter !== "all" && (
-                    <button
-                      onClick={handleFilterClear}
-                      className="flex-1 border border-gray-300 text-gray-900 py-3 rounded-lg font-medium hover:bg-gray-50 transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
+                  <button
+                    onClick={handleFilterClear}
+                    disabled={selectedFilter === "all"}
+                    className={`flex-1 border py-3 rounded-lg font-medium transition-colors ${
+                      selectedFilter === "all"
+                        ? "border-gray-200 text-gray-400 cursor-not-allowed bg-gray-50"
+                        : "border-gray-300 text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    Clear
+                  </button>
                   <button
                     onClick={handleFilterApply}
-                    className={`${selectedFilter !== "all" ? 'flex-1' : 'w-full'} text-white py-3 rounded-lg font-medium hover:opacity-90 transition-colors`}
+                    className="flex-1 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-colors"
                     style={{ backgroundColor: RESTAURANT_THEME.brand }}
                   >
                     Apply

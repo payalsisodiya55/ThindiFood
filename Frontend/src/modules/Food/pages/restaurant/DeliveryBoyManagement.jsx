@@ -3,7 +3,6 @@ import {
   ArrowLeft,
   AlertCircle,
   Pencil,
-  Plus,
   Eye,
   EyeOff,
   Trash2,
@@ -246,7 +245,7 @@ export default function DeliveryBoyManagement() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-3xl border border-gray-200 bg-white p-5">
+        <form onSubmit={handleSubmit} autoComplete="off" className="space-y-4 rounded-3xl border border-gray-200 bg-white p-5">
           {!canManageDeliveryBoys ? (
             <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
@@ -258,7 +257,7 @@ export default function DeliveryBoyManagement() {
 
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              {isEditing ? <Pencil className="h-4 w-4 text-gray-600" /> : <Plus className="h-4 w-4 text-gray-600" />}
+              {isEditing && <Pencil className="h-4 w-4 text-gray-600" />}
               <h2 className="font-semibold text-gray-900">{titleText}</h2>
             </div>
             {isEditing ? (
@@ -285,6 +284,9 @@ export default function DeliveryBoyManagement() {
                 <div className="relative mt-1">
                   <input
                     type={key === "password" ? (showPassword ? "text" : "password") : "text"}
+                    name={`delivery-partner-${key}`}
+                    id={`delivery-partner-${key}`}
+                    autoComplete={key === "password" || key === "username" ? "new-password" : "off"}
                     value={form[key]}
                     maxLength={max}
                     onChange={(e) => {
