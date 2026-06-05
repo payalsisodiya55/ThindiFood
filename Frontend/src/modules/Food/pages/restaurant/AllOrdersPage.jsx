@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 import { motion, AnimatePresence } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
@@ -519,14 +520,15 @@ export default function AllOrdersPage() {
             onClick={() => setShowFilterPopup(true)}
             className={`p-2.5 border rounded-lg transition-colors relative ${
               hasActiveFilters() 
-                ? 'bg-blue-50 border-blue-500 hover:bg-blue-100' 
+                ? 'hover:opacity-90' 
                 : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
             }`}
+            style={hasActiveFilters() ? { backgroundColor: RESTAURANT_THEME.softBackground, borderColor: RESTAURANT_THEME.brand } : undefined}
             aria-label="Filter"
           >
-            <Filter className={`w-5 h-5 ${hasActiveFilters() ? 'text-blue-600' : 'text-gray-900'}`} />
+            <Filter className="w-5 h-5" style={hasActiveFilters() ? { color: RESTAURANT_THEME.brand } : { color: '#111827' }} />
             {hasActiveFilters() && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-600 rounded-full text-white text-xs flex items-center justify-center font-bold">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold" style={{ backgroundColor: RESTAURANT_THEME.brand }}>
                 {Object.values(filters).flat().length}
               </span>
             )}
@@ -555,17 +557,19 @@ export default function AllOrdersPage() {
           <motion.div 
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center justify-between"
+            className="border rounded-lg p-3 flex items-center justify-between"
+            style={{ backgroundColor: RESTAURANT_THEME.softBackground, borderColor: RESTAURANT_THEME.softBorder }}
           >
             <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-blue-900">
-                <span className="font-semibold">{Object.values(filters).flat().length}</span> filter{Object.values(filters).flat().length !== 1 ? 's' : ''} applied
+              <Filter className="w-4 h-4" style={{ color: RESTAURANT_THEME.brand }} />
+              <span className="text-sm text-slate-800">
+                <span className="font-semibold" style={{ color: RESTAURANT_THEME.brand }}>{Object.values(filters).flat().length}</span> filter{Object.values(filters).flat().length !== 1 ? 's' : ''} applied
               </span>
             </div>
             <button
               onClick={handleClearFilters}
-              className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+              className="text-xs font-medium hover:underline"
+              style={{ color: RESTAURANT_THEME.brand }}
             >
               Clear all
             </button>
@@ -578,7 +582,7 @@ export default function AllOrdersPage() {
         {loading && (
           <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
             <div className="flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderLeftColor: RESTAURANT_THEME.brand, borderRightColor: RESTAURANT_THEME.brand, borderBottomColor: RESTAURANT_THEME.brand }}></div>
               <p className="text-gray-600 text-sm">Loading orders...</p>
             </div>
           </div>
@@ -741,9 +745,10 @@ export default function AllOrdersPage() {
                       onClick={() => handleDateRangeSelect(option)}
                       className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
                         isSelected
-                          ? "border-blue-500 bg-blue-50"
+                          ? ""
                           : "border-gray-200 bg-white hover:bg-gray-50"
                       }`}
+                      style={isSelected ? { borderColor: RESTAURANT_THEME.brand, backgroundColor: RESTAURANT_THEME.softBackground } : undefined}
                     >
                       <div>
                         <p className="text-sm font-semibold text-gray-900 capitalize">{option.label}</p>
@@ -758,7 +763,7 @@ export default function AllOrdersPage() {
                           </p>
                         )}
                       </div>
-                      {isSelected && <span className="text-xs font-semibold text-blue-600">Selected</span>}
+                      {isSelected && <span className="text-xs font-semibold" style={{ color: RESTAURANT_THEME.brand }}>Selected</span>}
                     </button>
                   )
                 })}
@@ -859,9 +864,10 @@ export default function AllOrdersPage() {
                       }}
                       className={`w-full px-2 py-3 text-left text-xs transition-colors border-b border-gray-200 ${
                         activeFilterCategory === category.id
-                          ? 'bg-white text-gray-900 font-semibold border-2 border-l-black'
+                          ? 'bg-white text-gray-900 font-semibold border-2'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
+                      style={activeFilterCategory === category.id ? { borderLeft: `3px solid ${RESTAURANT_THEME.brand}` } : undefined}
                     >
                       {category.label}
                     </button>
@@ -905,13 +911,14 @@ export default function AllOrdersPage() {
                                   onClick={() => handleFilterToggle(option)}
                                   className={`w-5 h-5 rounded-full border-2 cursor-pointer transition-all ${
                                     isChecked 
-                                      ? 'border-blue-600 bg-white' 
+                                      ? 'bg-white' 
                                       : 'border-gray-300 bg-white'
                                   }`}
+                                  style={isChecked ? { borderColor: RESTAURANT_THEME.brand } : undefined}
                                 >
                                   {isChecked && (
                                     <div className="w-full h-full rounded-full flex items-center justify-center">
-                                      <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RESTAURANT_THEME.brand }}></div>
                                     </div>
                                   )}
                                 </div>
@@ -920,8 +927,10 @@ export default function AllOrdersPage() {
                                   type="checkbox"
                                   checked={isChecked}
                                   onChange={() => handleFilterToggle(option)}
-                                  className="w-5 h-5 border-2 border-gray-300 rounded cursor-pointer transition-all appearance-none checked:bg-blue-600 checked:border-blue-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 relative"
+                                  className="w-5 h-5 border-2 border-gray-300 rounded cursor-pointer transition-all appearance-none focus:ring-2 focus:ring-offset-2 relative"
                                   style={{
+                                    backgroundColor: isChecked ? RESTAURANT_THEME.brand : 'white',
+                                    borderColor: isChecked ? RESTAURANT_THEME.brand : '#d1d5db',
                                     backgroundImage: isChecked ? `url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e")` : 'none',
                                     backgroundSize: '100% 100%',
                                     backgroundPosition: '50%',
@@ -949,7 +958,8 @@ export default function AllOrdersPage() {
                 <button
                   onClick={handleApplyFilters}
                   disabled={isApplyingFilters}
-                  className="flex-1 px-4 py-2.5 bg-black rounded-lg text-sm font-medium text-white hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white hover:opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  style={{ backgroundColor: RESTAURANT_THEME.brand }}
                 >
                   {isApplyingFilters ? (
                     <>
@@ -979,7 +989,7 @@ export default function AllOrdersPage() {
             className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center"
           >
             <div className="flex flex-col items-center gap-3">
-              <svg className="animate-spin h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <svg className="animate-spin h-10 w-10" style={{ color: RESTAURANT_THEME.brand }} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
