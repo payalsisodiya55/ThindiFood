@@ -1,4 +1,5 @@
 import { confirmApp } from "@shared/lib/appDialog";import { useState, useRef, useEffect } from "react";
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -122,9 +123,7 @@ export default function ItemDetailsPage() {
   "Please enter an item name" :
   null;
   const descriptionError =
-  !itemDescription.trim() ?
-  "Please enter an item description" :
-  itemDescription.trim().length < minDescriptionLength ?
+  itemDescription.trim().length > 0 && itemDescription.trim().length < minDescriptionLength ?
   "Min 5 characters required" :
   null;
   const categoryError =
@@ -1149,7 +1148,8 @@ export default function ItemDetailsPage() {
             
             <button
               onClick={handleCameraClick}
-              className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl text-sm font-semibold cursor-pointer hover:from-gray-800 hover:to-gray-700 transition-all shadow-md hover:shadow-lg active:scale-95">
+              className="w-full flex items-center justify-center gap-2.5 px-6 py-3.5 text-white rounded-xl text-sm font-semibold cursor-pointer transition-all shadow-md hover:shadow-lg active:scale-95 hover:opacity-90"
+              style={{ backgroundColor: RESTAURANT_THEME.brand }}>
               
               <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
                 <Plus className="w-4 h-4" />
@@ -1236,9 +1236,10 @@ export default function ItemDetailsPage() {
               <button
                 onClick={() => setFoodType("Veg")}
                 className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${foodType === "Veg" ?
-                "border-green-600 border-2 text-green-600" :
+                "border-2 bg-white" :
                 "bg-gray-100 text-gray-700 hover:bg-gray-200"}`
-                }>
+                }
+                style={foodType === "Veg" ? { borderColor: RESTAURANT_THEME.brand, color: RESTAURANT_THEME.brand } : undefined}>
                 
                 {foodType === "Veg" && <Check className="w-4 h-4" />}
                 <span>Veg</span>
@@ -1456,11 +1457,9 @@ export default function ItemDetailsPage() {
           <div className="flex items-center justify-between py-3 border-t border-gray-200">
             <button
               onClick={() => setIsRecommended(!isRecommended)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isRecommended ?
-              "bg-blue-100 text-blue-700" :
-              "bg-gray-100 text-gray-700 hover:bg-gray-200"}`
-              }>
-              
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={isRecommended ? { backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand } : { backgroundColor: "#f3f4f6", color: "#374151" }}
+            >
               <ThumbsUp className="w-4 h-4" />
               <span>Recommend</span>
             </button>
@@ -1505,7 +1504,8 @@ export default function ItemDetailsPage() {
                     setIsCategoryPopupOpen(false);
                     navigate('/restaurant/menu-categories');
                   }}
-                  className="p-2 rounded-lg bg-black text-white hover:bg-gray-800 transition-colors flex items-center gap-1.5"
+                  className="p-2 rounded-lg text-white transition-colors flex items-center gap-1.5 hover:opacity-90"
+                  style={{ backgroundColor: RESTAURANT_THEME.brand }}
                   title="Add Category">
                   
                     <Plus className="w-4 h-4" />
@@ -1532,7 +1532,8 @@ export default function ItemDetailsPage() {
                     setIsCategoryPopupOpen(false);
                     navigate('/restaurant/menu-categories');
                   }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-black text-white rounded-lg font-semibold hover:bg-gray-800 transition-colors">
+                  className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg font-semibold transition-colors hover:opacity-90"
+                  style={{ backgroundColor: RESTAURANT_THEME.brand }}>
                   
                       <Plus className="w-5 h-5" />
                       Add Category
@@ -1545,9 +1546,10 @@ export default function ItemDetailsPage() {
                   key={cat.id}
                   onClick={() => handleCategorySelect(cat.id, cat.name)}
                   className={`w-full rounded-lg px-4 py-3 text-left transition-colors ${String(selectedCategoryId || "") === String(cat.id) ?
-                  "bg-gray-900 text-white" :
+                  "text-white" :
                   "bg-gray-50 text-gray-900 hover:bg-gray-100"}`
-                  }>
+                  }
+                  style={String(selectedCategoryId || "") === String(cat.id) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
                   
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium">{cat.name}</span>
@@ -1640,9 +1642,10 @@ export default function ItemDetailsPage() {
             onClick={handleSave}
             disabled={uploadingImages || hasValidationErrors}
             className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!(uploadingImages || hasValidationErrors) ?
-            "bg-black text-white hover:bg-black cursor-pointer" :
+            "text-white hover:opacity-90 cursor-pointer" :
             "bg-gray-300 text-gray-500 cursor-not-allowed"}`
-            }>
+            }
+            style={!(uploadingImages || hasValidationErrors) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
             
             {uploadingImages ?
             <>

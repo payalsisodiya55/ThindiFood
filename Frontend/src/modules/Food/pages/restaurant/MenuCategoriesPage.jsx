@@ -1,4 +1,5 @@
 import { confirmApp } from "@shared/lib/appDialog";import { useEffect, useMemo, useRef, useState } from "react";
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
 import { useLocation, useNavigate } from "react-router-dom";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -292,7 +293,8 @@ export default function MenuCategoriesPage() {
 
         <button
           onClick={openCreateModal}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 font-semibold text-white">
+          className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold text-white hover:opacity-90 transition-all"
+          style={{ backgroundColor: RESTAURANT_THEME.brand }}>
           
           <Plus className="h-5 w-5" />
           Add Category
@@ -385,8 +387,9 @@ export default function MenuCategoriesPage() {
                     </button>
                     <button
                     onClick={() => openEditModal(category)}
-                    className="rounded-xl bg-blue-50 p-2 text-blue-700 disabled:opacity-50"
-                    disabled={!isEditable}>
+                    className="rounded-xl p-2 disabled:opacity-50"
+                    disabled={!isEditable}
+                    style={isEditable ? { backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand } : undefined}>
                     
                       <Edit2 className="h-4 w-4" />
                     </button>
@@ -470,8 +473,9 @@ export default function MenuCategoriesPage() {
                     </button>
                     <button
                     onClick={() => openEditModal(category)}
-                    className="rounded-xl bg-blue-50 p-2 text-blue-700 disabled:opacity-50"
-                    disabled={!isEditable}>
+                    className="rounded-xl p-2 disabled:opacity-50"
+                    disabled={!isEditable}
+                    style={isEditable ? { backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand } : undefined}>
                     
                       <Edit2 className="h-4 w-4" />
                     </button>
@@ -623,7 +627,8 @@ export default function MenuCategoriesPage() {
                 <button
                 onClick={handleSaveCategory}
                 disabled={uploadingImage}
-                className="flex-1 rounded-xl bg-slate-900 py-3 font-medium text-white disabled:opacity-60">
+                className="flex-1 rounded-xl py-3 font-medium text-white disabled:opacity-60 hover:opacity-90 transition-all"
+                style={uploadingImage ? undefined : { backgroundColor: RESTAURANT_THEME.brand }}>
                 
                   {uploadingImage ? "Uploading..." : editingCategory ? "Save & Resubmit" : "Create"}
                 </button>
