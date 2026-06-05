@@ -272,15 +272,89 @@ export default function OrderDetails() {
             deliveryPartnerId: order.deliveryPartnerId || order.dispatch?.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
             reason: order.cancellationReason || '',
-            timeline: [
-              { event: 'Order placed', timestamp: new Date(order.createdAt).toLocaleString('en-GB'), status: 'completed' },
-              ...(reached.confirmed ? [{ event: 'Order confirmed', timestamp: order.tracking?.confirmed?.timestamp ? new Date(order.tracking.confirmed.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
-              ...(reached.preparing ? [{ event: 'Preparing', timestamp: order.tracking?.preparing?.timestamp ? new Date(order.tracking.preparing.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
-              ...(reached.ready ? [{ event: 'Ready for pickup', timestamp: order.tracking?.ready?.timestamp ? new Date(order.tracking.ready.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
-              ...(reached.outForDelivery ? [{ event: 'Out for delivery', timestamp: order.tracking?.outForDelivery?.timestamp ? new Date(order.tracking.outForDelivery.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
-              ...(reached.delivered ? [{ event: 'Delivered', timestamp: order.tracking?.delivered?.timestamp ? new Date(order.tracking.delivered.timestamp).toLocaleString('en-GB') : '', status: 'completed' }] : []),
-              ...(statusLower === 'cancelled' ? [{ event: 'Cancelled', timestamp: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString('en-GB') : '', status: 'rejected', reason: order.cancellationReason }] : [])
-            ]
+            timeline: (() => {
+              const list = [
+                { 
+                  event: 'Order placed', 
+                  timestamp: new Date(order.createdAt).toLocaleString('en-GB'), 
+                  status: 'completed' 
+                }
+              ]
+
+              const isCancelled = statusLower === 'cancelled' || statusLower.includes('cancel') || statusLower === 'rejected'
+
+              if (isCancelled) {
+                if (reached.confirmed) {
+                  list.push({ 
+                    event: 'Order confirmed', 
+                    timestamp: order.tracking?.confirmed?.timestamp ? new Date(order.tracking.confirmed.timestamp).toLocaleString('en-GB') : '', 
+                    status: 'completed' 
+                  })
+                }
+                if (reached.preparing) {
+                  list.push({ 
+                    event: 'Preparing', 
+                    timestamp: order.tracking?.preparing?.timestamp ? new Date(order.tracking.preparing.timestamp).toLocaleString('en-GB') : '', 
+                    status: 'completed' 
+                  })
+                }
+                if (reached.ready) {
+                  list.push({ 
+                    event: 'Ready for pickup', 
+                    timestamp: order.tracking?.ready?.timestamp ? new Date(order.tracking.ready.timestamp).toLocaleString('en-GB') : '', 
+                    status: 'completed' 
+                  })
+                }
+                if (reached.outForDelivery) {
+                  list.push({ 
+                    event: 'Out for delivery', 
+                    timestamp: order.tracking?.outForDelivery?.timestamp ? new Date(order.tracking.outForDelivery.timestamp).toLocaleString('en-GB') : '', 
+                    status: 'completed' 
+                  })
+                }
+                if (reached.delivered) {
+                  list.push({ 
+                    event: 'Delivered', 
+                    timestamp: order.tracking?.delivered?.timestamp ? new Date(order.tracking.delivered.timestamp).toLocaleString('en-GB') : '', 
+                    status: 'completed' 
+                  })
+                }
+                list.push({ 
+                  event: 'Cancelled', 
+                  timestamp: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString('en-GB') : '', 
+                  status: 'rejected', 
+                  reason: order.cancellationReason 
+                })
+              } else {
+                list.push({ 
+                  event: 'Order confirmed', 
+                  timestamp: order.tracking?.confirmed?.timestamp ? new Date(order.tracking.confirmed.timestamp).toLocaleString('en-GB') : '', 
+                  status: reached.confirmed ? 'completed' : 'pending' 
+                })
+                list.push({ 
+                  event: 'Preparing', 
+                  timestamp: order.tracking?.preparing?.timestamp ? new Date(order.tracking.preparing.timestamp).toLocaleString('en-GB') : '', 
+                  status: reached.preparing ? 'completed' : 'pending' 
+                })
+                list.push({ 
+                  event: 'Ready for pickup', 
+                  timestamp: order.tracking?.ready?.timestamp ? new Date(order.tracking.ready.timestamp).toLocaleString('en-GB') : '', 
+                  status: reached.ready ? 'completed' : 'pending' 
+                })
+                list.push({ 
+                  event: 'Out for delivery', 
+                  timestamp: order.tracking?.outForDelivery?.timestamp ? new Date(order.tracking.outForDelivery.timestamp).toLocaleString('en-GB') : '', 
+                  status: reached.outForDelivery ? 'completed' : 'pending' 
+                })
+                list.push({ 
+                  event: 'Delivered', 
+                  timestamp: order.tracking?.delivered?.timestamp ? new Date(order.tracking.delivered.timestamp).toLocaleString('en-GB') : '', 
+                  status: reached.delivered ? 'completed' : 'pending' 
+                })
+              }
+
+              return list
+            })()
           }
           
           setOrderData(transformedOrder)
@@ -1009,19 +1083,22 @@ export default function OrderDetails() {
                         ? "bg-gray-900" 
                         : event.status === "rejected"
                         ? "bg-red-600"
-                        : "bg-gray-400"
+                        : "bg-white border-2 border-gray-300"
                     }`}>
                       {event.status === "completed" ? (
                         <CheckCircle className="w-4 h-4 text-white" />
-                      ) : (
+                      ) : event.status === "rejected" ? (
                         <XCircle className="w-4 h-4 text-white" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-gray-300" />
                       )}
                     </div>
                     
                     {/* Event Details */}
                     <div className="flex-1 pt-1">
                       <p className="text-sm text-gray-900">{event.event}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{event.timestamp}</p>
+                      {event.timestamp && <p className="text-xs text-gray-500 mt-0.5">{event.timestamp}</p>}
+                      {event.reason && <p className="text-xs text-red-600 mt-0.5 font-medium">Reason: {event.reason}</p>}
                     </div>
                   </div>
                 ))}

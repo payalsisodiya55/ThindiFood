@@ -3167,7 +3167,9 @@ export default function RestaurantOnboarding() {
 
                       const formattedDate = formatDateToLocalYMD(date)
                       if (!isFssaiExpiryOutsideAllowedRange(formattedDate)) {
-                        setStep3({ ...step3, fssaiExpiry: formattedDate })
+                        const nextStep3 = { ...step3, fssaiExpiry: formattedDate }
+                        setStep3(nextStep3)
+                        revalidateTouchedField("fssaiExpiry", { step3: nextStep3 })
                         setIsFssaiCalendarOpen(false)
                         return
                       }
