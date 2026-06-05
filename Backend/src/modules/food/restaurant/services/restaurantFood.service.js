@@ -190,6 +190,7 @@ export async function createRestaurantFood(restaurantId, body = {}) {
     const isAvailable = body.isAvailable !== false;
     const foodType = normalizeFoodType(body.foodType);
     const preparationTime = toStr(body.preparationTime);
+    if (!preparationTime) throw new ValidationError('Preparation time is required');
     const { categoryObjectId, categoryName } = await resolveCategoryForRestaurant(context, { ...body, foodType });
 
     const doc = await FoodItem.create({
@@ -248,7 +249,11 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
     if (body.image !== undefined) update.image = toStr(body.image);
     Object.assign(update, getUpdatedFoodPricing(existing, body));
     if (body.isAvailable !== undefined) update.isAvailable = body.isAvailable !== false;
-    if (body.preparationTime !== undefined) update.preparationTime = toStr(body.preparationTime);
+    if (body.preparationTime !== undefined) {
+        const preparationTime = toStr(body.preparationTime);
+        if (!preparationTime) throw new ValidationError('Preparation time is required');
+        update.preparationTime = preparationTime;
+    }
 
     const targetFoodType = body.foodType !== undefined ? normalizeFoodType(body.foodType) : normalizeFoodType(existing.foodType);
     if (body.foodType !== undefined) update.foodType = targetFoodType;

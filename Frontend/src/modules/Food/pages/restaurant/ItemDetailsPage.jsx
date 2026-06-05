@@ -117,7 +117,7 @@ export default function ItemDetailsPage() {
   typeof img === "string" && String(img).trim() !== ""
   );
   const parsedBasePrice = Number(basePrice);
-  const isBasePriceValid = Number.isFinite(parsedBasePrice) && parsedBasePrice > 0;
+   const isBasePriceValid = Number.isFinite(parsedBasePrice) && parsedBasePrice > 0;
   const nameError =
   !itemName.trim() ?
   "Please enter an item name" :
@@ -133,6 +133,10 @@ export default function ItemDetailsPage() {
   const imageError =
   !hasAttachedImage ?
   "Please upload a menu item image" :
+  null;
+  const preparationTimeError =
+  !preparationTime ?
+  "Please select a preparation time" :
   null;
   const basePriceError =
   variants.length === 0 ? (
@@ -187,6 +191,7 @@ export default function ItemDetailsPage() {
     descriptionError ||
     categoryError ||
     imageError ||
+    preparationTimeError ||
     hasFoodTypeMismatch ||
     (variants.length === 0 ? basePriceError : hasIncompleteVariant)
   );
@@ -198,12 +203,14 @@ export default function ItemDetailsPage() {
       itemDescription: true,
       category: true,
       basePrice: true,
+      preparationTime: true,
     }));
 
     const errors = [];
     if (nameError) errors.push(nameError);
     if (descriptionError) errors.push(descriptionError);
     if (categoryError) errors.push(categoryError);
+    if (preparationTimeError) errors.push(preparationTimeError);
     if (!foodType) errors.push("Please select food type");
     if (variants.length === 0) {
       if (basePriceError) errors.push(basePriceError);
@@ -1423,12 +1430,22 @@ export default function ItemDetailsPage() {
 
               {/* Preparation Time */}
               <div className="relative">
-                <label className="block text-xs text-gray-600 mb-1">Preparation Time</label>
+                <label className="block text-xs text-gray-600 mb-1">
+                  Preparation Time<span className="text-rose-500 ml-1">*</span>
+                </label>
                 <div className="relative">
                   <select
                     value={preparationTime}
-                    onChange={(e) => setPreparationTime(e.target.value)}
-                    className="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none">
+                    onChange={(e) => {
+                      setPreparationTime(e.target.value);
+                      setTouchedFields((prev) => ({ ...prev, preparationTime: true }));
+                    }}
+                    onBlur={() => setTouchedFields((prev) => ({ ...prev, preparationTime: true }))}
+                    className={`w-full pl-4 pr-10 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
+                      shouldShowFieldError("preparationTime", Boolean(preparationTime)) && preparationTimeError
+                        ? "border-red-500 ring-2 ring-red-500/20"
+                        : "border-gray-300"
+                    }`}>
                     
                     <option value="">Select timing</option>
                     <option value="10-20 mins">10-20 mins</option>
@@ -1438,6 +1455,9 @@ export default function ItemDetailsPage() {
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
                 </div>
+                {shouldShowFieldError("preparationTime", Boolean(preparationTime)) && preparationTimeError ? (
+                  <p className="mt-1 text-xs text-red-500">{preparationTimeError}</p>
+                ) : null}
               </div>
               {/* <div>
                  <label className="block text-xs text-gray-600 mb-1">GST</label>
