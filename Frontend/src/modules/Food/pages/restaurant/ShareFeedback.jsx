@@ -66,13 +66,6 @@ export default function ShareFeedback() {
         <h1 className="text-xl font-semibold text-gray-900 flex-1">
           Share your feedback
         </h1>
-        <button
-          onClick={handleClose}
-          className="p-2 rounded-full hover:bg-gray-100"
-          aria-label="Close"
-        >
-          <X className="w-5 h-5 text-gray-900" />
-        </button>
       </div>
 
       <div className="flex-1 px-4">
@@ -101,9 +94,9 @@ export default function ShareFeedback() {
                   whileTap={{ scale: 0.96 }}
                   animate={{ scale }}
                   transition={{ type: "spring", stiffness: 260, damping: 20 }}
-                  className={`py-2 text-xs font-medium border-l border-gray-200 first:border-l-0 focus:outline-none ${
+                  className={`py-2 text-xs font-medium border-l border-gray-200 first:border-l-0 focus:outline-none transition-colors duration-150 ${
                     isActive
-                      ? "bg-black text-white"
+                      ? "bg-[#00c87e] text-white"
                       : "bg-white text-gray-900 hover:bg-gray-50"
                   }`}
                 >
@@ -151,15 +144,15 @@ export default function ShareFeedback() {
         <motion.button
           type="button"
           onClick={handleContinue}
-          disabled={rating === null}
+          disabled={rating === null || isSubmitting}
           className={`w-full py-3 rounded-full text-sm font-medium transition-colors ${
             rating === null
               ? "bg-gray-200 text-gray-500"
-              : "bg-black text-white hover:bg-gray-900"
+              : "bg-[#00c87e] text-white hover:bg-[#00b06f]"
           }`}
           whileTap={rating !== null ? { scale: 0.98 } : undefined}
         >
-          Continue
+          {isSubmitting ? "Submitting..." : "Continue"}
         </motion.button>
       </div>
 
@@ -196,7 +189,7 @@ export default function ShareFeedback() {
                 </p>
                 <button
                   type="button"
-                  className="w-full py-2.5 rounded-full bg-black text-white text-sm font-medium"
+                  className="w-full py-2.5 rounded-full bg-[#00c87e] hover:bg-[#00b06f] text-white text-sm font-medium transition-colors cursor-pointer"
                   onClick={() => {
                     setShowThanks(false)
                     goBack()
