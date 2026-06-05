@@ -120,12 +120,21 @@ function TimeColumn({ options, selected, onSelect, label, isLast }: TimeColumnPr
 
   // Scroll to selected element on open
   React.useEffect(() => {
-    if (scrollRef.current) {
-      const selectedElement = scrollRef.current.querySelector(`[data-selected="true"]`) as HTMLElement
-      if (selectedElement) {
-        scrollRef.current.scrollTop = selectedElement.offsetTop - scrollRef.current.offsetHeight / 2 + selectedElement.offsetHeight / 2
+    const scrollToSelected = () => {
+      if (scrollRef.current) {
+        const selectedElement = scrollRef.current.querySelector(`[data-selected="true"]`) as HTMLElement
+        if (selectedElement) {
+          scrollRef.current.scrollTop = selectedElement.offsetTop - scrollRef.current.offsetHeight / 2 + selectedElement.offsetHeight / 2
+        }
       }
     }
+
+    // Run immediately
+    scrollToSelected()
+
+    // Run again with a brief delay to account for transitions and dynamic portal sizing
+    const timer = setTimeout(scrollToSelected, 30)
+    return () => clearTimeout(timer)
   }, [selected])
 
   return (
@@ -139,7 +148,7 @@ function TimeColumn({ options, selected, onSelect, label, isLast }: TimeColumnPr
       <div 
         ref={scrollRef}
         data-lenis-prevent
-        className="overflow-y-auto overflow-x-hidden scrollbar-hide flex-1"
+        className="overflow-y-auto overflow-x-hidden scrollbar-hide flex-1 relative"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <div className="py-32"> {/* Centering padding */}
