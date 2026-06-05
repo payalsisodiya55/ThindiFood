@@ -226,8 +226,6 @@ export default function ZoneSetup() {
 
       polygon.addListener("click", async (event) => {
         zoneInfoWindowsRef.current.forEach((currentInfoWindow) => currentInfoWindow.close())
-        infoWindow.setPosition(center)
-        infoWindow.open(mapInstanceRef.current)
 
         const clickedLat = event?.latLng?.lat?.()
         const clickedLng = event?.latLng?.lng?.()
