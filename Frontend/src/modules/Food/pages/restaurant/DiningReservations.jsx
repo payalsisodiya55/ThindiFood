@@ -791,12 +791,29 @@ export default function DiningReservations() {
                                                                 <div className="flex items-center justify-end gap-2">
                                                                     {isPendingReservationStatus(booking.status) && (
                                                                         <>
-                                                                            <button onClick={() => handleStatusUpdate(booking._id, 'CONFIRMED')} className="px-3 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-700 cursor-pointer">Accept</button>
-                                                                            <button onClick={() => handleStatusUpdate(booking._id, 'DECLINED')} className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 cursor-pointer">Decline</button>
+                                                                            <button 
+                                                                                onClick={() => handleStatusUpdate(booking._id, 'CONFIRMED')} 
+                                                                                className="px-3 py-1.5 text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all cursor-pointer"
+                                                                                style={{ backgroundColor: RESTAURANT_THEME.brand }}
+                                                                            >
+                                                                                Accept
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => handleStatusUpdate(booking._id, 'DECLINED')} 
+                                                                                className="px-3 py-1.5 bg-slate-100 text-slate-600 text-xs font-bold rounded-lg hover:bg-slate-200 transition-colors cursor-pointer"
+                                                                            >
+                                                                                Decline
+                                                                            </button>
                                                                         </>
                                                                     )}
                                                                     {isConfirmedReservationStatus(booking.status) && (
-                                                                        <button onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')} className="px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 cursor-pointer">Check-in 🔔</button>
+                                                                        <button 
+                                                                            onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')} 
+                                                                            className="px-3 py-1.5 text-white text-xs font-bold rounded-lg hover:opacity-90 transition-all cursor-pointer"
+                                                                            style={{ backgroundColor: RESTAURANT_THEME.brand }}
+                                                                        >
+                                                                            Check-in 🔔
+                                                                        </button>
                                                                     )}
                                                                 </div>
                                                             </td>
@@ -829,12 +846,29 @@ export default function DiningReservations() {
                                                     <div className="flex gap-2">
                                                         {isPendingReservationStatus(booking.status) && (
                                                             <>
-                                                                <button onClick={() => handleStatusUpdate(booking._id, 'CONFIRMED')} className="flex-1 py-2 bg-emerald-600 text-white text-xs font-black rounded-xl cursor-pointer uppercase">Accept</button>
-                                                                <button onClick={() => handleStatusUpdate(booking._id, 'DECLINED')} className="flex-1 py-2 bg-slate-100 text-slate-600 text-xs font-black rounded-xl cursor-pointer uppercase">Decline</button>
+                                                                <button 
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'CONFIRMED')} 
+                                                                    className="flex-1 py-2 text-white text-xs font-black rounded-xl cursor-pointer uppercase hover:opacity-90 transition-all"
+                                                                    style={{ backgroundColor: RESTAURANT_THEME.brand }}
+                                                                >
+                                                                    Accept
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleStatusUpdate(booking._id, 'DECLINED')} 
+                                                                    className="flex-1 py-2 bg-slate-100 text-slate-600 text-xs font-black rounded-xl cursor-pointer uppercase transition-colors"
+                                                                >
+                                                                    Decline
+                                                                </button>
                                                             </>
                                                         )}
                                                         {isConfirmedReservationStatus(booking.status) && (
-                                                            <button onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')} className="flex-1 py-2 bg-orange-600 text-white text-xs font-black rounded-xl cursor-pointer uppercase">Check-in 🔔</button>
+                                                            <button 
+                                                                onClick={() => handleStatusUpdate(booking._id, 'CHECKED_IN')} 
+                                                                className="flex-1 py-2 text-white text-xs font-black rounded-xl cursor-pointer uppercase hover:opacity-90 transition-all"
+                                                                style={{ backgroundColor: RESTAURANT_THEME.brand }}
+                                                            >
+                                                                Check-in 🔔
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </motion.div>
@@ -864,8 +898,13 @@ export default function DiningReservations() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h3 className="font-black text-slate-800 flex items-center gap-2"><ImagePlus className="w-5 h-5 text-blue-600" /> Ambiance Photos</h3>
-                                        <label className="px-4 py-2 bg-blue-50 text-blue-600 text-xs font-black rounded-xl hover:bg-blue-100 transition-colors cursor-pointer uppercase tracking-wider">
+                                        <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                            <ImagePlus className="w-5 h-5" style={{ color: RESTAURANT_THEME.brand }} /> Ambiance Photos
+                                        </h3>
+                                        <label 
+                                            className="px-4 py-2 text-xs font-black rounded-xl hover:opacity-90 transition-all cursor-pointer uppercase tracking-wider"
+                                            style={{ backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand }}
+                                        >
                                             Upload <input type="file" multiple accept="image/*" className="hidden" onChange={handleRestaurantPhotoUpload} disabled={uploadingRestaurantPhoto} />
                                         </label>
                                     </div>
@@ -883,8 +922,13 @@ export default function DiningReservations() {
 
                                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h3 className="font-black text-slate-800 flex items-center gap-2"><UploadCloud className="w-5 h-5 text-emerald-600" /> Menu Cards</h3>
-                                        <label className="px-4 py-2 bg-emerald-50 text-emerald-600 text-xs font-black rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer uppercase tracking-wider">
+                                        <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                            <UploadCloud className="w-5 h-5" style={{ color: RESTAURANT_THEME.brand }} /> Menu Cards
+                                        </h3>
+                                        <label 
+                                            className="px-4 py-2 text-xs font-black rounded-xl hover:opacity-90 transition-all cursor-pointer uppercase tracking-wider"
+                                            style={{ backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand }}
+                                        >
                                             Upload <input type="file" multiple accept="image/*" className="hidden" onChange={handleMenuPhotosUpload} disabled={uploadingMenuPhotos} />
                                         </label>
                                     </div>
