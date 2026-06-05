@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { Search, Menu, ChevronRight, MapPin, X, Bell } from "lucide-react"
 import { restaurantAPI } from "@food/api"
@@ -35,9 +35,20 @@ export default function RestaurantNavbar({
   const navigate = useNavigate()
   const [localSearchActive, setLocalSearchActive] = useState(false)
   const [localSearchValue, setLocalSearchValue] = useState("")
+  const searchInputRef = useRef(null)
 
   const isSearchActive = onSearchActiveChange !== undefined ? (localSearchActive || !!propSearchValue) : localSearchActive
   const searchValue = propSearchValue !== undefined ? propSearchValue : localSearchValue
+
+  useEffect(() => {
+    if (isSearchActive && searchInputRef.current) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 150)
+      return () => clearTimeout(timer)
+    }
+  }, [isSearchActive])
+
   const [status, setStatus] = useState("Offline")
   const [restaurantData, setRestaurantData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -348,133 +359,138 @@ export default function RestaurantNavbar({
     navigate("/restaurant/notifications")
   }
 
-  // Show search input when search is active
-  if (isSearchActive) {
-    return (
-      <div className="w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
+  return (
+    <div className="relative w-full bg-white border-b border-gray-200 overflow-hidden">
+      {/* Base Navbar Content */}
+      <div className="w-full px-4 py-3.5 flex items-center justify-between">
+        {/* Left Side - Restaurant Info */}
+        <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
+          {logoUrl && (
+            <img src={logoUrl} alt="Logo" className="h-10 w-auto max-w-[48px] object-contain shrink-0" />
+          )}
+          <div className="min-w-0 flex flex-col justify-center">
+            {/* Restaurant Name */}
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-[15px] font-bold text-gray-900 truncate leading-none">
+                {loading ? "Loading..." : (restaurantName || "Restaurant")}
+              </h1>
+            </div>
+            {!loading && location && location.trim() !== "" && (
+              <div className="flex items-center gap-1 mt-1 opacity-80 leading-none">
+                <MapPin className="w-2.5 h-2.5 text-gray-500 shrink-0" />
+                <p className="text-[10px] text-gray-500 truncate font-medium leading-none" title={location}>
+                  {location}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right Side - Interactive Elements */}
+        <div className="flex items-center shrink-0 gap-2 sm:gap-2.5">
+          {/* Offline/Online Status Tag */}
+          {showOfflineOnlineTag && (
+            <button
+              onClick={handleStatusClick}
+              className={`h-9 px-3 flex items-center justify-center gap-1.5 border rounded-full hover:opacity-90 active:scale-95 transition-all ${
+                status === "Online" 
+                  ? "" 
+                  : "bg-gray-100 border-gray-300"
+              }`}
+              style={
+                status === "Online"
+                  ? {
+                      backgroundColor: RESTAURANT_THEME.softBackground,
+                      borderColor: RESTAURANT_THEME.softBorder,
+                    }
+                  : undefined
+              }
+            >
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                status === "Online" ? "" : "bg-gray-500"
+              }`}
+              style={status === "Online" ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}
+              ></span>
+              <span className={`text-xs font-bold leading-none ${
+                status === "Online" ? "" : "text-gray-700"
+              }`}
+              style={status === "Online" ? { color: RESTAURANT_THEME.softText } : undefined}
+              >
+                {status}
+              </span>
+              <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${
+                status === "Online" ? "" : "text-gray-700"
+              }`}
+              style={status === "Online" ? { color: RESTAURANT_THEME.softText } : undefined}
+              />
+            </button>
+          )}
+
+          {/* Search Icon */}
+          {showSearch && (
+            <button
+              onClick={handleSearchClick}
+              className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
+              aria-label="Search"
+            >
+              <Search className="w-5 h-5 text-gray-700" />
+            </button>
+          )}
+
+          {/* Notifications Icon */}
+          {showNotifications && (
+            <button
+              onClick={handleNotificationsClick}
+              className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
+              aria-label="Notifications"
+            >
+              <div className="relative flex items-center justify-center">
+                <Bell className="w-5 h-5 text-gray-700" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-white animate-pulse" />
+                )}
+              </div>
+            </button>
+          )}
+
+          {/* Hamburger Menu Icon */}
+          <button
+            onClick={handleMenuClick}
+            className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
+            aria-label="Menu"
+          >
+            <Menu className="w-5 h-5 text-gray-700" />
+          </button>
+        </div>
+      </div>
+
+      {/* Search Overlay Container with smooth expand/collapse transition */}
+      <div 
+        className={`absolute inset-0 bg-white px-4 flex items-center gap-3 transition-all duration-300 ease-out z-20 ${
+          isSearchActive 
+            ? "translate-x-0 opacity-100 pointer-events-auto" 
+            : "translate-x-full opacity-0 pointer-events-none"
+        }`}
+      >
         {/* Search Input */}
         <div className="flex-1 relative">
           <input
+            ref={searchInputRef}
             type="text"
             value={searchValue}
             onChange={handleSearchChange}
             placeholder="Search by order ID"
-            className="w-full px-4 py-2 text-gray-900 placeholder-gray-500 focus:outline-none"
-            autoFocus
+            className="w-full px-4 py-2 text-gray-900 placeholder-gray-500 focus:outline-none bg-transparent"
           />
         </div>
 
         {/* Close Button */}
         <button
           onClick={handleSearchClose}
-          className="w-6 h-6 bg-black rounded-full flex items-center justify-center shrink-0"
+          className="w-6 h-6 bg-black rounded-full flex items-center justify-center shrink-0 transition-transform duration-300 hover:rotate-90 active:scale-90"
           aria-label="Close search"
         >
           <X className="w-3 h-3 text-white" />
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="w-full bg-white border-b border-gray-200 px-4 py-3.5 flex items-center justify-between">
-      {/* Left Side - Restaurant Info */}
-      <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
-        {logoUrl && (
-          <img src={logoUrl} alt="Logo" className="h-10 w-auto max-w-[48px] object-contain shrink-0" />
-        )}
-        <div className="min-w-0 flex flex-col justify-center">
-          {/* Restaurant Name */}
-          <div className="flex items-center gap-1.5 min-w-0">
-            <h1 className="text-[15px] font-bold text-gray-900 truncate leading-none">
-              {loading ? "Loading..." : (restaurantName || "Restaurant")}
-            </h1>
-          </div>
-          {!loading && location && location.trim() !== "" && (
-            <div className="flex items-center gap-1 mt-1 opacity-80 leading-none">
-              <MapPin className="w-2.5 h-2.5 text-gray-500 shrink-0" />
-              <p className="text-[10px] text-gray-500 truncate font-medium leading-none" title={location}>
-                {location}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right Side - Interactive Elements */}
-      <div className="flex items-center shrink-0 gap-2 sm:gap-2.5">
-        {/* Offline/Online Status Tag */}
-        {showOfflineOnlineTag && (
-          <button
-            onClick={handleStatusClick}
-            className={`h-9 px-3 flex items-center justify-center gap-1.5 border rounded-full hover:opacity-90 active:scale-95 transition-all ${
-              status === "Online" 
-                ? "" 
-                : "bg-gray-100 border-gray-300"
-            }`}
-            style={
-              status === "Online"
-                ? {
-                    backgroundColor: RESTAURANT_THEME.softBackground,
-                    borderColor: RESTAURANT_THEME.softBorder,
-                  }
-                : undefined
-            }
-          >
-            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-              status === "Online" ? "" : "bg-gray-500"
-            }`}
-            style={status === "Online" ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}
-            ></span>
-            <span className={`text-xs font-bold leading-none ${
-              status === "Online" ? "" : "text-gray-700"
-            }`}
-            style={status === "Online" ? { color: RESTAURANT_THEME.softText } : undefined}
-            >
-              {status}
-            </span>
-            <ChevronRight className={`w-3.5 h-3.5 shrink-0 ${
-              status === "Online" ? "" : "text-gray-700"
-            }`}
-            style={status === "Online" ? { color: RESTAURANT_THEME.softText } : undefined}
-            />
-          </button>
-        )}
-
-        {/* Search Icon */}
-        {showSearch && (
-          <button
-            onClick={handleSearchClick}
-            className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
-            aria-label="Search"
-          >
-            <Search className="w-5 h-5 text-gray-700" />
-          </button>
-        )}
-
-        {/* Notifications Icon */}
-        {showNotifications && (
-          <button
-            onClick={handleNotificationsClick}
-            className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
-            aria-label="Notifications"
-          >
-            <div className="relative flex items-center justify-center">
-              <Bell className="w-5 h-5 text-gray-700" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-white animate-pulse" />
-              )}
-            </div>
-          </button>
-        )}
-
-        {/* Hamburger Menu Icon */}
-        <button
-          onClick={handleMenuClick}
-          className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
-          aria-label="Menu"
-        >
-          <Menu className="w-5 h-5 text-gray-700" />
         </button>
       </div>
     </div>
