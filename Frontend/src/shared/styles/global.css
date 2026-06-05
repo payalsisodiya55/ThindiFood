@@ -159,6 +159,37 @@
   .cursor-pointer * {
     cursor: pointer !important;
   }
+
+  /* Ensure all input, textarea, and upload placeholders use a uniform color, opacity, and style */
+  input::placeholder,
+  textarea::placeholder,
+  input[type="number"]::placeholder,
+  input[type="text"]::placeholder,
+  input[type="search"]::placeholder,
+  input[type="email"]::placeholder,
+  input[type="tel"]::placeholder,
+  input[type="password"]::placeholder {
+    color: var(--muted-foreground, #94a3b8) !important;
+    font-size: 0.875em !important;
+    opacity: 1 !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+  }
+
+  /* Style upload placeholder/helper texts to match the uniform design standard */
+  button span.text-gray-500,
+  button span.text-slate-500,
+  button p.text-gray-500,
+  button p.text-slate-500,
+  button + p.text-gray-500,
+  button + p.text-slate-500,
+  .upload-helper-text {
+    color: var(--muted-foreground, #94a3b8) !important;
+    font-size: 0.875em !important;
+    opacity: 1 !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+  }
 }
 
 @layer utilities {
