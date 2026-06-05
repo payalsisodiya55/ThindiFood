@@ -245,7 +245,7 @@ export default function DeliveryBoyManagement() {
             >
               <ArrowLeft className="h-6 w-6 text-gray-900" />
             </button>
-            <h1 className="text-xl font-bold text-gray-900">Delivery Partner Management</h1>
+            <h1 className="text-lg font-bold text-gray-900">Delivery Partner Management</h1>
           </div>
           <p className="text-sm text-gray-500 pl-[42px] mt-0.5">
             Create, edit and manage your self-delivery team

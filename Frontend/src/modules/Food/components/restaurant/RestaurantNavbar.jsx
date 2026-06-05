@@ -377,23 +377,23 @@ export default function RestaurantNavbar({
   }
 
   return (
-    <div className="w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+    <div className="w-full bg-white border-b border-gray-200 px-4 py-3.5 flex items-center justify-between">
       {/* Left Side - Restaurant Info */}
       <div className="flex-1 min-w-0 pr-4 flex items-center gap-3">
         {logoUrl && (
           <img src={logoUrl} alt="Logo" className="h-10 w-auto max-w-[48px] object-contain shrink-0" />
         )}
-        <div className="min-w-0">
+        <div className="min-w-0 flex flex-col justify-center">
           {/* Restaurant Name */}
-          <div className="flex items-baseline gap-1.5 min-w-0">
-            <h1 className="text-[15px] font-bold text-gray-900 truncate">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h1 className="text-[15px] font-bold text-gray-900 truncate leading-none">
               {loading ? "Loading..." : (restaurantName || "Restaurant")}
             </h1>
           </div>
           {!loading && location && location.trim() !== "" && (
-            <div className="flex items-center gap-1 mt-0.5 opacity-80">
+            <div className="flex items-center gap-1 mt-1 opacity-80 leading-none">
               <MapPin className="w-2.5 h-2.5 text-gray-500 shrink-0" />
-              <p className="text-[10px] text-gray-500 truncate font-medium" title={location}>
+              <p className="text-[10px] text-gray-500 truncate font-medium leading-none" title={location}>
                 {location}
               </p>
             </div>
@@ -407,7 +407,7 @@ export default function RestaurantNavbar({
         {showOfflineOnlineTag && (
           <button
             onClick={handleStatusClick}
-            className={`flex items-center justify-center gap-1.5 px-3 py-1 border rounded-full hover:opacity-90 active:scale-95 transition-all ${
+            className={`h-9 px-3 flex items-center justify-center gap-1.5 border rounded-full hover:opacity-90 active:scale-95 transition-all ${
               status === "Online" 
                 ? "" 
                 : "bg-gray-100 border-gray-300"
@@ -445,7 +445,7 @@ export default function RestaurantNavbar({
         {showSearch && (
           <button
             onClick={handleSearchClick}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center shrink-0"
+            className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
             aria-label="Search"
           >
             <Search className="w-5 h-5 text-gray-700" />
@@ -456,13 +456,13 @@ export default function RestaurantNavbar({
         {showNotifications && (
           <button
             onClick={handleNotificationsClick}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center shrink-0"
+            className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
             aria-label="Notifications"
           >
             <div className="relative flex items-center justify-center">
               <Bell className="w-5 h-5 text-gray-700" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1.5 -right-1 w-2.5 h-2.5 rounded-full bg-red-500 border-2 border-white animate-pulse" />
+                <span className="absolute -top-1 -right-0.5 w-2 h-2 rounded-full bg-red-500 border border-white animate-pulse" />
               )}
             </div>
           </button>
@@ -471,7 +471,7 @@ export default function RestaurantNavbar({
         {/* Hamburger Menu Icon */}
         <button
           onClick={handleMenuClick}
-          className="p-2 hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center shrink-0"
+          className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors shrink-0"
           aria-label="Menu"
         >
           <Menu className="w-5 h-5 text-gray-700" />
