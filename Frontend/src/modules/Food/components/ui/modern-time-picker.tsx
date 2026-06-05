@@ -19,6 +19,7 @@ interface ModernTimePickerProps {
 const hours = Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, "0"))
 const minutes = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, "0"))
 const periods = ["AM", "PM"]
+const TIME_OPTION_HEIGHT = 44
 
 export function ModernTimePicker({
   value,
@@ -117,15 +118,41 @@ interface TimeColumnProps {
 
 function TimeColumn({ options, selected, onSelect, label, isLast }: TimeColumnProps) {
   const scrollRef = React.useRef<HTMLDivElement>(null)
+  const scrollTimeoutRef = React.useRef<ReturnType<typeof window.setTimeout> | null>(null)
+
+  const getSelectedScrollTop = React.useCallback((target: string) => {
+    const selectedIndex = Math.max(options.indexOf(target), 0)
+    const container = scrollRef.current
+    if (!container) return 0
+    const centerOffset = container.offsetHeight / 2 - TIME_OPTION_HEIGHT / 2
+    return selectedIndex * TIME_OPTION_HEIGHT + 128 - centerOffset
+  }, [options])
+
+  const commitScrollSelection = React.useCallback((behavior: ScrollBehavior = "smooth") => {
+    const container = scrollRef.current
+    if (!container) return
+
+    const centerOffset = container.offsetHeight / 2 - TIME_OPTION_HEIGHT / 2
+    const rawIndex = (container.scrollTop + centerOffset - 128) / TIME_OPTION_HEIGHT
+    const nextIndex = Math.min(options.length - 1, Math.max(0, Math.round(rawIndex)))
+    const nextValue = options[nextIndex]
+    const nextScrollTop = getSelectedScrollTop(nextValue)
+
+    if (Math.abs(container.scrollTop - nextScrollTop) > 1) {
+      container.scrollTo({ top: nextScrollTop, behavior })
+    }
+
+    if (nextValue !== selected) {
+      onSelect(nextValue)
+    }
+  }, [getSelectedScrollTop, onSelect, options, selected])
 
   // Scroll to selected element on open
   React.useEffect(() => {
     const scrollToSelected = () => {
-      if (scrollRef.current) {
-        const selectedElement = scrollRef.current.querySelector(`[data-selected="true"]`) as HTMLElement
-        if (selectedElement) {
-          scrollRef.current.scrollTop = selectedElement.offsetTop - scrollRef.current.offsetHeight / 2 + selectedElement.offsetHeight / 2
-        }
+      const container = scrollRef.current
+      if (container) {
+        container.scrollTop = getSelectedScrollTop(selected)
       }
     }
 
@@ -133,9 +160,27 @@ function TimeColumn({ options, selected, onSelect, label, isLast }: TimeColumnPr
     scrollToSelected()
 
     // Run again with a brief delay to account for transitions and dynamic portal sizing
-    const timer = setTimeout(scrollToSelected, 30)
-    return () => clearTimeout(timer)
-  }, [selected])
+    const timer = window.setTimeout(scrollToSelected, 30)
+    return () => window.clearTimeout(timer)
+  }, [getSelectedScrollTop, selected])
+
+  React.useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const handleScroll = React.useCallback(() => {
+    if (scrollTimeoutRef.current) {
+      window.clearTimeout(scrollTimeoutRef.current)
+    }
+
+    scrollTimeoutRef.current = window.setTimeout(() => {
+      commitScrollSelection("smooth")
+    }, 100)
+  }, [commitScrollSelection])
 
   return (
     <div className={cn(
@@ -148,7 +193,11 @@ function TimeColumn({ options, selected, onSelect, label, isLast }: TimeColumnPr
       <div 
         ref={scrollRef}
         data-lenis-prevent
-        className="overflow-y-auto overflow-x-hidden scrollbar-hide flex-1 relative"
+        onScroll={handleScroll}
+        onPointerUp={() => commitScrollSelection("smooth")}
+        onTouchEnd={() => commitScrollSelection("smooth")}
+        onMouseUp={() => commitScrollSelection("smooth")}
+        className="overflow-y-auto overflow-x-hidden scrollbar-hide flex-1 relative snap-y snap-mandatory scroll-smooth"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         <div className="py-32"> {/* Centering padding */}
@@ -159,7 +208,7 @@ function TimeColumn({ options, selected, onSelect, label, isLast }: TimeColumnPr
               data-selected={selected === opt}
               onClick={() => onSelect(opt)}
               className={cn(
-                "w-full px-2 py-2.5 text-sm transition-all text-center relative group touch-pan-y",
+                "flex h-11 w-full snap-center items-center justify-center px-2 text-sm transition-all text-center relative group touch-pan-y",
                 selected === opt 
                   ? "text-gray-900 font-bold" 
                   : "text-gray-400 hover:text-gray-900 hover:bg-gray-50"
