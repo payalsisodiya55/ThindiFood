@@ -12,6 +12,7 @@ import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { confirmApp } from "@shared/lib/appDialog";
 import { toast } from "sonner";
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
 
 const EMPTY_FORM = {
   name: "",
@@ -341,7 +342,8 @@ export default function DeliveryBoyManagement() {
           <button
             type="submit"
             disabled={submitting || !canManageDeliveryBoys}
-            className="rounded-xl bg-gray-900 px-4 py-3 font-semibold text-white disabled:opacity-60"
+            className="rounded-xl px-4 py-3 font-semibold text-white disabled:opacity-60 hover:opacity-90 active:scale-95 transition-all"
+            style={{ backgroundColor: RESTAURANT_THEME.brand }}
           >
             {submitting ? (isEditing ? "Saving..." : "Creating...") : submitText}
           </button>

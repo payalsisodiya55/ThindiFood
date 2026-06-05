@@ -11,6 +11,7 @@ import { useCompanyName } from "@food/hooks/useCompanyName"
 import { restaurantAPI } from "@food/api"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import { toast } from "sonner"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -498,9 +499,10 @@ export default function OutletTimings() {
               disabled={saving || !hasChanges}
               className={`w-full sm:w-auto font-semibold py-2.5 px-6 rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm text-sm disabled:opacity-50 disabled:cursor-not-allowed ${
                 hasChanges 
-                  ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                  ? "text-white hover:opacity-90" 
                   : "bg-gray-200 text-gray-500"
               }`}
+              style={hasChanges ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>

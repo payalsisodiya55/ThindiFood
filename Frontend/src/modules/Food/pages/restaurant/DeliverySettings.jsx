@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -559,8 +560,9 @@ export default function DeliverySettings() {
                   className={`flex-1 rounded-xl px-4 py-3 font-semibold transition-all duration-300 ${
                     selfDelivery.approvalStatus === "pending"
                       ? "bg-amber-500 text-white active:scale-95 disabled:opacity-60"
-                      : "bg-gray-900 text-white active:scale-95 disabled:opacity-60"
+                      : "text-white active:scale-95 disabled:opacity-60 hover:opacity-90"
                   }`}
+                  style={selfDelivery.approvalStatus === "pending" ? undefined : { backgroundColor: RESTAURANT_THEME.brand }}
                 >
                   {savingSelfDelivery 
                     ? "Saving..." 
@@ -645,9 +647,10 @@ export default function DeliverySettings() {
                     onClick={handleConfirmStatusChange}
                     className={`flex-1 px-4 py-3 font-semibold rounded-lg transition-colors ${
                       pendingStatus 
-                        ? "bg-green-600 hover:bg-green-700 text-white"
+                        ? "text-white hover:opacity-90"
                         : "bg-red-600 hover:bg-red-700 text-white"
                     }`}
+                    style={pendingStatus ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}
                   >
                     {pendingStatus ? "Enable" : "Disable"}
                   </button>

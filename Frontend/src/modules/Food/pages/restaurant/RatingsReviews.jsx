@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
@@ -200,14 +201,15 @@ export default function RatingsReviews() {
       <div className="px-4 py-4 bg-white">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-base font-semibold text-gray-900">Your restaurant's rating</h2>
-          <div className="bg-green-600 px-3 py-1.5 rounded-lg flex items-center gap-1">
+          <div className="px-3 py-1.5 rounded-lg flex items-center gap-1" style={{ backgroundColor: RESTAURANT_THEME.brand }}>
             <span className="text-white text-sm font-bold">{rating}</span>
             <Star className="w-4 h-4 text-white fill-white" />
           </div>
         </div>
         <button
           onClick={() => navigate("/restaurant/feedback?tab=reviews")}
-          className="flex items-center gap-1 text-blue-600 text-sm font-normal hover:text-blue-700 transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-sm font-normal hover:opacity-80 transition-colors cursor-pointer"
+          style={{ color: RESTAURANT_THEME.brand }}
         >
           <span>View order ratings</span>
           <ChevronRight className="w-4 h-4" />
@@ -275,10 +277,11 @@ export default function RatingsReviews() {
           <div className="flex items-center gap-3">
             <button
               onClick={handleThankYou}
-              className="flex-1 flex items-center justify-center gap-2 border-2 border-blue-600 bg-white rounded-lg py-3 px-4 hover:bg-blue-50 transition-colors cursor-pointer"
+              className="flex-1 flex items-center justify-center gap-2 border-2 bg-white rounded-lg py-3 px-4 hover:opacity-95 transition-colors cursor-pointer"
+              style={{ borderColor: RESTAURANT_THEME.brand, color: RESTAURANT_THEME.brand }}
             >
-              <ThumbsUp className="w-5 h-5 text-blue-600" />
-              <span className="text-blue-600 text-sm font-semibold">Yes, thank you</span>
+              <ThumbsUp className="w-5 h-5" style={{ color: RESTAURANT_THEME.brand }} />
+              <span className="text-sm font-semibold">Yes, thank you</span>
             </button>
             <button
               onClick={handleNotHelpful}
@@ -327,7 +330,8 @@ export default function RatingsReviews() {
               setShowNotHelpfulPopup(false)
               debugLog("Contact support")
             }}
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors cursor-pointer"
+            className="w-full text-white py-3 px-4 rounded-lg font-semibold hover:opacity-90 transition-colors cursor-pointer"
+            style={{ backgroundColor: RESTAURANT_THEME.brand }}
           >
             Contact Support
           </button>

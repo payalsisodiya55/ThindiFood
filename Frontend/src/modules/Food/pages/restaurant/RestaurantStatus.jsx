@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import Lenis from "lenis"
@@ -422,7 +423,8 @@ export default function RestaurantStatus() {
             {!isDayClosed && (
               <button
                 onClick={() => navigate("/restaurant/outlet-timings")}
-                className="flex items-center gap-1 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                className="flex items-center gap-1 text-sm font-medium hover:opacity-90"
+                style={{ color: RESTAURANT_THEME.brand }}
               >
                 Details
                 <ChevronRight className="w-4 h-4" />
@@ -468,7 +470,8 @@ export default function RestaurantStatus() {
             </Button>
             <Button
               onClick={handleGoToOutletTimings}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full sm:w-auto text-white hover:opacity-90"
+              style={{ backgroundColor: RESTAURANT_THEME.brand }}
             >
               Go to Outlet Timings
             </Button>
@@ -503,7 +506,8 @@ export default function RestaurantStatus() {
                 setShowOutsideTimingsDialog(false)
                 navigate("/restaurant/outlet-timings")
               }}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full sm:w-auto text-white hover:opacity-90"
+              style={{ backgroundColor: RESTAURANT_THEME.brand }}
             >
               Change Outlet Timings
             </Button>

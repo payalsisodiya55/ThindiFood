@@ -6,6 +6,7 @@ import { restaurantAPI, uploadAPI } from "@food/api"
 import { ImageSourcePicker } from "@food/components/ImageSourcePicker"
 import { isFlutterBridgeAvailable } from "@food/utils/imageUploadUtils"
 import { toast } from "sonner"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/
 const UPI_REGEX = /^[a-zA-Z0-9._-]{2,256}@[a-zA-Z]{2,64}$/
@@ -331,7 +332,8 @@ export default function UpdateBankDetails() {
             <button
               type="submit"
               disabled={saving || uploadingQr}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg text-base transition-colors"
+              className="w-full disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-4 rounded-lg text-base transition-colors hover:opacity-90 active:scale-[0.99]"
+              style={{ backgroundColor: RESTAURANT_THEME.brand }}
             >
               {saving ? "Saving..." : "Submit"}
             </button>

@@ -720,7 +720,7 @@ export default function Feedback() {
       </BottomPopup>
 
       {/* Custom Date Selector */}
-      <BottomPopup isOpen={isCustomDateOpen} onClose={() => setIsCustomDateOpen(false)} title="Select custom range">
+      <BottomPopup isOpen={isCustomDateOpen} onClose={() => setIsCustomDateOpen(false)} title="Select Custom Range">
         <div className="p-4 flex flex-col gap-4">
           <DateRangeCalendar
             startDate={customDateRange.start}
@@ -729,7 +729,7 @@ export default function Feedback() {
           />
           <button
             onClick={handleCustomDateApply}
-            className="w-full bg-black text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
+            className="w-full bg-[#00c87e] hover:bg-[#00a165] text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
           >
             Apply Range
           </button>
@@ -751,7 +751,7 @@ export default function Feedback() {
                   }))}
                   className={`px-4 py-2 rounded-full text-xs font-bold border transition-all cursor-pointer ${
                     complaintsFilterValues.issueType.includes(type)
-                      ? "bg-black text-white border-black"
+                      ? "bg-[#00c87e] text-white border-[#00c87e]"
                       : "bg-white text-gray-600 border-gray-200"
                   }`}
                 >
@@ -769,7 +769,7 @@ export default function Feedback() {
             </button>
             <button
               onClick={handleComplaintsFilterApply}
-              className="flex-1 bg-black text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
+              className="flex-1 bg-[#00c87e] hover:bg-[#00a165] text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
             >
               Apply Filter
             </button>
@@ -794,7 +794,7 @@ export default function Feedback() {
                   onClick={() => setFilterValues(prev => ({ ...prev, sortBy: option.id }))}
                   className={`p-3 rounded-xl text-xs font-bold border text-center transition-all cursor-pointer ${
                     filterValues.sortBy === option.id
-                      ? "bg-black text-white border-black"
+                      ? "bg-[#00c87e] text-white border-[#00c87e]"
                       : "bg-white text-gray-600 border-gray-200"
                   }`}
                 >
@@ -812,7 +812,7 @@ export default function Feedback() {
             </button>
             <button
               onClick={handleFilterApply}
-              className="flex-1 bg-black text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
+              className="flex-1 bg-[#00c87e] hover:bg-[#00a165] text-white py-4 rounded-2xl text-sm font-bold active:scale-95 transition-all cursor-pointer"
             >
               Apply
             </button>
