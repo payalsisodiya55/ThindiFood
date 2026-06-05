@@ -38,7 +38,14 @@ export const createRestaurantSupportTicketController = async (req, res, next) =>
             subject,
             description,
             orderRef,
-            priority
+            priority,
+            messages: [
+                {
+                    sender: 'restaurant',
+                    message: description,
+                    timestamp: new Date()
+                }
+            ]
         });
 
         return sendResponse(res, 201, 'Support ticket created successfully', {
@@ -91,6 +98,90 @@ export const listRestaurantSupportTicketsController = async (req, res, next) => 
             total,
             page,
             limit
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const replyToRestaurantSupportTicketController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) {
+            return sendError(res, 401, 'Unauthorized');
+        }
+
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return sendError(res, 400, 'Invalid ticket id');
+        }
+
+        const ticket = await FoodRestaurantSupportTicket.findOne({
+            _id: id,
+            restaurantId: new mongoose.Types.ObjectId(restaurantId)
+        });
+
+        if (!ticket) {
+            return sendError(res, 404, 'Ticket not found');
+        }
+
+        if (ticket.status === 'resolved') {
+            return sendError(res, 400, 'Cannot reply to a resolved ticket');
+        }
+
+        const messageText = String(req.body?.message || '').trim();
+        if (!messageText) {
+            return sendError(res, 400, 'Message cannot be empty');
+        }
+
+        if (!ticket.messages) ticket.messages = [];
+        ticket.messages.push({
+            sender: 'restaurant',
+            message: messageText,
+            timestamp: new Date()
+        });
+
+        await ticket.save();
+
+        return sendResponse(res, 200, 'Reply sent successfully', {
+            ticket: ticket.toObject()
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const resolveRestaurantSupportTicketController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) {
+            return sendError(res, 401, 'Unauthorized');
+        }
+
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return sendError(res, 400, 'Invalid ticket id');
+        }
+
+        const ticket = await FoodRestaurantSupportTicket.findOne({
+            _id: id,
+            restaurantId: new mongoose.Types.ObjectId(restaurantId)
+        });
+
+        if (!ticket) {
+            return sendError(res, 404, 'Ticket not found');
+        }
+
+        const hasAdminResponse = (ticket.messages && ticket.messages.some(m => m.sender === 'admin')) || (ticket.adminResponse && ticket.adminResponse.trim());
+        if (!hasAdminResponse) {
+            return sendError(res, 400, 'Cannot resolve a ticket without reviewing the admin response first');
+        }
+
+        ticket.status = 'resolved';
+        await ticket.save();
+
+        return sendResponse(res, 200, 'Ticket marked as resolved successfully', {
+            ticket: ticket.toObject()
         });
     } catch (error) {
         next(error);

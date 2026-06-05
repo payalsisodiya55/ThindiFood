@@ -1653,6 +1653,14 @@ export const restaurantAPI = {
       params,
       contextModule: "restaurant",
     }),
+  replyToSupportTicket: (id, body = {}) =>
+    apiClient.post(`/food/restaurant/support/tickets/${String(id)}/reply`, body ?? {}, {
+      contextModule: "restaurant",
+    }),
+  resolveSupportTicket: (id) =>
+    apiClient.post(`/food/restaurant/support/tickets/${String(id)}/resolve`, {}, {
+      contextModule: "restaurant",
+    }),
   /** Product Offers (restaurant dashboard) - admin approval flow */
   getMyOffers: (params = {}) =>
     apiClient.get("/food/restaurant/product-offers", {

@@ -19,7 +19,9 @@ import {
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
-    listRestaurantSupportTicketsController
+    listRestaurantSupportTicketsController,
+    replyToRestaurantSupportTicketController,
+    resolveRestaurantSupportTicketController
 } from '../controllers/supportTicket.controller.js';
 import {
     createWithdrawalRequestController,
@@ -265,6 +267,8 @@ router.patch('/orders/:orderId/assign-boy', authMiddleware, requireRestaurant, a
 router.get('/complaints', authMiddleware, requireRestaurant, getRestaurantComplaintsController);
 router.post('/support/tickets', authMiddleware, requireRestaurant, createRestaurantSupportTicketController);
 router.get('/support/tickets', authMiddleware, requireRestaurant, listRestaurantSupportTicketsController);
+router.post('/support/tickets/:id/reply', authMiddleware, requireRestaurant, replyToRestaurantSupportTicketController);
+router.post('/support/tickets/:id/resolve', authMiddleware, requireRestaurant, resolveRestaurantSupportTicketController);
 
 export default router;
 

@@ -2493,17 +2493,29 @@ export async function getSupportTickets(query = {}) {
 export async function updateSupportTicket(id, body = {}) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const source = String(body.source || 'user').toLowerCase();
-    const set = {};
+    const model = source === 'restaurant' ? FoodRestaurantSupportTicket : FoodSupportTicket;
+
+    const ticket = await model.findById(id);
+    if (!ticket) return null;
+
     if (body.status && ['open', 'in-progress', 'resolved'].includes(String(body.status))) {
-        set.status = String(body.status);
+        ticket.status = String(body.status);
     }
     if (typeof body.adminResponse === 'string') {
-        set.adminResponse = body.adminResponse;
+        const text = body.adminResponse.trim();
+        ticket.adminResponse = text;
+        if (source === 'restaurant' && text) {
+            if (!ticket.messages) ticket.messages = [];
+            ticket.messages.push({
+                sender: 'admin',
+                message: text,
+                timestamp: new Date()
+            });
+        }
     }
-    if (!Object.keys(set).length) return null;
-    const model = source === 'restaurant' ? FoodRestaurantSupportTicket : FoodSupportTicket;
-    const updated = await model.findByIdAndUpdate(id, { $set: set }, { new: true }).lean();
-    return updated || null;
+
+    await ticket.save();
+    return ticket.toObject();
 }
 
 // ----- Restaurant Commission (admin) -----

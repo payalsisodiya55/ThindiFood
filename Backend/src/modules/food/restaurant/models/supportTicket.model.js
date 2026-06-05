@@ -19,7 +19,14 @@ const restaurantSupportTicketSchema = new mongoose.Schema(
         orderRef: { type: String, default: '', trim: true },
         priority: { type: String, enum: ['low', 'medium', 'high'], default: 'medium', index: true },
         status: { type: String, enum: ['open', 'in-progress', 'resolved'], default: 'open', index: true },
-        adminResponse: { type: String, default: '' }
+        adminResponse: { type: String, default: '' },
+        messages: [
+            {
+                sender: { type: String, enum: ['restaurant', 'admin'], required: true },
+                message: { type: String, required: true },
+                timestamp: { type: Date, default: Date.now }
+            }
+        ]
     },
     { collection: 'food_restaurant_support_tickets', timestamps: true }
 );
