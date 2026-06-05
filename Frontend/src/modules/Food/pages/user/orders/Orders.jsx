@@ -51,8 +51,11 @@ const normalizeOrderStatus = (value) =>
 const isDeliveryOrder = (order) =>
   String(order?.fulfillmentType || order?.orderType || "delivery").toLowerCase() === "delivery"
 
-const isTakeawayOrder = (order) =>
-  String(order?.fulfillmentType || order?.orderType || "").toLowerCase() === "takeaway"
+const isTakeawayOrder = (order) => {
+  const deliveryType = String(order?.deliveryType || "").toLowerCase()
+  const fulfillmentType = String(order?.fulfillmentType || order?.orderType || "").toLowerCase()
+  return deliveryType.includes("dine") || deliveryType.includes("take") || deliveryType.includes("pickup") || fulfillmentType === "takeaway" || Boolean(order?.pickupAt)
+}
 
 const isDeliveredDeliveryOrder = (order) => {
   if (!isDeliveryOrder(order)) return false
@@ -786,9 +789,8 @@ Order again from this restaurant in the ${companyName} app.`
             const showRefundForCancellation = isRestaurantCancelled && !isCodOrder
             const rawPaymentStatus = String(order.payment?.status || "").trim().toLowerCase()
             const displayPaymentStatus = (() => {
+              if (isCancelled) return "NA"
               if (!rawPaymentStatus) return ""
-              // Never show a payment badge for cancelled orders
-              if (isCancelled) return ""
               // COD delivered → paid physically
               if (isCodOrder && isDelivered && (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")) {
                 return "paid"
@@ -796,10 +798,9 @@ Order again from this restaurant in the ${companyName} app.`
               // Active COD order → show clean label instead of raw 'cod_pending'
               if (
                 isCodOrder &&
-                !isTakeawayOrder(order) &&
                 (rawPaymentStatus === "cod_pending" || rawPaymentStatus === "pending")
               ) {
-                return "COD"
+                return isTakeawayOrder(order) ? "Pay at Restaurant" : "COD"
               }
               return rawPaymentStatus
             })()
@@ -808,7 +809,7 @@ Order again from this restaurant in the ${companyName} app.`
                 ? 'bg-green-100 text-green-700'
                 : displayPaymentStatus === 'failed'
                   ? 'bg-red-100 text-red-700'
-                  : displayPaymentStatus === 'cod'
+                  : displayPaymentStatus === 'cod' || displayPaymentStatus === 'COD' || displayPaymentStatus === 'Pay at Restaurant'
                     ? 'bg-yellow-100 text-yellow-700'
                     : displayPaymentStatus === 'pending'
                       ? 'bg-yellow-100 text-yellow-700'

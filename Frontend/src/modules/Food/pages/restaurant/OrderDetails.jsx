@@ -195,15 +195,23 @@ export default function OrderDetails() {
           ).toLowerCase()
           const paymentMethod = String(order.paymentMethod || order.payment?.method || "").toLowerCase()
 
+          const fulfillmentType = String(order.fulfillmentType || "").trim().toLowerCase();
+          const deliveryType = String(order.deliveryType || "").trim().toLowerCase();
+          const isTakeawayOrDining = deliveryType.includes("dine") || deliveryType.includes("take") || deliveryType.includes("pickup") || fulfillmentType === "takeaway" || Boolean(order.pickupAt);
+
+          const isOrderCancelled = orderStatusRaw.includes("cancel") || orderStatusRaw === "rejected";
+
           let paymentStatus = "PENDING"
-          if (["completed", "paid", "captured", "success", "succeeded"].includes(rawPaymentStatus)) {
+          if (isOrderCancelled) {
+            paymentStatus = "NA"
+          } else if (["completed", "paid", "captured", "success", "succeeded"].includes(rawPaymentStatus)) {
             paymentStatus = "PAID"
           } else if (["failed", "declined"].includes(rawPaymentStatus)) {
             paymentStatus = "FAILED"
           } else if (["refunded", "refund"].includes(rawPaymentStatus)) {
             paymentStatus = "REFUNDED"
           } else if (["cash", "counter", "cod"].includes(paymentMethod)) {
-            paymentStatus = orderStatusRaw === "delivered" ? "PAID" : "COD"
+            paymentStatus = orderStatusRaw === "delivered" ? "PAID" : (isTakeawayOrDining ? "Pay at Restaurant" : "COD")
           }
           
           const statusLower = orderStatusRaw
@@ -358,8 +366,9 @@ export default function OrderDetails() {
 
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
-    doc.text(orderData.address, pageWidth / 2, yPosition, { align: "center" })
-    yPosition += 15
+    const addressLines = doc.splitTextToSize(orderData.address || "", pageWidth - (leftMargin + rightMargin))
+    doc.text(addressLines, pageWidth / 2, yPosition, { align: "center" })
+    yPosition += (addressLines.length * 5) + 5
 
     // Order Receipt Title
     doc.setFontSize(16)
@@ -749,7 +758,7 @@ export default function OrderDetails() {
         {(() => {
           const pMethod = String(orderData?.billing?.paymentMethod || "").toLowerCase().trim();
           const isPoc = ["cash", "cod", "counter"].includes(pMethod);
-          const showCollectibleBanner = isPoc && !["COMPLETED", "DELIVERED", "CANCELLED", "REJECTED"].includes(String(orderData?.status || "").toUpperCase());
+          const showCollectibleBanner = isPoc && !["COMPLETED", "DELIVERED", "CANCELLED", "REJECTED"].some(s => String(orderData?.status || "").toUpperCase().includes(s));
           if (!showCollectibleBanner) return null;
           return (
             <div className="bg-amber-50 border border-amber-300 rounded-xl p-4 shadow-sm flex items-center justify-between">

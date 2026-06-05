@@ -3311,6 +3311,25 @@ export default function OrdersMain() {
       return;
     }
 
+    const isOrderCancelled = String(orderToPrint.status || "").toLowerCase().includes("cancel") || String(orderToPrint.status || "").toLowerCase() === "rejected";
+    const fulfillmentType = String(orderToPrint.fulfillmentType || "").trim().toLowerCase();
+    const deliveryType = String(orderToPrint.deliveryType || "").trim().toLowerCase();
+    const isTakeawayOrDining = deliveryType.includes("dine") || deliveryType.includes("take") || deliveryType.includes("pickup") || fulfillmentType === "takeaway" || Boolean(orderToPrint.pickupAt);
+
+    let displayPaymentMethod = String(orderToPrint.paymentMethod || orderToPrint.payment?.method || "Pending");
+    if (isOrderCancelled) {
+      displayPaymentMethod = "NA";
+    } else if (["cash", "cod", "counter"].includes(displayPaymentMethod.toLowerCase())) {
+      displayPaymentMethod = isTakeawayOrDining ? "Pay at Restaurant" : "COD";
+    }
+
+    let displayPaymentStatus = orderToPrint.status === "confirmed" ? "Paid" : "Pending";
+    if (isOrderCancelled) {
+      displayPaymentStatus = "NA";
+    } else if (["cash", "cod", "counter"].includes(String(orderToPrint.paymentMethod || orderToPrint.payment?.method || "").toLowerCase())) {
+      displayPaymentStatus = isTakeawayOrDining ? "Pay at Restaurant" : "COD";
+    }
+
     try {
       {
         const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -3368,7 +3387,7 @@ export default function OrdersMain() {
         doc.text(`Order ID: ${orderToPrint.orderId || "N/A"}`, left + 4, yPos + 15);
         doc.text(`Date: ${orderDate}`, left + 4, yPos + 22);
         doc.text(
-          `Payment: ${String(orderToPrint.paymentMethod || orderToPrint.payment?.method || "Pending")}`,
+          `Payment: ${displayPaymentMethod}`,
           left + 4,
           yPos + 29,
         );
@@ -3440,7 +3459,7 @@ export default function OrdersMain() {
 
         yPos += 34;
         const infoLines = [
-          `Payment status: ${orderToPrint.status === "confirmed" ? "Paid" : "Pending"}`,
+          `Payment status: ${displayPaymentStatus}`,
           orderToPrint.estimatedDeliveryTime
             ? `Estimated delivery: ${orderToPrint.estimatedDeliveryTime} minutes`
             : null,
@@ -3585,7 +3604,7 @@ export default function OrdersMain() {
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.text(
-        `Payment Status: ${orderToPrint.status === "confirmed" ? "Paid" : "Pending"}`,
+        `Payment Status: ${displayPaymentStatus}`,
         20,
         yPos,
       );
