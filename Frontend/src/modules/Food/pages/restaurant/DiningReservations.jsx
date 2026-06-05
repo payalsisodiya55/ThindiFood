@@ -7,6 +7,7 @@ import Loader from "@food/components/Loader"
 import { Badge } from "@food/components/ui/badge"
 import { toast } from "sonner"
 import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
+import { RESTAURANT_THEME } from "@food/constants/restaurantTheme"
 
 const debugError = (...args) => {}
 
@@ -357,9 +358,15 @@ export default function DiningReservations() {
                 categoryIds: diningEnabled ? selectedDiningCategoryIds : [],
                 primaryCategoryId: diningEnabled ? selectedDiningCategoryIds[0] : null,
             })
-            syncRestaurantMediaState(getRestaurantFromResponse(response))
-            setDiningSettingsMessage("Your dining update request is awaiting admin approval.")
-            toast.success("Dining request sent for approval")
+            const updatedRestaurant = getRestaurantFromResponse(response)
+            syncRestaurantMediaState(updatedRestaurant)
+            if (updatedRestaurant?.isDiningApproved) {
+                setDiningSettingsMessage("Your dining updates have been applied immediately.")
+                toast.success("Dining settings updated successfully")
+            } else {
+                setDiningSettingsMessage("Your dining update request is awaiting admin approval.")
+                toast.success("Dining request sent for approval")
+            }
         } catch (error) {
             const message = error?.response?.data?.message || "Failed to submit dining request."
             setDiningSettingsError(message)
@@ -437,14 +444,20 @@ export default function DiningReservations() {
             <div className="mb-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Dining Controls</p>
                 <h2 className="mt-1.5 max-w-xl text-lg sm:text-[23px] font-black text-slate-900 tracking-tight leading-snug sm:leading-7">Manage dining availability and Booking limit</h2>
-                <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium leading-relaxed sm:leading-6 text-slate-500">Save your dining changes as an approval request. They will go live for customers only after admin approval.</p>
+                <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium leading-relaxed sm:leading-6 text-slate-500">
+                    {restaurant?.isDiningApproved
+                        ? "Save your dining changes. They will go live for customers immediately."
+                        : "Save your dining changes as an approval request. They will go live for customers only after admin approval."}
+                </p>
             </div>
 
             {(diningSettingsMessage || diningSettingsError || restaurant?.pendingDiningRequest?.requestedAt) && (
                 <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
                     diningSettingsError
                         ? "border-rose-100 bg-rose-50 text-rose-600"
-                        : "border-amber-200 bg-amber-50 text-amber-700"
+                        : (restaurant?.pendingDiningRequest?.requestedAt
+                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-emerald-200 bg-emerald-50 text-emerald-700")
                 }`}>
                     {diningSettingsError || (restaurant?.pendingDiningRequest?.requestedAt ? "Your dining update request is awaiting admin approval." : diningSettingsMessage)}
                 </div>
@@ -544,9 +557,10 @@ export default function DiningReservations() {
                                 }}
                                 className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
                                     active
-                                        ? "border-slate-900 bg-slate-900 text-white"
+                                        ? "text-white"
                                         : "border-slate-200 bg-slate-50 text-slate-700"
                                 } ${!diningEnabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}
+                                style={active ? { backgroundColor: RESTAURANT_THEME.brand, borderColor: RESTAURANT_THEME.brand } : undefined}
                             >
                                 {meal.label}
                             </button>
@@ -584,11 +598,12 @@ export default function DiningReservations() {
                                 }}
                                 className={`group relative overflow-hidden rounded-[24px] border text-left transition-all ${
                                     isSelected
-                                        ? "border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-200"
+                                        ? "text-white shadow-lg shadow-slate-200/50"
                                         : "border-slate-200 bg-white text-slate-900 shadow-sm"
                                 } ${!diningEnabled ? "cursor-not-allowed opacity-50" : "cursor-pointer hover:-translate-y-0.5 hover:shadow-md"}`}
+                                style={isSelected ? { backgroundColor: RESTAURANT_THEME.brand, borderColor: RESTAURANT_THEME.brand } : undefined}
                             >
-                                <div className={`relative ${imageUrl ? "h-28" : "h-24"} overflow-hidden ${isSelected ? "bg-slate-800" : "bg-slate-100"}`}>
+                                <div className={`relative ${imageUrl ? "h-28" : "h-24"} overflow-hidden ${isSelected ? "bg-black/20" : "bg-slate-100"}`}>
                                     {imageUrl ? (
                                         <img src={imageUrl} alt={category?.name || "Dining category"} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
                                     ) : (
@@ -623,7 +638,8 @@ export default function DiningReservations() {
                 <button
                     onClick={handleSaveDiningSettings}
                     disabled={savingDiningSettings}
-                    className="w-full rounded-full bg-slate-900 px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition-colors hover:bg-slate-800 disabled:opacity-50 sm:w-auto sm:min-w-56"
+                    className="w-full rounded-full px-6 py-3 text-sm font-black text-white shadow-lg shadow-slate-200 transition-all hover:opacity-90 disabled:opacity-50 sm:w-auto sm:min-w-56 active:scale-95 cursor-pointer"
+                    style={{ backgroundColor: RESTAURANT_THEME.brand }}
                 >
                     {savingDiningSettings ? "Sending request..." : "Save settings"}
                 </button>
@@ -715,7 +731,8 @@ export default function DiningReservations() {
                                             <button
                                                 key={view}
                                                 onClick={() => setActiveView(view)}
-                                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${activeView === view ? "bg-slate-900 text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${activeView === view ? "text-white" : "text-slate-500 hover:bg-slate-50"}`}
+                                                style={activeView === view ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}
                                             >
                                                 {view.charAt(0).toUpperCase() + view.slice(1)} {view === 'new' ? `(${newRequestsCount})` : ''}
                                             </button>
@@ -795,7 +812,7 @@ export default function DiningReservations() {
                                                 <motion.div layout initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} key={booking._id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
                                                     <div className="flex items-start justify-between mb-3">
                                                         <div className="flex items-center gap-3">
-                                                            <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-black">{getBookerName(booking).charAt(0)}</div>
+                                                            <div className="w-10 h-10 rounded-full text-white flex items-center justify-center font-black" style={{ backgroundColor: RESTAURANT_THEME.brand }}>{getBookerName(booking).charAt(0)}</div>
                                                             <div>
                                                                 <h3 className="font-black text-slate-900 leading-tight">{getBookerName(booking)}</h3>
                                                                 <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase tracking-widest">#{booking.bookingId}</p>

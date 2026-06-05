@@ -38,7 +38,7 @@ const normalizeDiningMealTypes = (values, isEnabled = true) => {
     return normalized.length > 0 ? normalized : ['lunch', 'dinner'];
 };
 
-async function syncRestaurantDiningSettings(restaurantId, diningDoc) {
+export async function syncRestaurantDiningSettings(restaurantId, diningDoc) {
     const primaryCategory = diningDoc?.primaryCategoryId
         ? await FoodDiningCategory.findById(diningDoc.primaryCategoryId).select('slug').lean()
         : null;
@@ -62,7 +62,7 @@ async function syncRestaurantDiningSettings(restaurantId, diningDoc) {
     );
 }
 
-async function syncCategoryRestaurantLinks(restaurantId, categoryIds) {
+export async function syncCategoryRestaurantLinks(restaurantId, categoryIds) {
     await FoodDiningCategory.updateMany(
         { restaurantIds: restaurantId, _id: { $nin: categoryIds } },
         { $pull: { restaurantIds: restaurantId } }
