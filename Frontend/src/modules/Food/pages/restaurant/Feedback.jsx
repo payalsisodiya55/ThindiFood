@@ -467,57 +467,61 @@ export default function Feedback() {
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
       <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/food/restaurant/explore")}
-              className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-              aria-label="Back to explore"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-700" />
-            </button>
-            <div>
-              <p className="text-[10px] tracking-wider text-gray-500 uppercase">Showing data for</p>
-              <p className="text-md font-bold text-gray-900">{restaurantData?.name || "Restaurant"}</p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate("/food/restaurant/explore")}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+                aria-label="Back to explore"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <h1 className="text-lg font-bold text-gray-900">
+                {restaurantData?.name || "Restaurant"}
+              </h1>
             </div>
+            <p className="text-[10px] tracking-wider text-gray-500 uppercase mt-0.5 pl-[48px]">
+              Showing data for
+            </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-0.5">
             <button
               type="button"
               onClick={() => {
                 setRefreshTrigger(prev => prev + 1);
                 toast.success("Refreshing feedback data...");
               }}
-              className={`p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer ${
+              className={`p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0 ${
                 (isComplaintsLoading || isLoadingReviews) ? "animate-spin" : ""
               }`}
               aria-label="Refresh feedback"
             >
-              <RefreshCw className="w-6 h-6 text-gray-700 cursor-pointer" />
+              <RefreshCw className="w-5 h-5" />
             </button>
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/notifications")}
-              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
               aria-label="Open notifications"
             >
-              <Bell className="w-6 h-6 text-gray-700 cursor-pointer" />
+              <Bell className="w-5 h-5" />
             </button>
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/help-centre/support")}
-              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
               aria-label="Open support"
             >
-              <HelpCircle className="w-6 h-6 text-gray-700 cursor-pointer" />
+              <HelpCircle className="w-5 h-5" />
             </button>
             <button
               type="button"
               onClick={() => navigate("/food/restaurant/explore")}
-              className="p-1 rounded-full hover:bg-gray-100 active:scale-95 transition-all cursor-pointer"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
               aria-label="Open explore"
             >
-              <Menu className="w-6 h-6 text-gray-700 cursor-pointer" />
+              <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>

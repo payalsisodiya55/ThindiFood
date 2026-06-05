@@ -233,18 +233,18 @@ export default function RestaurantSupport() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col relative overflow-hidden">
       <div className="sticky top-0 z-40 bg-white border-b border-slate-200">
-        <div className="px-4 py-3 flex items-center gap-3">
-          <button
-            onClick={goBack}
-            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="w-6 h-6 text-slate-900" />
-          </button>
-          <div>
+        <div className="px-4 py-3 flex flex-col">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={goBack}
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-slate-900 shrink-0"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
             <h1 className="text-lg font-bold text-slate-900">Support</h1>
-            <p className="text-xs text-slate-500">Raise issue and track admin response</p>
           </div>
+          <p className="text-xs text-slate-500 mt-0.5 pl-[48px]">Raise issue and track admin response</p>
         </div>
       </div>
 

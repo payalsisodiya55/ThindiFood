@@ -866,61 +866,60 @@ export default function HubFinance() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      {/* Navbar */}
       <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
-        <div className="flex items-center justify-between">
-          <div className="flex-1 min-w-0 flex items-start gap-2">
-            <button
-              onClick={goBack}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer shrink-0 mt-0.5"
-              aria-label="Go back"
-            >
-              <ArrowLeft className="w-6 h-6 text-gray-900" />
-            </button>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1">
-                <p className="text-lg font-bold text-gray-900 truncate">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={goBack}
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+                aria-label="Go back"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+              <div className="flex items-center gap-1 min-w-0">
+                <h1 className="text-lg font-bold text-gray-900 truncate">
                   {restaurantData?.name || financeData?.restaurant?.name || "Restaurant"}
-                </p>
+                </h1>
                 <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" />
               </div>
-              <p className="text-xs text-gray-600 mt-0.5">
-                {(() => {
-                  const restaurantId = restaurantData?.restaurantId || financeData?.restaurant?.restaurantId
-                  const address = restaurantData?.address || financeData?.restaurant?.address || ''
-                  const parts = []
-                  if (restaurantId) {
-                    const formattedId = formatRestaurantId(restaurantId)
-                    parts.push(`ID: ${formattedId}`)
-                  }
-                  if (address) {
-                    const shortAddress = address.length > 40 ? address.substring(0, 40) + '...' : address
-                    parts.push(shortAddress)
-                  }
-                  return parts.length > 0 ? parts.join(' • ') : 'Loading...'
-                })()}
-              </p>
             </div>
+            <p className="text-xs text-gray-600 mt-0.5 pl-[48px] truncate">
+              {(() => {
+                const restaurantId = restaurantData?.restaurantId || financeData?.restaurant?.restaurantId
+                const address = restaurantData?.address || financeData?.restaurant?.address || ''
+                const parts = []
+                if (restaurantId) {
+                  const formattedId = formatRestaurantId(restaurantId)
+                  parts.push(`ID: ${formattedId}`)
+                }
+                if (address) {
+                  const shortAddress = address.length > 40 ? address.substring(0, 40) + '...' : address
+                  parts.push(shortAddress)
+                }
+                return parts.length > 0 ? parts.join(' • ') : 'Loading...'
+              })()}
+            </p>
           </div>
-          <div className="flex items-center gap-1 ml-2">
+          <div className="flex items-center gap-1 mt-0.5">
             <button
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
               onClick={() => navigate("/restaurant/withdrawal-history")}
               title="Withdrawal History"
             >
-              <Wallet className="w-5 h-5 text-gray-700" />
+              <Wallet className="w-5 h-5" />
             </button>
             <button
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
               onClick={() => navigate("/restaurant/notifications")}
             >
-              <Bell className="w-5 h-5 text-gray-700" />
+              <Bell className="w-5 h-5" />
             </button>
             <button
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
               onClick={() => navigate("/restaurant/explore")}
             >
-              <Menu className="w-5 h-5 text-gray-700" />
+              <Menu className="w-5 h-5" />
             </button>
           </div>
         </div>
