@@ -126,18 +126,18 @@ const DineInOrders = () => {
             
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate("/food/restaurant/explore")}
-                        className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-                        aria-label="Back"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-gray-700" />
-                    </button>
-                    <div>
-                        <h1 className="text-3xl font-black text-gray-900">Live Dine-In Orders</h1>
-                        <p className="text-gray-500 font-medium">Manage active orders across all tables in real-time.</p>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => navigate("/food/restaurant/explore")}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+                            aria-label="Go back"
+                        >
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
+                        <h1 className="text-2xl font-black text-gray-900">Live Dine-In Orders</h1>
                     </div>
+                    <p className="text-gray-500 font-medium mt-1 pl-[48px]">Manage active orders across all tables in real-time.</p>
                 </div>
                 <Button 
                     variant="outline"

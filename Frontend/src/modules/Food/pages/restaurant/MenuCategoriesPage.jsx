@@ -271,14 +271,18 @@ export default function MenuCategoriesPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <div className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
-        <div className="px-4 py-3 flex items-center gap-3">
-          <button onClick={goBack} className="rounded-full p-1 hover:bg-slate-100">
-            <ArrowLeft className="h-5 w-5 text-slate-700" />
-          </button>
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">Menu Categories</h1>
-            <p className="text-xs text-slate-500">Create categories, track approvals, and resubmit edits safely.</p>
+        <div className="px-4 py-3 flex flex-col">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={goBack} 
+              className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer text-slate-900 shrink-0"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-lg font-bold text-slate-900">Menu Categories</h1>
           </div>
+          <p className="text-xs text-slate-500 mt-0.5 pl-[48px]">Create categories, track approvals, and resubmit edits safely.</p>
         </div>
       </div>
 

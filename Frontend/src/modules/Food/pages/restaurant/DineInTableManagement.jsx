@@ -349,19 +349,19 @@ const DineInTableManagement = () => {
             
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-start gap-4">
-                    <button 
-                        onClick={() => navigate(-1)}
-                        className="mt-1 p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-                        title="Go back"
-                        aria-label="Go back"
-                    >
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <div>
+                <div className="flex flex-col">
+                    <div className="flex items-center gap-3">
+                        <button 
+                            onClick={() => navigate(-1)}
+                            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+                            title="Go back"
+                            aria-label="Go back"
+                        >
+                            <ArrowLeft className="w-6 h-6" />
+                        </button>
                         <h1 className="text-2xl font-black text-gray-900">Table Management</h1>
-                        <p className="text-gray-500 font-medium">Create and manage QR codes for your restaurant tables.</p>
                     </div>
+                    <p className="text-gray-500 font-medium mt-1 pl-[48px]">Create and manage QR codes for your restaurant tables.</p>
                 </div>
                 <Button 
                     onClick={() => setShowAddModal(true)}
