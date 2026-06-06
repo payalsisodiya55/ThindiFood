@@ -3878,8 +3878,8 @@ export default function Cart() {
                   onClick={() => setShowBillDetails(!showBillDetails)}
                   className="flex items-center justify-between w-full"
                 >
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <div className="flex items-start gap-3 md:gap-4">
+                    <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400 mt-0.5" />
                     <div className="text-left">
                       <div className="flex items-center gap-2 flex-wrap mb-0.5">
                         <span className="text-base text-gray-800 dark:text-gray-200 font-semibold tracking-wide">Total Bill</span>

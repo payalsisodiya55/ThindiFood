@@ -61,6 +61,8 @@ import {
 } from "@food/utils/foodVariants"
 import fssaiLogo from "@food/assets/fssai.png"
 import { RestaurantDetailSkeleton } from "@food/components/ui/loading-skeletons"
+import appLogo from "@/assets/taamioLogo.png"
+import { Smartphone } from "lucide-react"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -79,6 +81,53 @@ function RestaurantDetailsContent() {
   const [searchParams] = useSearchParams()
   const showOnlyUnder250 = searchParams.get('under250') === 'true'
   const targetDishId = useMemo(() => String(searchParams.get('dish') || '').trim(), [searchParams])
+
+  const [showAppPrompt, setShowAppPrompt] = useState(false)
+
+  useEffect(() => {
+    if (!targetDishId) return
+
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    if (!isMobile) return
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
+    if (isStandalone) return
+
+    const isDismissed = sessionStorage.getItem('taamio-app-prompt-dismissed')
+    if (isDismissed) return
+
+    const timer = setTimeout(() => {
+      setShowAppPrompt(true)
+    }, 1200)
+
+    return () => clearTimeout(timer)
+  }, [targetDishId])
+
+  const handleOpenInApp = () => {
+    sessionStorage.setItem('taamio-app-prompt-dismissed', 'true')
+    setShowAppPrompt(false)
+
+    const restaurantSlug = restaurant?.slug || slug || ""
+    const appUri1 = `taamio://user/restaurants/${restaurantSlug}?dish=${targetDishId}`
+    const appUri2 = `thindifood://user/restaurants/${restaurantSlug}?dish=${targetDishId}`
+
+    const start = Date.now()
+    window.location.href = appUri1
+
+    setTimeout(() => {
+      if (document.hasFocus() && Date.now() - start < 2000) {
+        const start2 = Date.now()
+        window.location.href = appUri2
+
+        setTimeout(() => {
+          if (document.hasFocus() && Date.now() - start2 < 2000) {
+            toast.error("Could not open the app. If the app is not installed, please download it, or continue in the browser.")
+          }
+        }, 1500)
+      }
+    }, 1500)
+  }
+
   const { addToCart, updateQuantity, removeFromCart, getCartItem, cart, clearCart, replaceCart } = useCart()
   const { triggerLoginRequired } = useLoginRequired()
   const { vegMode, addDishFavorite, removeDishFavorite, isDishFavorite, getDishFavorites, getFavorites, addFavorite, removeFavorite, isFavorite } = useProfile()
@@ -4392,6 +4441,87 @@ function RestaurantDetailsContent() {
                       >
                         Clear Cart & Continue
                       </Button>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
+      {/* App Redirection Prompt Modal */}
+      {typeof window !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {showAppPrompt && (
+              <>
+                {/* Backdrop */}
+                <motion.div
+                  className="fixed inset-0 bg-black/60 z-[10040] backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => {
+                    sessionStorage.setItem('taamio-app-prompt-dismissed', 'true')
+                    setShowAppPrompt(false)
+                  }}
+                />
+                {/* Dialog Container */}
+                <motion.div
+                  className="fixed bottom-0 left-0 right-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-[10041] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 w-full md:max-w-md pb-safe"
+                  initial={{ y: "100%", opacity: 0.5 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: "100%", opacity: 0.5 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                >
+                  <div className="p-6 text-center">
+                    {/* Header line handle for mobile dragging visual */}
+                    <div className="w-12 h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full mx-auto mb-5 md:hidden" />
+                    
+                    {/* App Logo/Icon */}
+                    <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-tr from-[#00c87e] to-[#059669] rounded-2xl flex items-center justify-center p-0.5 shadow-lg shadow-[#00c87e]/20">
+                      <div className="w-full h-full bg-white dark:bg-gray-950 rounded-2xl flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={appLogo} 
+                          alt="Taamio Food" 
+                          className="w-16 h-16 object-contain"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className="hidden w-full h-full items-center justify-center text-[#00c87e]">
+                          <Smartphone size={36} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">
+                      Open in Taamio App?
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-6 px-2 leading-relaxed">
+                      Enjoy a faster ordering experience, live delivery tracking, and exclusive application discounts.
+                    </p>
+
+                    {/* Actions */}
+                    <div className="flex flex-col gap-2.5">
+                      <Button
+                        className="w-full rounded-xl py-6 font-bold bg-[#00c87e] hover:bg-[#00b06e] text-white border-none shadow-md shadow-[#00c87e]/15 transition-all active:scale-[0.98]"
+                        onClick={handleOpenInApp}
+                      >
+                        Continue in App
+                      </Button>
+                      
+                      <button
+                        className="w-full py-3 text-sm font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors focus:outline-none"
+                        onClick={() => {
+                          sessionStorage.setItem('taamio-app-prompt-dismissed', 'true')
+                          setShowAppPrompt(false)
+                        }}
+                      >
+                        Continue on Website
+                      </button>
                     </div>
                   </div>
                 </motion.div>
