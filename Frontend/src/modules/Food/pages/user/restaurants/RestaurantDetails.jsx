@@ -3784,14 +3784,15 @@ function RestaurantDetailsContent() {
                           ? 'text-gray-400 dark:text-gray-600'
                           : 'text-gray-900 dark:text-white'
                           }`}>
-                          {getDishQuantity(selectedItem, selectedVariantId)}
+                          {getDishQuantity(selectedItem, selectedVariantId) || 1}
                         </span>
                         <button
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
+                              const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                               updateItemQuantity(
                                 selectedItem,
-                                getDishQuantity(selectedItem, selectedVariantId) + 1,
+                                currentQty === 0 ? 2 : currentQty + 1,
                                 e,
                                 getVariantForDish(selectedItem, selectedVariantId),
                               )
@@ -3806,7 +3807,7 @@ function RestaurantDetailsContent() {
                           <Plus className="h-5 w-5" />
                         </button>
                       </div>
-
+ 
                       {/* Add Item Button */}
                       <Button
                         className={`flex-1 h-[44px] rounded-lg font-semibold flex items-center justify-center gap-2 ${shouldShowGrayscale
@@ -3815,9 +3816,10 @@ function RestaurantDetailsContent() {
                           }`}
                         onClick={(e) => {
                           if (!shouldShowGrayscale) {
+                            const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                             updateItemQuantity(
                               selectedItem,
-                              getDishQuantity(selectedItem, selectedVariantId) + 1,
+                              currentQty === 0 ? 1 : currentQty + 1,
                               e,
                               getVariantForDish(selectedItem, selectedVariantId),
                             )
