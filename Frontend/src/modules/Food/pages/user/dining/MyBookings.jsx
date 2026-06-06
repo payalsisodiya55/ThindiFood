@@ -419,13 +419,15 @@ export default function MyBookings() {
     return (
         <AnimatedPage className="bg-slate-50 dark:bg-[#0a0a0a] min-h-screen pb-10">
             <div className="bg-white dark:bg-[#1a1a1a] border-b border-slate-100 dark:border-[#222222] p-4 flex items-center shadow-sm sticky top-0 z-10">
-                <button onClick={() => navigate("/")}>
-                    <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-white cursor-pointer" />
-                </button>
-                <h1 className="ml-4 text-xl font-semibold text-gray-800 dark:text-white">My Table Bookings</h1>
+                <div className="max-w-md md:max-w-3xl mx-auto flex items-center w-full">
+                    <button onClick={() => navigate("/")}>
+                        <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-white cursor-pointer" />
+                    </button>
+                    <h1 className="ml-4 text-xl font-semibold text-gray-800 dark:text-white">My Table Bookings</h1>
+                </div>
             </div>
 
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 max-w-md md:max-w-3xl mx-auto">
                 {bookings.length > 0 ? (
                     bookings.map((booking) => (
                         <button

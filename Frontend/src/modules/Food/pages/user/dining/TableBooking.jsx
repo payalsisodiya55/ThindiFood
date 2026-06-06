@@ -446,7 +446,7 @@ export default function TableBooking() {
       <div className="relative overflow-hidden px-4 pb-10 pt-5 bg-gradient-to-b from-red-500/20 via-red-500/10 to-[#f5f6fb] dark:to-[#0a0a0a]">
         <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.15),transparent_65%)]" />
 
-        <div className="relative z-10">
+        <div className="relative z-10 mx-auto max-w-md md:max-w-3xl">
           <button
             onClick={goBack}
             className="flex h-10 w-10 items-center justify-center rounded-full bg-white dark:bg-[#1a1a1a] text-[#383838] dark:text-white shadow-sm"
@@ -461,7 +461,7 @@ export default function TableBooking() {
         </div>
       </div>
 
-      <div className="mx-auto -mt-4 max-w-md space-y-4 px-4">
+      <div className="mx-auto -mt-4 max-w-md md:max-w-3xl space-y-4 px-4">
         {!isDiningEnabled && (
           <section className="rounded-[22px] border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/20 px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
             <p className="text-sm font-semibold text-red-900 dark:text-red-300">Dining bookings are paused by this restaurant.</p>
@@ -542,13 +542,13 @@ export default function TableBooking() {
             })}
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-4 grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {availabilityLoading ? (
-              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] dark:border-[#333333] px-4 py-8 text-center text-sm text-[#7c8394] dark:text-[#a0a0a0]">
+              <div className="col-span-3 md:col-span-4 lg:col-span-6 rounded-[18px] border border-dashed border-[#e5e7ef] dark:border-[#333333] px-4 py-8 text-center text-sm text-[#7c8394] dark:text-[#a0a0a0]">
                 Loading available slots...
               </div>
             ) : filteredSlots.length === 0 ? (
-              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] dark:border-[#333333] px-4 py-8 text-center text-sm text-[#7c8394] dark:text-[#a0a0a0]">
+              <div className="col-span-3 md:col-span-4 lg:col-span-6 rounded-[18px] border border-dashed border-[#e5e7ef] dark:border-[#333333] px-4 py-8 text-center text-sm text-[#7c8394] dark:text-[#a0a0a0]">
                 {noSlotsReason || `No ${selectedMealPeriod} slots available for the selected date.`}
               </div>
             ) : (
@@ -584,7 +584,7 @@ export default function TableBooking() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-[#e6e7ef] dark:border-[#222222] bg-[#f5f6fb]/95 dark:bg-[#0a0a0a]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
-        <div className="mx-auto max-w-md">
+        <div className="mx-auto max-w-md md:max-w-3xl">
           <Button
             disabled={!canProceed}
             onClick={handleProceed}

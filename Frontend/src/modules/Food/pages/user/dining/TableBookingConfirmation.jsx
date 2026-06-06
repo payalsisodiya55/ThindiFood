@@ -280,7 +280,7 @@ export default function TableBookingConfirmation() {
             <AnimatedPage className="bg-slate-50 dark:bg-[#0a0a0a] min-h-screen pb-24">
                 {/* Header */}
                 <div className="text-white px-4 py-4 sticky top-0 z-50 shadow-md" style={{ backgroundColor: RED }}>
-                    <div className="flex items-center gap-3">
+                    <div className="max-w-md md:max-w-3xl mx-auto flex items-center gap-3">
                         <button onClick={goBack} className="p-1 hover:bg-white/10 rounded-full transition-colors">
                             <ArrowLeft className="w-6 h-6" />
                         </button>
@@ -288,7 +288,7 @@ export default function TableBookingConfirmation() {
                     </div>
                 </div>
 
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-4 max-w-md md:max-w-3xl mx-auto">
                     {requiresLogin && (
                         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4">
                             <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">Please login to book your seat.</p>
@@ -428,14 +428,16 @@ export default function TableBookingConfirmation() {
 
                 {/* Sticky Action Button */}
                 <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#1a1a1a] border-t border-slate-100 dark:border-[#222222] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-50">
-                    <Button
-                        onClick={handleBooking}
-                        disabled={bookingInProgress}
-                        className="w-full h-14 text-white font-bold text-lg rounded-2xl shadow-xl transition-all active:scale-[0.98]"
-                        style={{ backgroundColor: RED }}
-                    >
-                        {bookingInProgress ? "Confirming..." : requiresLogin ? "Login to book seat" : "Confirm your seat"}
-                    </Button>
+                    <div className="max-w-md md:max-w-3xl mx-auto">
+                        <Button
+                            onClick={handleBooking}
+                            disabled={bookingInProgress}
+                            className="w-full h-14 text-white font-bold text-lg rounded-2xl shadow-xl transition-all active:scale-[0.98]"
+                            style={{ backgroundColor: RED }}
+                        >
+                            {bookingInProgress ? "Confirming..." : requiresLogin ? "Login to book seat" : "Confirm your seat"}
+                        </Button>
+                    </div>
                 </div>
             </AnimatedPage>
 

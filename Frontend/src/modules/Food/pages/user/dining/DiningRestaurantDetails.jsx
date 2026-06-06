@@ -487,7 +487,7 @@ export default function DiningRestaurantDetails() {
 
   return (
     <div className="min-h-screen bg-[#f6f7fb] dark:bg-[#0a0a0a] pb-28">
-      <section className="mx-auto max-w-md bg-[#f6f7fb] dark:bg-[#0a0a0a]">
+      <section className="mx-auto max-w-md md:max-w-5xl bg-[#f6f7fb] dark:bg-[#0a0a0a]">
         <div className="relative h-[392px] overflow-hidden">
           {heroImage ? (
             <img src={heroImage} alt={restaurantName} className="h-full w-full object-cover" />
@@ -593,7 +593,7 @@ export default function DiningRestaurantDetails() {
       </section>
 
       <div className="sticky top-0 z-30 border-b border-[#ececf3] dark:border-[#222222] bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl">
-        <div className="mx-auto max-w-md px-3 pb-3 pt-3">
+        <div className="mx-auto max-w-md md:max-w-5xl px-3 pb-3 pt-3">
           <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {topTabs.map((tab) => (
               <button
@@ -616,7 +616,7 @@ export default function DiningRestaurantDetails() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-md px-4 pt-4">
+      <div className="mx-auto max-w-md md:max-w-5xl px-4 pt-4">
         <section id="restaurant-prebook">
           <div>
             <h2 className="text-[29px] font-black leading-none text-[#23180f] dark:text-white">Pre-book offers</h2>
@@ -656,8 +656,8 @@ export default function DiningRestaurantDetails() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {(menuPreviewImages.length > 0 ? menuPreviewImages.slice(0, 2) : [""]).map((image, index) => (
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {(menuPreviewImages.length > 0 ? menuPreviewImages.slice(0, 8) : [""]).map((image, index) => (
               <div key={`${image || "menu-placeholder"}-${index}`} className="overflow-hidden rounded-[18px] border border-[#ede8dd] dark:border-[#222222] bg-white dark:bg-[#1a1a1a]">
                 <div className="aspect-[0.88] bg-[#f7f1e7] dark:bg-[#202020]">
                   {image ? (
@@ -675,12 +675,12 @@ export default function DiningRestaurantDetails() {
 
         <section id="restaurant-photos" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
           <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">Photos</h2>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {(restaurantPhotos.length > 0 ? restaurantPhotos.slice(0, 4) : [""]).map((image, index) => (
+          <div className="mt-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {(restaurantPhotos.length > 0 ? restaurantPhotos.slice(0, 8) : [""]).map((image, index) => (
               <div
                 key={`${image || "placeholder"}-${index}`}
                 className={`overflow-hidden rounded-[18px] bg-[#f6efe4] dark:bg-[#222222] ${
-                  index === 0 ? "col-span-2 aspect-[1.72]" : "aspect-[1.08]"
+                  index === 0 ? "col-span-2 md:col-span-1 aspect-[1.72] md:aspect-[1.08]" : "aspect-[1.08]"
                 }`}
               >
                 {image ? (
@@ -736,7 +736,7 @@ export default function DiningRestaurantDetails() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[#ebe5da] dark:border-[#222222] bg-white/95 dark:bg-[#0a0a0a]/95 p-4 backdrop-blur-xl">
-        <div className="mx-auto max-w-md">
+        <div className="mx-auto max-w-md md:max-w-5xl">
           <Button
             onClick={handleOpenBookingSheet}
             disabled={!isDiningAvailable}
@@ -753,14 +753,14 @@ export default function DiningRestaurantDetails() {
       </div>
 
       {isBookingSheetOpen && (
-        <div className="fixed inset-0 z-40 flex items-end justify-center">
+        <div className="fixed inset-0 z-40 flex items-end md:items-center justify-center">
           <button
             aria-label="Close booking sheet"
             className="absolute inset-0 bg-black/35"
             onClick={() => setIsBookingSheetOpen(false)}
           />
 
-          <div className="relative w-full max-w-md rounded-t-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)] z-50">
+          <div className="relative w-full max-w-md rounded-t-[28px] md:rounded-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)] md:shadow-[0_20px_60px_rgba(15,23,42,0.25)] z-50 md:mx-4">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-black text-[#23180f] dark:text-white">Select number of guests</h3>
