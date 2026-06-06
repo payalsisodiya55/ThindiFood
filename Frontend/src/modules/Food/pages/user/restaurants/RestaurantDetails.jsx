@@ -2362,9 +2362,9 @@ function RestaurantDetailsContent() {
                     
                     <div className="space-y-3">
                       <div className="space-y-1">
-                        <p className="text-[10px] font-bold text-[#00c87e] uppercase tracking-tight ml-[30px]">Outlet Address</p>
+                        <p className="text-[10px] font-bold text-[#00c87e] uppercase tracking-tight">Outlet Address</p>
                         <div className="flex items-start gap-2.5">
-                          <div className="w-5 h-5 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 shrink-0 flex items-center justify-center mt-[1px]">
+                          <div className="w-5 h-5 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 shrink-0 flex items-center justify-center">
                             <MapPin className="h-3 w-3 text-[#00c87e]" />
                           </div>
                           <p className="text-[11px] text-[#00c87e] font-medium leading-relaxed flex-1">
