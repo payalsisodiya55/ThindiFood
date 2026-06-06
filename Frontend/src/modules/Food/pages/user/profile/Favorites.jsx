@@ -35,6 +35,7 @@ export default function Favorites() {
   const { location: userLocation } = useLocation();
   const { zoneId } = useZone(userLocation);
   const [liveRestaurants, setLiveRestaurants] = useState([]);
+  const [liveLoaded, setLiveLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,9 +49,11 @@ export default function Favorites() {
         const list = response?.data?.data?.restaurants || response?.data?.restaurants || [];
         if (!cancelled) {
           setLiveRestaurants(list);
+          setLiveLoaded(true);
         }
       } catch (error) {
         console.error("Error loading live restaurants in favorites:", error);
+        if (!cancelled) setLiveLoaded(true); // still mark loaded so UI isn't blocked
       }
     };
     fetchLiveRestaurants();
@@ -58,6 +61,24 @@ export default function Favorites() {
       cancelled = true;
     };
   }, [zoneId]);
+
+  // Auto-remove favorites whose restaurants have been deleted from the backend.
+  // Only runs once liveRestaurants has been fetched (liveLoaded = true).
+  useEffect(() => {
+    if (!liveLoaded || liveRestaurants.length === 0) return;
+    restaurantFavorites.forEach((fav) => {
+      const stillExists = liveRestaurants.some(
+        (r) =>
+          r.slug === fav.slug ||
+          (r._id && String(r._id) === String(fav.id)) ||
+          (r.restaurantId && String(r.restaurantId) === String(fav.id)) ||
+          r.name?.toLowerCase().trim() === fav.name?.toLowerCase().trim()
+      );
+      if (!stillExists) {
+        removeFavorite(fav.slug);
+      }
+    });
+  }, [liveLoaded, liveRestaurants]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Enrich static favorites with dynamic location-based timing and distance
   const enrichedRestaurants = restaurantFavorites.map(fav => {
@@ -117,9 +138,13 @@ export default function Favorites() {
     }
   };
 
-  const totalFavorites = restaurantFavorites.length + dishFavorites.length;
+  // Use enrichedRestaurants (only live restaurants) for the final count.
+  // While the live-restaurant fetch is still in flight, fall back to the
+  // raw favorite count so we don't flash the empty-state prematurely.
+  const validRestaurantCount = liveLoaded ? enrichedRestaurants.length : restaurantFavorites.length;
+  const totalFavorites = validRestaurantCount + dishFavorites.length;
 
-  if (totalFavorites === 0) {
+  if (liveLoaded && totalFavorites === 0) {
     return (
       <AnimatedPage className="min-h-screen bg-gradient-to-b from-yellow-50/30 via-white to-orange-50/20 dark:from-[#0a0a0a] dark:via-[#0a0a0a] dark:to-[#0a0a0a] p-4">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -159,7 +184,7 @@ export default function Favorites() {
               <div>
                 <h1 className="text-lg sm:text-xl md:text-2xl font-bold dark:text-white">My Favorites</h1>
                 <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm font-semibold">
-                  {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} • {restaurantFavorites.length || 0} {restaurantFavorites.length === 1 ? "restaurant" : "restaurants"}
+                  {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} • {validRestaurantCount || 0} {validRestaurantCount === 1 ? "restaurant" : "restaurants"}
                 </p>
               </div>
             </div>
@@ -175,7 +200,7 @@ export default function Favorites() {
                 "border-b-2 border-primary-orange text-primary-orange" :
                 "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"}`
             }>
-            Restaurants ({restaurantFavorites.length})
+            Restaurants ({validRestaurantCount})
           </button>
           <button
             onClick={() => setActiveTab("dishes")}
