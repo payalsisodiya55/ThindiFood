@@ -48,7 +48,8 @@ export default function ProfessionalSearch() {
   const { zoneId } = useZone(userCoords)
   
   const [query, setQuery] = useState(initialQuery)
-  const debouncedQuery = useDebounce(query, 500)
+  // Use 300ms debounce delay for snappy search feel
+  const debouncedQuery = useDebounce(query, 300)
   
   const [results, setResults] = useState({ restaurants: [], dishes: [] })
   const [loading, setLoading] = useState(false)
@@ -56,6 +57,8 @@ export default function ProfessionalSearch() {
   const [categories, setCategories] = useState([])
   const [selectedCategoryId, setSelectedCategoryId] = useState(searchParams.get("cat") || null)
   const [history, setHistory] = useState([])
+
+  const hasResults = results.restaurants.length > 0 || results.dishes.length > 0
 
   // Load search history
   useEffect(() => {
@@ -191,6 +194,20 @@ export default function ProfessionalSearch() {
         </div>
       </div>
 
+      {/* Sleek Top Progress Bar */}
+      <div className="h-0.5 w-full bg-transparent overflow-hidden relative z-40">
+        {loading && (
+          <div 
+            className="absolute h-full bg-red-600 animate-pulse-loader"
+            style={{
+              width: "100%",
+              left: 0,
+              animation: "shimmer 1.2s infinite ease-in-out"
+            }}
+          />
+        )}
+      </div>
+
       <div className="max-w-3xl mx-auto p-4">
         {/* Categories (Admin only) */}
         {!query && !loading && (
@@ -229,11 +246,15 @@ export default function ProfessionalSearch() {
           </div>
         )}
 
-        {/* Loading Spinner */}
+        {/* Center Loading Spinner (Only when there are no cached results) */}
         <AnimatePresence>
-          {loading && (
+          {loading && !hasResults && (
             <motion.div 
-               initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+               key="search-loading"
+               initial={{ opacity: 0 }} 
+               animate={{ opacity: 1 }} 
+               exit={{ opacity: 0 }}
+               transition={{ duration: 0.15 }}
                className="flex flex-col items-center justify-center py-20"
             >
               <Loader2 className="w-8 h-8 animate-spin mb-3" style={{ color: RED }} />
@@ -262,8 +283,14 @@ export default function ProfessionalSearch() {
         )}
 
         {/* Search Results */}
-        {!loading && (query || selectedCategoryId) && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        {(query || selectedCategoryId) && (hasResults || !loading) && (
+          <motion.div 
+            key="search-results-wrapper"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={`space-y-8 transition-opacity duration-200 ${loading ? "opacity-60 pointer-events-none" : "opacity-100"}`}
+          >
             
             {/* Dish Results Section */}
             {results.dishes.length > 0 && (
@@ -370,7 +397,7 @@ export default function ProfessionalSearch() {
               <div className="flex flex-col items-center justify-center py-20 text-center">
                  <div className="w-20 h-20 bg-slate-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
                     <Search className="w-8 h-8 text-slate-300" />
-                 </div>
+                  </div>
                  <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">We couldn't find any results</h2>
                  <p className="text-slate-500 text-sm max-w-xs">Maybe try searching for something else or check your spelling</p>
                  <Button variant="outline" onClick={handleClear} className="mt-6 rounded-xl" style={{ borderColor: RED, color: RED }}>
@@ -379,9 +406,18 @@ export default function ProfessionalSearch() {
               </div>
             )}
 
-          </div>
+          </motion.div>
         )}
       </div>
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translate3d(-100%, 0, 0); }
+          100% { transform: translate3d(100%, 0, 0); }
+        }
+        .animate-pulse-loader {
+          animation: shimmer 1.2s infinite ease-in-out;
+        }
+      `}</style>
     </div>
   )
 }

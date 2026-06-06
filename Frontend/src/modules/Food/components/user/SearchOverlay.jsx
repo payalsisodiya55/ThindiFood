@@ -6,6 +6,7 @@ import { Input } from "@food/components/ui/input"
 import { restaurantAPI } from "@food/api"
 
 const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
+let cachedDishes = null
 
 export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchChange }) {
   const navigate = useNavigate()
@@ -14,12 +15,27 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
   const [filteredFoods, setFilteredFoods] = useState([])
   const [recentSuggestions, setRecentSuggestions] = useState([])
   const [loadingFoods, setLoadingFoods] = useState(false)
+  
+  // Start as true on mount to sync with searchOverlayEnter keyframe immediately
+  const [isAnimating, setIsAnimating] = useState(true)
 
+  // Focus the input snappily after the transition completes to prevent keyboard lag/stutter
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      inputRef.current.focus()
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
     }
   }, [isOpen])
+
+  // Smooth delayed close to allow exit animation to complete
+  const handleClose = () => {
+    setIsAnimating(false)
+    setTimeout(() => {
+      onClose()
+    }, 150)
+  }
 
   useEffect(() => {
     if (!isOpen) return
@@ -55,6 +71,11 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
     }
 
     const fetchDishesFromDB = async () => {
+      // Use cached dishes if already fetched to prevent visual layout shifts/flashing
+      if (cachedDishes) {
+        setAllFoods(cachedDishes)
+        return
+      }
       setLoadingFoods(true)
       try {
         const dishesRes = await restaurantAPI.getPublicDishes({ limit: 800 })
@@ -71,6 +92,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
             image: getImageUrl(dish?.image),
           }))
 
+        cachedDishes = normalized
         setAllFoods(normalized)
       } catch {
         setAllFoods([])
@@ -86,7 +108,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape" && isOpen) {
-        onClose()
+        handleClose()
       }
     }
 
@@ -99,7 +121,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
       document.removeEventListener("keydown", handleEscape)
       document.body.style.overflow = "unset"
     }
-  }, [isOpen, onClose])
+  }, [isOpen])
 
   useEffect(() => {
     if (searchValue.trim() === "") {
@@ -133,7 +155,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
     if (searchValue.trim()) {
       saveRecentSearch(searchValue)
       navigate(`/user/search?q=${encodeURIComponent(searchValue.trim())}`)
-      onClose()
+      handleClose()
       onSearchChange("")
     }
   }
@@ -141,7 +163,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
   const handleFoodClick = (food) => {
     saveRecentSearch(food.name)
     navigate(`/user/search?q=${encodeURIComponent(food.name)}`)
-    onClose()
+    handleClose()
     onSearchChange("")
   }
 
@@ -151,7 +173,11 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
     <div
       className="fixed inset-0 z-[9999] flex flex-col bg-white dark:bg-[#0a0a0a]"
       style={{
-        animation: 'fadeIn 0.3s ease-out'
+        transform: isAnimating ? "translate3d(0, 0, 0)" : "translate3d(0, 20px, 0)",
+        opacity: isAnimating ? 1 : 0,
+        pointerEvents: isAnimating ? "auto" : "none",
+        transition: "transform 150ms cubic-bezier(0.16, 1, 0.3, 1), opacity 150ms cubic-bezier(0.16, 1, 0.3, 1)",
+        animation: isAnimating ? "searchOverlayEnter 150ms cubic-bezier(0.16, 1, 0.3, 1)" : "none"
       }}
     >
       {/* Header with Search Bar */}
@@ -172,7 +198,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
               type="button"
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleClose}
               className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <X className="h-5 w-5 text-gray-700 dark:text-gray-300" />
@@ -186,7 +212,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
         <div
           className="mb-6"
           style={{
-            animation: 'slideDown 0.3s ease-out 0.1s both'
+            animation: 'slideDown 0.15s cubic-bezier(0.16, 1, 0.3, 1) 0.03s both'
           }}
         >
           <h3 className="text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
@@ -200,7 +226,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
                 onClick={() => handleSuggestionClick(suggestion)}
                 className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 rounded-full bg-orange-50 dark:bg-orange-900/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800 hover:border-orange-300 dark:hover:border-orange-700 text-gray-700 dark:text-gray-300 hover:text-primary-orange dark:hover:text-orange-400 transition-all duration-200 text-xs sm:text-sm font-medium shadow-sm hover:shadow-md"
                 style={{
-                  animation: `scaleIn 0.3s ease-out ${0.1 + index * 0.02}s both`
+                  animation: `scaleIn 0.12s cubic-bezier(0.16, 1, 0.3, 1) ${0.03 + index * 0.008}s both`
                 }}
               >
                 <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-primary-orange flex-shrink-0" />
@@ -213,7 +239,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
         {/* Food Grid */}
         <div
           style={{
-            animation: 'fadeIn 0.3s ease-out 0.2s both'
+            animation: 'fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both'
           }}
         >
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
@@ -226,7 +252,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
                   key={food.id}
                   className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group"
                   style={{
-                    animation: `slideUp 0.3s ease-out ${0.25 + 0.05 * (index % 12)}s both`
+                    animation: `slideUp 0.15s cubic-bezier(0.16, 1, 0.3, 1) ${0.05 + 0.01 * (index % 6)}s both`
                   }}
                   onClick={() => handleFoodClick(food)}
                 >
@@ -275,6 +301,16 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
         </div>
       </div>
       <style>{`
+          @keyframes searchOverlayEnter {
+            from {
+              opacity: 0;
+              transform: translate3d(0, 20px, 0);
+            }
+            to {
+              opacity: 1;
+              transform: translate3d(0, 0, 0);
+            }
+          }
           @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -282,31 +318,31 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
           @keyframes slideDown {
             from {
               opacity: 0;
-              transform: translateY(-20px);
+              transform: translate3d(0, -10px, 0);
             }
             to {
               opacity: 1;
-              transform: translateY(0);
+              transform: translate3d(0, 0, 0);
             }
           }
           @keyframes slideUp {
             from {
               opacity: 0;
-              transform: translateY(20px);
+              transform: translate3d(0, 10px, 0);
             }
             to {
               opacity: 1;
-              transform: translateY(0);
+              transform: translate3d(0, 0, 0);
             }
           }
           @keyframes scaleIn {
             from {
               opacity: 0;
-              transform: scale(0.9);
+              transform: scale3d(0.96, 0.96, 1);
             }
             to {
               opacity: 1;
-              transform: scale(1);
+              transform: scale3d(1, 1, 1);
             }
           }
         `}</style>

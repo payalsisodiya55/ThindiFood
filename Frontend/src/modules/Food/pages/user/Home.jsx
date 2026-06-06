@@ -923,8 +923,13 @@ export default function Home() {
   useEffect(() => {
     if (!showVegModePopup) return;
 
-    // Push a dummy history state so the next back press pops it instead of navigating the page/app
-    window.history.pushState({ isVegPopupOpen: true }, "");
+    // Push a dummy history state preserving React Router state to avoid breaking navigation stack
+    const currentState = window.history.state;
+    const nextState = currentState
+      ? { ...currentState, idx: (currentState.idx || 0) + 1, isVegPopupOpen: true }
+      : { isVegPopupOpen: true };
+
+    window.history.pushState(nextState, "");
 
     const handlePopState = (event) => {
       setShowVegModePopup(false);
@@ -3766,7 +3771,7 @@ export default function Home() {
         {/* Veg Mode Popup */}
         <AnimatePresence>
           {showVegModePopup && (
-            <>
+            <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 pointer-events-none">
               {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -3779,21 +3784,21 @@ export default function Home() {
                   setVegModeContext(false);
                   setPrevVegMode(false);
                 }}
-                className="fixed inset-0 bg-black/30 z-[9998] backdrop-blur-sm"
+                className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
               />
 
               {/* Popup */}
               <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: -20 }}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
                 transition={{
                   type: "spring",
                   damping: 25,
                   stiffness: 300,
                   mass: 0.8,
                 }}
-                className="fixed z-[9999] top-24 left-1/2 -translate-x-1/2 bg-white dark:bg-[#1a1a1a] rounded-3xl shadow-2xl p-6 w-[calc(100%-2.5rem)] max-w-sm border border-gray-100 dark:border-gray-800"
+                className="relative z-[9999] bg-white dark:bg-[#1a1a1a] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100 dark:border-gray-800 pointer-events-auto"
                 onClick={(e) => e.stopPropagation()}>
                 
                 {/* Close Button */}
@@ -3897,7 +3902,7 @@ export default function Home() {
                   Apply
                 </button>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
 
