@@ -3885,14 +3885,14 @@ export default function Cart() {
                         <span className="text-base text-gray-800 dark:text-gray-200 font-semibold tracking-wide">Total Bill</span>
                         {savings > 0 ? (
                           <>
-                            <span className="text-base text-gray-400 dark:text-gray-500 line-through font-medium">{RUPEE_SYMBOL}{Math.round(totalBeforeDiscount)}</span>
-                            <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{Math.round(total)}</span>
+                            <span className="text-base text-gray-400 dark:text-gray-500 line-through font-medium">{RUPEE_SYMBOL}{totalBeforeDiscount.toFixed(2)}</span>
+                            <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                             <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-center ml-1 font-semibold border border-blue-200 dark:border-blue-800">
-                              You saved {RUPEE_SYMBOL}{Math.round(savings)}
+                              You saved {RUPEE_SYMBOL}{savings.toFixed(2)}
                             </span>
                           </>
                         ) : (
-                          <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{Math.round(total)}</span>
+                          <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                         )}
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Incl. taxes and charges</p>
