@@ -44,7 +44,7 @@ export default function RestaurantNavbar({
     if (isSearchActive && searchInputRef.current) {
       const timer = setTimeout(() => {
         searchInputRef.current?.focus()
-      }, 150)
+      }, 320)
       return () => clearTimeout(timer)
     }
   }, [isSearchActive])
@@ -466,11 +466,13 @@ export default function RestaurantNavbar({
 
       {/* Search Overlay Container with smooth expand/collapse transition */}
       <div 
-        className={`absolute inset-0 bg-white px-4 flex items-center gap-3 transition-all duration-300 ease-out z-20 ${
-          isSearchActive 
-            ? "translate-x-0 opacity-100 pointer-events-auto" 
-            : "translate-x-full opacity-0 pointer-events-none"
-        }`}
+        className="absolute inset-0 bg-white px-4 flex items-center gap-3 z-20"
+        style={{
+          transform: isSearchActive ? "translate3d(0, 0, 0)" : "translate3d(100%, 0, 0)",
+          opacity: isSearchActive ? 1 : 0,
+          pointerEvents: isSearchActive ? "auto" : "none",
+          transition: "transform 320ms cubic-bezier(0.16, 1, 0.3, 1), opacity 320ms cubic-bezier(0.16, 1, 0.3, 1)"
+        }}
       >
         {/* Search Input */}
         <div className="flex-1 relative">

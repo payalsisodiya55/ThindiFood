@@ -2088,7 +2088,6 @@ export default function OrdersMain() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [isSearchActive, setIsSearchActive] = useState(false);
   const contentRef = useRef(null);
   const lenisRef = useRef(null);
   const filterBarRef = useRef(null);
@@ -3876,7 +3875,6 @@ export default function OrdersMain() {
           showNotifications={true} 
           searchValue={searchValue}
           onSearchChange={setSearchValue}
-          onSearchActiveChange={setIsSearchActive}
         />
       </div>
 
