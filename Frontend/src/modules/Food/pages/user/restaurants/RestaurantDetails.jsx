@@ -2763,40 +2763,38 @@ function RestaurantDetailsContent() {
                                     </div>
                                   )}
 
-                                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <div className="flex items-baseline gap-1 flex-wrap">
-                                        {item.offer ? (
-                                          <>
-                                            {hasFoodVariants(item) && (
-                                              <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                Starting from{" "}
-                                              </span>
-                                            )}
-                                            <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
-                                              ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
+                                  <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                    <div className="flex items-baseline gap-1 flex-wrap">
+                                      {item.offer ? (
+                                        <>
+                                          {hasFoodVariants(item) && (
+                                            <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400">
+                                              Starting from{" "}
                                             </span>
-                                          </>
-                                        ) : (
+                                          )}
                                           <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
-                                            {getFoodPriceLabel(item)}
+                                            ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
                                           </span>
-                                        )}
-                                      </div>
-                                      {item.offer && (
-                                        <p className="text-xs md:text-sm text-gray-400 line-through">
-                                          ₹{Math.round(getFoodDisplayPrice(item))}
-                                        </p>
+                                        </>
+                                      ) : (
+                                        <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
+                                          {getFoodPriceLabel(item)}
+                                        </span>
                                       )}
                                     </div>
-                                    {/* Preparation Time - Show if available */}
-                                    {item.preparationTime && String(item.preparationTime).trim() && (
-                                      <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                                        <Clock size={10} className="text-gray-500" />
-                                        <span>{String(item.preparationTime).trim()}</span>
-                                      </div>
+                                    {item.offer && (
+                                      <p className="text-xs md:text-sm text-gray-400 line-through">
+                                        ₹{Math.round(getFoodDisplayPrice(item))}
+                                      </p>
                                     )}
                                   </div>
+                                  {/* Preparation Time - Show if available */}
+                                  {item.preparationTime && String(item.preparationTime).trim() && (
+                                    <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0 w-fit mt-1">
+                                      <Clock size={10} className="text-gray-500" />
+                                      <span>{String(item.preparationTime).trim()}</span>
+                                    </div>
+                                  )}
 
                                   {item.offer && (
                                     <div className="mt-1 flex items-center gap-1 w-fit text-[9px] md:text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-1.5 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
@@ -3036,40 +3034,38 @@ function RestaurantDetailsContent() {
                                               </div>
                                             )}
 
-                                            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                              <div className="flex items-center gap-1.5 flex-wrap">
-                                                <div className="flex items-baseline gap-1 flex-wrap">
-                                                  {item.offer ? (
-                                                    <>
-                                                      {hasFoodVariants(item) && (
-                                                        <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400">
-                                                          Starting from{" "}
-                                                        </span>
-                                                      )}
-                                                      <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
-                                                        ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
+                                            <div className="flex items-center gap-1.5 flex-wrap mt-1.5">
+                                              <div className="flex items-baseline gap-1 flex-wrap">
+                                                {item.offer ? (
+                                                  <>
+                                                    {hasFoodVariants(item) && (
+                                                      <span className="text-[10px] md:text-xs font-medium text-gray-500 dark:text-gray-400">
+                                                        Starting from{" "}
                                                       </span>
-                                                    </>
-                                                  ) : (
+                                                    )}
                                                     <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
-                                                      {getFoodPriceLabel(item)}
+                                                      ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
                                                     </span>
-                                                  )}
-                                                </div>
-                                                {item.offer && (
-                                                  <p className="text-xs md:text-sm text-gray-400 line-through">
-                                                    ₹{Math.round(getFoodDisplayPrice(item))}
-                                                  </p>
+                                                  </>
+                                                ) : (
+                                                  <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
+                                                    {getFoodPriceLabel(item)}
+                                                  </span>
                                                 )}
                                               </div>
-                                              {/* Preparation Time - Show if available */}
-                                              {item.preparationTime && String(item.preparationTime).trim() && (
-                                                <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0">
-                                                  <Clock size={10} className="text-gray-500" />
-                                                  <span>{String(item.preparationTime).trim()}</span>
-                                                </div>
+                                              {item.offer && (
+                                                <p className="text-xs md:text-sm text-gray-400 line-through">
+                                                  ₹{Math.round(getFoodDisplayPrice(item))}
+                                                </p>
                                               )}
                                             </div>
+                                            {/* Preparation Time - Show if available */}
+                                            {item.preparationTime && String(item.preparationTime).trim() && (
+                                              <div className="flex items-center gap-1 text-[10px] md:text-xs font-medium text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-full flex-shrink-0 w-fit mt-1">
+                                                <Clock size={10} className="text-gray-500" />
+                                                <span>{String(item.preparationTime).trim()}</span>
+                                              </div>
+                                            )}
 
                                             {item.offer && (
                                               <div className="mt-1 flex items-center gap-1 w-fit text-[9px] md:text-[10px] font-bold text-[#00c87e] bg-[#00c87e]/10 px-1.5 py-0.5 rounded-full border border-[#00c87e]/20 whitespace-nowrap flex-shrink-0">
