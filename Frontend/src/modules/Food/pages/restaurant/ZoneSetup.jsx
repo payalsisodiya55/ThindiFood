@@ -12,7 +12,7 @@ const debugError = (...args) => {}
 
 const GOOGLE_MAP_LIBRARIES = ["places", "geometry"]
 const RESTAURANT_PIN_ICON_SVG = encodeURIComponent(`
-  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="56" viewBox="0 0 36 56">
+  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="48" viewBox="0 0 36 48">
     <rect x="16.5" y="28" width="3" height="20" rx="1.5" fill="#10b981"/>
     <circle cx="18" cy="18" r="12" fill="#10b981"/>
     <circle cx="18" cy="18" r="7" fill="#ffffff"/>
@@ -129,6 +129,7 @@ export default function ZoneSetup() {
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
   const markerRef = useRef(null)
+  const latestPositionRef = useRef(null)
   const zonePolygonsRef = useRef([])
   const zoneInfoWindowsRef = useRef([])
   const zoneMarkersRef = useRef([])
@@ -230,12 +231,25 @@ export default function ZoneSetup() {
         const clickedLat = event?.latLng?.lat?.()
         const clickedLng = event?.latLng?.lng?.()
         if (Number.isFinite(clickedLat) && Number.isFinite(clickedLng)) {
-          const address = await reverseGeocodeLocation(clickedLat, clickedLng)
-          setLocationSearch(address)
-          setSelectedAddress(address)
+          // Move marker and update states instantly
+          updateMarker(clickedLat, clickedLng, "Fetching address...")
+          setSelectedLocation({ lat: clickedLat, lng: clickedLng, address: "Fetching address..." })
+          setSelectedAddress("Fetching address...")
+          setLocationSearch("Fetching address...")
           setSelectedZoneLabel(zoneLabel)
-          setSelectedLocation({ lat: clickedLat, lng: clickedLng, address })
-          updateMarker(clickedLat, clickedLng, address)
+
+          // Fetch real address in background
+          const address = await reverseGeocodeLocation(clickedLat, clickedLng)
+
+          // Only update if marker position has not changed since the click
+          if (latestPositionRef.current && latestPositionRef.current.lat === clickedLat && latestPositionRef.current.lng === clickedLng) {
+            setLocationSearch(address)
+            setSelectedAddress(address)
+            setSelectedLocation({ lat: clickedLat, lng: clickedLng, address })
+            if (markerRef.current) {
+              markerRef.current.setTitle(address || "Restaurant Location")
+            }
+          }
         }
       })
 
@@ -392,7 +406,7 @@ export default function ZoneSetup() {
         setSelectedLocation({ lat, lng, address })
         setSelectedZoneLabel(getZoneLabel(getMatchingZone(lat, lng)))
         
-        updateMarker(lat, lng, address)
+        updateMarker(lat, lng, address, true)
       }
     }
   }, [restaurantData, mapLoading, zones])
@@ -532,12 +546,25 @@ export default function ZoneSetup() {
         if (!matchedZone) {
           return
         }
-        const address = await reverseGeocodeLocation(lat, lng)
-        setLocationSearch(address)
-        setSelectedAddress(address)
+        // Move marker and update states instantly
+        updateMarker(lat, lng, "Fetching address...")
+        setSelectedLocation({ lat, lng, address: "Fetching address..." })
+        setSelectedAddress("Fetching address...")
+        setLocationSearch("Fetching address...")
         setSelectedZoneLabel(getZoneLabel(matchedZone))
-        setSelectedLocation({ lat, lng, address })
-        updateMarker(lat, lng, address)
+
+        // Fetch real address in background
+        const address = await reverseGeocodeLocation(lat, lng)
+
+        // Only update if marker position has not changed since the click
+        if (latestPositionRef.current && latestPositionRef.current.lat === lat && latestPositionRef.current.lng === lng) {
+          setLocationSearch(address)
+          setSelectedAddress(address)
+          setSelectedLocation({ lat, lng, address })
+          if (markerRef.current) {
+            markerRef.current.setTitle(address || "Restaurant Location")
+          }
+        }
       })
 
       setMapLoading(false)
@@ -549,12 +576,15 @@ export default function ZoneSetup() {
     }
   }
 
-  const updateMarker = (lat, lng, address) => {
+  const updateMarker = (lat, lng, address, triggerDrop = false) => {
     if (!mapInstanceRef.current || !window.google) return
 
-    // Remove existing marker
+    latestPositionRef.current = { lat, lng }
+
     if (markerRef.current) {
-      markerRef.current.setMap(null)
+      markerRef.current.setPosition({ lat, lng })
+      markerRef.current.setTitle(address || "Restaurant Location")
+      return
     }
 
     // Create new marker
@@ -562,13 +592,15 @@ export default function ZoneSetup() {
       position: { lat, lng },
       map: mapInstanceRef.current,
       draggable: true,
-      animation: window.google.maps.Animation.DROP,
+      animation: triggerDrop ? window.google.maps.Animation.DROP : null,
       title: address || "Restaurant Location",
       icon: {
         url: `data:image/svg+xml;charset=UTF-8,${RESTAURANT_PIN_ICON_SVG}`,
-        scaledSize: new window.google.maps.Size(36, 56),
+        size: new window.google.maps.Size(36, 48),
+        scaledSize: new window.google.maps.Size(36, 48),
         anchor: new window.google.maps.Point(18, 48),
       },
+      optimized: false,
     })
 
     // Add info window
@@ -591,14 +623,28 @@ export default function ZoneSetup() {
       const newLng = event.latLng.lng()
       const matchedZone = validateLocationInZone(newLat, newLng)
       if (!matchedZone) {
-        marker.setPosition({ lat, lng })
+        if (latestPositionRef.current) {
+          marker.setPosition(latestPositionRef.current)
+        }
         return
       }
-      const newAddress = await reverseGeocodeLocation(newLat, newLng)
-      setLocationSearch(newAddress)
-      setSelectedAddress(newAddress)
+
+      latestPositionRef.current = { lat: newLat, lng: newLng }
+
+      // Update UI instantly with placeholder
+      setSelectedLocation({ lat: newLat, lng: newLng, address: "Fetching address..." })
+      setSelectedAddress("Fetching address...")
+      setLocationSearch("Fetching address...")
       setSelectedZoneLabel(getZoneLabel(matchedZone))
-      setSelectedLocation({ lat: newLat, lng: newLng, address: newAddress })
+
+      const newAddress = await reverseGeocodeLocation(newLat, newLng)
+
+      if (latestPositionRef.current.lat === newLat && latestPositionRef.current.lng === newLng) {
+        setLocationSearch(newAddress)
+        setSelectedAddress(newAddress)
+        setSelectedLocation({ lat: newLat, lng: newLng, address: newAddress })
+        marker.setTitle(newAddress || "Restaurant Location")
+      }
     })
 
     markerRef.current = marker

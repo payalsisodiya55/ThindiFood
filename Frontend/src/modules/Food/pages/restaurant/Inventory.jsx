@@ -2168,7 +2168,7 @@ export default function Inventory() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Image (1 only)</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
                       {addonImagePreview && (
                         <div className="mb-2">
                           <img
@@ -2200,7 +2200,7 @@ export default function Inventory() {
                             ? "Image selected successfully"
                             : editingAddon
                               ? "Tap to replace the current image or keep the existing one"
-                              : "Tap to choose 1 image from your device"}
+                              : "Tap to upload an image from your device"}
                         </span>
                       </button>
                       <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP, HEIC up to 5MB.</p>
