@@ -3329,7 +3329,7 @@ export default function Home() {
 
               {/* Modal Content */}
               <motion.div
-                className="absolute bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] rounded-t-3xl max-h-[85vh] flex flex-col"
+                className="absolute bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 w-full md:w-full md:max-w-2xl bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl overflow-hidden max-h-[85vh] md:max-h-[90vh] shadow-2xl flex flex-col"
                 initial={{ y: "100%" }}
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
@@ -3798,7 +3798,7 @@ export default function Home() {
                   stiffness: 300,
                   mass: 0.8,
                 }}
-                className="relative z-[9999] bg-white dark:bg-[#1a1a1a] rounded-3xl shadow-2xl p-6 w-full max-w-sm border border-gray-100 dark:border-gray-800 pointer-events-auto"
+                className="relative z-[9999] bg-white dark:bg-[#1a1a1a] rounded-3xl shadow-2xl p-6 w-full max-w-sm md:max-w-xl border border-gray-100 dark:border-gray-800 pointer-events-auto"
                 onClick={(e) => e.stopPropagation()}>
                 
                 {/* Close Button */}
@@ -3938,7 +3938,7 @@ export default function Home() {
                 }}
                 className="fixed inset-0 z-[9999] flex dark:bg-[#1a1a1a] dark:text-white items-center justify-center p-4"
                 onClick={(e) => e.stopPropagation()}>
-                <div className="bg-white dark:bg-[#1a1a1a] dark:text-white rounded-2xl shadow-2xl w-[85%] max-w-sm p-6">
+                <div className="bg-white dark:bg-[#1a1a1a] dark:text-white rounded-2xl shadow-2xl w-[85%] md:w-full max-w-sm md:max-w-xl p-6">
                   {/* Warning Icon */}
                   <div className="flex justify-center mb-4">
                     <div className="w-20 h-20 rounded-full bg-pink-100 flex items-center justify-center">
@@ -4019,7 +4019,7 @@ export default function Home() {
                   damping: 30,
                   stiffness: 300,
                 }}
-                className="fixed inset-x-0 bottom-0 top-12 sm:top-16 md:top-20 z-[9999] bg-white dark:bg-[#1a1a1a] rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
+                className="fixed inset-x-0 bottom-0 top-12 sm:top-16 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 md:rounded-3xl md:max-w-4xl md:h-[80vh] w-full md:w-full z-[9999] bg-white dark:bg-[#1a1a1a] rounded-t-3xl shadow-2xl overflow-hidden flex flex-col"
                 onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-5 py-4 sm:px-6 sm:py-5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">

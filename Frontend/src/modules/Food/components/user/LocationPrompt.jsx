@@ -110,7 +110,7 @@ export default function LocationPrompt() {
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
       <Card
         ref={cardRef}
-        className="w-full max-w-md border-2 border-gray-200 shadow-2xl mx-auto my-auto"
+        className="w-full max-w-md md:max-w-xl border-2 border-gray-200 shadow-2xl mx-auto my-auto"
       >
         <CardHeader className="relative">
           <Button

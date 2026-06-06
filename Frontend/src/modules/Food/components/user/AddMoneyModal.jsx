@@ -163,7 +163,7 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         showCloseButton={false}
-        className="w-[calc(100%-1rem)] max-w-[22rem] sm:max-w-md rounded-3xl p-0 overflow-hidden"
+        className="w-[calc(100%-1rem)] max-w-[22rem] sm:max-w-md md:max-w-xl rounded-3xl p-0 overflow-hidden"
       >
         <div className="relative px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
           <button

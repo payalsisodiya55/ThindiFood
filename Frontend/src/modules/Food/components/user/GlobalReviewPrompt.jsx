@@ -464,7 +464,7 @@ export default function GlobalReviewPrompt() {
 
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="w-full max-w-md overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#1a1a1a]">
+      <div className="w-full max-w-md md:max-w-xl overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#1a1a1a]">
         <div
           style={{ background: `linear-gradient(to right, ${RED}, #00b06f)` }}
           className="px-6 py-5"

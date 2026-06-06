@@ -21,7 +21,7 @@ export default function RefundPreferenceModal({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen && !isSubmitting) onClose?.() }}>
-      <DialogContent className="sm:max-w-md p-0 overflow-hidden bg-white">
+      <DialogContent className="sm:max-w-md md:max-w-xl p-0 overflow-hidden bg-white">
         <DialogHeader className="px-6 pt-6 pb-2">
           <DialogTitle className="text-xl font-bold text-slate-900 text-center sm:text-left">
             Where do you want your refund?

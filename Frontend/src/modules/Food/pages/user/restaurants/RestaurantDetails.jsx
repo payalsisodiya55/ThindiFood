@@ -3259,9 +3259,8 @@ function RestaurantDetailsContent() {
                   onClick={() => setShowMenuSheet(false)}
                 />
 
-                {/* Menu Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden max-h-[85vh] md:max-h-[90vh] w-full md:w-full md:max-w-2xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3351,7 +3350,7 @@ function RestaurantDetailsContent() {
 
                 {/* Bottom Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[80vh] md:h-auto md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden h-[80vh] md:h-auto md:max-h-[90vh] w-full md:w-full md:max-w-2xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3517,7 +3516,7 @@ function RestaurantDetailsContent() {
 
                 {/* Bottom Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[75vh] md:h-auto md:max-h-[90vh] md:max-w-xl w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl h-[75vh] md:h-auto md:max-h-[90vh] w-full md:w-full md:max-w-3xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3622,7 +3621,7 @@ function RestaurantDetailsContent() {
 
                 {/* Item Detail Bottom Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] md:max-w-2xl lg:max-w-3xl w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[90vh] w-full md:w-full md:max-w-3xl lg:max-w-4xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -3644,7 +3643,7 @@ function RestaurantDetailsContent() {
                   </div>
 
                   {/* Image Section */}
-                  <div className="relative w-full h-64 overflow-hidden rounded-t-3xl">
+                  <div className="relative w-full h-64 md:h-96 overflow-hidden rounded-t-3xl md:rounded-t-3xl">
                     {selectedItem.image ? (
                       <img
                         src={selectedItem.image}
@@ -3768,7 +3767,7 @@ function RestaurantDetailsContent() {
                   </div>
 
                   {/* Bottom Action Bar */}
-                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-4 bg-white dark:bg-[#1a1a1a]">
+                  <div className="border-t border-gray-200 dark:border-gray-800 px-4 py-4 bg-white dark:bg-[#1a1a1a] md:rounded-b-3xl">
                     <div className="flex items-center gap-4">
                       {/* Quantity Selector */}
                       <div className={`flex items-center gap-3 border-2 rounded-lg px-3 h-[44px] bg-white dark:bg-[#2a2a2a] ${shouldShowGrayscale
@@ -3886,7 +3885,7 @@ function RestaurantDetailsContent() {
 
                 {/* Schedule Bottom Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[60vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[60vh] md:max-h-[90vh] w-full md:w-full md:max-w-2xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -4006,7 +4005,7 @@ function RestaurantDetailsContent() {
 
                 {/* Offers Bottom Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[85vh] md:max-h-[90vh] w-full md:w-full md:max-w-2xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -4159,7 +4158,7 @@ function RestaurantDetailsContent() {
 
                 {/* Menu Options Bottom Sheet */}
                 <motion.div
-                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[70vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-0 right-0 bottom-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl shadow-2xl max-h-[70vh] md:max-h-[90vh] w-full md:w-full md:max-w-2xl flex flex-col ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ y: "100%" }}
                   animate={{ y: 0 }}
                   exit={{ y: "100%" }}
@@ -4254,7 +4253,7 @@ function RestaurantDetailsContent() {
                   onClick={() => setShowShareModal(false)}
                 />
                 <motion.div
-                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10021] w-[92vw] max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10021] w-[92vw] md:w-full max-w-md md:max-w-xl bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
@@ -4345,7 +4344,7 @@ function RestaurantDetailsContent() {
                 />
                 {/* Modal Container */}
                 <motion.div
-                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10031] w-[90vw] max-w-sm bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 ${shouldShowGrayscale ? 'grayscale' : ''}`}
+                  className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[10031] w-[90vw] md:w-full max-w-sm md:max-w-xl bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800 ${shouldShowGrayscale ? 'grayscale' : ''}`}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}

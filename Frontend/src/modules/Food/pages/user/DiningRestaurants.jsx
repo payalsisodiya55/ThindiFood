@@ -469,7 +469,7 @@ export default function DiningRestaurants() {
           />
 
           {/* Modal Content */}
-          <div className="absolute bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 bg-white rounded-t-3xl md:rounded-3xl max-h-[85vh] md:max-h-[90vh] md:max-w-lg w-full md:w-auto flex flex-col animate-[slideUp_0.3s_ease-out]">
+          <div className="absolute bottom-0 left-0 right-0 md:left-1/2 md:right-auto md:-translate-x-1/2 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-[10000] w-full md:w-full md:max-w-2xl bg-white dark:bg-[#1a1a1a] rounded-t-3xl md:rounded-3xl overflow-hidden max-h-[85vh] md:max-h-[90vh] flex flex-col animate-[slideUp_0.3s_ease-out]">
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-4 border-b">
               <h2 className="text-lg font-bold text-gray-900">Filters and sorting</h2>
