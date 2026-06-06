@@ -2343,8 +2343,8 @@ function RestaurantDetailsContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-5 md:py-6 lg:py-8 space-y-3 md:space-y-4 lg:space-y-5 pb-0">
           {/* Restaurant Name and Rating */}
           <div className="flex items-start justify-between relative">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{restaurant?.name || "Unknown Restaurant"}</h1>
+            <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words break-all min-w-0">{restaurant?.name || "Unknown Restaurant"}</h1>
               <div className={`group/info ${shouldShowGrayscale ? 'pointer-events-none' : ''}`}>
                 <Info 
                   className={`h-5 w-5 cursor-help transition-colors ${showInfoPopover ? "text-[#00c87e]" : "text-gray-400 hover:text-[#00c87e]"}`} 

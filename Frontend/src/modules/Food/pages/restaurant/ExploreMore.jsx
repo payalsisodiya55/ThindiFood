@@ -933,7 +933,7 @@ export default function ExploreMore() {
                     <Store className="w-5 h-5 text-gray-900" />
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <h2 className="text-base font-semibold text-gray-900 mb-0.5">
+                    <h2 className="text-base font-semibold text-gray-900 mb-0.5 break-words break-all">
                       {restaurantDisplayName}
                     </h2>
                     {restaurantDisplayAddress && (

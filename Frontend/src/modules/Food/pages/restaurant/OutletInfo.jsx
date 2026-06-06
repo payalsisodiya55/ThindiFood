@@ -718,7 +718,18 @@ export default function OutletInfo() {
       <Dialog open={showEditNameDialog} onOpenChange={setShowEditNameDialog}>
         <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%]">
           <DialogHeader className="p-4 border-b border-gray-100"><DialogTitle className="text-lg font-bold">Edit Restaurant Name</DialogTitle></DialogHeader>
-          <div className="p-4"><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Enter Restaurant Name" className="w-full" maxLength={100} /></div>
+          <div className="p-4 space-y-1">
+            <Input
+              value={editNameValue}
+              onChange={(e) => setEditNameValue(e.target.value)}
+              placeholder="Enter Restaurant Name"
+              className="w-full"
+              maxLength={100}
+            />
+            <p className={`text-xs text-right pr-1 ${editNameValue.length >= 90 ? 'text-red-500' : 'text-gray-400'}`}>
+              {editNameValue.length}/100 characters
+            </p>
+          </div>
           <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3">
             <Button variant="outline" onClick={() => setShowEditNameDialog(false)} className="cursor-pointer">Cancel</Button>
             <Button onClick={handleSaveName} disabled={!editNameValue.trim()} className="bg-blue-600 text-white cursor-pointer disabled:cursor-not-allowed">Save</Button>
@@ -739,7 +750,18 @@ export default function OutletInfo() {
                 Editing this field will require admin approval. Your restaurant status may change to pending until approved.
               </p>
             </div>
-            <Input value={editDocValue} onChange={(e) => setEditDocValue(e.target.value)} placeholder={`Enter ${editDocDialog?.label || ''}`} className="w-full" />
+            <div className="space-y-1">
+              <Input
+                value={editDocValue}
+                onChange={(e) => setEditDocValue(e.target.value)}
+                placeholder={`Enter ${editDocDialog?.label || ''}`}
+                className="w-full"
+                maxLength={200}
+              />
+              <p className={`text-xs text-right pr-1 ${editDocValue.length >= 180 ? 'text-red-500' : 'text-gray-400'}`}>
+                {editDocValue.length}/200 characters
+              </p>
+            </div>
           </div>
           <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3">
             <Button variant="outline" onClick={() => { setEditDocDialog(null); setEditDocValue(""); }} disabled={savingDoc} className="cursor-pointer">Cancel</Button>

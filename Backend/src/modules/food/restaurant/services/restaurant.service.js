@@ -1788,19 +1788,30 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         return getCurrentRestaurantProfile(restaurantId);
     }
 
-    update.status = 'pending';
+    // Fields that require admin re-approval when changed
+    const APPROVAL_REQUIRED_FIELDS = new Set([
+        'panNumber', 'nameOnPan', 'panImage',
+        'gstNumber', 'gstRegistered', 'gstLegalName', 'gstAddress', 'gstImage',
+        'fssaiNumber', 'fssaiExpiry', 'fssaiImage',
+        'location', 'addressLine1', 'addressLine2', 'area', 'city', 'state', 'pincode', 'landmark',
+        'locationChangeRequest', 'zoneId'
+    ]);
+
+    const updatedKeys = Object.keys(update);
+    const requiresApproval = updatedKeys.some(key => APPROVAL_REQUIRED_FIELDS.has(key));
+
+    if (requiresApproval) {
+        update.status = 'pending';
+    }
 
     try {
+        const dbUpdate = requiresApproval
+            ? { $set: update, $unset: { approvedAt: 1, rejectedAt: 1, rejectionReason: 1 } }
+            : { $set: update };
+
         const doc = await FoodRestaurant.findByIdAndUpdate(
             restaurantId,
-            {
-                $set: update,
-                $unset: {
-                    approvedAt: 1,
-                    rejectedAt: 1,
-                    rejectionReason: 1
-                }
-            },
+            dbUpdate,
             {
                 new: true,
                 runValidators: true,
@@ -1853,7 +1864,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
             }
         ).lean();
 
-        if (currentRestaurant.status !== 'pending') {
+        if (requiresApproval && currentRestaurant.status !== 'pending') {
             const restaurantNameForNotification =
                 update.restaurantName || currentRestaurant.restaurantName || doc?.restaurantName;
             void notifyAdminsAboutRestaurantProfileReview(restaurantId, restaurantNameForNotification);
