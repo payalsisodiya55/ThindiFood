@@ -2826,86 +2826,93 @@ function RestaurantDetailsContent() {
                             </div>
 
                             {/* Right Side - Image and Add Button */}
-                            <div className="relative w-24 h-24 xs:w-28 xs:h-28 md:w-32 md:h-32 flex-shrink-0">
-                              {item.image ? (
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-sm"
-                                  onError={(e) => {
-                                    if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
-                                      e.currentTarget.src = FOOD_IMAGE_FALLBACK
-                                    }
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-xl md:rounded-2xl flex items-center justify-center">
-                                  <span className="text-[10px] md:text-xs text-gray-400">No image</span>
-                                </div>
-                              )}
-                              {quantity > 0 ? (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.8 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 text-xs md:text-sm md:px-4 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
-                                    ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                    : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
-                                    }`}
-                                >
-                                  <button
+                            <div className="flex flex-col items-center flex-shrink-0 pb-2">
+                              <div className="relative w-24 h-24 xs:w-28 xs:h-28 md:w-32 md:h-32">
+                                {item.image ? (
+                                  <img
+                                    src={item.image}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-sm"
+                                    onError={(e) => {
+                                      if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
+                                        e.currentTarget.src = FOOD_IMAGE_FALLBACK
+                                      }
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-xl md:rounded-2xl flex items-center justify-center">
+                                    <span className="text-[10px] md:text-xs text-gray-400">No image</span>
+                                  </div>
+                                )}
+                                {quantity > 0 ? (
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 text-xs md:text-sm md:px-4 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                      ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
+                                      : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
+                                      }`}
+                                  >
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (!shouldShowGrayscale && !hasVariants) {
+                                          updateItemQuantity(item, Math.max(0, quantity - 1), e)
+                                        } else if (!shouldShowGrayscale && hasVariants) {
+                                          openItemDetailModal(item)
+                                        }
+                                      }}
+                                      disabled={shouldShowGrayscale}
+                                      className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
+                                    >
+                                      <Minus className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                    </button>
+                                    <span className={`mx-1.5 text-xs md:text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        if (!shouldShowGrayscale && !hasVariants) {
+                                          updateItemQuantity(item, quantity + 1, e)
+                                        } else if (!shouldShowGrayscale && hasVariants) {
+                                          openItemDetailModal(item)
+                                        }
+                                      }}
+                                      disabled={shouldShowGrayscale}
+                                      className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
+                                    >
+                                      <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px]" />
+                                    </button>
+                                  </motion.div>
+                                ) : (
+                                  <motion.button
+                                    layoutId={`add-button-${item.id}`}
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      if (!shouldShowGrayscale && !hasVariants) {
-                                        updateItemQuantity(item, Math.max(0, quantity - 1), e)
-                                      } else if (!shouldShowGrayscale && hasVariants) {
-                                        openItemDetailModal(item)
+                                      if (!shouldShowGrayscale) {
+                                        if (hasVariants) {
+                                          openItemDetailModal(item)
+                                        } else {
+                                          updateItemQuantity(item, 1, e)
+                                        }
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
-                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
+                                    className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-2 text-xs md:text-sm md:px-6 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                      ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
+                                      : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
+                                      }`}
                                   >
-                                    <Minus className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                                  </button>
-                                  <span className={`mx-1.5 text-xs md:text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      if (!shouldShowGrayscale && !hasVariants) {
-                                        updateItemQuantity(item, quantity + 1, e)
-                                      } else if (!shouldShowGrayscale && hasVariants) {
-                                        openItemDetailModal(item)
-                                      }
-                                    }}
-                                    disabled={shouldShowGrayscale}
-                                    className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
-                                  >
-                                    <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px]" />
-                                  </button>
-                                </motion.div>
-                              ) : (
-                                <motion.button
-                                  layoutId={`add-button-${item.id}`}
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    if (!shouldShowGrayscale) {
-                                      if (hasVariants) {
-                                        openItemDetailModal(item)
-                                      } else {
-                                        updateItemQuantity(item, 1, e)
-                                      }
-                                    }
-                                  }}
-                                  disabled={shouldShowGrayscale}
-                                  className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-2 text-xs md:text-sm md:px-6 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
-                                    ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                    : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
-                                    }`}
-                                >
-                                  ADD <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px] group-hover:text-white transition-colors" />
-                                </motion.button>
+                                    ADD <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px] group-hover:text-white transition-colors" />
+                                  </motion.button>
+                                )}
+                              </div>
+                              {hasVariants && (
+                                <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mt-3 font-medium">
+                                  Customizable
+                                </span>
                               )}
                             </div>
                           </div>
@@ -3092,86 +3099,93 @@ function RestaurantDetailsContent() {
                                       </div>
 
                                       {/* Right Side - Image and Add Button */}
-                                      <div className="relative w-24 h-24 xs:w-28 xs:h-28 md:w-32 md:h-32 flex-shrink-0">
-                                        {item.image ? (
-                                          <img
-                                            src={item.image}
-                                            alt={item.name}
-                                            className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-sm"
-                                            onError={(e) => {
-                                              if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
-                                                e.currentTarget.src = FOOD_IMAGE_FALLBACK
-                                              }
-                                            }}
-                                          />
-                                        ) : (
-                                          <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-xl md:rounded-2xl flex items-center justify-center">
-                                            <span className="text-[10px] md:text-xs text-gray-400">No image</span>
-                                          </div>
-                                        )}
-                                        {quantity > 0 ? (
-                                          <motion.div
-                                            initial={{ opacity: 0, scale: 0.8 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 text-xs md:text-sm md:px-4 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
-                                              ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                              : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
-                                              }`}
-                                          >
-                                            <button
+                                      <div className="flex flex-col items-center flex-shrink-0 pb-2">
+                                        <div className="relative w-24 h-24 xs:w-28 xs:h-28 md:w-32 md:h-32">
+                                          {item.image ? (
+                                            <img
+                                              src={item.image}
+                                              alt={item.name}
+                                              className="w-full h-full object-cover rounded-xl md:rounded-2xl shadow-sm"
+                                              onError={(e) => {
+                                                if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
+                                                  e.currentTarget.src = FOOD_IMAGE_FALLBACK
+                                                }
+                                              }}
+                                            />
+                                          ) : (
+                                            <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-xl md:rounded-2xl flex items-center justify-center">
+                                              <span className="text-[10px] md:text-xs text-gray-400">No image</span>
+                                            </div>
+                                          )}
+                                          {quantity > 0 ? (
+                                            <motion.div
+                                              initial={{ opacity: 0, scale: 0.8 }}
+                                              animate={{ opacity: 1, scale: 1 }}
+                                              className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-4 py-1.5 text-xs md:text-sm md:px-4 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                                ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
+                                                : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
+                                                }`}
+                                            >
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  if (!shouldShowGrayscale && !hasVariants) {
+                                                    updateItemQuantity(item, Math.max(0, quantity - 1), e)
+                                                  } else if (!shouldShowGrayscale && hasVariants) {
+                                                    openItemDetailModal(item)
+                                                  }
+                                                }}
+                                                disabled={shouldShowGrayscale}
+                                                className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
+                                              >
+                                                <Minus className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                              </button>
+                                              <span className={`mx-1.5 text-xs md:text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  if (!shouldShowGrayscale && !hasVariants) {
+                                                    updateItemQuantity(item, quantity + 1, e)
+                                                  } else if (!shouldShowGrayscale && hasVariants) {
+                                                    openItemDetailModal(item)
+                                                  }
+                                                }}
+                                                disabled={shouldShowGrayscale}
+                                                className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
+                                              >
+                                                <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px]" />
+                                              </button>
+                                            </motion.div>
+                                          ) : (
+                                            <motion.button
+                                              layoutId={`add-button-sub-${item.id}`}
+                                              initial={{ opacity: 0, scale: 0.9 }}
+                                              animate={{ opacity: 1, scale: 1 }}
+                                              transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
                                               onClick={(e) => {
                                                 e.stopPropagation()
-                                                if (!shouldShowGrayscale && !hasVariants) {
-                                                  updateItemQuantity(item, Math.max(0, quantity - 1), e)
-                                                } else if (!shouldShowGrayscale && hasVariants) {
-                                                  openItemDetailModal(item)
+                                                if (!shouldShowGrayscale) {
+                                                  if (hasVariants) {
+                                                    openItemDetailModal(item)
+                                                  } else {
+                                                    updateItemQuantity(item, 1, e)
+                                                  }
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
-                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
+                                              className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-2 text-xs md:text-sm md:px-6 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
+                                                ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
+                                                : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
+                                                }`}
                                             >
-                                              <Minus className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                                            </button>
-                                            <span className={`mx-1.5 text-xs md:text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation()
-                                                if (!shouldShowGrayscale && !hasVariants) {
-                                                  updateItemQuantity(item, quantity + 1, e)
-                                                } else if (!shouldShowGrayscale && hasVariants) {
-                                                  openItemDetailModal(item)
-                                                }
-                                              }}
-                                              disabled={shouldShowGrayscale}
-                                              className={shouldShowGrayscale ? 'text-gray-400 cursor-not-allowed' : 'text-[#00c87e] group-hover:text-white transition-colors'}
-                                            >
-                                              <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px]" />
-                                            </button>
-                                          </motion.div>
-                                        ) : (
-                                          <motion.button
-                                            layoutId={`add-button-sub-${item.id}`}
-                                            initial={{ opacity: 0, scale: 0.9 }}
-                                            animate={{ opacity: 1, scale: 1 }}
-                                            transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              if (!shouldShowGrayscale) {
-                                                if (hasVariants) {
-                                                  openItemDetailModal(item)
-                                                } else {
-                                                  updateItemQuantity(item, 1, e)
-                                                }
-                                              }
-                                            }}
-                                            disabled={shouldShowGrayscale}
-                                            className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 bg-white border font-bold px-6 py-2 text-xs md:text-sm md:px-6 md:py-1.5 rounded-md md:rounded-lg shadow-md flex items-center gap-1 transition-all duration-200 group ${shouldShowGrayscale
-                                              ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
-                                              : 'border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white hover:scale-105 active:scale-95'
-                                              }`}
-                                          >
-                                            ADD <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px] group-hover:text-white transition-colors" />
-                                          </motion.button>
+                                              ADD <Plus className="h-3 w-3 md:h-3.5 md:w-3.5 stroke-[3px] group-hover:text-white transition-colors" />
+                                            </motion.button>
+                                          )}
+                                        </div>
+                                        {hasVariants && (
+                                          <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mt-3 font-medium">
+                                            Customizable
+                                          </span>
                                         )}
                                       </div>
                                     </div>
@@ -3467,7 +3481,7 @@ function RestaurantDetailsContent() {
                         setSearchQuery("")
                         setShowSearch(false)
                       }}
-                      className="text-red-600 dark:text-red-400 font-medium text-sm hover:text-red-700 dark:hover:text-red-500"
+                      className="border border-gray-200 dark:border-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200"
                     >
                       Clear All
                     </button>
