@@ -278,9 +278,9 @@ export default function Favorites() {
                             <span className="font-medium">{restaurant.distance}</span>
                           </div>
                         </div>
-                        <Button className="w-full mt-1 bg-green-600 hover:bg-green-700 text-white text-[13px] font-bold h-9 rounded-xl shadow-sm transition-all active:scale-[0.98]">
-                          View Restaurant
-                          <ArrowRight className="h-3 w-3 ml-1" />
+                        <Button className="w-full mt-1 bg-green-600 hover:bg-green-700 text-white text-[13px] font-bold h-9 rounded-xl shadow-sm transition-all active:scale-[0.98] flex items-center justify-center gap-1 whitespace-nowrap overflow-hidden">
+                          <span className="truncate">View Restaurant</span>
+                          <ArrowRight className="h-3 w-3 flex-shrink-0" />
                         </Button>
                       </CardContent>
                     </Card>
