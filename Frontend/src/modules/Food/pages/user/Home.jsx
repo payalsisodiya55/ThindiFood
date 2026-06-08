@@ -3665,68 +3665,64 @@ export default function Home() {
                     </div>
 
                     {/* Trust Markers Tab */}
-                    {activeFilterTab === "trust" && (
-                      <div
-                        ref={(el) => (filterSectionRefs.current["trust"] = el)}
-                        data-section-id="trust"
-                        className="space-y-4 mb-8">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                          Trust Markers
-                        </h3>
-                        <div className="flex flex-col gap-3">
-                          <button
-                            onClick={() => toggleFilter("top-rated")}
-                            className={`px-4 py-3 rounded-xl border text-left transition-colors ${
-                              activeFilters.has("top-rated")
-                                ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
-                                : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
-                            }`}>
-                            <span
-                              className={`text-sm font-medium ${activeFilters.has("top-rated") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                              Top Rated
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => toggleFilter("trusted")}
-                            className={`px-4 py-3 rounded-xl border text-left transition-colors ${
-                              activeFilters.has("trusted")
-                                ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
-                                : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
-                            }`}>
-                            <span
-                              className={`text-sm font-medium ${activeFilters.has("trusted") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                              Trusted by 1000+ users
-                            </span>
-                          </button>
-                        </div>
+                    <div
+                      ref={(el) => (filterSectionRefs.current["trust"] = el)}
+                      data-section-id="trust"
+                      className="space-y-4 mb-8">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Trust Markers
+                      </h3>
+                      <div className="flex flex-col gap-3">
+                        <button
+                          onClick={() => toggleFilter("top-rated")}
+                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                            activeFilters.has("top-rated")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("top-rated") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            Top Rated
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => toggleFilter("trusted")}
+                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                            activeFilters.has("trusted")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("trusted") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            Trusted by 1000+ users
+                          </span>
+                        </button>
                       </div>
-                    )}
+                    </div>
 
                     {/* Offers Tab */}
-                    {activeFilterTab === "offers" && (
-                      <div
-                        ref={(el) => (filterSectionRefs.current["offers"] = el)}
-                        data-section-id="offers"
-                        className="space-y-4 mb-8">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                          Offers
-                        </h3>
-                        <div className="flex flex-col gap-3">
-                          <button
-                            onClick={() => toggleFilter("has-offers")}
-                            className={`px-4 py-3 rounded-xl border text-left transition-colors ${
-                              activeFilters.has("has-offers")
-                                ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
-                                : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
-                            }`}>
-                            <span
-                              className={`text-sm font-medium ${activeFilters.has("has-offers") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                              Restaurants with offers
-                            </span>
-                          </button>
-                        </div>
+                    <div
+                      ref={(el) => (filterSectionRefs.current["offers"] = el)}
+                      data-section-id="offers"
+                      className="space-y-4 mb-8">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                        Offers
+                      </h3>
+                      <div className="flex flex-col gap-3">
+                        <button
+                          onClick={() => toggleFilter("has-offers")}
+                          className={`px-4 py-3 rounded-xl border text-left transition-colors ${
+                            activeFilters.has("has-offers")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("has-offers") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            Restaurants with offers
+                          </span>
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
 

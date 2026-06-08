@@ -528,6 +528,20 @@ export default function CategoryPage() {
       )
     }
 
+    if (activeFilters.has('top-rated')) {
+      nextRows = nextRows.filter((row) => {
+        const rating = getComparableRating(row)
+        return rating != null && rating >= 4.5
+      })
+    }
+
+    if (activeFilters.has('trusted')) {
+      nextRows = nextRows.filter((row) => {
+        const rating = getComparableRating(row)
+        return rating != null && rating >= 4.0
+      })
+    }
+
     if (deferredSearchQuery.trim()) {
       const query = deferredSearchQuery.toLowerCase()
       nextRows = nextRows.filter((row) =>
@@ -1975,19 +1989,35 @@ export default function CategoryPage() {
                       </div>
 
                       {/* Trust Markers Tab */}
-                      {activeFilterTab === 'trust' && (
-                        <div className="space-y-4">
-                          <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white">Trust Markers</h3>
-                          <div className="flex flex-col gap-3 md:gap-4">
-                            <button className="px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-[#00c87e] text-left transition-colors">
-                              <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Top Rated</span>
-                            </button>
-                            <button className="px-4 md:px-5 py-3 md:py-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-[#00c87e] text-left transition-colors">
-                              <span className="text-sm md:text-base font-medium text-gray-700 dark:text-gray-300">Trusted by 1000+ users</span>
-                            </button>
-                          </div>
+                      <div
+                        ref={el => filterSectionRefs.current['trust'] = el}
+                        data-section-id="trust"
+                        className="space-y-4 mb-8"
+                      >
+                        <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white mb-4">Trust Markers</h3>
+                        <div className="flex flex-col gap-3 md:gap-4">
+                          <button
+                            onClick={() => toggleFilter('top-rated')}
+                            className={`px-4 md:px-5 py-3 md:py-4 rounded-xl border text-left transition-colors ${
+                              activeFilters.has('top-rated')
+                                ? 'border-[#00c87e] bg-[#E6FDF4] dark:bg-[#00c87e]/20'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-[#00c87e]'
+                            }`}
+                          >
+                            <span className={`text-sm md:text-base font-medium ${activeFilters.has('top-rated') ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>Top Rated</span>
+                          </button>
+                          <button
+                            onClick={() => toggleFilter('trusted')}
+                            className={`px-4 md:px-5 py-3 md:py-4 rounded-xl border text-left transition-colors ${
+                              activeFilters.has('trusted')
+                                ? 'border-[#00c87e] bg-[#E6FDF4] dark:bg-[#00c87e]/20'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-[#00c87e]'
+                            }`}
+                          >
+                            <span className={`text-sm md:text-base font-medium ${activeFilters.has('trusted') ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>Trusted by 1000+ users</span>
+                          </button>
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
 
