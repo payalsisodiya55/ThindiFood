@@ -2462,12 +2462,12 @@ function RestaurantDetailsContent() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col items-end">
-              <Badge className="bg-green-600 text-white mb-1 flex items-center gap-1 px-2 py-1">
-                <Star className="h-3 w-3 fill-white" />
+            <div className="flex flex-col items-end flex-shrink-0 overflow-visible">
+              <Badge className="bg-emerald-600 text-white mb-1 flex items-center gap-1 px-2 py-0.5 whitespace-nowrap">
+                <Star className="h-3 w-3 fill-white text-white" />
                 {restaurant?.rating || 4.5}
               </Badge>
-              <span className="text-xs text-gray-500">By {(restaurant.reviews || 0).toLocaleString()}+</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">By {(restaurant.reviews || 0).toLocaleString()}+</span>
             </div>
           </div>
 
@@ -2522,18 +2522,18 @@ function RestaurantDetailsContent() {
           </div>
 
           {/* Filter/Category Buttons */}
-          <div className={`sticky top-0 z-20 border-y border-gray-200 py-3 -mx-4 px-4 bg-white dark:bg-[#1a1a1a] flex flex-col gap-2.5 ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : ''}`}>
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <div className={`sticky top-0 z-20 border-y border-gray-200 pt-1 pb-3 -mx-4 px-4 bg-white dark:bg-[#1a1a1a] flex flex-col gap-1 ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : ''}`}>
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide py-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-1.5 whitespace-nowrap border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] relative"
+                  className="flex items-center gap-1.5 whitespace-nowrap border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] dark:text-white relative"
                   onClick={() => setShowFilterSheet(true)}
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   Filters
                   {activeFilterCount > 0 && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold">
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-semibold shadow-sm">
                       {activeFilterCount}
                     </span>
                   )}
@@ -2544,7 +2544,7 @@ function RestaurantDetailsContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 bg-white rounded-full ${filters.vegNonVeg === "veg" ? "border-green-600 bg-green-50 text-green-700 font-bold" : ""
+                      className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] dark:text-white rounded-full ${filters.vegNonVeg === "veg" ? "border-green-600 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950/20 dark:text-green-400 font-bold" : ""
                         }`}
                       onClick={() =>
                         setFilters((prev) => ({
@@ -2556,13 +2556,13 @@ function RestaurantDetailsContent() {
                       <div className="h-3 w-3 rounded-full bg-green-500" />
                       Veg
                       {filters.vegNonVeg === "veg" && (
-                        <X className="h-3 w-3 text-gray-600" />
+                        <X className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                       )}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 bg-white rounded-full ${filters.vegNonVeg === "non-veg" ? "border-amber-700 bg-amber-50" : ""
+                      className={`flex items-center gap-1.5 whitespace-nowrap border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] dark:text-white rounded-full ${filters.vegNonVeg === "non-veg" ? "border-amber-700 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/20 dark:text-amber-400 font-bold" : ""
                         }`}
                       onClick={() =>
                         setFilters((prev) => ({
@@ -2574,7 +2574,7 @@ function RestaurantDetailsContent() {
                       <div className="h-3 w-3 rounded-full bg-amber-700" />
                       Non-veg
                       {filters.vegNonVeg === "non-veg" && (
-                        <X className="h-3 w-3 text-gray-600" />
+                        <X className="h-3 w-3 text-gray-600 dark:text-gray-400" />
                       )}
                     </Button>
                   </>
