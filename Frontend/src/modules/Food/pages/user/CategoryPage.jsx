@@ -1666,28 +1666,27 @@ export default function CategoryPage() {
 
             {/* Empty State */}
             {filteredAllRestaurants.length === 0 && (
-              <div className="text-center py-12 md:py-16">
-                <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base">
+              <div className="flex flex-col items-center justify-center py-14 md:py-20 text-center px-4">
+                <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base max-w-[260px] mx-auto leading-relaxed">
                   {searchQuery
                     ? `No restaurants found for "${searchQuery}"`
                     : "No restaurants found with selected filters"}
                 </p>
-                <Button
-                  variant="outline"
-                  className="mt-4 md:mt-6"
+                <button
+                  className="mt-6 inline-flex items-center gap-2 h-10 px-6 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-95 shadow-sm"
+                  style={{ backgroundColor: '#00c87e' }}
                   onClick={() => {
                     setIsLoadingFilterResults(true)
                     setActiveFilters(new Set())
                     setSearchQuery("")
                     setSortBy(null)
-                    // Trigger a gentle refresh to ensure data freshness
                     menuEnrichmentRequestRef.current += 1
                     setIsEnrichingMenus(false)
                     setTimeout(() => setIsLoadingFilterResults(false), 500)
                   }}
                 >
                   Clear all filters
-                </Button>
+                </button>
               </div>
             )}
           </section>

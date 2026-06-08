@@ -2633,14 +2633,14 @@ function RestaurantDetailsContent() {
         {restaurant?.menuSections && Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0 && (
           <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-3 sm:py-8 md:py-10 lg:py-12 space-y-4 md:space-y-8 lg:space-y-10">
             {filteredSections.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-5 py-10 text-center shadow-sm">
-                <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <div className="rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] px-5 py-12 text-center shadow-sm">
+                <div className="w-16 h-16 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner">
                   <Search className="w-8 h-8 text-gray-300" />
                 </div>
                 <p className="text-sm md:text-base font-bold text-gray-900 dark:text-white">
                   No dishes match {hasActiveMenuFilters ? "your filters" : "the current menu"}.
                 </p>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-[250px] mx-auto">
+                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-[250px] mx-auto leading-relaxed">
                   {hasActiveMenuFilters 
                     ? "Try clearing some filters or using a different combination to find what you're looking for."
                     : "This restaurant doesn't seem to have any items in this category right now."}
@@ -2656,7 +2656,8 @@ function RestaurantDetailsContent() {
                       setSearchQuery("")
                       setShowSearch(false)
                     }}
-                    className="mt-5 text-sm font-bold text-[#00c87e] hover:underline"
+                    className="mt-6 inline-flex items-center gap-2 h-10 px-6 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-95 shadow-sm"
+                    style={{ backgroundColor: '#00c87e' }}
                   >
                     Clear all filters
                   </button>

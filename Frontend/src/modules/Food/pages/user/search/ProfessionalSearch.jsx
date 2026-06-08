@@ -394,15 +394,19 @@ export default function ProfessionalSearch() {
 
             {/* Empty State */}
             {!loading && results.restaurants.length === 0 && results.dishes.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                 <div className="w-20 h-20 bg-slate-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-4">
-                    <Search className="w-8 h-8 text-slate-300" />
-                  </div>
-                 <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">We couldn't find any results</h2>
-                 <p className="text-slate-500 text-sm max-w-xs">Maybe try searching for something else or check your spelling</p>
-                 <Button variant="outline" onClick={handleClear} className="mt-6 rounded-xl" style={{ borderColor: RED, color: RED }}>
-                    Clear all filters
-                 </Button>
+              <div className="flex flex-col items-center justify-center py-20 text-center px-4">
+                <div className="w-20 h-20 bg-slate-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-5 shadow-inner">
+                  <Search className="w-8 h-8 text-slate-300" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">We couldn't find any results</h2>
+                <p className="text-slate-500 text-sm max-w-[260px] mx-auto leading-relaxed">Maybe try searching for something else or check your spelling</p>
+                <button
+                  onClick={handleClear}
+                  className="mt-7 inline-flex items-center gap-2 h-10 px-6 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-95 shadow-sm"
+                  style={{ backgroundColor: RED }}
+                >
+                  Clear all filters
+                </button>
               </div>
             )}
 

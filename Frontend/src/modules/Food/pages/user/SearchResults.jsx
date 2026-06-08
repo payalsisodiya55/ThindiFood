@@ -880,26 +880,26 @@ export default function SearchResults() {
 
             {/* Empty State */}
             {filteredRecommended.length === 0 && nonRepeatedAllRestaurants.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 dark:bg-[#1a1a1a] rounded-full flex items-center justify-center mb-4 sm:mb-6">
+              <div className="flex flex-col items-center justify-center py-16 sm:py-24 text-center px-4">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 bg-gray-50 dark:bg-[#1a1a1a] rounded-full flex items-center justify-center mb-5 sm:mb-6 shadow-inner">
                   <Search className="h-8 w-8 sm:h-10 sm:w-10 text-gray-300 dark:text-gray-600" />
                 </div>
                 <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-2">We couldn't find any results</h3>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 max-w-[260px] mx-auto leading-relaxed">
                   Try checking your spelling or using more general terms
                 </p>
-                <Button
+                <button
                   onClick={() => {
                     setSearchQuery("")
                     setSearchParams({})
                     setSelectedCategory('all')
                     setActiveFilters(new Set())
-                  } }
-                  variant="outline"
-                  className="mt-6 h-10 px-6 text-xs sm:text-sm"
+                  }}
+                  className="mt-7 inline-flex items-center gap-2 h-10 px-6 rounded-xl text-sm font-semibold text-white transition-all duration-200 hover:opacity-90 active:scale-95 shadow-sm"
+                  style={{ backgroundColor: RED }}
                 >
                   Clear all filters
-                </Button>
+                </button>
               </div>
             )}
 
