@@ -385,12 +385,23 @@ export default function Support() {
                 <h3 className="font-semibold text-slate-900 dark:text-white">Issue type</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {orderIssues.map((it) => (
-                    <Button key={it} variant={issueType === it ? "default" : "outline"} onClick={() => setIssueType(it)}>{it}</Button>
+                    <Button
+                      key={it}
+                      variant={issueType === it ? "default" : "outline"}
+                      onClick={() => setIssueType(it)}
+                      className={issueType === it ? "bg-[#00c87e] hover:bg-[#00c87e]/90 text-white border-[#00c87e]" : ""}
+                    >
+                      {it}
+                    </Button>
                   ))}
                 </div>
                 <Textarea placeholder="Describe the issue (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
                 <div className="flex gap-2">
-                  <Button onClick={() => submitTicket({ type: "order", orderId: selectedOrder._id || selectedOrder.id, issueType, description })} disabled={!issueType || submitting}>
+                  <Button
+                    onClick={() => submitTicket({ type: "order", orderId: selectedOrder._id || selectedOrder.id, issueType, description })}
+                    disabled={!issueType || submitting}
+                    className="bg-[#00c87e] hover:bg-[#00c87e]/90 text-white border-[#00c87e] disabled:opacity-50"
+                  >
                     {submitting ? "Submitting..." : "Submit Ticket"}
                   </Button>
                   <Button variant="outline" onClick={() => setStep("pick")}>Cancel</Button>
@@ -456,12 +467,23 @@ export default function Support() {
                 <h3 className="font-semibold text-slate-900 dark:text-white">Issue type</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {restaurantIssues.map((it) => (
-                    <Button key={it} variant={issueType === it ? "default" : "outline"} onClick={() => setIssueType(it)}>{it}</Button>
+                    <Button
+                      key={it}
+                      variant={issueType === it ? "default" : "outline"}
+                      onClick={() => setIssueType(it)}
+                      className={issueType === it ? "bg-[#00c87e] hover:bg-[#00c87e]/90 text-white border-[#00c87e]" : ""}
+                    >
+                      {it}
+                    </Button>
                   ))}
                 </div>
                 <Textarea placeholder="Describe the issue (optional)" value={description} onChange={(e) => setDescription(e.target.value)} />
                 <div className="flex gap-2">
-                  <Button onClick={() => submitTicket({ type: "restaurant", restaurantId: selectedRestaurant._id || selectedRestaurant.id, issueType, description })} disabled={!issueType || submitting}>
+                  <Button
+                    onClick={() => submitTicket({ type: "restaurant", restaurantId: selectedRestaurant._id || selectedRestaurant.id, issueType, description })}
+                    disabled={!issueType || submitting}
+                    className="bg-[#00c87e] hover:bg-[#00c87e]/90 text-white border-[#00c87e] disabled:opacity-50"
+                  >
                     {submitting ? "Submitting..." : "Submit Ticket"}
                   </Button>
                   <Button variant="outline" onClick={() => setStep("pick")}>Cancel</Button>
@@ -474,7 +496,11 @@ export default function Support() {
                 <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
                 <Textarea placeholder="Describe your issue" value={description} onChange={(e) => setDescription(e.target.value)} />
                 <div className="flex gap-2">
-                  <Button onClick={() => submitTicket({ type: "other", issueType: subject || "Other", description })} disabled={!subject || submitting}>
+                  <Button
+                    onClick={() => submitTicket({ type: "other", issueType: subject || "Other", description })}
+                    disabled={!subject || submitting}
+                    className="bg-[#00c87e] hover:bg-[#00c87e]/90 text-white border-[#00c87e] disabled:opacity-50"
+                  >
                     {submitting ? "Submitting..." : "Submit Ticket"}
                   </Button>
                   <Button variant="outline" onClick={() => setStep("pick")}>Cancel</Button>

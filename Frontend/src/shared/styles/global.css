@@ -30,6 +30,7 @@
   --secondary-foreground: oklch(0.3 0.08 60);
   --muted: oklch(0.96 0.01 90);
   --muted-foreground: oklch(0.5 0.05 50);
+  --placeholder: var(--muted-foreground);
   --accent: oklch(0.92 0.08 75);
   --accent-foreground: oklch(0.25 0.06 55);
   --destructive: oklch(0.577 0.245 27.325);
@@ -110,6 +111,7 @@
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
+  --placeholder: var(--muted-foreground);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
@@ -169,7 +171,7 @@
   input[type="email"]::placeholder,
   input[type="tel"]::placeholder,
   input[type="password"]::placeholder {
-    color: var(--muted-foreground, #94a3b8) !important;
+    color: var(--placeholder, var(--muted-foreground)) !important;
     font-size: 0.875em !important;
     opacity: 1 !important;
     font-style: normal !important;
