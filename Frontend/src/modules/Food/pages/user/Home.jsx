@@ -51,6 +51,7 @@ import {
 } from "@food/components/ui/loading-skeletons";
 import { useProfile } from "@food/context/ProfileContext";
 import { useCart } from "@food/context/CartContext";
+import { toast } from "sonner";
 import { HorizontalCarousel } from "@food/components/ui/horizontal-carousel";
 import { DotPattern } from "@food/components/ui/dot-pattern";
 import {
@@ -3126,6 +3127,7 @@ export default function Home() {
                       e.stopPropagation();
                       if (favorite) {
                         removeFavorite(restaurantSlug);
+                        toast.success("Restaurant removed from collection");
                       } else {
                         // Add to favorites and show toast
                         addFavorite({
@@ -3138,13 +3140,7 @@ export default function Home() {
                           priceRange: restaurant.priceRange,
                           image: restaurant.image,
                         });
-                        if (toastTimerRef.current) {
-                          clearTimeout(toastTimerRef.current);
-                        }
-                        setShowToast(true);
-                        toastTimerRef.current = setTimeout(() => {
-                          setShowToast(false);
-                        }, 3000);
+                        toast.success("Added to your favourite restaurants collection");
                       }
                     };
 
@@ -4329,28 +4325,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Toast Notification - Fixed to viewport bottom */}
-      {typeof window !== "undefined" &&
-        createPortal(
-          <AnimatePresence>
-            {showToast && (
-              <motion.div
-                initial={{ y: 100, x: "-50%", opacity: 0 }}
-                animate={{ y: 0, x: "-50%", opacity: 1 }}
-                exit={{ y: 100, x: "-50%", opacity: 0 }}
-                transition={{ duration: 0.3, type: "spring", damping: 25 }}
-                className="fixed bottom-20 left-1/2 z-[10001] flex items-center gap-3 bg-white/95 dark:bg-[#1a1a1a]/95 text-gray-900 dark:text-gray-100 pl-4 pr-5 py-3 rounded-full border border-gray-100 dark:border-gray-800 shadow-[0_8px_30px_rgb(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.5)] backdrop-blur-md transition-colors duration-300">
-                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-[#FFF2EB] dark:bg-[#EB590E]/15 text-[#EB590E] shrink-0">
-                  <Bookmark className="h-4 w-4 fill-current" />
-                </div>
-                <p className="text-xs md:text-sm font-semibold tracking-wide whitespace-nowrap">
-                  Added to your favourite restaurants collection
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body
-        )}
+
 
 
 

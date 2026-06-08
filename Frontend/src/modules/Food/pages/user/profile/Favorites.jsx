@@ -268,13 +268,13 @@ export default function Favorites() {
                             {restaurant.cuisine}
                           </p>
                         </div>
-                        <div className="flex items-center justify-between text-[13px] text-gray-600 dark:text-gray-400 font-medium pt-1 border-t border-gray-100 dark:border-zinc-800/40">
-                          <div className="flex items-center gap-1 text-muted-foreground dark:text-gray-400">
-                            <Clock className="h-3 w-3" />
+                        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[13px] text-gray-600 dark:text-gray-400 font-medium pt-1 border-t border-gray-100 dark:border-zinc-800/40">
+                          <div className="flex items-center gap-1 text-muted-foreground dark:text-gray-400 whitespace-nowrap flex-shrink-0">
+                            <Clock className="h-3 w-3 flex-shrink-0" />
                             <span className="font-medium">{restaurant.deliveryTime}</span>
                           </div>
-                          <div className="flex items-center gap-1 text-muted-foreground dark:text-gray-400">
-                            <MapPin className="h-3 w-3" />
+                          <div className="flex items-center gap-1 text-muted-foreground dark:text-gray-400 whitespace-nowrap flex-shrink-0">
+                            <MapPin className="h-3 w-3 flex-shrink-0" />
                             <span className="font-medium">{restaurant.distance}</span>
                           </div>
                         </div>
