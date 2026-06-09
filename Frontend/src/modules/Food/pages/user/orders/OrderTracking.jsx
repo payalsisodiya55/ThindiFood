@@ -796,11 +796,12 @@ export default function OrderTracking() {
       order?.restaurant?.ownerPhone ||
       order?.restaurant?.contact?.phone
 
-    if (existingPhone) {
-      setRestaurantDetails(null)
-      return () => {
-        cancelled = true
-      }
+    const hasRestaurantName = order?.restaurant && order.restaurant !== 'Restaurant'
+    const hasRestaurantAddress = order?.restaurantAddress && order.restaurantAddress !== 'Restaurant location'
+    const hasRestaurantPhone = Boolean(existingPhone)
+
+    if (hasRestaurantName && hasRestaurantAddress && hasRestaurantPhone) {
+      return
     }
 
     const restaurantLookupId =
@@ -830,6 +831,45 @@ export default function OrderTracking() {
           null
 
         setRestaurantDetails(restaurantData || null)
+
+        if (restaurantData) {
+          setOrder((prev) => {
+            if (!prev) return prev
+            
+            const resolvedName = restaurantData.restaurantName || restaurantData.name || prev.restaurant
+            
+            let resolvedAddr = prev.restaurantAddress
+            const loc = restaurantData.location || {}
+            if (loc.formattedAddress && String(loc.formattedAddress).trim() && loc.formattedAddress !== "Select location") {
+              resolvedAddr = String(loc.formattedAddress).trim()
+            } else if (loc.address && String(loc.address).trim()) {
+              resolvedAddr = String(loc.address).trim()
+            } else if (restaurantData.address && String(restaurantData.address).trim()) {
+              resolvedAddr = String(restaurantData.address).trim()
+            }
+
+            const resolvedCoords = loc.coordinates || 
+              (loc.latitude && loc.longitude ? [Number(loc.longitude), Number(loc.latitude)] : prev.restaurantLocation?.coordinates)
+
+            const resolvedPhone = restaurantData.primaryContactNumber || 
+              restaurantData.phone || 
+              restaurantData.contactNumber || 
+              restaurantData.ownerPhone || 
+              restaurantData.contact?.phone || 
+              prev.restaurantPhone
+
+            return {
+              ...prev,
+              restaurant: resolvedName !== 'Restaurant' ? resolvedName : prev.restaurant,
+              restaurantAddress: resolvedAddr !== 'Restaurant location' ? resolvedAddr : prev.restaurantAddress,
+              restaurantPhone: resolvedPhone || prev.restaurantPhone,
+              restaurantLocation: {
+                ...prev.restaurantLocation,
+                coordinates: resolvedCoords || prev.restaurantLocation?.coordinates
+              }
+            }
+          })
+        }
       } catch {
         if (!cancelled) {
           setRestaurantDetails(null)
@@ -846,6 +886,7 @@ export default function OrderTracking() {
     order?.restaurantPhone,
     order?.restaurantId,
     order?.restaurant,
+    order?.restaurantAddress
   ])
 
   useEffect(() => {
