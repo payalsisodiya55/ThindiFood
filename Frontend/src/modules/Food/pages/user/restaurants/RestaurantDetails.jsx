@@ -990,7 +990,10 @@ function RestaurantDetailsContent() {
                   })) || []
                 })))
 
-                // Dynamically inject the specifically searched dish at the very top if targetDishId is present
+                // Deduplicate items to ensure no dish appears multiple times on the page
+                const displayedDishIds = new Set()
+
+                // 1. Process searchedDishSection if present
                 let searchedDishSection = null
                 if (targetDishId) {
                   const allItemsInMenu = []
@@ -1010,12 +1013,72 @@ function RestaurantDetailsContent() {
                       subsections: [],
                       isSearchResult: true 
                     }
+                    const matchedId = String(matchedItem.id || matchedItem._id || "").trim()
+                    if (matchedId) {
+                      displayedDishIds.add(matchedId)
+                    }
                   }
                 }
 
-                let finalMenuSections = [...menuSections]
-                if (hasPreviousOrderForRestaurant) {
-                  finalMenuSections = [{ name: "Recommended for you", items: recommendedItems, subsections: [] }, ...finalMenuSections]
+                // 2. Process recommendedItems
+                // Ensure recommendedItems contains unique dish IDs and doesn't overlap with searchedDishSection
+                const deduplicatedRecommendedItems = []
+                const seenRecIdsLocal = new Set()
+                recommendedItems.forEach(item => {
+                  const itemId = String(item.id || item._id || "").trim()
+                  if (!itemId) return
+                  // If it's already displayed in searchedDishSection, or already seen in recommended list, skip it
+                  if (displayedDishIds.has(itemId) || seenRecIdsLocal.has(itemId)) return
+                  seenRecIdsLocal.add(itemId)
+                  deduplicatedRecommendedItems.push(item)
+                })
+
+                // If recommended section is active, add its items to displayedDishIds
+                let recommendedSection = null
+                if (hasPreviousOrderForRestaurant && deduplicatedRecommendedItems.length > 0) {
+                  deduplicatedRecommendedItems.forEach(item => {
+                    displayedDishIds.add(String(item.id || item._id || "").trim())
+                  })
+                  recommendedSection = { 
+                    name: "Recommended for you", 
+                    items: deduplicatedRecommendedItems, 
+                    subsections: [] 
+                  }
+                }
+
+                // 3. Filter the original menuSections to remove any items that are already in displayedDishIds
+                const processedMenuSections = menuSections.map(section => {
+                  const sectionItems = (section.items || []).filter(item => {
+                    const itemId = String(item.id || item._id || "").trim()
+                    return !displayedDishIds.has(itemId)
+                  })
+
+                  const sectionSubsections = (section.subsections || []).map(subsection => {
+                    const subsectionItems = (subsection.items || []).filter(item => {
+                      const itemId = String(item.id || item._id || "").trim()
+                      return !displayedDishIds.has(itemId)
+                    })
+                    return {
+                      ...subsection,
+                      items: subsectionItems
+                    }
+                  }).filter(subsection => (subsection.items && subsection.items.length > 0))
+
+                  return {
+                    ...section,
+                    items: sectionItems,
+                    subsections: sectionSubsections
+                  }
+                }).filter(section => {
+                  const hasItems = section.items && section.items.length > 0
+                  const hasSubsections = section.subsections && section.subsections.length > 0
+                  return hasItems || hasSubsections
+                })
+
+                // 4. Combine them into finalMenuSections
+                let finalMenuSections = [...processedMenuSections]
+                if (recommendedSection) {
+                  finalMenuSections = [recommendedSection, ...finalMenuSections]
                 }
                 if (searchedDishSection) {
                   finalMenuSections = [searchedDishSection, ...finalMenuSections]

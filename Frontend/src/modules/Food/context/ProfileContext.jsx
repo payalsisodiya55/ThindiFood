@@ -369,7 +369,11 @@ export function ProfileProvider({ children }) {
   // Dish favorites functions - memoized with useCallback
   const addDishFavorite = useCallback((dish) => {
     setDishFavorites((prev) => {
-      if (!prev.find(fav => fav.id === dish.id && fav.restaurantId === dish.restaurantId)) {
+      const isDuplicate = prev.some(fav => 
+        String(fav.id || '').trim() === String(dish.id || '').trim() &&
+        String(fav.restaurantId || '').trim() === String(dish.restaurantId || '').trim()
+      )
+      if (!isDuplicate) {
         return [...prev, dish]
       }
       return prev
@@ -378,12 +382,18 @@ export function ProfileProvider({ children }) {
 
   const removeDishFavorite = useCallback((dishId, restaurantId) => {
     setDishFavorites((prev) => 
-      prev.filter(fav => !(fav.id === dishId && fav.restaurantId === restaurantId))
+      prev.filter(fav => !(
+        String(fav.id || '').trim() === String(dishId || '').trim() &&
+        String(fav.restaurantId || '').trim() === String(restaurantId || '').trim()
+      ))
     )
   }, [])
 
   const isDishFavorite = useCallback((dishId, restaurantId) => {
-    return dishFavorites.some(fav => fav.id === dishId && fav.restaurantId === restaurantId)
+    return dishFavorites.some(fav => 
+      String(fav.id || '').trim() === String(dishId || '').trim() &&
+      String(fav.restaurantId || '').trim() === String(restaurantId || '').trim()
+    )
   }, [dishFavorites])
 
   const getDishFavorites = useCallback(() => {

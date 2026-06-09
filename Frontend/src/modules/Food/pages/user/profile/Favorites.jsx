@@ -309,7 +309,7 @@ export default function Favorites() {
                 const restaurantSlug = dish.restaurantSlug || "";
                 return (
                   <ScrollReveal key={`${dish.id}-${dish.restaurantId}`} delay={index * 0.1} className="h-full">
-                    <Link to={`/food/user/restaurants/${restaurantSlug}?dish=${dish.id}`} className="block h-full">
+                    <Link to={`/user/restaurants/${restaurantSlug}?dish=${dish.id}`} className="block h-full">
                       <Card className="overflow-hidden h-full p-0 gap-0 border-none cursor-pointer shadow-md hover:shadow-xl transition-shadow bg-white dark:bg-[#18181b] border border-gray-100 dark:border-zinc-800/50 flex flex-col justify-between">
                         <div className="h-32 w-full relative overflow-hidden">
                           <img
