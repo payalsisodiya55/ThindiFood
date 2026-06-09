@@ -255,61 +255,17 @@ const DineInTableManagement = () => {
             const dataUrl = await generateQrDataUrl(table?.qrCodeUrl || "", 700);
             if (!dataUrl) throw new Error("QR generation failed");
 
-            // 1. Flutter InAppWebView Bridge
-            if (
-                window.flutter_inappwebview &&
-                typeof window.flutter_inappwebview.callHandler === "function"
-            ) {
-                const base64Data = dataUrl.split(",")[1];
-                let handled = false;
-                const handlers = ["downloadFile", "saveImage", "saveFile", "downloadImage"];
-                for (const handler of handlers) {
-                    try {
-                        await window.flutter_inappwebview.callHandler(handler, base64Data, fileName);
-                        handled = true;
-                        break;
-                    } catch (e) {
-                        console.warn(`Flutter bridge handler '${handler}' failed:`, e);
-                    }
-                }
-                if (handled) {
-                    toast.success(`Table ${table.tableNumber} QR downloaded`);
-                    return;
-                }
-            }
-
-            // 2. React Native WebView Bridge
-            if (
-                window.ReactNativeWebView &&
-                typeof window.ReactNativeWebView.postMessage === "function"
-            ) {
-                const base64Data = dataUrl.split(",")[1];
-                window.ReactNativeWebView.postMessage(
-                    JSON.stringify({
-                        event: "downloadImage",
-                        base64: base64Data,
-                        filename: fileName,
-                    })
-                );
-                toast.success(`Table ${table.tableNumber} QR downloaded`);
-                return;
-            }
-
-            if (isNativeLikeShell()) {
-                // Append the filename to the dataUrl hash so WebView download listeners can extract it
-                const safeDataUrl = `${dataUrl}#${fileName}`;
-                triggerDownload(safeDataUrl, fileName, false);
-                toast.success(`Table ${table.tableNumber} QR downloaded`);
-                return;
-            }
-
             const blob = await dataUrlToBlob(dataUrl);
             const objectUrl = URL.createObjectURL(blob);
-            try {
-                triggerDownload(objectUrl, fileName);
-            } finally {
-                window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-            }
+            const link = document.createElement("a");
+            link.href = objectUrl;
+            link.download = fileName;
+            link.rel = "noopener";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
             toast.success(`Table ${table.tableNumber} QR downloaded`);
         } catch (error) {
             toast.error(error?.message || "Failed to download QR");
@@ -369,7 +325,7 @@ const DineInTableManagement = () => {
                         </div>
                         <div class="meta">Scan URL: ${qrTarget}</div>
                         <div class="actions">
-                            <button class="btn btn-download" onclick="const a=document.createElement('a');a.href='${qrDataUrl}#Table_${tableNumber}_QR.png';a.download='Table_${tableNumber}_QR.png';a.click();">Download</button>
+                            <button class="btn btn-download" onclick="const a=document.createElement('a');a.href='${qrDataUrl}';a.download='Table_${tableNumber}_QR.png';a.click();">Download</button>
                         </div>
                     </div>
                 </div>
