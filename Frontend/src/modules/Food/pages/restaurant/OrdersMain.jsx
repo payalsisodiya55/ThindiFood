@@ -1728,6 +1728,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
             ? {
                 ...order,
                 status: assignedOrder?.status || "assigned_to_boy",
+                selfDelivery: assignedOrder?.selfDelivery || order.selfDelivery,
                 selfDeliveryBoy:
                   assignedOrder?.selfDelivery?.deliveryBoyId &&
                   typeof assignedOrder.selfDelivery.deliveryBoyId === "object"
@@ -5165,23 +5166,39 @@ export default function OrdersMain() {
                 <div className="flex flex-col items-end gap-1">
                   {(() => {
                     const selectedStatus = String(selectedOrder.status || "").toLowerCase();
-                    const isReadyStatus = selectedStatus === "ready";
+                    const isReadyStatus = selectedStatus === "ready" || selectedStatus === "ready_for_pickup";
+                    
+                    const isDineIn = selectedOrder.isDineIn || String(selectedOrder.orderId || "").includes("Table");
+                    const isActiveDineIn = isDineIn && selectedStatus === "active";
+                    
+                    const displayStatus = isActiveDineIn 
+                      ? "Live Table" 
+                      : selectedStatus === "created"
+                        ? "Pending Review"
+                        : selectedStatus === "assigned_to_boy"
+                          ? (selectedOrder.selfDelivery?.status === "accepted"
+                              ? `Assigned To ${selectedOrder.selfDeliveryBoy?.name || "Delivery Partner"}`
+                              : `Request Sent To ${selectedOrder.selfDeliveryBoy?.name || "Delivery Partner"}`)
+                          : String(selectedOrder.status || "")
+                              .replace(/_/g, " ")
+                              .replace(/\b\w/g, (c) => c.toUpperCase());
+
                     return (
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
-                      isReadyStatus
-                        ? "border-green-500 text-green-600"
-                        : "border-gray-800 text-gray-900"
-                    }`}>
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full ${
-                        isReadyStatus
-                          ? "bg-green-500"
-                          : "bg-gray-800"
-                      }`}
-                    />
-                    {selectedOrder.status}
-                  </span>
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
+                          isReadyStatus
+                            ? "border-green-500 text-green-600"
+                            : "border-gray-800 text-gray-900"
+                        }`}>
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            isReadyStatus
+                              ? "bg-green-500"
+                              : "bg-gray-800"
+                          }`}
+                        />
+                        {displayStatus}
+                      </span>
                     );
                   })()}
                   <span className="text-[11px] text-gray-500">
@@ -5448,6 +5465,8 @@ function OrderCard({
             customerPhone,
             total,
             pricing,
+            selfDelivery,
+            selfDeliveryBoy,
           })
         }
         className="w-full text-left flex gap-3 items-stretch cursor-pointer">
@@ -5557,6 +5576,8 @@ function OrderCard({
                       customerPhone,
                       total,
                       pricing,
+                      selfDelivery,
+                      selfDeliveryBoy,
                     });
                   }}
                   className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm hover:bg-slate-50"
@@ -5770,6 +5791,19 @@ function PreparingOrders({
                 order.paymentMethod || order.payment?.method || null,
               total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
               pricing: order.pricing || null,
+              selfDelivery: order.selfDelivery || null,
+              selfDeliveryBoy:
+                order.selfDelivery?.deliveryBoyId &&
+                typeof order.selfDelivery.deliveryBoyId === "object"
+                  ? {
+                      id:
+                        order.selfDelivery.deliveryBoyId._id ||
+                        order.selfDelivery.deliveryBoyId.id ||
+                        null,
+                      name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
+                      phone: order.selfDelivery.deliveryBoyId.phone || "",
+                    }
+                  : null,
             };
           });
 
@@ -6062,24 +6096,9 @@ function PreparingOrders({
             return (
               <OrderCard
                 key={order.mongoId || order.orderId}
-                orderId={order.orderId}
-                mongoId={order.mongoId}
-                status={order.status}
-                customerName={order.customerName}
-                type={order.type}
-                tableOrToken={order.tableOrToken}
-                timePlaced={order.timePlaced}
+                {...order}
                 eta={etaDisplay}
-                itemsSummary={order.itemsSummary}
-                photoUrl={order.photoUrl}
-                photoAlt={order.photoAlt}
-                paymentMethod={order.paymentMethod}
-                customerPhone={order.customerPhone}
-                deliveryPartnerId={order.deliveryPartnerId}
-                dispatchStatus={order.dispatchStatus}
                 onSelect={onSelectOrder}
-                total={order.total}
-                pricing={order.pricing}
                 onCancel={order.isDineIn ? undefined : onCancel}
                 onMarkReady={order.isDineIn ? undefined : handleMarkReady}
                 isMarkingReady={Boolean(
@@ -6169,6 +6188,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
             pricing: order.pricing || null,
             fulfillmentType: order.fulfillmentType || "delivery",
             deliveryType: order.deliveryType || null,
+            selfDelivery: order.selfDelivery || null,
             selfDeliveryBoy:
               order.selfDelivery?.deliveryBoyId && typeof order.selfDelivery.deliveryBoyId === "object"
                 ? {
@@ -6320,6 +6340,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
             ? {
                 ...order,
                 status: assignedOrder?.status || "assigned_to_boy",
+                selfDelivery: assignedOrder?.selfDelivery || order.selfDelivery,
                 selfDeliveryBoy:
                   assignedOrder?.selfDelivery?.deliveryBoyId &&
                   typeof assignedOrder.selfDelivery.deliveryBoyId === "object"
@@ -6687,6 +6708,7 @@ function ScheduledOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValu
               type: getRestaurantOrderTypeLabel(order),
               fulfillmentType: order.fulfillmentType || "delivery",
               deliveryType: order.deliveryType || null,
+              selfDelivery: order.selfDelivery || null,
               selfDeliveryBoy:
                 order.selfDelivery?.deliveryBoyId &&
                 typeof order.selfDelivery.deliveryBoyId === "object"
