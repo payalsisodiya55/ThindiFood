@@ -3192,7 +3192,9 @@ export default function Home() {
                                 </button>
 
                                 {/* Dark bottom overlay */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-[2px] px-3 py-2.5">
+                                <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[2px] px-3 py-2.5 ${
+                                  isOutOfService || !availability.isOpen ? "bg-black/80" : "bg-black/40"
+                                }`}>
                                   {/* Row 1: initial + name + arrow */}
                                   <div className="flex items-center gap-2">
                                     <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/20 text-sm font-bold text-white">
@@ -3202,7 +3204,9 @@ export default function Home() {
                                       <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">
                                         {restaurant.name}
                                       </p>
-                                      <p className="line-clamp-1 text-[10px] text-white/70">
+                                      <p className={`line-clamp-1 text-[10px] ${
+                                        isOutOfService || !availability.isOpen ? "text-white font-bold" : "text-white/70"
+                                      }`}>
                                         {restaurant.cuisine || (Array.isArray(restaurant.cuisines) ? restaurant.cuisines.join(", ") : "")}
                                       </p>
                                     </div>

@@ -472,7 +472,9 @@ export default function Delivery() {
                           </div>
 
                           {/* Dark bottom overlay */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-black/40 backdrop-blur-[2px] px-3 py-2.5">
+                          <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[2px] px-3 py-2.5 ${
+                            !availability.isOpen ? "bg-black/80" : "bg-black/40"
+                          }`}>
                             {/* Row 1: initial + name */}
                             <div className="flex items-center gap-2">
                               <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/20 text-sm font-bold text-white">
@@ -480,7 +482,9 @@ export default function Delivery() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">{restaurant.name}</p>
-                                <p className="line-clamp-1 text-[10px] text-white/70">{restaurant.cuisine}</p>
+                                <p className={`line-clamp-1 text-[10px] ${
+                                  !availability.isOpen ? "text-white font-bold" : "text-white/70"
+                                }`}>{restaurant.cuisine}</p>
                               </div>
                               <svg className="h-4 w-4 flex-shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -505,21 +509,23 @@ export default function Delivery() {
                             </div>
 
                             {/* Row 3: time + distance + delivery fee */}
-                            <div className="mt-1 flex items-center gap-1 text-[10px] text-white/70">
+                            <div className={`mt-1 flex items-center gap-1 text-[10px] ${
+                              !availability.isOpen ? "text-white font-medium" : "text-white/70"
+                            }`}>
                               <Clock className="h-3 w-3 flex-shrink-0" strokeWidth={1.5} />
                               <span>{restaurant.deliveryTime}</span>
-                              <span className="text-white/40">|</span>
+                              <span className={!availability.isOpen ? "text-white/60" : "text-white/40"}>|</span>
                               <span>{restaurant.distance}</span>
                               {Number(restaurant?.selfDelivery?.fee) >= 0 && (
                                 <>
-                                  <span className="text-white/40">|</span>
+                                  <span className={!availability.isOpen ? "text-white/60" : "text-white/40"}>|</span>
                                   <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
                                   <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(0)}</span>
                                 </>
                               )}
                               {restaurant.offer && (
                                 <>
-                                  <span className="text-white/40">|</span>
+                                  <span className={!availability.isOpen ? "text-white/60" : "text-white/40"}>|</span>
                                   <BadgePercent className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
                                   <span className="line-clamp-1 flex-1">{restaurant.offer}</span>
                                 </>

@@ -112,7 +112,9 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
 
             {/* Absolute Info Box on Top of Image */}
             <div className="absolute bottom-4 left-4 right-4 z-10">
-              <div className="relative overflow-hidden rounded-[24px] bg-black/40 p-4 shadow-2xl backdrop-blur-xl border border-white/5 transition-transform duration-300 group-hover:-translate-y-1">
+              <div className={`relative overflow-hidden rounded-[24px] p-4 shadow-2xl backdrop-blur-xl border border-white/5 transition-transform duration-300 group-hover:-translate-y-1 ${
+                isOutOfService || !availability.isOpen ? "bg-black/80" : "bg-black/40"
+              }`}>
                 <div className="flex items-start gap-3">
                   {/* Restaurant Logo/Initial */}
                   <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-600 text-white shadow-inner">
@@ -129,7 +131,9 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
                       </div>
                     </div>
                     
-                    <p className="line-clamp-1 mt-0.5 text-[11px] font-medium text-white/60 uppercase tracking-wider">
+                    <p className={`line-clamp-1 mt-0.5 text-[11px] uppercase tracking-wider ${
+                      isOutOfService || !availability.isOpen ? "text-white font-bold" : "text-white/60 font-medium"
+                    }`}>
                       {restaurant.featuredDish} • {restaurant.deliveryTime}
                     </p>
                   </div>
@@ -138,7 +142,9 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
                 {/* Additional Info Row */}
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3">
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-1 text-[11px] font-bold text-white/80">
+                    <div className={`flex items-center gap-1 text-[11px] font-bold ${
+                      isOutOfService || !availability.isOpen ? "text-white" : "text-white/80"
+                    }`}>
                       <Clock className="h-3.5 w-3.5 text-gray-400" />
                       <span>{restaurant.distance}</span>
                     </div>
