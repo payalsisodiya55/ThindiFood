@@ -1099,7 +1099,7 @@ export default function AddressSelectorPage() {
           className="fixed left-0 right-0 px-4 pt-4 bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 transition-[bottom] duration-150"
           style={{ 
             bottom: `${keyboardInset}px`,
-            paddingBottom: `calc(1.5rem + env(safe-area-inset-bottom))`
+            paddingBottom: keyboardInset > 0 ? '1rem' : 'calc(2rem + env(safe-area-inset-bottom, 16px))'
           }}
         >
           <Button 
