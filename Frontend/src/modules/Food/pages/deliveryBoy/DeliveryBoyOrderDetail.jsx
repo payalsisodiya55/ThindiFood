@@ -251,17 +251,17 @@ export default function DeliveryBoyOrderDetail() {
                 <ArrowLeft className="h-4 w-4" />
                 Back to orders
               </Link>
-              <h1 className="mt-3 text-3xl font-black">
+              <h1 className="mt-3 text-3xl font-black break-words">
                 Order #{order?.orderId || orderId}
               </h1>
-              <p className="mt-1 text-sm text-white/90">
+              <p className="mt-1 text-sm text-white/90 break-words">
                 {deliveryBoy?.name || "Delivery Person"} delivery workflow
               </p>
             </div>
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white shrink-0"
             >
               <LogOut className="h-4 w-4" />
               Logout
@@ -283,18 +283,18 @@ export default function DeliveryBoyOrderDetail() {
             <>
               <div className="rounded-[28px] border border-[#00c87e]/10 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusMeta.badge}`}>
                       {statusMeta.label}
                     </span>
-                    <h2 className="mt-3 text-2xl font-black text-slate-900">
+                    <h2 className="mt-3 text-2xl font-black text-slate-900 break-words">
                       {order.restaurantId?.restaurantName || "Restaurant"}
                     </h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-slate-500 break-words">
                       Self delivery order
                     </p>
                   </div>
-                  <div className="text-right flex items-center justify-end">
+                  <div className="text-right flex items-center justify-end shrink-0">
                     <p className="text-2xl font-black text-slate-900">
                       {formatMoney(order?.pricing?.total)}
                     </p>
@@ -305,21 +305,21 @@ export default function DeliveryBoyOrderDetail() {
                   <div className="flex items-start gap-3">
                     <User className="mt-[3px] h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
                     <div className="min-w-0 flex-1">
-                      <p className="font-semibold text-slate-900 leading-tight">
+                      <p className="font-semibold text-slate-900 leading-tight break-words">
                         {order.userId?.name || "Customer"}
                       </p>
-                      <p className="mt-1 text-slate-600 leading-none">{order.userId?.phone || order.deliveryAddress?.phone || "No phone"}</p>
+                      <p className="mt-1 text-slate-600 leading-none break-words">{order.userId?.phone || order.deliveryAddress?.phone || "No phone"}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <MapPin className="mt-[3px] h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
-                    <p className="min-w-0 flex-1 leading-normal">{address}</p>
+                    <p className="min-w-0 flex-1 leading-normal break-words">{address}</p>
                   </div>
                   <div className="flex items-start gap-3">
                     <Package className="mt-[3px] h-[18px] w-[18px] text-[#00a86b] shrink-0" strokeWidth={2.2} />
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-slate-900 leading-tight">Items</p>
-                      <p className="mt-1 leading-normal">
+                      <p className="mt-1 leading-normal break-words">
                         {Array.isArray(order.items)
                            ? order.items.map((item) => `${item.quantity} x ${item.name}`).join(", ")
                            : "No items"}

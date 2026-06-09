@@ -189,7 +189,7 @@ export default function DeliveryBoyManagement() {
       resetForm();
       await loadDeliveryBoys();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to save delivery partner");
+      toast.error(error?.response?.data?.error || error?.response?.data?.message || "Failed to save delivery partner");
     } finally {
       setSubmitting(false);
     }
@@ -227,7 +227,7 @@ export default function DeliveryBoyManagement() {
       toast.success("Delivery partner deleted successfully");
       await loadDeliveryBoys();
     } catch (error) {
-      toast.error(error?.response?.data?.message || "Failed to delete delivery partner");
+      toast.error(error?.response?.data?.error || error?.response?.data?.message || "Failed to delete delivery partner");
     } finally {
       setDeletingId("");
     }
