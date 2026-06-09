@@ -1798,9 +1798,12 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
       handleCloseOtpModal();
     } catch (error) {
       const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Failed to verify OTP";
+        error?.response?.status === 400
+          ? "Incorrect OTP. Please enter the correct OTP."
+          : (error?.response?.data?.message ||
+             error?.response?.data?.error ||
+             error?.message ||
+             "Failed to verify OTP");
       toast.error(message);
     } finally {
       setIsVerifyingOtp(false);
@@ -2027,10 +2030,10 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
               onClick={(e) => e.stopPropagation()}>
               <div className="px-4 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">
-                  Verify OTP for Order #{otpModalOrder.orderId}
+                  Verify Pickup for Order #{otpModalOrder.orderId}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Enter customer OTP to mark this order as delivered.
+                  Ask the customer for their 4-digit code to complete handoff
                 </p>
               </div>
 
@@ -2038,19 +2041,19 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
                 <label
                   htmlFor="all-orders-delivery-otp"
                   className="block text-sm font-semibold text-gray-700 mb-2">
-                  Delivery OTP
+                  Pickup Code
                 </label>
                 <input
                   id="all-orders-delivery-otp"
                   type="text"
                   inputMode="numeric"
-                  maxLength={6}
+                  maxLength={4}
                   value={deliveryOtp}
                   onChange={(e) =>
-                    setDeliveryOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+                    setDeliveryOtp(e.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-base font-semibold tracking-[0.35em] text-center text-gray-900 outline-none focus:border-[#00c87e] focus:ring-4 focus:ring-[#00c87e]/15"
-                  placeholder="Enter OTP"
+                  placeholder="Enter 4-digit code"
                 />
               </div>
 
@@ -2067,7 +2070,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
                   onClick={handleVerifyOtpAndDeliver}
                   disabled={isVerifyingOtp}
                   className="flex-1 rounded-xl bg-[#00c87e] px-4 py-3 text-sm font-semibold text-white hover:bg-[#00b874] disabled:opacity-60">
-                  {isVerifyingOtp ? "Verifying..." : "Verify & Complete"}
+                  {isVerifyingOtp ? "Verifying..." : "Complete Pickup"}
                 </button>
               </div>
             </motion.div>
@@ -6350,9 +6353,12 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
       onStatusChanged?.();
     } catch (error) {
       const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Failed to verify OTP";
+        error?.response?.status === 400
+          ? "Incorrect OTP. Please enter the correct OTP for the pickup order."
+          : (error?.response?.data?.message ||
+             error?.response?.data?.error ||
+             error?.message ||
+             "Failed to verify OTP");
       toast.error(message);
     } finally {
       setIsVerifyingOtp(false);
@@ -6522,10 +6528,10 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
               onClick={(e) => e.stopPropagation()}>
               <div className="px-4 py-4 border-b border-gray-200">
                 <h3 className="text-lg font-bold text-gray-900">
-                  Verify OTP for Order #{otpModalOrder.orderId}
+                  Verify Pickup for Order #{otpModalOrder.orderId}
                 </h3>
                 <p className="text-sm text-gray-500 mt-1">
-                  Enter customer OTP to mark this order as delivered.
+                  Ask the customer for their 4-digit code to complete handoff
                 </p>
               </div>
 
@@ -6533,19 +6539,19 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
                 <label
                   htmlFor="delivery-otp-input"
                   className="block text-sm font-medium text-gray-700 mb-2">
-                  Takeaway OTP
+                  Pickup Code
                 </label>
                 <input
                   id="delivery-otp-input"
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  maxLength={6}
+                  maxLength={4}
                   value={deliveryOtp}
                   onChange={(e) =>
-                    setDeliveryOtp(String(e.target.value || "").replace(/\D/g, ""))
+                    setDeliveryOtp(String(e.target.value || "").replace(/\D/g, "").slice(0, 4))
                   }
-                  placeholder="Enter OTP"
+                  placeholder="Enter 4-digit code"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base font-medium tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -6563,7 +6569,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
                   onClick={handleVerifyOtpAndDeliver}
                   disabled={isVerifyingOtp || String(deliveryOtp).length < 4}
                   className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-60">
-                  {isVerifyingOtp ? "Verifying..." : "Confirm Delivery"}
+                  {isVerifyingOtp ? "Verifying..." : "Complete Pickup"}
                 </button>
               </div>
             </motion.div>

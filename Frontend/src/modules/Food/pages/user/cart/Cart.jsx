@@ -3224,7 +3224,7 @@ export default function Cart() {
                 <ArrowLeft className="h-4 w-4 md:h-5 md:w-5" />
               </Button>
               <div className="min-w-0">
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400">{restaurantName}</p>
+                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">{restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
                   {fulfillmentMode === "delivery" ? (
                     <>
@@ -3463,7 +3463,7 @@ export default function Cart() {
                       <Tag className="h-4 w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 break-all">
                         Restaurant offer: {restaurantOfferInfo.text}
                       </p>
                       {restaurantOfferInfo.replacedByCoupon ? (
@@ -3767,7 +3767,7 @@ export default function Cart() {
                     </div>
                     <div className="flex-1">
                         <div className="flex flex-col">
-                          <p className="text-sm md:text-base text-gray-800 dark:text-gray-200">
+                          <p className="text-sm md:text-base text-gray-800 dark:text-gray-200 break-all">
                             {fulfillmentMode === "delivery" ? "Deliver to " : "Pickup at "}
                             <span className="font-semibold">
                               {fulfillmentMode === "delivery" ? (getDisplayAddressLabel(defaultAddress?.label || "Home")) : restaurantName}

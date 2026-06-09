@@ -361,7 +361,7 @@ export default function Support() {
                                 setStep("order_issue")
                                 setIsOrderDropdownOpen(false)
                               }}
-                              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-gray-800 last:border-b-0 text-slate-800 dark:text-slate-200 transition-colors"
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-gray-800 last:border-b-0 text-slate-800 dark:text-slate-200 transition-colors break-all"
                             >
                               {getOrderLabel(o)}
                             </button>
@@ -443,7 +443,7 @@ export default function Support() {
                                 setStep("restaurant_issue")
                                 setIsRestaurantDropdownOpen(false)
                               }}
-                              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-gray-800 last:border-b-0 text-slate-800 dark:text-slate-200 transition-colors"
+                              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-gray-800 last:border-b-0 text-slate-800 dark:text-slate-200 transition-colors break-all"
                             >
                               {getRestaurantLabel(r)}
                             </button>
