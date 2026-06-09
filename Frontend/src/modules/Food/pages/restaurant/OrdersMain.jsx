@@ -160,7 +160,7 @@ const isRestaurantCompletedOrder = (orderLike) => {
 
 const getCompletedOrderStatusLabel = (statusLike) => {
   const normalizedStatus = String(statusLike || "").trim().toLowerCase();
-  if (normalizedStatus === "delivered_self") return "Deliver Self";
+  if (normalizedStatus === "delivered_self") return "Self Delivery";
   if (normalizedStatus === "completed") return "Completed";
   return "Delivered";
 };

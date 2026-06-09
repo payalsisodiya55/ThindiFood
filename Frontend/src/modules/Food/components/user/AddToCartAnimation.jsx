@@ -131,6 +131,7 @@ export default function AddToCartAnimation({
             borderRadius: '50%',
             x: 0,
             y: 0,
+            pointerEvents: 'none',
           });
 
           // Calculate relative movement from pill to source position
@@ -148,7 +149,7 @@ export default function AddToCartAnimation({
           // Step 1: Pop out from pill (scale up slightly)
           tl.to(thumbnail, {
             scale: 1.3,
-            duration: 0.15,
+            duration: 0.05,
             ease: 'power2.out',
           })
             // Step 2: Fly towards source with rotation
@@ -157,7 +158,7 @@ export default function AddToCartAnimation({
               y: deltaY,
               rotation: -360,
               scale: 1.1,
-              duration: 0.4,
+              duration: 0.18,
               ease: 'power2.inOut',
             })
             // Step 3: Bounce back slightly
@@ -165,24 +166,24 @@ export default function AddToCartAnimation({
               x: deltaX,
               y: deltaY,
               scale: 0.9,
-              duration: 0.15,
+              duration: 0.05,
               ease: 'power2.out',
             })
             // Step 4: Final bounce into position
             .to(thumbnail, {
               scale: 0.85,
-              duration: 0.1,
+              duration: 0.04,
               ease: 'power2.in',
             })
             // Step 5: Fade out smoothly
             .to(thumbnail, {
               scale: 0.7,
               opacity: 0,
-              duration: 0.15,
+              duration: 0.05,
               ease: 'power2.in',
             });
         }
-      }, 10);
+      }, 5);
     }
   }, [lastRemoveEvent]);
 
@@ -271,6 +272,7 @@ export default function AddToCartAnimation({
             borderRadius: '50%', // Ensure circular
             x: 0,
             y: 0,
+            pointerEvents: 'none',
           });
 
           // Fly to cart animation with bounce
@@ -288,7 +290,7 @@ export default function AddToCartAnimation({
           // Step 1: Pop out from button (scale up slightly)
           tl.to(thumbnail, {
             scale: 1.3,
-            duration: 0.15,
+            duration: 0.05,
             ease: 'power2.out',
           })
             // Step 2: Fly towards cart with rotation (no Y overshoot to prevent going below)
@@ -297,7 +299,7 @@ export default function AddToCartAnimation({
               y: deltaY, // No overshoot on Y to prevent going below pill
               rotation: 360,
               scale: 1.1,
-              duration: 0.4,
+              duration: 0.18,
               ease: 'power2.inOut',
             })
             // Step 3: Bounce back slightly on X only (overshoot correction)
@@ -305,24 +307,24 @@ export default function AddToCartAnimation({
               x: deltaX,
               y: deltaY, // Keep Y at exact target
               scale: 0.9,
-              duration: 0.15,
+              duration: 0.05,
               ease: 'power2.out',
             })
             // Step 4: Final bounce into position
             .to(thumbnail, {
               scale: 0.85,
-              duration: 0.1,
+              duration: 0.04,
               ease: 'power2.in',
             })
             // Step 5: Fade out smoothly
             .to(thumbnail, {
               scale: 0.7,
               opacity: 0,
-              duration: 0.15,
+              duration: 0.05,
               ease: 'power2.in',
             });
         }
-      }, 150); // Increased delay to ensure pill animation completes
+      }, 40); // Increased delay to ensure pill animation completes
     }
   }, [lastAddEvent]);
 
@@ -379,10 +381,11 @@ export default function AddToCartAnimation({
       {removedProduct && (
         <div
           ref={removedThumbnailRef}
-          className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-white flex-shrink-0 shadow-lg"
+          className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-white flex-shrink-0 shadow-lg pointer-events-none"
           style={{
             borderRadius: '50%',
             objectFit: 'cover',
+            pointerEvents: 'none',
           }}
         >
           {removedProduct.product?.imageUrl ? (
@@ -403,10 +406,11 @@ export default function AddToCartAnimation({
       {flyingProduct && (
         <div
           ref={flyingThumbnailRef}
-          className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-white flex-shrink-0 shadow-lg"
+          className="w-8 h-8 rounded-full border-2 border-white overflow-hidden bg-white flex-shrink-0 shadow-lg pointer-events-none"
           style={{
             borderRadius: '50%',
             objectFit: 'cover',
+            pointerEvents: 'none',
           }}
         >
           {flyingProduct?.product?.imageUrl ? (
