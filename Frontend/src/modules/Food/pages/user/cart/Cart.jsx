@@ -2955,7 +2955,7 @@ export default function Cart() {
 
       // Cash flow: order placed without online payment
       if (selectedPaymentMethod === "cash") {
-        toast.success("Order placed with Cash on Delivery")
+        toast.success(fulfillmentType === "takeaway" ? "Order placed with Pay at Restaurant" : "Order placed with Cash on Delivery")
         setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
         setPlacedOrderSnapshot(buildOrderSuccessSnapshot(order, restaurantData, fulfillmentType))
         orderAPI.getOrderDetails.prime?.(orderResponse)
