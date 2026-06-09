@@ -2909,16 +2909,26 @@ export default function OrdersMain() {
     return () => clearInterval(intervalId);
   }, [ordersRefreshToken, popupOrder, showNewOrderPopup]);
 
-  // Keep local popup audio disabled. Real-time order sound is managed by
-  // useRestaurantNotifications so we don't end up with duplicate loops.
+  // Manage the order popup ring locally for absolute reliability.
+  // When the popup is active, we stop the background socket hook's loop
+  // and loop the local audio element.
   useEffect(() => {
     if (audioRef.current) {
-      audioRef.current.loop = false;
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.muted = isMuted;
+      if (showNewOrderPopup && !isMuted) {
+        stopNotificationSound?.();
+        audioRef.current.loop = true;
+        audioRef.current.muted = false;
+        audioRef.current.volume = 1;
+        audioRef.current.play().catch((err) => {
+          console.warn("Failed to play local audio:", err);
+        });
+      } else {
+        audioRef.current.loop = false;
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
     }
-  }, [showNewOrderPopup, isMuted]);
+  }, [showNewOrderPopup, isMuted, stopNotificationSound]);
 
   // Countdown timer
   useEffect(() => {
@@ -3878,6 +3888,7 @@ export default function OrdersMain() {
         return (
           <ScheduledOrders
             onSelectOrder={handleSelectOrder}
+            onCancel={handleCancelClick}
             refreshToken={ordersRefreshToken}
             searchValue={searchValue}
           />
@@ -5282,6 +5293,22 @@ export default function OrdersMain() {
                 </div>
               )}
 
+              {(() => {
+                const selectedStatus = String(selectedOrder?.status || "").toLowerCase();
+                const isPreparingOrScheduled = selectedStatus === "preparing" || selectedStatus === "scheduled";
+                if (!isPreparingOrScheduled || selectedOrder.isDineIn) return null;
+                return (
+                  <button
+                    className="w-full mb-3 py-3 rounded-xl text-sm font-bold uppercase tracking-widest bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
+                    onClick={() => {
+                      setIsSheetOpen(false);
+                      handleCancelClick(selectedOrder);
+                    }}>
+                    Cancel Order
+                  </button>
+                );
+              })()}
+
               <button
                 className={`w-full py-3 rounded-xl text-sm font-bold uppercase tracking-widest transition-colors ${
                   selectedOrder.isDineIn 
@@ -5390,9 +5417,9 @@ function OrderCard({
             .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${isPreparing && onCancel ? "pr-14" : ""}`}>
-      {/* Cancel button - only show for preparing orders */}
-      {isPreparing && onCancel && (
+    <div className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${(isPreparing || normalizedStatus === "scheduled") && onCancel ? "pr-14" : ""}`}>
+      {/* Cancel button - show for preparing and scheduled orders */}
+      {(isPreparing || normalizedStatus === "scheduled") && onCancel && (
         <button
           type="button"
           onClick={(e) => {
@@ -6615,7 +6642,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
   );
 }
 
-function ScheduledOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) {
+function ScheduledOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = "" }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -6755,6 +6782,7 @@ function ScheduledOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
               key={order.mongoId || order.orderId}
               {...order}
               onSelect={onSelectOrder}
+              onCancel={onCancel}
             />
           ))}
         </div>

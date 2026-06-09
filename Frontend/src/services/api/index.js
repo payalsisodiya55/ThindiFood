@@ -1536,9 +1536,10 @@ export const restaurantAPI = {
    * Reject/cancel order by restaurant.
    * Backend orderStatus enum: cancelled_by_restaurant.
    */
-  rejectOrder: (orderId, _reason = "") =>
+  rejectOrder: (orderId, reason = "") =>
     restaurantAPI.updateOrderStatus(orderId, {
       orderStatus: "cancelled_by_restaurant",
+      reason: String(reason || "").trim(),
     }),
   /** Mark order ready (restaurant handoff). */
   markOrderReady: (orderId) =>
