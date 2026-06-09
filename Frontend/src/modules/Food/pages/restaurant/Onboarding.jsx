@@ -2163,11 +2163,11 @@ export default function RestaurantOnboarding() {
               }}
               onBlur={() => handleFieldBlur("zoneId")}
               className={getFieldClassName("zoneId", `mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#00c87e] cursor-pointer ${
-                step1.zoneId ? "text-gray-900" : "text-gray-400"
+                step1.zoneId ? "text-gray-900" : "text-muted-foreground"
               }`)}
               disabled={zonesLoading || !isEditing}
             >
-              <option value="" className="text-gray-400">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
+              <option value="" className="text-muted-foreground">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
               {zones.map((z) => {
                 const id = String(z?._id || z?.id || "")
                 const label = z?.name || z?.zoneName || z?.serviceLocation || id
@@ -3137,7 +3137,7 @@ export default function RestaurantOnboarding() {
                   onClick={() => setIsFssaiCalendarOpen(true)}
                   className={getFieldClassName("fssaiExpiry", "w-full px-3 py-2 border border-gray-200 rounded-md bg-white text-sm text-left flex items-center justify-between hover:bg-gray-50 cursor-pointer")}
                 >
-                  <span className={step3.fssaiExpiry ? "text-gray-900" : "text-gray-400"}>
+                  <span className={step3.fssaiExpiry ? "text-gray-900" : "text-muted-foreground"}>
                     {step3.fssaiExpiry
                       ? parseLocalYMDDate(step3.fssaiExpiry)?.toLocaleDateString("en-US", {
                         year: "numeric",
@@ -3326,7 +3326,7 @@ export default function RestaurantOnboarding() {
                 setFieldValidation("accountType", { step3: nextStep3 })
               }}
             >
-              <SelectTrigger className={getFieldClassName("accountType", "mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-gray-400 cursor-pointer")}>
+              <SelectTrigger className={getFieldClassName("accountType", "mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-muted-foreground cursor-pointer")}>
                 <SelectValue placeholder="Select account type" />
               </SelectTrigger>
               <SelectContent>
@@ -3378,7 +3378,7 @@ export default function RestaurantOnboarding() {
               setFieldValidation("estimatedDeliveryTime", { step4: nextStep4 })
             }}
           >
-            <SelectTrigger className={getFieldClassName("estimatedDeliveryTime", "mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-gray-400 cursor-pointer")}>
+            <SelectTrigger className={getFieldClassName("estimatedDeliveryTime", "mt-1 bg-white text-sm text-gray-900 data-[placeholder]:text-muted-foreground cursor-pointer")}>
               <SelectValue placeholder="Select estimated timing" />
             </SelectTrigger>
             <SelectContent>
