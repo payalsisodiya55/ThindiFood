@@ -2190,6 +2190,20 @@ export default function OrdersMain() {
         "",
     ).trim();
 
+  const doOrdersMatch = (left, right) => {
+    if (!left || !right) return false;
+    const getIds = (order) => [
+      order?.orderMongoId,
+      order?.mongoId,
+      order?.orderId,
+      order?._id,
+      order?.id
+    ].map((v) => String(v || "").trim()).filter(Boolean);
+    const leftIds = getIds(left);
+    const rightIds = getIds(right);
+    return leftIds.some((id) => rightIds.includes(id));
+  };
+
   const markOrderAsShown = (orderLike) => {
         if (orderLike?.isDineIn && orderLike?.orderMongoId) { return shownOrdersRef.current.has(orderLike.orderMongoId); }
 
@@ -2578,10 +2592,7 @@ export default function OrdersMain() {
     if (!latestOrderStatusUpdate) return;
 
     const activePopupOrder = popupOrder || newOrder;
-    const activePopupKey = getOrderIdentityKey(activePopupOrder);
-    const updatedOrderKey = getOrderIdentityKey(latestOrderStatusUpdate);
-
-    if (!activePopupKey || !updatedOrderKey || activePopupKey !== updatedOrderKey) {
+    if (!doOrdersMatch(activePopupOrder, latestOrderStatusUpdate)) {
       return;
     }
 
@@ -2813,15 +2824,7 @@ export default function OrdersMain() {
 
           // If a popup is currently active, verify if it is still awaiting action
           if (showNewOrderPopup && activeOrder) {
-            const activeId = activeOrder._id || activeOrder.id;
-            const activeOrderId = activeOrder.orderId;
-
-            const freshActiveOrder = fetchedOrders.find((o) => {
-              const oId = o._id || o.id;
-              const oOrderId = o.orderId;
-              return (activeId && oId && String(activeId) === String(oId)) || 
-                     (activeOrderId && oOrderId && String(activeOrderId) === String(oOrderId));
-            });
+            const freshActiveOrder = fetchedOrders.find((o) => doOrdersMatch(activeOrder, o));
 
             // If the order has been processed (no longer 'created' status or isAcceptedByRestaurant is true)
             // or if it is no longer in the list (meaning it was cancelled/removed)
