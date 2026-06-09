@@ -331,6 +331,7 @@ export default function RestaurantNavbar({
       onSearchActiveChange(true)
     }
     setLocalSearchActive(true)
+    window.dispatchEvent(new CustomEvent("searchStatusChanged", { detail: { active: true } }))
   }
 
   const handleSearchClose = () => {
@@ -342,6 +343,7 @@ export default function RestaurantNavbar({
       onSearchChange("")
     }
     setLocalSearchValue("")
+    window.dispatchEvent(new CustomEvent("searchStatusChanged", { detail: { active: false } }))
   }
 
   const handleSearchChange = (e) => {

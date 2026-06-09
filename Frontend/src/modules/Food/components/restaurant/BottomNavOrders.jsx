@@ -22,9 +22,42 @@ const findActiveTab = (tabs, pathname) =>
     .sort((a, b) => b.route.length - a.route.length)
     .find((tab) => pathname === tab.route || pathname.startsWith(tab.route + "/"))
 
+import { useState, useEffect } from "react"
+
 export default function BottomNavOrders() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const [isSearchActive, setIsSearchActive] = useState(false)
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
+
+  // Listen to search status changes
+  useEffect(() => {
+    const handleSearchStatus = (e) => {
+      setIsSearchActive(Boolean(e.detail?.active))
+    }
+    window.addEventListener("searchStatusChanged", handleSearchStatus)
+    return () => {
+      window.removeEventListener("searchStatusChanged", handleSearchStatus)
+    }
+  }, [])
+
+  // Listen to virtual viewport changes to detect keyboard
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleResize = () => {
+      const keyboardActive = window.innerHeight - viewport.height > 80
+      setIsKeyboardOpen(keyboardActive)
+    }
+
+    viewport.addEventListener("resize", handleResize)
+    handleResize()
+
+    return () => {
+      viewport.removeEventListener("resize", handleResize)
+    }
+  }, [])
 
   const basePath = pathname.startsWith("/food/restaurant")
     ? "/food/restaurant"
@@ -50,8 +83,22 @@ export default function BottomNavOrders() {
     }
   }
 
+  const shouldHide = isSearchActive || isKeyboardOpen
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[30] px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <motion.div
+      initial={{ y: 0, opacity: 1 }}
+      animate={{ 
+        y: shouldHide ? 140 : 0, 
+        opacity: shouldHide ? 0 : 1 
+      }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 260, 
+        damping: 26 
+      }}
+      className="fixed bottom-0 left-0 right-0 z-[30] px-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+    >
       <div className="mx-auto flex w-full max-w-md items-end gap-2">
         <div className="flex-1 min-w-0">
           <div
@@ -99,6 +146,6 @@ export default function BottomNavOrders() {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
