@@ -2804,16 +2804,48 @@ export default function OrdersMain() {
   // Check for confirmed orders that haven't been shown in popup yet, or scheduled orders whose time has come
   useEffect(() => {
     const checkOrdersToPopup = async () => {
-      // Skip while an actionable popup order is already active.
-      if (showNewOrderPopupRef.current || newOrderRef.current) {
-        return;
-      }
+      const activeOrder = popupOrder || newOrderRef.current;
 
       try {
         const response = await restaurantAPI.getOrders();
         if (response.data?.success && response.data.data?.orders) {
+          const fetchedOrders = response.data.data.orders;
+
+          // If a popup is currently active, verify if it is still awaiting action
+          if (showNewOrderPopup && activeOrder) {
+            const activeId = activeOrder._id || activeOrder.id;
+            const activeOrderId = activeOrder.orderId;
+
+            const freshActiveOrder = fetchedOrders.find((o) => {
+              const oId = o._id || o.id;
+              const oOrderId = o.orderId;
+              return (activeId && oId && String(activeId) === String(oId)) || 
+                     (activeOrderId && oOrderId && String(activeOrderId) === String(oOrderId));
+            });
+
+            // If the order has been processed (no longer 'created' status or isAcceptedByRestaurant is true)
+            // or if it is no longer in the list (meaning it was cancelled/removed)
+            const isNoLongerAwaiting = freshActiveOrder 
+              ? (getNormalizedRestaurantOrderStatus(freshActiveOrder) !== "created" || Boolean(freshActiveOrder.isAcceptedByRestaurant))
+              : true;
+
+            if (isNoLongerAwaiting) {
+              debugLog("?? Active popup order was accepted/rejected elsewhere. Closing popup.");
+              setShowNewOrderPopup(false);
+              setPopupOrder(null);
+              clearNewOrder?.();
+              stopOrderAlertSound();
+              return;
+            }
+          }
+
+          // Skip while an actionable popup order is already active.
+          if (showNewOrderPopup || newOrderRef.current) {
+            return;
+          }
+
           // Find orders that should trigger the popup
-          const targetOrders = response.data.data.orders.filter((order) => {
+          const targetOrders = fetchedOrders.filter((order) => {
             if (hasOrderBeenShown(order)) return false;
 
             const normalizedStatus = getNormalizedRestaurantOrderStatus(order);
@@ -2845,7 +2877,7 @@ export default function OrdersMain() {
           // Show the most recent matching order in popup
           if (
             targetOrders.length > 0 &&
-            !showNewOrderPopupRef.current &&
+            !showNewOrderPopup &&
             !newOrderRef.current
           ) {
             const orderToPopup = targetOrders[0];
@@ -2867,12 +2899,12 @@ export default function OrdersMain() {
       }
     };
 
-    // Check once on mount, and then every minute
+    // Check once on mount, and then every 10 seconds
     checkOrdersToPopup();
-    const intervalId = setInterval(checkOrdersToPopup, 60000);
+    const intervalId = setInterval(checkOrdersToPopup, 10000);
 
     return () => clearInterval(intervalId);
-  }, [ordersRefreshToken]);
+  }, [ordersRefreshToken, popupOrder, showNewOrderPopup]);
 
   // Keep local popup audio disabled. Real-time order sound is managed by
   // useRestaurantNotifications so we don't end up with duplicate loops.
