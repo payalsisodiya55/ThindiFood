@@ -198,22 +198,41 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     }
   }
 
+  const mainOpeningTime = todayTiming?.openingTime || restaurant?.deliveryTimings?.openingTime || restaurant?.openingTime || null
+  const mainClosingTime = todayTiming?.closingTime || restaurant?.deliveryTimings?.closingTime || restaurant?.closingTime || null
+  const mainOpeningMinutes = parseTimeToMinutes(mainOpeningTime)
+  const mainClosingMinutes = parseTimeToMinutes(mainClosingTime)
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const isWithinMainTimings = (mainOpeningMinutes !== null && mainClosingMinutes !== null)
+    ? isWithinTimeWindow(nowMinutes, mainOpeningMinutes, mainClosingMinutes)
+    : true
+
+  if (!isWithinMainTimings) {
+    return {
+      isOpen: false,
+      isActive,
+      isAcceptingOrders,
+      isWithinTimings: false,
+      openingTime: mainOpeningTime,
+      closingTime: mainClosingTime,
+      minutesUntilClose: null,
+      closingCountdownLabel: null,
+      reason: "outside-hours",
+    }
+  }
+
   const openingTime =
     (preferSelfDeliveryTimings ? selfDeliveryStartTime : null) ||
-    todayTiming?.openingTime ||
-    restaurant?.deliveryTimings?.openingTime ||
-    restaurant?.openingTime ||
+    mainOpeningTime ||
     null
   const closingTime =
     (preferSelfDeliveryTimings ? selfDeliveryEndTime : null) ||
-    todayTiming?.closingTime ||
-    restaurant?.deliveryTimings?.closingTime ||
-    restaurant?.closingTime ||
+    mainClosingTime ||
     null
 
   const openingMinutes = parseTimeToMinutes(openingTime)
   const closingMinutes = parseTimeToMinutes(closingTime)
-  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+
   const hasExplicitWindow = Boolean(openingTime || closingTime)
   // If a restaurant provides only one side of the window, treat timings as not enforced
   // (prevents accidental "offline" due to partial data).

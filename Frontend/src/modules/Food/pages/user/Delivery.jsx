@@ -279,7 +279,9 @@ export default function Delivery() {
               distance = distanceInKm >= 1 ? `${distanceInKm.toFixed(1)} km` : `${Math.round(distanceInKm*1000)} m`;
             }
             return {
-              id: r.restaurantId || r._id, slug: r.slug,
+              id: r.restaurantId || r._id,
+              mongoId: r._id,
+              slug: r.slug,
               name: getDisplayName(r),
               cuisine: Array.isArray(r.cuisines) && r.cuisines.length ? r.cuisines[0] : "Multi-cuisine",
               cuisines: Array.isArray(r.cuisines) ? r.cuisines : [],
@@ -311,18 +313,66 @@ export default function Delivery() {
             )
           });
 
-        mapped.sort((a, b) => {
-          const aOpen = getRestaurantAvailabilityStatus(a, new Date(), {
-            preferSelfDeliveryTimings: true,
-          })?.isOpen !== false;
-          const bOpen = getRestaurantAvailabilityStatus(b, new Date(), {
-            preferSelfDeliveryTimings: true,
-          })?.isOpen !== false;
-          if (aOpen !== bOpen) return aOpen ? -1 : 1;
-          if (a.distanceInKm != null && b.distanceInKm != null) return a.distanceInKm - b.distanceInKm;
-          return 0;
-        });
-        setRestaurants(mapped);
+        const sortRestaurants = (listToSort) => {
+          return [...listToSort].sort((a, b) => {
+            const aOpen = getRestaurantAvailabilityStatus(a, new Date(), {
+              preferSelfDeliveryTimings: true,
+            })?.isOpen !== false;
+            const bOpen = getRestaurantAvailabilityStatus(b, new Date(), {
+              preferSelfDeliveryTimings: true,
+            })?.isOpen !== false;
+            if (aOpen !== bOpen) return aOpen ? -1 : 1;
+            if (a.distanceInKm != null && b.distanceInKm != null) return a.distanceInKm - b.distanceInKm;
+            return 0;
+          });
+        };
+
+        setRestaurants(sortRestaurants(mapped));
+
+        const restaurantsNeedingOutletTimings = mapped.filter(
+          (restaurant) => restaurant.mongoId && !restaurant.outletTimings,
+        );
+
+        if (restaurantsNeedingOutletTimings.length > 0) {
+          void (async () => {
+            const resolvedOutletTimings = new Map();
+
+            for (const restaurant of restaurantsNeedingOutletTimings) {
+              try {
+                const outletResponse = await restaurantAPI.getOutletTimingsByRestaurantId(
+                  restaurant.mongoId,
+                );
+                const outletTimings =
+                  outletResponse?.data?.data?.outletTimings ||
+                  outletResponse?.data?.outletTimings ||
+                  null;
+
+                if (outletTimings) {
+                  resolvedOutletTimings.set(restaurant.mongoId, outletTimings);
+                }
+              } catch (_) {}
+            }
+
+            if (cancelled || resolvedOutletTimings.size === 0) {
+              return;
+            }
+
+            setRestaurants((currentRestaurants) => {
+              let hasChanges = false;
+              const nextRestaurants = currentRestaurants.map((restaurant) => {
+                if (!restaurant.mongoId) return restaurant;
+                const outletTimings = resolvedOutletTimings.get(
+                  restaurant.mongoId,
+                );
+                if (!outletTimings) return restaurant;
+                hasChanges = true;
+                return { ...restaurant, outletTimings };
+              });
+
+              return hasChanges ? sortRestaurants(nextRestaurants) : currentRestaurants;
+            });
+          })();
+        }
       } catch {}
       finally { if (!cancelled) setLoading(false); }
     };
