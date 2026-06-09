@@ -291,7 +291,7 @@ export default function ReportSafetyEmergency() {
 
             {/* History Details Dialog */}
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-              <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-6 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl">
+              <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-6 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl [&_[data-slot=dialog-close]]:p-1.5 [&_[data-slot=dialog-close]_svg]:h-4 [&_[data-slot=dialog-close]_svg]:w-4">
                 <DialogHeader className="pr-10 sm:pr-0">
                   <DialogTitle className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
                     <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
