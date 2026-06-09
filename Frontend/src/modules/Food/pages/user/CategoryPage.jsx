@@ -43,7 +43,7 @@ const CATEGORY_PAGE_FILTERS_STORAGE_KEY = "food-category-page-filters-v1"
 export default function CategoryPage() {
   const { category } = useParams()
   const navigate = useNavigate()
-  const { vegMode, isFavorite, addFavorite, removeFavorite } = useProfile()
+  const { vegMode, isFavorite, addFavorite, removeFavorite, isDishFavorite, addDishFavorite, removeDishFavorite } = useProfile()
   const { location } = useLocation()
   const { zoneId, isOutOfService } = useZone(location)
   const [searchQuery, setSearchQuery] = useState("")
@@ -1161,22 +1161,45 @@ export default function CategoryPage() {
 
   const toggleFavorite = (restaurant) => {
     const restaurantSlug = restaurant.name.toLowerCase().replace(/\s+/g, "-")
-    const favorite = isFavorite(restaurantSlug)
-    if (favorite) {
-      removeFavorite(restaurantSlug)
-      toast.success("Restaurant removed from collection")
+    const rId = restaurant.restaurantId || restaurant._id || restaurant.id
+
+    if (isCategoryView && restaurant.categoryDish) {
+      const dishId = restaurant.dishId || restaurant.categoryDish?.itemId || restaurant.categoryDish?.id || restaurant.categoryDish?._id
+      const favorite = isDishFavorite(dishId, rId)
+      if (favorite) {
+        removeDishFavorite(dishId, rId)
+        toast.success("Dish removed from favorites")
+      } else {
+        addDishFavorite({
+          id: dishId,
+          restaurantId: rId,
+          restaurantSlug: restaurantSlug,
+          restaurantName: restaurant.name,
+          name: restaurant.categoryDishName || restaurant.categoryDish?.name,
+          image: restaurant.categoryDishImage || restaurant.categoryDish?.image || restaurant.image,
+          price: Number(restaurant.categoryDishPrice || restaurant.categoryDish?.price || 0),
+          foodType: restaurant.categoryDishFoodType || restaurant.categoryDish?.foodType || "Veg",
+        })
+        toast.success("Added to your favourite dishes collection")
+      }
     } else {
-      addFavorite({
-        slug: restaurantSlug,
-        name: restaurant.name,
-        cuisine: restaurant.cuisine,
-        rating: restaurant.rating,
-        deliveryTime: restaurant.deliveryTime,
-        distance: restaurant.distance,
-        priceRange: restaurant.priceRange,
-        image: restaurant.image,
-      })
-      toast.success("Added to your favourite restaurants collection")
+      const favorite = isFavorite(restaurantSlug)
+      if (favorite) {
+        removeFavorite(restaurantSlug)
+        toast.success("Restaurant removed from collection")
+      } else {
+        addFavorite({
+          slug: restaurantSlug,
+          name: restaurant.name,
+          cuisine: restaurant.cuisine,
+          rating: restaurant.rating,
+          deliveryTime: restaurant.deliveryTime,
+          distance: restaurant.distance,
+          priceRange: restaurant.priceRange,
+          image: restaurant.image,
+        })
+        toast.success("Added to your favourite restaurants collection")
+      }
     }
   }
 
@@ -1597,7 +1620,11 @@ export default function CategoryPage() {
             <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 lg:gap-6 xl:gap-7 items-stretch ${showRestaurantSkeleton ? 'opacity-50' : 'opacity-100'} transition-opacity duration-300`}>
               {filteredAllRestaurants.map((restaurant) => {
                 const restaurantSlug = restaurant.name.toLowerCase().replace(/\s+/g, "-")
-                const favorite = isFavorite(restaurantSlug)
+                const rId = restaurant.restaurantId || restaurant._id || restaurant.id
+                const dishId = restaurant.dishId || restaurant.categoryDish?.itemId || restaurant.categoryDish?.id || restaurant.categoryDish?._id
+                const favorite = isCategoryView && restaurant.categoryDish
+                  ? isDishFavorite(dishId, rId)
+                  : isFavorite(restaurantSlug)
 
                 return (
                   <Link key={restaurant.id} to={`/user/restaurants/${restaurantSlug}`} className="h-full flex">
@@ -1626,10 +1653,14 @@ export default function CategoryPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 bg-white/90 text-gray-500 backdrop-blur-sm rounded-full shadow-sm hover:bg-white transition-all"
+                            className={`h-8 w-8 backdrop-blur-sm rounded-full shadow-sm transition-all ${
+                              favorite
+                                ? "bg-red-500 text-white hover:bg-red-600"
+                                : "bg-white/90 text-gray-500 hover:bg-white"
+                            }`}
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavorite(restaurant) }}
                           >
-                            <Bookmark className={`h-4 w-4 ${favorite ? "fill-gray-900 text-gray-900" : ""}`} />
+                            <Bookmark className={`h-4 w-4 ${favorite ? "fill-white" : ""}`} />
                           </Button>
                         </div>
                       </div>
