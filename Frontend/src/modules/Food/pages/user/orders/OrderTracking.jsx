@@ -937,6 +937,25 @@ export default function OrderTracking() {
   }, [orderId, order?.orderId, order?.mongoId, order?.id])
 
   useEffect(() => {
+    if (orderId) {
+      window.currentlyTrackingOrderId = String(orderId)
+    }
+    if (order?.orderId) {
+      window.currentlyTrackingOrderId = String(order.orderId)
+    }
+    if (order?.mongoId) {
+      window.currentlyTrackingOrderMongoId = String(order.mongoId)
+    }
+    if (order?._id) {
+      window.currentlyTrackingOrderMongoId = String(order._id)
+    }
+    return () => {
+      delete window.currentlyTrackingOrderId
+      delete window.currentlyTrackingOrderMongoId
+    }
+  }, [orderId, order?.orderId, order?.mongoId, order?._id])
+
+  useEffect(() => {
     const ids = [
       resolvedLookupId,
       orderId,

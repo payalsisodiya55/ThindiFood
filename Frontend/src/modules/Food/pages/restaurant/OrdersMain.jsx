@@ -857,7 +857,7 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
                           {order.type}
                         </p>
                         {showDeliveryBoyName && (
-                          <p className="text-[11px] text-blue-600 font-medium">
+                          <p className="text-[11px] text-blue-600 font-medium break-all break-words">
                             Delivery Partner: {order.selfDeliveryBoy.name}
                           </p>
                         )}
@@ -1967,8 +1967,8 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
                               }`}>
                                 {initials}
                               </div>
-                              <div className="min-w-0">
-                                <p className={`font-bold text-sm leading-snug ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
+                              <div className="min-w-0 flex-1">
+                                <p className={`font-bold text-sm leading-snug break-all break-words ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
                                   {boy.name}
                                 </p>
                                 {boy.phone && (
@@ -5185,7 +5185,7 @@ export default function OrdersMain() {
 
                     return (
                       <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border ${
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border break-all break-words ${
                           isReadyStatus
                             ? "border-green-500 text-green-600"
                             : "border-gray-800 text-gray-900"
@@ -5537,7 +5537,7 @@ function OrderCard({
 
             <div className="flex flex-col items-end gap-1 flex-shrink-0">
       <div
-        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all ${
+        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-all break-all break-words max-w-xs sm:max-w-md ${
           isActiveDineIn
             ? "bg-[#00c87e] border-[#00c87e] text-white shadow-lg shadow-[#00c87e]/20"
             : isReady
@@ -5617,9 +5617,11 @@ function OrderCard({
                 )}
               </div>
               {isSelfDeliveryOrder && selfDeliveryBoy?.name && (
-                <span className="text-[10px] text-blue-600 font-semibold flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded">
-                  <User className="h-2.5 w-2.5" />
-                  {selfDeliveryBoy.name}
+                <span className="text-[10px] text-blue-600 font-semibold flex items-center flex-wrap gap-1 bg-blue-50 px-1.5 py-0.5 rounded max-w-full min-w-0">
+                  <User className="h-2.5 w-2.5 shrink-0" />
+                  <span className="break-all break-words min-w-0 flex-1">
+                    {selfDeliveryBoy.name}
+                  </span>
                 </span>
               )}
             </div>
@@ -6548,8 +6550,8 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
                               }`}>
                                 {initials}
                               </div>
-                              <div className="min-w-0">
-                                <p className={`font-bold text-sm leading-snug ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
+                              <div className="min-w-0 flex-1">
+                                <p className={`font-bold text-sm leading-snug break-all break-words ${isSelected ? "text-emerald-950" : "text-slate-800"}`}>
                                   {boy.name}
                                 </p>
                                 {boy.phone && (

@@ -130,10 +130,8 @@ export const useUserNotifications = () => {
       debugLog('🔔 Order status update received:', data);
       
       let title = data.title;
-      if (!title) {
-        const isCancelled = String(data.orderStatus || '').toLowerCase().includes('cancel');
-        const isDelivered = String(data.orderStatus || '').toLowerCase().includes('deliver');
-        title = isCancelled ? 'Order Cancelled' : isDelivered ? 'Order Delivered' : 'Order Update';
+      if (!title || title.startsWith('Order #') || title.startsWith('Order Status') || title === 'Order Update') {
+        title = 'Order Status';
       }
       const message = data.message || `Your order status is now ${String(data.orderStatus || '').replace(/_/g, ' ')}`;
 
@@ -142,7 +140,16 @@ export const useUserNotifications = () => {
       
       // Avoid showing socket toast if the user is already on the tracking page for this specific order
       const isTrackingThisOrder = typeof window !== 'undefined' && 
-        (window.location.pathname.includes(String(data.orderId)) || window.location.pathname.includes(String(data.orderMongoId)));
+        (window.location.pathname.includes(String(data.orderId)) || 
+         window.location.pathname.includes(String(data.orderMongoId)) ||
+         (window.currentlyTrackingOrderId && (
+           String(window.currentlyTrackingOrderId) === String(data.orderId) ||
+           String(window.currentlyTrackingOrderId) === String(data.orderMongoId)
+         )) ||
+         (window.currentlyTrackingOrderMongoId && (
+           String(window.currentlyTrackingOrderMongoId) === String(data.orderId) ||
+           String(window.currentlyTrackingOrderMongoId) === String(data.orderMongoId)
+         )));
 
       if (isImportant && !isTrackingThisOrder) {
         toast.message(title, {
