@@ -380,7 +380,7 @@ export default function TableBookingSuccess() {
                 </Button>
             </motion.div>
 
-            <p className="fixed bottom-10 text-[10px] font-bold text-slate-300 dark:text-[#606060] uppercase tracking-widest px-10 text-center">
+            <p className="mt-8 mb-8 text-[10px] font-bold text-slate-400 dark:text-[#808080] uppercase tracking-widest px-10 text-center">
                 {statusCopy.footer}
             </p>
         </AnimatedPage>
