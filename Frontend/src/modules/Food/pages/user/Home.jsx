@@ -2655,7 +2655,6 @@ export default function Home() {
           <h2 className="text-[20px] sm:text-[22px] font-[900] text-gray-900 dark:text-white tracking-tight leading-none italic uppercase">
             Cravings for you!
           </h2>
-          <div className="h-1 w-12 bg-[#00c87e] rounded-full opacity-60"></div>
         </div>
         <div
           ref={categoryScrollRef}

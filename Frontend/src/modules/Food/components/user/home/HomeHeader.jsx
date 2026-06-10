@@ -363,7 +363,7 @@ export default function HomeHeader({
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: -12, opacity: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="absolute inset-0 whitespace-nowrap leading-[22px] text-[12.5px] font-medium text-gray-400"
+                  className="absolute inset-0 flex items-center whitespace-nowrap text-[12.5px] font-medium text-gray-400"
                 >
                   {placeholders?.[placeholderIndex] || "Search for food..."}
                 </motion.span>
