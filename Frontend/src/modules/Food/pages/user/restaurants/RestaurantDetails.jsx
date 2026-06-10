@@ -3359,7 +3359,7 @@ function RestaurantDetailsContent() {
       )}
 
       {/* Bottom spacer - ensures content isn't hidden under fixed floating buttons */}
-      <div style={{ height: 'calc(env(safe-area-inset-bottom, 0px) + 96px)' }} aria-hidden="true" />
+      <div style={{ height: 'calc(env(safe-area-inset-bottom, 16px) + 96px)' }} aria-hidden="true" />
 
       {/* Menu Button - Fixed at page bottom right (hidden when filter or menu sheet open) */}
       {typeof window !== "undefined" &&
@@ -3369,7 +3369,7 @@ function RestaurantDetailsContent() {
         createPortal(
           <div
             className="fixed right-4 z-[99] pointer-events-none"
-            style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 1rem)' }}
+            style={{ bottom: 'calc(env(safe-area-inset-bottom, 16px) + 2rem)' }}
           >
             <Button
               className={`bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}
