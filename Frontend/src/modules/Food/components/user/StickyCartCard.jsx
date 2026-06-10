@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from "framer-motion"
 export default function StickyCartCard() {
   const { cart, getCartCount } = useCart()
   const [isVisible, setIsVisible] = useState(true)
-  const [bottomPosition, setBottomPosition] = useState("bottom-[70px]") // Fixed above bottom navigation
+  const [bottomStyle, setBottomStyle] = useState({ bottom: "calc(78px + env(safe-area-inset-bottom, 0px))" })
   const [currentZoneId, setCurrentZoneId] = useState(() => {
     try {
       return localStorage.getItem("userZoneId") || ""
@@ -22,9 +22,9 @@ export default function StickyCartCard() {
     // Set initial position based on screen size
     const setInitialPosition = () => {
       if (window.innerWidth >= 768) {
-        setBottomPosition("bottom-6") // Desktop: fixed position
+        setBottomStyle({ bottom: "24px" })
       } else {
-        setBottomPosition("bottom-[70px]") // Mobile: above bottom nav (fixed, doesn't move with scroll)
+        setBottomStyle({ bottom: "calc(78px + env(safe-area-inset-bottom, 0px))" })
       }
     }
 
@@ -32,9 +32,9 @@ export default function StickyCartCard() {
 
     const handleResize = () => {
       if (window.innerWidth >= 768) {
-        setBottomPosition("bottom-6") // Desktop: always fixed
+        setBottomStyle({ bottom: "24px" })
       } else {
-        setBottomPosition("bottom-[70px]") // Mobile: above bottom nav (fixed)
+        setBottomStyle({ bottom: "calc(78px + env(safe-area-inset-bottom, 0px))" })
       }
     }
 
@@ -113,7 +113,8 @@ export default function StickyCartCard() {
     <AnimatePresence>
       {isVisible && (
         <motion.div
-          className={`fixed ${bottomPosition} md:bottom-6 left-0 right-0 md:left-auto md:right-6 z-50 px-4 md:px-0 pb-4 md:pb-0 pointer-events-none`}
+          className="fixed left-0 right-0 md:left-auto md:right-6 z-50 px-4 md:px-0 pb-4 md:pb-0 pointer-events-none"
+          style={bottomStyle}
           initial="initial"
           animate="animate"
           exit="exit"
@@ -171,4 +172,3 @@ export default function StickyCartCard() {
     </AnimatePresence>
   )
 }
-
