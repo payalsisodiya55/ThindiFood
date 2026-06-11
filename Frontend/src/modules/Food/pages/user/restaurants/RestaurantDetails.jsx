@@ -3017,7 +3017,6 @@ function RestaurantDetailsContent() {
                                   </motion.div>
                                 ) : (
                                   <motion.button
-                                    layoutId={`add-button-${item.id}`}
                                     initial={{ opacity: 0, scale: 0.9 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
@@ -3288,7 +3287,6 @@ function RestaurantDetailsContent() {
                                             </motion.div>
                                           ) : (
                                             <motion.button
-                                              layoutId={`add-button-sub-${item.id}`}
                                               initial={{ opacity: 0, scale: 0.9 }}
                                               animate={{ opacity: 1, scale: 1 }}
                                               transition={{ duration: 0.3, type: "spring", damping: 20, stiffness: 300 }}
