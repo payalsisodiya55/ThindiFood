@@ -24,6 +24,7 @@ import { useZone } from "@food/hooks/useZone"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getMenuFromResponse } from "@food/utils/menuItems"
 import { toast } from "sonner"
+import { getCachedSettings } from "@food/utils/businessSettings"
 
 // Filter options
 const filterOptions = [
@@ -1329,7 +1330,9 @@ export default function CategoryPage() {
   }
 
   // Check if should show grayscale (user out of service)
-  const shouldShowGrayscale = isOutOfService
+  const settings = getCachedSettings()
+  const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true
+  const shouldShowGrayscale = isOutOfService && !disableBlackCards
   const isCategoryView = selectedCategory && selectedCategory !== 'all'
 
   return (

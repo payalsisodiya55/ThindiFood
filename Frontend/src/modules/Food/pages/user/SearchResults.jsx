@@ -11,6 +11,7 @@ import { useLocation } from "@food/hooks/useLocation"
 import { useZone } from "@food/hooks/useZone"
 import { restaurantAPI, adminAPI } from "@food/api"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
+import { getCachedSettings } from "@food/utils/businessSettings"
 import { RED } from "@food/constants/color"
 
 const debugLog = (...args) => {}
@@ -763,7 +764,9 @@ export default function SearchResults() {
   )
 
   // Check if should show grayscale (user out of service)
-  const shouldShowGrayscale = isOutOfService
+  const settings = getCachedSettings()
+  const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true
+  const shouldShowGrayscale = isOutOfService && !disableBlackCards
 
   return (
     <div className={`min-h-screen bg-white dark:bg-[#0a0a0a] ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>

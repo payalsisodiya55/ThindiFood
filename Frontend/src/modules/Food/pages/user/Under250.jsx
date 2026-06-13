@@ -21,6 +21,7 @@ import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
 import { calculateDistance, formatDistance } from "@food/utils/common"
 import { RED } from "@food/constants/color"
 import { useLoginRequired } from "@food/context/LoginRequiredContext"
+import { getCachedSettings } from "@food/utils/businessSettings"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -872,7 +873,9 @@ export default function Under250() {
   }
 
   // Check if should show grayscale (only when user is out of service)
-  const shouldShowGrayscale = isOutOfService
+  const settings = getCachedSettings()
+  const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true
+  const shouldShowGrayscale = isOutOfService && !disableBlackCards
 
   return (
 

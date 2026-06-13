@@ -43,6 +43,7 @@ import { Button } from "@food/components/ui/button"
 import { Badge } from "@food/components/ui/badge"
 import { Checkbox } from "@food/components/ui/checkbox"
 import AnimatedPage from "@food/components/user/AnimatedPage"
+import { getCachedSettings } from "@food/utils/businessSettings"
 import { useCart } from "@food/context/CartContext"
 import { useProfile } from "@food/context/ProfileContext"
 import AddToCartAnimation from "@food/components/user/AddToCartAnimation"
@@ -2351,7 +2352,9 @@ function RestaurantDetailsContent() {
 
   const availabilityStatus = getRestaurantAvailabilityStatus(restaurant, new Date(availabilityTick))
   const isRestaurantOffline = !availabilityStatus.isOpen
-  const shouldShowGrayscale = isOutOfService || isRestaurantOffline
+  const settings = getCachedSettings()
+  const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true
+  const shouldShowGrayscale = (isOutOfService && !disableBlackCards) || isRestaurantOffline
 
   return (
     <AnimatedPage
