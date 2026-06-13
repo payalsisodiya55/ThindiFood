@@ -87,6 +87,7 @@ import {
 } from "@food/components/ui/dropdown-menu";
 import { useLocation } from "@food/hooks/useLocation";
 import { useZone } from "@food/hooks/useZone";
+import { getCachedSettings } from "@food/utils/businessSettings";
 import quickSpicyLogo from "@food/assets/quicky-spicy-logo.png";
 import offerImage from "@food/assets/offerimage.png";
 import chefMascot from "../../../../assets/chef-mascot-Co3vdp03.png";
@@ -496,6 +497,8 @@ export default function Home() {
     loading: zoneLoading,
     error: zoneError,
   } = useZone(location);
+  const settings = getCachedSettings();
+  const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true;
   const [recommendedRestaurantIds, setRecommendedRestaurantIds] = useState([]);
   const [
     recommendedRestaurantsFromSettings,
@@ -3164,7 +3167,7 @@ export default function Home() {
                             to={`/user/restaurants/${restaurantSlug}`}
                             className="h-full flex">
                             <div className={`relative w-full overflow-hidden rounded-2xl shadow-sm transition-all duration-300 hover:shadow-lg active:scale-[0.98] ${
-                              isOutOfService || !availability.isOpen ? "grayscale opacity-70" : ""
+                              (isOutOfService && !disableBlackCards) || !availability.isOpen ? "grayscale opacity-70" : ""
                             }`}>
                               {/* Full image */}
                               <div className="relative w-full" style={{ aspectRatio: "4/3" }}>
@@ -3192,7 +3195,7 @@ export default function Home() {
 
                                 {/* Dark bottom overlay */}
                                 <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[2px] px-3 py-2.5 ${
-                                  isOutOfService || !availability.isOpen ? "bg-black/80" : "bg-black/40"
+                                  (isOutOfService && !disableBlackCards) || !availability.isOpen ? "bg-black/80" : "bg-black/40"
                                 }`}>
                                   {/* Row 1: initial + name + arrow */}
                                   <div className="flex items-center gap-2">
@@ -3204,7 +3207,7 @@ export default function Home() {
                                         {restaurant.name}
                                       </p>
                                       <p className={`line-clamp-1 text-[10px] ${
-                                        isOutOfService || !availability.isOpen ? "text-white font-bold" : "text-white/70"
+                                        ((isOutOfService && !disableBlackCards) || !availability.isOpen) ? "text-white font-bold" : "text-white/70"
                                       }`}>
                                         {restaurant.cuisine || (Array.isArray(restaurant.cuisines) ? restaurant.cuisines.join(", ") : "")}
                                       </p>

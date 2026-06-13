@@ -30,7 +30,8 @@ const businessSettingsSchema = new mongoose.Schema(
         },
         locationPrompt: {
             enabled: { type: Boolean, default: true }
-        }
+        },
+        disableBlackCardsWhenNoLocation: { type: Boolean, default: false }
     },
     { timestamps: true }
 );

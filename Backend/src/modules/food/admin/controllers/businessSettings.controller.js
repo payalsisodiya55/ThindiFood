@@ -35,7 +35,8 @@ export async function updateBusinessSettings(req, res, next) {
             region,
             logoUrl,
             faviconUrl,
-            locationPromptEnabled
+            locationPromptEnabled,
+            disableBlackCardsWhenNoLocation
         } = data;
 
         // Validation
@@ -101,6 +102,9 @@ export async function updateBusinessSettings(req, res, next) {
             settings.locationPrompt = {
                 enabled: Boolean(locationPromptEnabled)
             };
+        }
+        if (disableBlackCardsWhenNoLocation !== undefined) {
+            settings.disableBlackCardsWhenNoLocation = Boolean(disableBlackCardsWhenNoLocation);
         }
         if (logoUrl !== undefined) {
             settings.logo = {

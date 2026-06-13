@@ -28,6 +28,7 @@ export default function BusinessSetup() {
     pincode: "",
     region: "",
     locationPromptEnabled: true,
+    disableBlackCardsWhenNoLocation: false,
   });
 
   // Fetch business settings on mount
@@ -50,8 +51,9 @@ export default function BusinessSetup() {
           address: settings.address || "",
           state: settings.state || "",
           pincode: settings.pincode || "",
-          region: settings.region || "India",
+           region: settings.region || "India",
           locationPromptEnabled: settings.locationPrompt?.enabled !== false,
+          disableBlackCardsWhenNoLocation: settings.disableBlackCardsWhenNoLocation === true,
         });
 
         // Set logo and favicon previews if they exist
@@ -130,6 +132,7 @@ export default function BusinessSetup() {
         pincode: formData.pincode.trim(),
         region: formData.region,
         locationPromptEnabled: formData.locationPromptEnabled,
+        disableBlackCardsWhenNoLocation: formData.disableBlackCardsWhenNoLocation,
       };
 
       // Prepare files
@@ -345,7 +348,7 @@ export default function BusinessSetup() {
               </div>
             </div>
 
-            <div className="mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <label className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-3">
                 <span className="text-xs font-semibold text-slate-700">Location popup</span>
                 <button
@@ -358,6 +361,24 @@ export default function BusinessSetup() {
                   <span
                     className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
                       formData.locationPromptEnabled ? "translate-x-5" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </label>
+
+              <label className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-3">
+                <span className="text-xs font-semibold text-slate-700">Disable Black Cards when Location is missing</span>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("disableBlackCardsWhenNoLocation", !formData.disableBlackCardsWhenNoLocation)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    formData.disableBlackCardsWhenNoLocation ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                  id="toggle-black-cards"
+                >
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      formData.disableBlackCardsWhenNoLocation ? "translate-x-5" : "translate-x-1"
                     }`}
                   />
                 </button>

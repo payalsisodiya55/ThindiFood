@@ -11,6 +11,7 @@ import { useProfile } from "@food/context/ProfileContext";
 import { useSearchOverlay, useLocationSelector } from "@food/components/user/UserLayout";
 import { Navigation, ChevronDown, Truck } from "lucide-react";
 import { RestaurantGridSkeleton, LoadingSkeletonRegion } from "@food/components/ui/loading-skeletons";
+import { getCachedSettings } from "@food/utils/businessSettings";
 
 const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 const WEBVIEW_KEY = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -244,6 +245,9 @@ export default function Delivery() {
   }, [shouldUseSavedAddress, defaultSavedAddress, defaultSavedAddressLocation, savedAddressText, geolocatedLocation]);
 
   const { zoneId, isOutOfService } = useZone(activeLocation);
+  const settings = getCachedSettings();
+  const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true;
+  const shouldShowGrayscale = isOutOfService && !disableBlackCards;
   const { openLocationSelector } = useLocationSelector();
   const { openSearch } = useSearchOverlay();
   const [availabilityTick] = useState(Date.now());
@@ -428,7 +432,7 @@ export default function Delivery() {
       </div>
 
       {/* Page content */}
-      <div className={`px-4 pb-28 md:pb-12 max-w-7xl mx-auto md:px-6 transition-all duration-300 ${isOutOfService ? "grayscale opacity-75" : ""}`}>
+      <div className={`px-4 pb-28 md:pb-12 max-w-7xl mx-auto md:px-6 transition-all duration-300 ${shouldShowGrayscale ? "grayscale opacity-75" : ""}`}>
 
         {/* Desktop title + search */}
         <div className="hidden md:block pt-6 pb-4">
