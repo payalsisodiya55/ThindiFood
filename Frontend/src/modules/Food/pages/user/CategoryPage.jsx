@@ -1505,7 +1505,7 @@ export default function CategoryPage() {
 
       {/* Content */}
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10 space-y-6 md:space-y-8 lg:space-y-10">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
           {/* RECOMMENDED FOR YOU Section - Hide when "All" category is selected */}
           {filteredRecommended.length > 0 && selectedCategory !== 'all' && (
             <section>

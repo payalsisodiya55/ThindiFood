@@ -1720,6 +1720,13 @@ function RestaurantDetailsContent() {
       return
     }
 
+    // Check if restaurant is offline
+    const availability = getRestaurantAvailabilityStatus(restaurant)
+    if (!availability.isOpen) {
+      toast.error("Restaurant is currently offline. Please try again later.")
+      return
+    }
+
     const restaurantId = restaurant?.restaurantId || restaurant?._id || restaurant?.id
     if (!restaurantId) {
       toast.error("Restaurant information is missing")

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom"
-import { ArrowLeft, AlertTriangle, Phone, Shield, Loader2 } from "lucide-react"
+import { ArrowLeft, AlertTriangle, Phone, Shield, Loader2, Clock } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
 import { Card, CardContent } from "@food/components/ui/card"
@@ -291,45 +291,54 @@ export default function ReportSafetyEmergency() {
 
             {/* History Details Dialog */}
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
-              <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto p-6 bg-white dark:bg-[#1a1a1a] border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl [&_[data-slot=dialog-close]]:p-1.5 [&_[data-slot=dialog-close]_svg]:h-4 [&_[data-slot=dialog-close]_svg]:w-4">
-                <DialogHeader className="pr-10 sm:pr-0">
-                  <DialogTitle className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white">
-                    <AlertTriangle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
+              <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-white dark:bg-[#121212] border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl [&_[data-slot=dialog-close]]:!p-1 [&_[data-slot=dialog-close]]:!border-0 [&_[data-slot=dialog-close]]:!bg-transparent [&_[data-slot=dialog-close]]:!text-neutral-400 dark:[&_[data-slot=dialog-close]]:!text-neutral-500 hover:[&_[data-slot=dialog-close]]:!text-neutral-600 dark:hover:[&_[data-slot=dialog-close]]:!text-neutral-400 [&_[data-slot=dialog-close]]:!ring-0 [&_[data-slot=dialog-close]]:!shadow-none [&_[data-slot=dialog-close]_svg]:!h-3.5 [&_[data-slot=dialog-close]_svg]:!w-3.5">
+                <DialogHeader className="text-left space-y-2 pb-4 border-b border-neutral-100 dark:border-neutral-800 pr-8">
+                  <DialogTitle className="flex items-center gap-2.5 text-xl font-bold text-neutral-900 dark:text-white">
+                    <AlertTriangle className="h-5.5 w-5.5 text-red-500 shrink-0" />
                     Report Details
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <DialogDescription className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
                     Full details of your safety emergency report.
                   </DialogDescription>
                 </DialogHeader>
 
                 {selectedHistoryItem && (
-                  <div className="space-y-4 mt-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {getStatusPill(selectedHistoryItem?.status)}
-                      {selectedHistoryItem?.priority ? getPriorityPill(selectedHistoryItem?.priority) : null}
+                  <div className="space-y-5 pt-4">
+                    <div className="flex items-center justify-between gap-3 text-xs md:text-sm">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getStatusPill(selectedHistoryItem?.status)}
+                        {selectedHistoryItem?.priority ? getPriorityPill(selectedHistoryItem?.priority) : null}
+                      </div>
                       {selectedHistoryItem?.createdAt ? (
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                        <span className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5 font-medium whitespace-nowrap shrink-0">
+                          <Clock className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
                           {formatDateTime(selectedHistoryItem.createdAt)}
                         </span>
                       ) : null}
                     </div>
 
-                    <div className="rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#101010] p-4 shadow-inner">
-                      <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed break-all">
-                        {selectedHistoryItem?.message || "—"}
-                      </p>
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
+                        Safety Concern Details
+                      </span>
+                      <div className="rounded-xl border border-neutral-100 dark:border-neutral-800 bg-[#f8fafc] dark:bg-neutral-900/40 p-4">
+                        <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap leading-relaxed break-words font-medium">
+                          {selectedHistoryItem?.message || "—"}
+                        </p>
+                      </div>
                     </div>
 
                     {selectedHistoryItem?.adminResponse && (
-                      <div className="rounded-lg border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50/60 dark:bg-emerald-900/10 p-4">
-                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider mb-2">
+                      <div className="rounded-xl border border-emerald-100 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-emerald-950/10 p-4">
+                        <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">
                           Admin response
                         </p>
                         <p className="text-sm text-emerald-900 dark:text-emerald-100 whitespace-pre-wrap leading-relaxed">
                           {selectedHistoryItem.adminResponse}
                         </p>
                         {selectedHistoryItem?.respondedAt && (
-                          <p className="text-xs text-emerald-700/80 dark:text-emerald-300/80 mt-2">
+                          <p className="text-xs text-emerald-500/80 dark:text-emerald-400/70 mt-3 flex items-center gap-1.5 font-medium">
+                            <Clock className="h-3.5 w-3.5 text-emerald-400/60" />
                             Responded at: {formatDateTime(selectedHistoryItem.respondedAt)}
                           </p>
                         )}
