@@ -3194,8 +3194,8 @@ export default function Home() {
                                 </button>
 
                                 {/* Dark bottom overlay */}
-                                <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[2px] px-3 py-2.5 ${
-                                  (isOutOfService && !disableBlackCards) || !availability.isOpen ? "bg-black/80" : "bg-black/40"
+                                <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[4px] px-3 py-2.5 ${
+                                  (isOutOfService && !disableBlackCards) || !availability.isOpen ? "bg-black/80" : "bg-black/55"
                                 }`}>
                                   {/* Row 1: initial + name + arrow */}
                                   <div className="flex items-center gap-2">
@@ -3206,8 +3206,8 @@ export default function Home() {
                                       <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">
                                         {restaurant.name}
                                       </p>
-                                      <p className={`line-clamp-1 text-[10px] ${
-                                        ((isOutOfService && !disableBlackCards) || !availability.isOpen) ? "text-white font-bold" : "text-white/70"
+                                      <p className={`line-clamp-1 text-[11px] ${
+                                        ((isOutOfService && !disableBlackCards) || !availability.isOpen) ? "text-white font-bold" : "text-white/90 font-semibold"
                                       }`}>
                                         {restaurant.cuisine || (Array.isArray(restaurant.cuisines) ? restaurant.cuisines.join(", ") : "")}
                                       </p>

@@ -526,8 +526,8 @@ export default function Delivery() {
                           </div>
 
                           {/* Dark bottom overlay */}
-                          <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[2px] px-3 py-2.5 ${
-                            !availability.isOpen ? "bg-black/80" : "bg-black/40"
+                          <div className={`absolute bottom-0 left-0 right-0 backdrop-blur-[4px] px-3 py-2.5 ${
+                            !availability.isOpen ? "bg-black/80" : "bg-black/55"
                           }`}>
                             {/* Row 1: initial + name */}
                             <div className="flex items-center gap-2">
@@ -536,8 +536,8 @@ export default function Delivery() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="line-clamp-1 text-[13px] font-bold leading-tight text-white">{restaurant.name}</p>
-                                <p className={`line-clamp-1 text-[10px] ${
-                                  !availability.isOpen ? "text-white font-bold" : "text-white/70"
+                                <p className={`line-clamp-1 text-[11px] ${
+                                  !availability.isOpen ? "text-white font-bold" : "text-white/90 font-semibold"
                                 }`}>{restaurant.cuisine}</p>
                               </div>
                               <svg className="h-4 w-4 flex-shrink-0 text-white/60" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
