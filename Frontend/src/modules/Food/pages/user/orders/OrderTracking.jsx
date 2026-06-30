@@ -2183,12 +2183,12 @@ export default function OrderTracking() {
             transition={{ delay: 0.28 }}
           >
             <p className="text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wide">
-              {isDeliveryOrder ? "Delivery OTP" : "Takeaway OTP"}
+              {isDeliveryOrder ? "Share OTP with Delivery Captain" : "Takeaway OTP"}
             </p>
             <p className="text-2xl font-extrabold text-blue-900 dark:text-blue-300 mt-1 tracking-widest">{customerDeliveryOtp}</p>
             <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
               {isDeliveryOrder
-                ? "Share this OTP with the delivery partner to receive your order."
+                ? "Share this OTP with the delivery captain only after your order has arrived."
                 : "Use this OTP to collect your order from the restaurant."}
             </p>
           </motion.div>
