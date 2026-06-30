@@ -188,12 +188,12 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
     return (
         <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4">
             <div className="w-full max-w-lg rounded-[28px] bg-white dark:bg-[#1a1a1a] shadow-2xl dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden border border-slate-100 dark:border-[#222222]">
-                <div className="p-5 border-b border-slate-100 dark:border-[#222222] flex items-center justify-between">
-                    <div>
+                <div className="p-5 border-b border-slate-100 dark:border-[#222222] flex items-start justify-between">
+                    <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#808080]">Reservation Details</p>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white mt-1">{booking.restaurant?.name}</h3>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white mt-1 break-words">{booking.restaurant?.name}</h3>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-[#252525] transition-colors">
+                    <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-[#252525] transition-colors flex-shrink-0 ml-4">
                         <X className="w-5 h-5 text-slate-400" />
                     </button>
                 </div>
@@ -201,12 +201,12 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                 <div className="p-5 space-y-4">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8]">Status</p>
+                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8] mb-1">Status</p>
                             <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8]">Booking ID</p>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white">{booking.bookingId || "--"}</p>
+                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8] mb-1">Booking ID</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white py-0.5">{booking.bookingId || "--"}</p>
                         </div>
                     </div>
 

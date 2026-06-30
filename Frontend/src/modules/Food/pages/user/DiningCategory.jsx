@@ -114,12 +114,12 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center">
       <div className="w-full max-w-lg rounded-[28px] bg-white shadow-2xl overflow-hidden dark:bg-[#1a1a1a]">
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between dark:border-gray-800">
-          <div>
+        <div className="p-5 border-b border-slate-100 flex items-start justify-between dark:border-gray-800">
+          <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Reservation Details</p>
-            <h3 className="text-xl font-black text-slate-900 mt-1 dark:text-white">{restaurantName}</h3>
+            <h3 className="text-xl font-black text-slate-900 mt-1 dark:text-white break-words">{restaurantName}</h3>
           </div>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors dark:hover:bg-gray-800">
+          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors dark:hover:bg-gray-800 flex-shrink-0 ml-4">
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
@@ -131,8 +131,8 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
               <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
             </div>
             <div className="text-right">
-              <p className="text-sm font-semibold text-slate-500">Booking ID</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white">{booking.bookingId || "--"}</p>
+              <p className="text-sm font-semibold text-slate-500 mb-1">Booking ID</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white py-0.5">{booking.bookingId || "--"}</p>
             </div>
           </div>
 
@@ -418,10 +418,10 @@ export default function DiningCategory() {
             className="h-auto rounded-full border border-[#e7d8c5] bg-white px-4 py-2 text-left hover:bg-[#fff3e6] dark:border-gray-700 dark:bg-[#1a1a1a] dark:hover:bg-gray-800"
           >
             <div className="flex items-center gap-2">
-              <FaLocationDot className="h-4 w-4" style={{ color: RED }} />
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#aa8b68] dark:text-gray-400">Dining In</p>
-                <p className="text-sm font-bold text-[#2f2215] dark:text-white">{cityName}</p>
+              <FaLocationDot className="h-4 w-4 flex-shrink-0" style={{ color: RED }} />
+              <div className="flex flex-col justify-center">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[#aa8b68] dark:text-[#aa8b68] leading-tight">Dining In</p>
+                <p className="text-xs font-bold text-[#2f2215] dark:text-white leading-tight mt-0.5">{cityName}</p>
               </div>
             </div>
           </Button>
@@ -442,7 +442,11 @@ export default function DiningCategory() {
               </p>
             </div>
             <div className="inline-flex items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#6b5641] shadow-sm dark:border dark:border-gray-700 dark:bg-[#1a1a1a] dark:text-gray-300">
-              <MapPin className="h-4 w-4" style={{ color: RED }} />
+              {isBookings ? (
+                <Calendar className="h-4 w-4" style={{ color: RED }} />
+              ) : (
+                <MapPin className="h-4 w-4" style={{ color: RED }} />
+              )}
               <span>{restaurants.length} {isBookings ? "bookings" : "places"} found</span>
             </div>
           </div>
@@ -530,14 +534,14 @@ export default function DiningCategory() {
                           <h2 className="truncate text-[22px] font-black leading-tight text-[#23180f] dark:text-white">{restaurant.name}</h2>
                           <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b5641] dark:text-gray-300">{restaurant.address}</p>
                         </div>
-                        <div className={`inline-flex items-center gap-1 rounded-2xl px-2.5 py-1.5 text-sm font-bold text-white ${
+                        <div className={`inline-flex flex-shrink-0 items-center gap-1 rounded-2xl px-2 py-1 text-xs font-bold text-white ${
                           !isBookings ? "bg-emerald-600" :
                           restaurant.status === "PENDING" ? "bg-amber-500" :
                           restaurant.status === "CONFIRMED" || restaurant.status === "ACCEPTED" ? "bg-emerald-600" :
-                          restaurant.status === "DECLINED" || restaurant.status === "CANCELLED" || restaurant.status === "LATE_CANCELLED" ? "bg-rose-600" :
+                          restaurant.status === "DECLINED" || restaurant.status === "CANCELLED" || restaurant.status === "LATE_CANCELLED" || restaurant.status === "NO_SHOW" || restaurant.status === "NO-SHOW" ? "bg-rose-600" :
                           "bg-blue-600"
                         }`}>
-                          <span>{isBookings ? restaurant.status : restaurant.rating}</span>
+                          <span>{isBookings ? getStatusLabel(restaurant.status).toUpperCase() : restaurant.rating}</span>
                           {!isBookings && <Star className="h-3.5 w-3.5 fill-current" />}
                         </div>
                       </div>
@@ -597,7 +601,7 @@ export default function DiningCategory() {
                             style={{ color: RED }}
                             onClick={isBookings ? (e) => handleViewDetails(e, restaurant) : undefined}
                           >
-                            {isBookings ? <Bookmark className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
+                            {isBookings ? <Calendar className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
                             <span>{isBookings ? "View details" : "Menu & booking"}</span>
                           </div>
                         </div>
