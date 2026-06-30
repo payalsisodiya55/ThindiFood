@@ -20,16 +20,16 @@ const isCancelledReservationStatus = (status) => {
 
 const getStatusLabel = (status) => {
     const key = normalizeStatus(status)
-    if (key === "PENDING") return "Pending"
-    if (key === "CONFIRMED" || key === "ACCEPTED") return "Confirmed"
-    if (key === "CHECKED_IN") return "Table Ready"
-    if (key === "COMPLETED") return "Completed"
-    if (isCancelledReservationStatus(key) && key !== "LATE_CANCELLED") return "Cancelled"
-    if (key === "CANCELLED") return "Cancelled"
-    if (key === "LATE_CANCELLED") return "Late Cancelled"
-    if (key === "NO_SHOW") return "No-show"
-    if (key === "DECLINED") return "Declined"
-    return String(status || "Unknown")
+    if (key === "PENDING") return "PENDING"
+    if (key === "CONFIRMED" || key === "ACCEPTED") return "CONFIRMED"
+    if (key === "CHECKED_IN") return "TABLE READY"
+    if (key === "COMPLETED") return "COMPLETED"
+    if (isCancelledReservationStatus(key) && key !== "LATE_CANCELLED") return "CANCELLED"
+    if (key === "CANCELLED") return "CANCELLED"
+    if (key === "LATE_CANCELLED") return "LATE CANCELLED"
+    if (key === "NO_SHOW" || key === "NO-SHOW") return "NO SHOW"
+    if (key === "DECLINED") return "DECLINED"
+    return String(status || "UNKNOWN").toUpperCase()
 }
 
 const getStatusBadgeClass = (status) => {

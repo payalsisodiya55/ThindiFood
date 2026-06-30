@@ -60,15 +60,15 @@ const formatCategoryHeading = (category) =>
 
 const getStatusLabel = (status) => {
   const key = String(status || "").toUpperCase()
-  if (key === "PENDING") return "Pending"
-  if (key === "CONFIRMED" || key === "ACCEPTED") return "Confirmed"
-  if (key === "CHECKED_IN") return "Table Ready"
-  if (key === "COMPLETED") return "Completed"
-  if (key === "CANCELLED") return "Cancelled"
-  if (key === "LATE_CANCELLED") return "Late Cancelled"
-  if (key === "NO_SHOW") return "No-show"
-  if (key === "DECLINED") return "Declined"
-  return String(status || "Unknown")
+  if (key === "PENDING") return "PENDING"
+  if (key === "CONFIRMED" || key === "ACCEPTED") return "CONFIRMED"
+  if (key === "CHECKED_IN") return "TABLE READY"
+  if (key === "COMPLETED") return "COMPLETED"
+  if (key === "CANCELLED") return "CANCELLED"
+  if (key === "LATE_CANCELLED") return "LATE CANCELLED"
+  if (key === "NO_SHOW" || key === "NO-SHOW") return "NO SHOW"
+  if (key === "DECLINED") return "DECLINED"
+  return String(status || "UNKNOWN").toUpperCase()
 }
 
 const getStatusBadgeClass = (status) => {
@@ -283,7 +283,7 @@ export default function DiningCategory() {
                 date: new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
                 time: booking.timeSlot,
                 price: `Booking ID: ${booking.bookingId || "N/A"}`,
-                offer: `${booking.timeSlot} • ${new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`,
+                offer: `${new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} • ${booking.timeSlot}`,
                 rating: booking.status,
                 isBooking: true,
                 originalData: booking
