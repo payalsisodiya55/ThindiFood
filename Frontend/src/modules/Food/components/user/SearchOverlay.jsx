@@ -199,7 +199,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
               variant="ghost"
               size="icon"
               onClick={handleClose}
-              className="rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="rounded-full border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
             >
               <X className="h-5 w-5 text-gray-700 dark:text-gray-300" />
             </Button>
