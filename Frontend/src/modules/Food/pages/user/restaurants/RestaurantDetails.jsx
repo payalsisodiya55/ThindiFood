@@ -3818,7 +3818,7 @@ function RestaurantDetailsContent() {
                         <span className="text-sm text-gray-400">No image available</span>
                       </div>
                     )}
-                    {/* Bookmark and Share Icons Overlay */}
+                    {/* Bookmark and Share Icons Overlay commented out
                     <div className="absolute bottom-4 right-4 flex items-center gap-3">
                       <button
                         onClick={(e) => {
@@ -3846,6 +3846,7 @@ function RestaurantDetailsContent() {
                         <Share2 className="h-5 w-5" />
                       </button>
                     </div>
+                    */}
                   </div>
 
                   {/* Content Section */}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle, Info } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -580,6 +580,7 @@ export default function Cart() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [placeOrderErrorMessage, setPlaceOrderErrorMessage] = useState("")
   const [showBillDetails, setShowBillDetails] = useState(true)
+  const [showTaxInfoSheet, setShowTaxInfoSheet] = useState(false)
   const [showPlacingOrder, setShowPlacingOrder] = useState(false)
   const [isScheduled, setIsScheduled] = useState(false)
   const [scheduledDate, setScheduledDate] = useState("")
@@ -3895,7 +3896,7 @@ export default function Cart() {
                           <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Incl. taxes and charges</p>
+                      {/* Incl. taxes and charges removed */}
                     </div>
                   </div>
                   <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${showBillDetails ? 'rotate-90' : ''}`} />
@@ -3917,8 +3918,18 @@ export default function Cart() {
                       <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{platformFee.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
+                    <div className="flex justify-between text-sm items-center">
+                      <div className="flex items-center gap-1">
+                        <span className="text-gray-600 dark:text-gray-400">GST and Restaurant Charges</span>
+                        <button
+                          type="button"
+                          onClick={() => setShowTaxInfoSheet(true)}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
+                          aria-label="Taxes info"
+                        >
+                          <Info className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
                     </div>
                     {pricing?.restaurantDiscount > 0 && (
@@ -4516,6 +4527,76 @@ export default function Cart() {
                       <span className="text-sm font-medium text-gray-900 dark:text-white">Copy link</span>
                     </button>
                   </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+      {/* Tax Info Bottom Sheet */}
+      {typeof window !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {showTaxInfoSheet && (
+              <>
+                <motion.div
+                  className="fixed inset-0 bg-black/50 z-[10020]"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowTaxInfoSheet(false)}
+                />
+                <motion.div
+                  className="fixed left-1/2 bottom-0 -translate-x-1/2 z-[10021] w-full max-w-md bg-white dark:bg-[#1a1a1a] rounded-t-3xl shadow-2xl p-6 space-y-4"
+                  initial={{ y: "100%" }}
+                  animate={{ y: 0 }}
+                  exit={{ y: "100%" }}
+                  transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <Info className="h-5 w-5 text-[#00c87e]" />
+                      <h3 className="text-lg font-bold text-gray-900 dark:text-white">Bill Details Info</h3>
+                    </div>
+                    <button
+                      className="p-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800"
+                      onClick={() => setShowTaxInfoSheet(false)}
+                    >
+                      <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-sm text-gray-600 dark:text-gray-300">
+                    <p className="leading-relaxed">
+                      Government taxes and restaurant handling fees are calculated based on restaurant policies and prevailing local tax rates.
+                    </p>
+                    <p className="leading-relaxed font-semibold text-gray-800 dark:text-white">
+                      These taxes and charges are already included in your Total Bill.
+                    </p>
+
+                    <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 mt-2 space-y-2 border border-gray-100 dark:border-gray-800">
+                      <div className="flex justify-between text-xs">
+                        <span>Food Items Subtotal:</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>GST & Restaurant Charges:</span>
+                        <span className="font-semibold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs border-t border-gray-200 dark:border-gray-700 pt-2 font-bold text-gray-900 dark:text-white">
+                        <span>Total (Taxes Included):</span>
+                        <span>{RUPEE_SYMBOL}{(subtotal + gstCharges).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    className="w-full h-11 bg-[#00c87e] hover:bg-[#00b06f] text-white rounded-xl font-bold mt-4"
+                    onClick={() => setShowTaxInfoSheet(false)}
+                  >
+                    Got it
+                  </Button>
                 </motion.div>
               </>
             )}
