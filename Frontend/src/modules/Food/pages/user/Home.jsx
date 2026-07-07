@@ -3083,12 +3083,9 @@ export default function Home() {
               <div className="px-4 mb-3 lg:mb-4">
                 <div className="flex flex-col gap-3 lg:gap-4">
                   <div className="flex flex-col gap-0.5 lg:gap-1">
-                    <h2 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-400 tracking-widest uppercase">
+                    <h2 className="text-[17px] sm:text-[19px] lg:text-[22px] font-bold text-gray-900 dark:text-white tracking-tight uppercase">
                       {filteredRestaurants.length} Restaurants {fulfillmentMode === "delivery" ? "Delivering Nearby" : "Available for Pickup"}
                     </h2>
-                    <span className="text-base sm:text-lg lg:text-2xl text-gray-500 font-normal">
-                      Featured
-                    </span>
                   </div>
                 </div>
               </div>
