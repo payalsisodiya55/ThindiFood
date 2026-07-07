@@ -535,7 +535,8 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     deliveryVerification: (() => {
       const prevDV = safePreviousOrder?.deliveryVerification || null
       const apiDV = apiOrder?.deliveryVerification || null
-      const handoverOtp = apiOrder?.handoverOtp || null
+      const isTakeaway = String(apiOrder?.fulfillmentType || safePreviousOrder?.fulfillmentType || "").toLowerCase() === "takeaway"
+      const handoverOtp = isTakeaway ? (apiOrder?.handoverOtp || null) : null
       
       if (!prevDV && !apiDV && !handoverOtp) return null
 
@@ -2196,28 +2197,48 @@ export default function OrderTracking() {
 
         {isSelfDeliveryOrder && order?.selfDeliveryBoy && (
           <motion.div
-            className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
+            className="bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 p-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.29 }}
           >
-            <div className="flex items-center gap-3 p-4">
-              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100 dark:border-blue-950/50">
-                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100 dark:border-blue-950/50 p-1">
+                <div 
+                  dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }} 
+                  className="w-full h-full p-1" 
+                />
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900 dark:text-white">{order.selfDeliveryBoy.name || "Delivery Partner"}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {order.selfDeliveryBoy.phone || "Contact number will appear here"}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900 dark:text-white text-base leading-tight">
+                    {order.selfDeliveryBoy.name || "Delivery Partner"}
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                  Delivery Partner
                 </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0">
+                    {typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : 'On the way'}
+                  </span>
+                  {order.selfDeliveryBoy.phone && (
+                    <>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {order.selfDeliveryBoy.phone}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
               {order.selfDeliveryBoy.phone && (
                 <motion.a
                   href={`tel:${order.selfDeliveryBoy.phone}`}
-                  className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center"
+                  className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0"
                   whileTap={{ scale: 0.9 }}
                 >
-                  <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Phone className="w-4 h-4 fill-current" />
                 </motion.a>
               )}
             </div>
@@ -2280,15 +2301,15 @@ export default function OrderTracking() {
         {/* Delivery Partner Info */}
         {order?.deliveryPartnerId && (
           <motion.div
-            className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
+            className="bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 p-4"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.55 }}
           >
-            <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/20 overflow-hidden flex items-center justify-center flex-shrink-0 border border-blue-100 dark:border-blue-950/50 p-1">
                 {order.deliveryPartner?.avatar ? (
-                  <img src={order.deliveryPartner.avatar} alt="Rider" className="w-full h-full object-cover" />
+                  <img src={order.deliveryPartner.avatar} alt="Rider" className="w-full h-full object-cover rounded-full" />
                 ) : (
                   <div 
                     dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }} 
@@ -2296,16 +2317,35 @@ export default function OrderTracking() {
                   />
                 )}
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900 dark:text-white">{order.deliveryPartner?.name || 'Delivery Partner'}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Your delivery partner is arriving</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900 dark:text-white text-base leading-tight">
+                    {order.deliveryPartner?.name || 'Delivery Partner'}
+                  </span>
+                </div>
+                <p className="text-xs font-medium text-gray-400 dark:text-gray-500 mt-0.5">
+                  Delivery Partner
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex-shrink-0">
+                    {typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : 'On the way'}
+                  </span>
+                  {order.deliveryPartner?.phone && (
+                    <>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {order.deliveryPartner.phone}
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
               <motion.button
-                className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/20 flex items-center justify-center"
+                className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-950/20 hover:bg-blue-100 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0"
                 onClick={handleCallRider}
                 whileTap={{ scale: 0.9 }}
               >
-                <Phone className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <Phone className="w-4 h-4 fill-current" />
               </motion.button>
             </div>
           </motion.div>
@@ -2423,6 +2463,11 @@ export default function OrderTracking() {
                       <span>{formatOrderItemQuantityLabel(item)}</span>
                     </div>
                   ))}
+                </div>
+                
+                <div className="mt-3 pt-3 border-t border-dashed border-gray-100 dark:border-gray-800 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+                  <span className="pl-[60px]">Order ID</span>
+                  <span className="font-semibold text-gray-700 dark:text-gray-300">#{order?.orderId || order?.id || order?._id || 'N/A'}</span>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500" />

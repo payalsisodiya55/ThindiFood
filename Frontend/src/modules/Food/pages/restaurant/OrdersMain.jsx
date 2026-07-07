@@ -1481,6 +1481,17 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
   const [selectedDeliveryBoyId, setSelectedDeliveryBoyId] = useState("");
   const [isAssigningBoy, setIsAssigningBoy] = useState(false);
 
+  useEffect(() => {
+    if (assigningOrder) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [assigningOrder]);
+
   const filteredOrders = orders.filter((order) => {
     if (!searchValue) return true;
     const query = searchValue.toLowerCase().trim();
@@ -1937,7 +1948,7 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                  <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin overscroll-contain" data-lenis-prevent="true">
                     {deliveryBoys
                       .filter((boy) => boy?.isActive !== false)
                       .map((boy) => {
@@ -6122,6 +6133,17 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
   const [deliveryBoys, setDeliveryBoys] = useState([]);
   const [assigningOrder, setAssigningOrder] = useState(null);
 
+  useEffect(() => {
+    if (assigningOrder) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [assigningOrder]);
+
   const filteredOrders = orders.filter((order) => {
     if (!searchValue) return true;
     const query = searchValue.toLowerCase().trim();
@@ -6520,7 +6542,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin">
+                  <div className="space-y-2.5 max-h-[240px] overflow-y-auto pr-1 scrollbar-thin overscroll-contain" data-lenis-prevent="true">
                     {deliveryBoys
                       .filter((boy) => boy?.isActive !== false)
                       .map((boy) => {
