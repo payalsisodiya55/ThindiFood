@@ -2615,9 +2615,9 @@ export default function OrderTracking() {
 
           <div className="p-6 pt-4 space-y-6 max-h-[70vh] overflow-y-auto">
             {/* Order Meta Info */}
-            <div className="flex flex-col gap-1 b">
+            <div className="flex flex-col gap-4">
               <div className="flex items-center gap-4 mt-2">
-                <div>
+                <div className="flex-1">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Date & Time</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                     {order?.createdAt ? new Date(order.createdAt).toLocaleString('en-IN', {
@@ -2631,13 +2631,49 @@ export default function OrderTracking() {
                   </p>
                 </div>
                 <div className="h-8 w-px bg-gray-100 dark:bg-gray-800" />
-                <div>
+                <div className="flex-1">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</p>
                   <span className="text-sm font-bold text-green-600 uppercase">
                     {orderDetailsStatusLabel}
                   </span>
                 </div>
               </div>
+
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                    #{order?.orderId || order?.id || 'N/A'}
+                  </p>
+                </div>
+                <div className="h-8 w-px bg-gray-100 dark:bg-gray-800" />
+                <div className="flex-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order Type</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                    {String(order?.fulfillmentType || order?.order_type || 'Delivery').toLowerCase() === 'takeaway' ? 'Takeaway' : 'Delivery'}
+                  </p>
+                </div>
+              </div>
+
+              {String(order?.fulfillmentType || order?.order_type || 'delivery').toLowerCase() === 'takeaway' ? (
+                order?.restaurantAddress && order.restaurantAddress !== 'Restaurant location' && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pickup Address</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mt-0.5">
+                      {order.restaurantAddress}
+                    </p>
+                  </div>
+                )
+              ) : (
+                order?.address?.formattedAddress && (
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Delivery Address</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mt-0.5">
+                      {order.address.formattedAddress}
+                    </p>
+                  </div>
+                )
+              )}
             </div>
 
             {/* Items Section */}
@@ -2744,7 +2780,7 @@ export default function OrderTracking() {
               onClick={() => setShowOrderDetails(false)}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl transition-colors"
             >
-              Okay
+              Close
             </Button>
           </div>
         </DialogContent>
