@@ -2606,7 +2606,7 @@ export default function OrderTracking() {
 
       {/* Order Details Dialog */}
       <Dialog open={showOrderDetails} onOpenChange={setShowOrderDetails}>
-        <DialogContent className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl p-0 overflow-hidden border-none outline-none">
+        <DialogContent closeClassName="h-8 w-8 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] shadow-sm" className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl p-0 overflow-hidden border-none outline-none">
           <DialogHeader className="p-6 pb-4 border-b border-gray-100 dark:border-gray-800 pr-12">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Order Details</DialogTitle>
@@ -2647,9 +2647,17 @@ export default function OrderTracking() {
                 {order?.items?.map((item, index) => (
                   <div key={index} className="flex items-start justify-between gap-4">
                     <div className="flex items-start gap-3 flex-1">
-                      <div className={`w-5 h-5 rounded border ${item.isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-0.5 shrink-0`}>
-                        <div className={`w-2.5 h-2.5 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
-                      </div>
+                      {item.isVeg ? (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-1 shrink-0">
+                          <rect x="0.5" y="0.5" width="13" height="13" rx="1.5" stroke="#00c87e"/>
+                          <circle cx="7" cy="7" r="3" fill="#00c87e"/>
+                        </svg>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="mt-1 shrink-0">
+                          <rect x="0.5" y="0.5" width="13" height="13" rx="1.5" stroke="#dc2626"/>
+                          <circle cx="7" cy="7" r="3" fill="#dc2626"/>
+                        </svg>
+                      )}
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900 dark:text-white leading-tight">{formatOrderItemLabel(item, { includeVariant: false })}</p>
                         {item.variantName ? <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{item.variantName}</p> : null}
@@ -2734,7 +2742,7 @@ export default function OrderTracking() {
           <div className="p-6 border-t border-gray-100 dark:border-gray-800">
             <Button
               onClick={() => setShowOrderDetails(false)}
-              className="w-full bg-gray-900 text-white font-bold h-12 rounded-xl"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl transition-colors"
             >
               Okay
             </Button>
