@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, startTransition, useDeferredValue
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { createPortal } from "react-dom"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, Star, Clock, Search, SlidersHorizontal, ChevronDown, Bookmark, BadgePercent, MapPin, ArrowDownUp, Timer, IndianRupee, UtensilsCrossed, ShieldCheck, X, Loader2, Grid2x2, ArrowRight, ArrowUpRight } from "lucide-react"
+import { ArrowLeft, Star, Clock, Search, SlidersHorizontal, ChevronDown, Bookmark, BadgePercent, MapPin, ArrowDownUp, Timer, IndianRupee, UtensilsCrossed, ShieldCheck, X, Loader2, Grid2x2, ArrowRight, ArrowUpRight, Heart } from "lucide-react"
 import OptimizedImage from "@food/components/OptimizedImage"
 import { Card, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
@@ -1258,9 +1258,9 @@ export default function CategoryPage() {
     const sourceData = restaurantsData.length > 0 ? restaurantsData : []
     let filtered = [...sourceData]
 
-    // Filter by category - Dynamic filtering based on menu items
+    // Filter by category - Group matching dishes by restaurant
     if (selectedCategory && selectedCategory !== 'all') {
-      const expandedDishes = []
+      const restaurantsWithCategory = []
 
       filtered.forEach(r => {
         if (r.menu) {
@@ -1274,29 +1274,50 @@ export default function CategoryPage() {
                 ? categoryDishes.filter((dish) => dish.foodType === "Veg")
                 : categoryDishes;
 
-              validDishes.forEach((dishForCard) => {
-                expandedDishes.push({
+              if (validDishes.length > 0) {
+                restaurantsWithCategory.push({
                   ...r,
-                  id: `${r.id || r.restaurantId}-${dishForCard.itemId}`,
-                  dishId: dishForCard.itemId || `${r.id}-dish`,
-                  categoryDish: dishForCard,
-                  categoryDishName: dishForCard.name,
-                  categoryDishPrice: dishForCard.price,
-                  categoryDishImage: dishForCard.image,
+                  matchedDishes: validDishes
                 })
-              })
+              }
             }
           }
         }
       })
 
-      filtered = expandedDishes
+      filtered = restaurantsWithCategory
 
       if (filtered.length === 0) {
         const fallbackDishes = getCategoryFallbackDishesFromApprovedFoods(selectedCategory, sourceData)
-        filtered = vegMode
+        const validFallbackDishes = vegMode
           ? fallbackDishes.filter((dish) => dish.categoryDishFoodType === "Veg")
           : fallbackDishes
+          
+        const fallbackRestaurantsMap = new Map()
+        validFallbackDishes.forEach(item => {
+          // In fallbackDishes, item contains dish details and restaurant details
+          const rId = item.restaurantId || item.id
+          if (!fallbackRestaurantsMap.has(rId)) {
+            // Find original restaurant for image and details
+            const origRes = sourceData.find(r => r.id === rId || r.restaurantId === rId) || {}
+            fallbackRestaurantsMap.set(rId, {
+              ...origRes,
+              id: rId,
+              name: item.restaurantName || item.name,
+              image: origRes.image || item.image,
+              matchedDishes: []
+            })
+          }
+          fallbackRestaurantsMap.get(rId).matchedDishes.push(item.categoryDish || {
+            itemId: item.dishId || item.id,
+            name: item.categoryDishName,
+            price: item.categoryDishPrice,
+            image: item.categoryDishImage,
+            foodType: item.categoryDishFoodType,
+            description: item.categoryDishDescription
+          })
+        })
+        filtered = Array.from(fallbackRestaurantsMap.values())
       }
     }
 
@@ -1307,46 +1328,43 @@ export default function CategoryPage() {
     const sourceData = restaurantsData.length > 0 ? restaurantsData : []
     let filtered = [...sourceData]
 
-    // Filter by category - Dynamic filtering based on menu items
-    // If category is selected, expand restaurants into dish cards (one card per matching dish)
+    // Filter by category - Keep original restaurants intact, only include those that have matching dishes
     if (selectedCategory && selectedCategory !== 'all') {
-      const expandedDishes = []
+      const restaurantsWithCategory = []
 
       filtered.forEach(r => {
         if (r.menu) {
           const hasCategoryItem = checkCategoryInMenu(r.menu, selectedCategory)
           if (hasCategoryItem) {
-            // Get ALL matching dishes for this category
             const categoryDishes = getAllCategoryDishesFromMenu(r.menu, selectedCategory)
-
             if (categoryDishes.length > 0) {
               const validDishes = vegMode
                 ? categoryDishes.filter((dish) => dish.foodType === "Veg")
                 : categoryDishes;
-
-              validDishes.forEach((dishForCard) => {
-                expandedDishes.push({
-                  ...r,
-                  id: `${r.id || r.restaurantId}-${dishForCard.itemId}`,
-                  dishId: dishForCard.itemId || `${r.id}-dish`,
-                  categoryDish: dishForCard,
-                  categoryDishName: dishForCard.name,
-                  categoryDishPrice: dishForCard.price,
-                  categoryDishImage: dishForCard.image,
-                })
-              })
+                
+              if (validDishes.length > 0) {
+                restaurantsWithCategory.push(r)
+              }
             }
           }
         }
       })
 
-      filtered = expandedDishes
+      filtered = restaurantsWithCategory
 
       if (filtered.length === 0) {
+        // Find which restaurants had the fallback dishes
         const fallbackDishes = getCategoryFallbackDishesFromApprovedFoods(selectedCategory, sourceData)
-        filtered = vegMode
+        const validFallbackDishes = vegMode
           ? fallbackDishes.filter((dish) => dish.categoryDishFoodType === "Veg")
           : fallbackDishes
+          
+        const fallbackRestaurants = new Set()
+        validFallbackDishes.forEach(dish => {
+          fallbackRestaurants.add(dish.restaurantId || dish.id)
+        })
+        
+        filtered = sourceData.filter(r => fallbackRestaurants.has(r.id || r.restaurantId))
       }
     }
 
@@ -1546,55 +1564,129 @@ export default function CategoryPage() {
       {/* Content */}
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10 space-y-6 md:space-y-8 lg:space-y-10">
         <div className="max-w-7xl mx-auto space-y-8 md:space-y-12">
-          {/* RECOMMENDED FOR YOU Section - Hide when "All" category is selected */}
-          {filteredRecommended.length > 0 && selectedCategory !== 'all' && (
+          {/* MATCHING DISHES BY RESTAURANT OR RECOMMENDED FOR YOU Section */}
+          {filteredRecommended.length > 0 && (
             <section>
               <h2 className="text-xs sm:text-sm md:text-base font-semibold text-gray-400 dark:text-gray-500 tracking-widest uppercase mb-4 md:mb-6">
-                RECOMMENDED FOR YOU
+                {isCategoryView ? 'MATCHING DISHES BY RESTAURANT' : 'RECOMMENDED FOR YOU'}
               </h2>
 
-              {/* Small Restaurant Cards - Grid - Show all dishes when category is selected */}
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
-                {(isCategoryView
-                  ? filteredRecommended
-                  : filteredRecommended.slice(0, 6)
-                ).map((restaurant) => {
-                  return (
-                    <Link
-                      key={restaurant.id}
-                      to={`/user/restaurants/${restaurant.name.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="block"
-                    >
-                      <div className={`group ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>
-                        {/* Image Container */}
-                        <div className="relative aspect-square rounded-xl md:rounded-2xl overflow-hidden mb-2">
-                          {/* Use category dish image if available, otherwise restaurant image */}
-                          {restaurant.categoryDishImage ? (
-                            <img
-                              src={restaurant.categoryDishImage}
-                              alt={restaurant.categoryDishName || restaurant.name}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              onError={(e) => {
-                                // Fallback to restaurant image if dish image fails
-                                if (restaurant.image) {
-                                  e.target.src = restaurant.image
-                                } else {
-                                  // Show emoji placeholder
-                                  e.target.style.display = 'none'
-                                  const placeholder = document.createElement('div')
-                                  placeholder.className = 'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl'
-                                  placeholder.textContent = '???'
-                                  e.target.parentElement.appendChild(placeholder)
-                                }
-                              }}
-                            />
-                          ) : restaurant.image ? (
+              {isCategoryView ? (
+                <div className="space-y-6">
+                  {filteredRecommended.map((restaurant) => {
+                    const restaurantSlug = restaurant.name.toLowerCase().replace(/\s+/g, "-")
+                    
+                    return (
+                      <div key={restaurant.id} className="bg-white dark:bg-[#1a1a1a] rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+                        <Link to={`/user/restaurants/${restaurantSlug}`} className="block">
+                          <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors group">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0">
+                                <img 
+                                  src={restaurant.image} 
+                                  alt={restaurant.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none'
+                                    const parent = e.target.parentElement
+                                    parent.className = "w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xl"
+                                    parent.textContent = "🍽️"
+                                  }}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-lg text-gray-900 dark:text-white group-hover:text-[#00c87e] transition-colors break-words line-clamp-2">{restaurant.name}</h3>
+                                {restaurant.rating && (
+                                  <div className="flex items-center gap-1 mt-0.5">
+                                    <Star className="h-3.5 w-3.5 fill-[#00c87e] text-[#00c87e]" />
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{restaurant.rating}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <ArrowRight className="h-5 w-5 text-gray-400 group-hover:text-[#00c87e] transform group-hover:translate-x-1 transition-all" />
+                          </div>
+                        </Link>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
+                          {(restaurant.matchedDishes || []).map((dish, idx) => {
+                            const dishId = dish.itemId || dish.id
+                            const rId = restaurant.restaurantId || restaurant.id
+                            const favorite = isDishFavorite(dishId, rId)
+                            const isVeg = dish.foodType === "Veg" || dish.isVeg
+                            const price = dish.price || 0
+                            
+                            return (
+                              <div key={`${rId}-${dishId}-${idx}`} className="flex gap-4 p-3 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-[#222222]/50 hover:bg-gray-50 dark:hover:bg-[#222222] transition-colors">
+                                <div className="flex-1 min-w-0 py-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <div className={`w-4 h-4 flex items-center justify-center border ${isVeg ? 'border-green-600' : 'border-red-600'} rounded-sm`}>
+                                      <div className={`w-2 h-2 rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`} />
+                                    </div>
+                                    {dish.isBestseller && (
+                                      <span className="text-[10px] font-bold text-yellow-600 bg-yellow-100 px-1.5 py-0.5 rounded">
+                                        BESTSELLER
+                                      </span>
+                                    )}
+                                  </div>
+                                  <h4 className="font-semibold text-gray-900 dark:text-white line-clamp-1">{dish.name}</h4>
+                                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mt-0.5">
+                                    ₹{price}
+                                  </p>
+                                  {dish.description && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 line-clamp-2">
+                                      {dish.description}
+                                    </p>
+                                  )}
+                                </div>
+                                <div className="relative w-[110px] h-[110px] flex-shrink-0 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                  <img 
+                                    src={dish.image || restaurant.image}
+                                    alt={dish.name}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none'
+                                    }}
+                                  />
+                                  <div className="absolute right-1.5 top-1.5">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className={`h-7 w-7 backdrop-blur-sm rounded-full shadow-sm transition-all ${
+                                        favorite
+                                          ? 'bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/20 dark:hover:bg-red-500/30'
+                                          : 'bg-white/80 dark:bg-black/40 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-black/60'
+                                      }`}
+                                      onClick={(e) => handleToggleFavorite(e, { ...restaurant, categoryDish: dish })}
+                                    >
+                                      <Heart className={`h-4 w-4 ${favorite ? 'fill-current' : ''}`} />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 md:gap-4">
+                  {filteredRecommended.slice(0, 6).map((restaurant) => {
+                    return (
+                      <Link
+                        key={restaurant.id}
+                        to={`/user/restaurants/${restaurant.name.toLowerCase().replace(/\s+/g, '-')}`}
+                        className="block"
+                      >
+                        <div className={`group ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>
+                          <div className="relative aspect-square rounded-xl md:rounded-2xl overflow-hidden mb-2">
                             <img
                               src={restaurant.image}
                               alt={restaurant.name}
                               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                               onError={(e) => {
-                                // Show emoji placeholder
                                 e.target.style.display = 'none'
                                 const placeholder = document.createElement('div')
                                 placeholder.className = 'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl'
@@ -1602,45 +1694,31 @@ export default function CategoryPage() {
                                 e.target.parentElement.appendChild(placeholder)
                               }}
                             />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-6xl">
-                              ???
+                            {restaurant.offer && (
+                              <div className="absolute top-1.5 left-1.5 bg-gradient-to-r from-[#00c87e] to-[#00b06f] text-white text-[10px] md:text-xs font-semibold px-1.5 py-0.5 rounded shadow-sm">
+                                {restaurant.offer}
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 left-0 bg-green-600 border-[4px] rounded-md border-white text-white text-[11px] md:text-xs font-bold px-1.5 py-0.5 flex items-center gap-0.5">
+                              {restaurant.rating}
+                              <Star className="h-2.5 w-2.5 md:h-3 md:w-3 fill-white" />
                             </div>
-                          )}
-
-                          {/* Offer Badge */}
-                          {restaurant.offer && (
-                            <div className="absolute top-1.5 left-1.5 bg-gradient-to-r from-[#00c87e] to-[#00b06f] text-white text-[10px] md:text-xs font-semibold px-1.5 py-0.5 rounded shadow-sm">
-                              {restaurant.offer}
-                            </div>
-                          )}
-
-                          {/* Rating Badge (NOW ON IMAGE, bottom-left with white border) */}
-                          <div className="absolute bottom-0 left-0 bg-green-600 border-[4px] rounded-md border-white text-white text-[11px] md:text-xs font-bold px-1.5 py-0.5 flex items-center gap-0.5">
-                            {restaurant.rating}
-                            <Star className="h-2.5 w-2.5 md:h-3 md:w-3 fill-white" />
                           </div>
-                        </div>
-
-                        <h3 className="font-semibold text-gray-900 dark:text-white text-xs md:text-sm line-clamp-1">
-                          {isCategoryView ? (restaurant.categoryDishName || restaurant.featuredDish || restaurant.name) : restaurant.name}
-                        </h3>
-                        {isCategoryView && (
-                          <p className="text-[10px] md:text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white text-xs md:text-sm line-clamp-1">
                             {restaurant.name}
-                          </p>
-                        )}
-                        {restaurant.deliveryTime && (
-                          <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-[10px] md:text-xs">
-                            <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                            <span>{restaurant.deliveryTime}</span>
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
+                          </h3>
+                          {restaurant.deliveryTime && (
+                            <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400 text-[10px] md:text-xs">
+                              <Clock className="h-2.5 w-2.5 md:h-3 md:w-3" />
+                              <span>{restaurant.deliveryTime}</span>
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
             </section>
           )}
 
