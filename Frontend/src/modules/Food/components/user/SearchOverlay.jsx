@@ -7,12 +7,15 @@ import { restaurantAPI } from "@food/api"
 
 const SEARCH_HISTORY_KEY = "user_recent_searches_v1"
 let cachedDishes = null
+let cachedRestaurants = null
 
 export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchChange }) {
   const navigate = useNavigate()
   const inputRef = useRef(null)
   const [allFoods, setAllFoods] = useState([])
   const [filteredFoods, setFilteredFoods] = useState([])
+  const [allRestaurants, setAllRestaurants] = useState([])
+  const [filteredRestaurants, setFilteredRestaurants] = useState([])
   const [recentSuggestions, setRecentSuggestions] = useState([])
   const [loadingFoods, setLoadingFoods] = useState(false)
   
@@ -101,8 +104,31 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
       }
     }
 
+    const fetchRestaurantsFromDB = async () => {
+      if (cachedRestaurants) {
+        setAllRestaurants(cachedRestaurants)
+        return
+      }
+      try {
+        const res = await restaurantAPI.getRestaurants({ limit: 100 })
+        const list = res?.data?.data?.restaurants || res?.data?.restaurants || []
+        const normalized = (Array.isArray(list) ? list : [])
+          .map((r, index) => ({
+            id: r?._id || r?.id || `restaurant-${index}`,
+            name: String(r?.name || "").trim(),
+            image: getImageUrl(r?.image || r?.logo || r?.avatar),
+            slug: r?.slug || r?._id || r?.id
+          }))
+        cachedRestaurants = normalized
+        setAllRestaurants(normalized)
+      } catch {
+        setAllRestaurants([])
+      }
+    }
+
     loadRecentSuggestions()
     fetchDishesFromDB()
+    fetchRestaurantsFromDB()
   }, [isOpen])
 
   useEffect(() => {
@@ -126,13 +152,20 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
   useEffect(() => {
     if (searchValue.trim() === "") {
       setFilteredFoods(allFoods)
+      setFilteredRestaurants([])
     } else {
+      const query = searchValue.toLowerCase();
       const filtered = allFoods.filter((food) =>
-        food.name.toLowerCase().includes(searchValue.toLowerCase())
+        food.name.toLowerCase().includes(query)
       )
       setFilteredFoods(filtered)
+
+      const filteredR = allRestaurants.filter((res) =>
+        res.name.toLowerCase().includes(query)
+      )
+      setFilteredRestaurants(filteredR)
     }
-  }, [searchValue, allFoods])
+  }, [searchValue, allFoods, allRestaurants])
 
   const saveRecentSearch = (term) => {
     const value = String(term || "").trim()
@@ -236,6 +269,49 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
           </div>
         </div>
 
+        {/* Restaurants section */}
+        {searchValue.trim() !== "" && filteredRestaurants.length > 0 && (
+          <div className="mb-8" style={{ animation: 'fadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) 0.05s both' }}>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4">
+              Restaurants ({filteredRestaurants.length})
+            </h3>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
+              {filteredRestaurants.map((res, index) => (
+                <div
+                  key={res.id}
+                  className="flex flex-col items-center gap-2 sm:gap-3 cursor-pointer group"
+                  onClick={() => {
+                    saveRecentSearch(res.name)
+                    navigate(`/restaurants/${res.slug}`)
+                    handleClose()
+                    onSearchChange("")
+                  }}
+                >
+                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden transition-all duration-200 shadow-md group-hover:shadow-lg bg-white dark:bg-[#1a1a1a] p-1 sm:p-1.5 border border-gray-100 dark:border-gray-800">
+                    {res.image ? (
+                      <img
+                        src={res.image}
+                        alt={res.name}
+                        className="w-full h-full object-cover rounded-xl"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                        <Search className="h-5 w-5 text-gray-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-1 sm:px-2 text-center">
+                    <span className="text-xs sm:text-sm font-semibold text-gray-800 dark:text-gray-200 group-hover:text-primary-orange dark:group-hover:text-orange-400 transition-colors line-clamp-2">
+                      {res.name}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Food Grid */}
         <div
           style={{
@@ -245,7 +321,7 @@ export default function SearchOverlay({ isOpen, onClose, searchValue, onSearchCh
           <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6">
             {searchValue.trim() === "" ? "All Dishes" : `Search Results (${filteredFoods.length})`}
           </h3>
-          {filteredFoods.length > 0 ? (
+          {filteredFoods.length > 0 || filteredRestaurants.length > 0 ? (
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3 sm:gap-4 md:gap-5 lg:gap-6">
               {filteredFoods.map((food, index) => (
                 <div
