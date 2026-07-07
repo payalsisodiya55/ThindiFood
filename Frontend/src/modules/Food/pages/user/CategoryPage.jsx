@@ -285,9 +285,17 @@ export default function CategoryPage() {
 
         const categoryName = String(food?.categoryName || food?.category || "").toLowerCase()
         const foodName = String(food?.name || "").toLowerCase()
-        return (
+        const matchesCategory =
           matchesCategoryText(categoryName, keywords) ||
           matchesCategoryText(foodName, keywords)
+
+        if (!matchesCategory) return false
+
+        const restaurantId = String(food?.restaurantId || "").trim()
+        const restaurantName = String(food?.restaurantName || "").trim()
+        return (
+          restaurantsById.has(restaurantId) ||
+          restaurantsByName.has(restaurantName.toLowerCase())
         )
       })
       .map((food, index) => {
@@ -823,9 +831,9 @@ export default function CategoryPage() {
     const fetchRestaurants = async () => {
       try {
         setLoadingRestaurants(true)
-        // IMPORTANT: Do NOT pass zoneId as a hard filter.
-        // UX is "show all restaurants", and we only style out-of-service state.
-        const params = {}
+        const params = {
+          ...(zoneId && { zoneId })
+        }
         const response = await restaurantAPI.getRestaurants(params)
 
         if (response.data && response.data.success && response.data.data && response.data.data.restaurants) {
