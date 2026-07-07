@@ -3388,12 +3388,15 @@ function RestaurantDetailsContent() {
         !showMenuSheet &&
         !showMenuOptionsSheet &&
         createPortal(
-          <div
-            className="fixed right-4 z-[99] pointer-events-none"
+          <motion.div
+            drag
+            dragMomentum={false}
+            dragConstraints={typeof window !== "undefined" ? { left: -window.innerWidth + 120, right: 0, top: -window.innerHeight + 120, bottom: 0 } : undefined}
+            className="fixed right-4 z-[99] w-fit h-fit"
             style={{ bottom: 'calc(env(safe-area-inset-bottom, 16px) + 2rem)' }}
           >
             <Button
-              className={`bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 hover:scale-110 active:scale-95 group ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}
+              className={`bg-[#1a1a1a] dark:bg-[#00c87e] hover:bg-black dark:hover:bg-[#00c87e] text-white flex items-center gap-2 shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10 dark:border-[#00c87e]/20 px-6 py-6 rounded-full font-bold transform transition-all duration-300 group cursor-grab active:cursor-grabbing ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : 'pointer-events-auto'}`}
               size="lg"
               onClick={() => !shouldShowGrayscale && setShowMenuSheet(true)}
               disabled={shouldShowGrayscale}
@@ -3401,7 +3404,7 @@ function RestaurantDetailsContent() {
               <Utensils className="h-5 w-5 text-[#00c87e] dark:text-white group-hover:rotate-12 transition-transform" />
               <span className="tracking-wide">MENU</span>
             </Button>
-          </div>,
+          </motion.div>,
           document.body
         )}
 
