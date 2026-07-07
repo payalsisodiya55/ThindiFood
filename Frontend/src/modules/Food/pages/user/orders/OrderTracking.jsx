@@ -196,16 +196,16 @@ const DeliveryMap = memo(({ orderId, order, isVisible, fallbackCustomerCoords = 
 });
 
 // Section item component
-const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow = true, rightContent }) => (
+const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow = true, rightContent, noTruncate = false, iconBgClass = "" }) => (
   <motion.button
     onClick={onClick}
     className="w-full flex items-center gap-3 p-4 hover:bg-gray-50 dark:hover:bg-[#1a1a1a] transition-colors text-left border-b border-dashed border-gray-200 dark:border-gray-800 last:border-0"
     whileTap={{ scale: 0.99 }}
   >
-    <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center flex-shrink-0 overflow-hidden">
+    <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden ${iconBgClass || "bg-gray-100 dark:bg-gray-800"}`}>
       {iconNode ? (
         <div
-          className="w-6 h-6 flex-shrink-0 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
+          className="w-7 h-7 flex-shrink-0 flex items-center justify-center [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
         >
           {iconNode}
         </div>
@@ -214,8 +214,8 @@ const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className="font-medium text-gray-900 dark:text-white truncate">{title}</p>
-      {subtitle && <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{subtitle}</p>}
+      <p className={`font-semibold text-gray-900 dark:text-white ${noTruncate ? "" : "truncate"}`}>{title}</p>
+      {subtitle && <div className={`text-sm text-gray-500 dark:text-gray-400 mt-0.5 ${noTruncate ? "" : "truncate"}`}>{subtitle}</div>}
     </div>
     {rightContent || (showArrow && <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />)}
   </motion.button>
@@ -1946,7 +1946,7 @@ export default function OrderTracking() {
   const statusConfig = {
     placed: {
       title: "Order Placed",
-      subtitle: "Waiting for restaurant to accept",
+      subtitle: "Awaiting Restaurant Acceptance",
       color: "bg-[#00c87e]",
       iconType: 'food'
     },
@@ -2226,44 +2226,41 @@ export default function OrderTracking() {
 
         {/* Dynamic Status Card */}
         <motion.div
-          className="bg-white dark:bg-[#1a1a1a] rounded-xl p-4 shadow-sm border border-transparent dark:border-gray-800"
+          className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-transparent dark:border-gray-800 overflow-hidden"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0 shadow-sm border border-gray-100 dark:border-gray-800 ${
-              currentStatus.iconType === 'rider' ? 'bg-blue-50 dark:bg-blue-950/20' : 
-              currentStatus.iconType === 'cancelled' ? 'bg-red-50 dark:bg-red-950/20' : 
-              currentStatus.iconType === 'delivered' ? 'bg-green-50 dark:bg-green-950/20' : 
-              'bg-red-50 dark:bg-red-950/20'
-            }`}>
-              {currentStatus.iconType === 'rider' ? (
+          <SectionItem
+            iconNode={
+              currentStatus.iconType === 'rider' ? (
                 <div 
                   dangerouslySetInnerHTML={{ __html: RIDER_BIKE_SVG.replace(/width="\d+"/, 'width="100%"').replace(/height="\d+"/, 'height="100%"') }} 
                   className="w-full h-full" 
                 />
               ) : currentStatus.iconType === 'cancelled' ? (
-                <div className="w-full h-full flex items-center justify-center p-2 text-red-500 dark:text-red-400">
-                  <X className="w-full h-full" />
-                </div>
+                <X className="w-5 h-5 text-red-500" />
               ) : currentStatus.iconType === 'delivered' ? (
-                <div className="w-full h-full flex items-center justify-center p-2 text-green-500 dark:text-green-400">
-                  <Check className="w-full h-full" />
-                </div>
+                <Check className="w-5 h-5 text-green-500" />
               ) : (
                 <img
                   src={circleIcon}
                   alt={currentStatus.title}
-                  className="w-10 h-10 object-contain"
+                  className="w-7 h-7 object-contain"
                 />
-              )}
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-gray-900 dark:text-white leading-tight">{currentStatus.title}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 leading-snug">{currentStatus.subtitle}</p>
-            </div>
-          </div>
+              )
+            }
+            iconBgClass={
+              currentStatus.iconType === 'rider' ? 'bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-950/50' : 
+              currentStatus.iconType === 'cancelled' ? 'bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/50' : 
+              currentStatus.iconType === 'delivered' ? 'bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-950/50' : 
+              'bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/50'
+            }
+            title={currentStatus.title}
+            subtitle={currentStatus.subtitle}
+            showArrow={false}
+            noTruncate={true}
+          />
         </motion.div>
 
         {refundOverrideReason && (
@@ -2328,15 +2325,16 @@ export default function OrderTracking() {
                 className="w-6 h-6 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
               />
             }
-            title="Order placed from location"
+            iconBgClass="bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-950/50"
+            title="Your Address"
             subtitle={(() => {
               // Priority 1: Use order address formattedAddress (live location address)
+              let fullAddr = 'Order location not available'
               if (order?.address?.formattedAddress && order.address.formattedAddress !== "Select location") {
-                return order.address.formattedAddress
+                fullAddr = order.address.formattedAddress
               }
-
               // Priority 2: Build full address from order address parts
-              if (order?.address) {
+              else if (order?.address) {
                 const orderAddressParts = []
                 if (order.address.street) orderAddressParts.push(order.address.street)
                 if (order.address.additionalDetails) orderAddressParts.push(order.address.additionalDetails)
@@ -2344,17 +2342,15 @@ export default function OrderTracking() {
                 if (order.address.state) orderAddressParts.push(order.address.state)
                 if (order.address.zipCode) orderAddressParts.push(order.address.zipCode)
                 if (orderAddressParts.length > 0) {
-                  return orderAddressParts.join(', ')
+                  fullAddr = orderAddressParts.join(', ')
                 }
               }
-
               // Priority 3: Use defaultAddress formattedAddress (live location address)
-              if (defaultAddress?.formattedAddress && defaultAddress.formattedAddress !== "Select location") {
-                return defaultAddress.formattedAddress
+              else if (defaultAddress?.formattedAddress && defaultAddress.formattedAddress !== "Select location") {
+                fullAddr = defaultAddress.formattedAddress
               }
-
               // Priority 4: Build full address from defaultAddress parts
-              if (defaultAddress) {
+              else if (defaultAddress) {
                 const defaultAddressParts = []
                 if (defaultAddress.street) defaultAddressParts.push(defaultAddress.street)
                 if (defaultAddress.additionalDetails) defaultAddressParts.push(defaultAddress.additionalDetails)
@@ -2362,13 +2358,20 @@ export default function OrderTracking() {
                 if (defaultAddress.state) defaultAddressParts.push(defaultAddress.state)
                 if (defaultAddress.zipCode) defaultAddressParts.push(defaultAddress.zipCode)
                 if (defaultAddressParts.length > 0) {
-                  return defaultAddressParts.join(', ')
+                  fullAddr = defaultAddressParts.join(', ')
                 }
               }
 
-              return 'Order location not available'
+              const userPhone = order?.user?.phone || order?.userPhone || profile?.phone || ""
+              return (
+                <span className="block whitespace-pre-line mt-1">
+                  {fullAddr}
+                  {userPhone && <span className="block mt-1 text-xs text-gray-500 font-medium">Phone: {userPhone}</span>}
+                </span>
+              )
             })()}
             showArrow={false}
+            noTruncate={true}
           />
         </motion.div>
 
@@ -2379,25 +2382,28 @@ export default function OrderTracking() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.75 }}
         >
-          <div className="flex items-center gap-3 p-4 border-b border-dashed border-gray-200 dark:border-gray-800">
-            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/20 overflow-hidden flex items-center justify-center flex-shrink-0">
+          <SectionItem
+            iconNode={
               <div
                 dangerouslySetInnerHTML={{ __html: SAFE_RESTAURANT_PIN }}
                 className="w-7 h-7 [&_svg]:w-full [&_svg]:h-full [&_svg]:block"
               />
-            </div>
-            <div className="flex-1">
-              <p className="font-semibold text-gray-900 dark:text-white">{order.restaurant}</p>
-              <p className="text-sm text-gray-500 dark:text-gray-400">{order.restaurantAddress || 'Restaurant location'}</p>
-            </div>
-            <motion.button
-              className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center"
-              onClick={handleCallRestaurant}
-              whileTap={{ scale: 0.9 }}
-            >
-              <Phone className="w-5 h-5" style={{ color: RED }} />
-            </motion.button>
-          </div>
+            }
+            iconBgClass="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-950/50"
+            title={order.restaurant}
+            subtitle={order.restaurantAddress || 'Restaurant location'}
+            showArrow={false}
+            noTruncate={true}
+            rightContent={
+              <motion.button
+                className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center flex-shrink-0"
+                onClick={handleCallRestaurant}
+                whileTap={{ scale: 0.9 }}
+              >
+                <Phone className="w-5 h-5" style={{ color: RED }} />
+              </motion.button>
+            }
+          />
 
           {/* Order Items */}
           <div
@@ -2408,10 +2414,12 @@ export default function OrderTracking() {
               <div className="flex-1">
                 <div className="mt-2 space-y-1">
                   {order?.items?.map((item, index) => (
-                    <div key={index} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                      <span className={`w-4 h-4 rounded border ${item.isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center`}>
-                        <span className={`w-2 h-2 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
-                      </span>
+                    <div key={index} className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                      <div className="w-12 flex justify-center flex-shrink-0">
+                        <span className={`w-4 h-4 rounded border ${item.isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center flex-shrink-0`}>
+                          <span className={`w-2 h-2 rounded-full ${item.isVeg ? 'bg-[#00c87e]' : 'bg-red-600'}`} />
+                        </span>
+                      </div>
                       <span>{formatOrderItemQuantityLabel(item)}</span>
                     </div>
                   ))}
