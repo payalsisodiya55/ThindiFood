@@ -3372,7 +3372,7 @@ export default function Home() {
                       setSortBy(null);
                       setSelectedCuisine(null);
                     }}
-                    className="text-[#EB590E] font-medium text-sm">
+                    className="text-[#EB590E] font-medium text-sm px-3 py-1.5 rounded-lg border border-[#EB590E]/40 hover:bg-[#FFF2EB] transition-colors">
                     Clear all
                   </button>
                 </div>
@@ -3380,12 +3380,11 @@ export default function Home() {
                 {/* Body */}
                 <div className="flex flex-1 overflow-hidden">
                   {/* Left Sidebar - Tabs */}
-                  <div className="w-24 sm:w-28 bg-gray-50 dark:bg-[#0a0a0a] border-r dark:border-gray-800 flex flex-col">
+                  <div className="w-24 sm:w-28 bg-gray-50 dark:bg-[#0a0a0a] border-r dark:border-gray-800 flex flex-col overflow-y-auto">
                     {[
                       { id: "sort", label: "Sort By", icon: ArrowDownUp },
-                      { id: "time", label: "Time", icon: Timer },
+                      { id: "restrictions", label: "Restrictions", icon: Clock },
                       { id: "rating", label: "Rating", icon: Star },
-                      { id: "distance", label: "Distance", icon: MapPin },
                       { id: "price", label: "Dish Price", icon: IndianRupee },
                       {
                         id: "cuisine",
@@ -3404,6 +3403,7 @@ export default function Home() {
                           key={tab.id}
                           onClick={() => {
                             setActiveFilterTab(tab.id);
+                            setActiveScrollSection(tab.id);
                             const section = filterSectionRefs.current[tab.id];
                             if (section) {
                               section.scrollIntoView({
@@ -3466,15 +3466,18 @@ export default function Home() {
                       </div>
                     </div>
 
-                    {/* Time Tab */}
+                    {/* Restrictions Tab - Time + Distance combined */}
                     <div
-                      ref={(el) => (filterSectionRefs.current["time"] = el)}
-                      data-section-id="time"
+                      ref={(el) => (filterSectionRefs.current["restrictions"] = el)}
+                      data-section-id="restrictions"
                       className="space-y-4 mb-8">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Estimated Time
+                        Restrictions
                       </h3>
-                      <div className="grid grid-cols-2 gap-3">
+
+                      {/* Time sub-section */}
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Estimated Time</p>
+                      <div className="grid grid-cols-2 gap-3 mb-4">
                         <button
                           onClick={() => toggleFilter("delivery-under-30")}
                           className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
@@ -3508,6 +3511,43 @@ export default function Home() {
                           </span>
                         </button>
                       </div>
+
+                      {/* Distance sub-section */}
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 mb-2">Distance</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={() => toggleFilter("distance-under-1km")}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
+                            activeFilters.has("distance-under-1km")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <MapPin
+                            className={`h-6 w-6 ${activeFilters.has("distance-under-1km") ? "text-[#EB590E]" : "text-gray-600 dark:text-gray-400"}`}
+                            strokeWidth={1.5}
+                          />
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("distance-under-1km") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            Under 1 km
+                          </span>
+                        </button>
+                        <button
+                          onClick={() => toggleFilter("distance-under-2km")}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
+                            activeFilters.has("distance-under-2km")
+                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
+                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
+                          }`}>
+                          <MapPin
+                            className={`h-6 w-6 ${activeFilters.has("distance-under-2km") ? "text-[#EB590E]" : "text-gray-600 dark:text-gray-400"}`}
+                            strokeWidth={1.5}
+                          />
+                          <span
+                            className={`text-sm font-medium ${activeFilters.has("distance-under-2km") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
+                            Under 2 km
+                          </span>
+                        </button>
+                      </div>
                     </div>
 
                     {/* Rating Tab */}
@@ -3515,7 +3555,7 @@ export default function Home() {
                       ref={(el) => (filterSectionRefs.current["rating"] = el)}
                       data-section-id="rating"
                       className="space-y-4 mb-8">
-                      <h3 className="text-lg font-semibold text-gray-900  dark:text-white mb-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                         Restaurant Rating
                       </h3>
                       <div className="grid grid-cols-2 gap-3">
@@ -3562,50 +3602,6 @@ export default function Home() {
                           <span
                             className={`text-sm font-medium ${activeFilters.has("rating-45-plus") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
                             Rated 4.5+
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Distance Tab */}
-                    <div
-                      ref={(el) => (filterSectionRefs.current["distance"] = el)}
-                      data-section-id="distance"
-                      className="space-y-4 mb-8">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                        Distance
-                      </h3>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={() => toggleFilter("distance-under-1km")}
-                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                            activeFilters.has("distance-under-1km")
-                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
-                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
-                          }`}>
-                          <MapPin
-                            className={`h-6 w-6 ${activeFilters.has("distance-under-1km") ? "text-[#EB590E]" : "text-gray-600 dark:text-gray-400"}`}
-                            strokeWidth={1.5}
-                          />
-                          <span
-                            className={`text-sm font-medium ${activeFilters.has("distance-under-1km") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                            Under 1 km
-                          </span>
-                        </button>
-                        <button
-                          onClick={() => toggleFilter("distance-under-2km")}
-                          className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${
-                            activeFilters.has("distance-under-2km")
-                              ? "border-[#EB590E] bg-[#FFF2EB] dark:bg-green-900/20"
-                              : "border-gray-200 dark:border-gray-800 hover:border-[#EB590E]"
-                          }`}>
-                          <MapPin
-                            className={`h-6 w-6 ${activeFilters.has("distance-under-2km") ? "text-[#EB590E]" : "text-gray-600 dark:text-gray-400"}`}
-                            strokeWidth={1.5}
-                          />
-                          <span
-                            className={`text-sm font-medium ${activeFilters.has("distance-under-2km") ? "text-[#EB590E]" : "text-gray-700 dark:text-gray-300"}`}>
-                            Under 2 km
                           </span>
                         </button>
                       </div>
@@ -3756,7 +3752,7 @@ export default function Home() {
                 <div className="flex items-center gap-4 px-4 py-4 border-t dark:border-gray-800 bg-white dark:bg-[#1a1a1a]">
                   <button
                     onClick={() => setIsFilterOpen(false)}
-                    className="flex-1 py-3 text-center font-semibold text-gray-700 dark:text-gray-300">
+                    className="flex-1 py-3 text-center font-semibold text-gray-700 dark:text-gray-300 rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                     Close
                   </button>
                   <button

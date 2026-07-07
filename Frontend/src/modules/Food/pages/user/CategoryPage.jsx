@@ -1879,7 +1879,7 @@ export default function CategoryPage() {
                         setSortBy(null)
                         setTimeout(() => setIsLoadingFilterResults(false), 500)
                       }}
-                      className="text-[#00c87e] font-medium text-sm md:text-base hover:underline"
+                      className="text-[#00c87e] font-medium text-sm md:text-base px-3 py-1.5 rounded-lg border border-[#00c87e]/40 hover:bg-[#E6FDF4] dark:hover:bg-[#00c87e]/10 transition-colors"
                     >
                       Clear all
                     </button>
@@ -2177,7 +2177,7 @@ export default function CategoryPage() {
                   <div className="flex items-center gap-4 px-4 md:px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1a]">
                     <button
                       onClick={() => setIsFilterOpen(false)}
-                      className="flex-1 py-3 md:py-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm md:text-base"
+                      className="flex-1 py-3 md:py-4 text-center font-semibold text-gray-700 dark:text-gray-300 text-sm md:text-base rounded-xl border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       Close
                     </button>
