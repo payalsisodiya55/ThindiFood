@@ -1068,15 +1068,25 @@ export default function Home() {
   }, [startHeroBannerAutoSlide]);
 
   // Swipe handlers for hero banner carousel
+  // Swipe handlers for hero banner carousel
   const handleTouchStart = (e) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
     isSwiping.current = true;
   };
 
   const handleTouchMove = (e) => {
     touchEndX.current = e.touches[0].clientX;
     touchEndY.current = e.touches[0].clientY;
+    
+    // Prevent vertical scrolling of page when swiping horizontally
+    const deltaX = Math.abs(touchEndX.current - touchStartX.current);
+    const deltaY = Math.abs(touchEndY.current - touchStartY.current);
+    if (deltaX > deltaY && deltaX > 10) {
+      if (e.cancelable) e.preventDefault();
+    }
   };
 
   const handleTouchEnd = () => {
@@ -1084,7 +1094,13 @@ export default function Home() {
 
     const deltaX = touchEndX.current - touchStartX.current;
     const deltaY = Math.abs(touchEndY.current - touchStartY.current);
-    const minSwipeDistance = 50; // Minimum distance for a swipe
+    const minSwipeDistance = 30; // Reduced to make swiping feel extra responsive
+
+    // If swipe distance is very small, treat it as a tap/click and do not slide
+    if (Math.abs(deltaX) <= minSwipeDistance) {
+      isSwiping.current = false;
+      return;
+    }
 
     // Check if it's a horizontal swipe (not vertical scroll)
     if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > deltaY) {
@@ -1118,6 +1134,8 @@ export default function Home() {
   const handleMouseDown = (e) => {
     touchStartX.current = e.clientX;
     touchStartY.current = e.clientY;
+    touchEndX.current = e.clientX;
+    touchEndY.current = e.clientY;
     isSwiping.current = true;
   };
 
@@ -1132,7 +1150,12 @@ export default function Home() {
 
     const deltaX = touchEndX.current - touchStartX.current;
     const deltaY = Math.abs(touchEndY.current - touchStartY.current);
-    const minSwipeDistance = 50;
+    const minSwipeDistance = 30;
+
+    if (Math.abs(deltaX) <= minSwipeDistance) {
+      isSwiping.current = false;
+      return;
+    }
 
     if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaX) > deltaY) {
       if (deltaX > 0) {
