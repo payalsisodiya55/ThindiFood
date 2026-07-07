@@ -1005,7 +1005,7 @@ export default function AddressSelectorPage() {
             </div>
           </div>
 
-          <div className="relative bg-white dark:bg-[#0a0a0a] rounded-t-[32px] -mt-8 z-10 p-4 space-y-6 shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.1)]">
+          <div className="relative bg-white dark:bg-[#0a0a0a] rounded-t-[32px] -mt-8 z-10 p-4 pb-32 space-y-6 shadow-[0_-12px_24px_-10px_rgba(0,0,0,0.1)]">
             <div className="bg-emerald-50/50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 rounded-xl p-4 flex gap-3">
                <MapPin className="h-5 w-5 text-[#00c87e] mt-0.5" />
                <div className="min-w-0">
@@ -1096,7 +1096,7 @@ export default function AddressSelectorPage() {
         </div>
 
         <div
-          className="fixed left-0 right-0 px-4 pt-4 bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 transition-[bottom] duration-150"
+          className="fixed left-0 right-0 px-4 pt-4 bg-white dark:bg-[#1a1a1a] border-t dark:border-gray-800 transition-[bottom] duration-150 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]"
           style={{ 
             bottom: `${keyboardInset}px`,
             paddingBottom: keyboardInset > 0 ? '1rem' : 'calc(2rem + env(safe-area-inset-bottom, 16px))'
