@@ -1806,6 +1806,11 @@ function RestaurantDetailsContent() {
 
   // Handle share restaurant
   const handleShareRestaurant = async () => {
+    const availability = getRestaurantAvailabilityStatus(restaurant)
+    if (!availability.isOpen) {
+      toast.error("Share option is unavailable when restaurant is offline.")
+      return
+    }
     const companyName = await getCompanyNameAsync()
     const restaurantSlug = restaurant?.slug || slug || ""
     const restaurantName = restaurant?.name || "this restaurant"
@@ -1841,6 +1846,11 @@ function RestaurantDetailsContent() {
 
   // Handle share click
   const handleShareClick = async (item) => {
+    const availability = getRestaurantAvailabilityStatus(restaurant)
+    if (!availability.isOpen) {
+      toast.error("Share option is unavailable when restaurant is offline.")
+      return
+    }
     const dishId = item.id || item._id
     const restaurantSlug = restaurant?.slug || slug || ""
 
@@ -2442,7 +2452,8 @@ function RestaurantDetailsContent() {
             <Button
               variant="outline"
               size="icon"
-              className="rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white"
+              disabled={isRestaurantOffline}
+              className={`rounded-full h-10 w-10 shadow-sm ${isRestaurantOffline ? "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#111111] text-gray-400 dark:text-gray-600 opacity-50 cursor-not-allowed" : "border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white"}`}
               onClick={handleShareRestaurant}
             >
               <Share2 className="h-5 w-5" />
@@ -2958,7 +2969,8 @@ function RestaurantDetailsContent() {
                                         e.stopPropagation()
                                         handleShareClick(item)
                                       }}
-                                      className="p-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                      disabled={isRestaurantOffline}
+                                      className={`p-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 transition-colors ${isRestaurantOffline ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
                                     >
                                       <Share2 size={14} />
                                     </button>
@@ -3228,7 +3240,8 @@ function RestaurantDetailsContent() {
                                                   e.stopPropagation()
                                                   handleShareClick(item)
                                                 }}
-                                                className="p-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                                                disabled={isRestaurantOffline}
+                                                className={`p-1 border border-gray-300 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 transition-colors ${isRestaurantOffline ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-800" : "hover:bg-gray-50 dark:hover:bg-gray-800"}`}
                                               >
                                                 <Share2 size={14} />
                                               </button>
@@ -3827,7 +3840,8 @@ function RestaurantDetailsContent() {
                           e.stopPropagation()
                           handleShareClick(selectedItem)
                         }}
-                        className="h-10 w-10 rounded-full border border-white dark:border-gray-800 bg-white/90 dark:bg-[#1a1a1a]/90 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#2a2a2a] flex items-center justify-center transition-colors"
+                        disabled={isRestaurantOffline}
+                        className={`h-10 w-10 rounded-full border flex items-center justify-center transition-colors ${isRestaurantOffline ? "border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-[#1a1a1a]/50 text-gray-400 dark:text-gray-600 opacity-50 cursor-not-allowed" : "border-white dark:border-gray-800 bg-white/90 dark:bg-[#1a1a1a]/90 text-gray-600 dark:text-gray-300 hover:bg-white dark:hover:bg-[#2a2a2a]"}`}
                       >
                         <Share2 className="h-5 w-5" />
                       </button>
@@ -4340,8 +4354,9 @@ function RestaurantDetailsContent() {
 
                       {/* Share this restaurant */}
                       <button
-                        className="w-full flex items-center gap-4 px-2 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
+                        className={`w-full flex items-center gap-4 px-2 py-3 rounded-lg text-left ${isRestaurantOffline ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"}`}
                         onClick={handleShareRestaurant}
+                        disabled={isRestaurantOffline}
                       >
                         <Share2 className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                         <span className="text-base text-gray-900 dark:text-white">Share this restaurant</span>
