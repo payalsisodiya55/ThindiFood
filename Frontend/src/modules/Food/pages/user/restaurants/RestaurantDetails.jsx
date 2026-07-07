@@ -2429,6 +2429,7 @@ function RestaurantDetailsContent() {
                 </div>
               </div>
             )}
+              {/* Bookmark button - commented out
             <Button
               variant="outline"
               size="icon"
@@ -2441,7 +2442,9 @@ function RestaurantDetailsContent() {
             >
               <Bookmark className={`h-5 w-5 ${isFavorite(restaurant?.slug || slug || "") ? "fill-current" : ""}`} />
             </Button>
+            */}
 
+              {/* Share button - commented out
             <Button
               variant="outline"
               size="icon"
@@ -2451,6 +2454,7 @@ function RestaurantDetailsContent() {
             >
               <Share2 className="h-5 w-5" />
             </Button>
+            */}
 
             <Button
               variant="outline"
@@ -2941,7 +2945,7 @@ function RestaurantDetailsContent() {
                                     <p className="text-[11px] md:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
                                   )}
 
-                                  {/* Mobile-only action buttons */}
+                                  {/* Mobile-only action buttons - commented out
                                   <div className="flex gap-2 mt-2 md:hidden">
                                     <button
                                       type="button"
@@ -2972,6 +2976,7 @@ function RestaurantDetailsContent() {
                                       <Share2 size={14} />
                                     </button>
                                   </div>
+                                  */}
                                 </div>
                               </div>
                             </div>
@@ -3212,7 +3217,7 @@ function RestaurantDetailsContent() {
                                               <p className="text-[11px] md:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{item.description}</p>
                                             )}
 
-                                            {/* Mobile-only action buttons */}
+                                            {/* Mobile-only action buttons - commented out
                                             <div className="flex gap-2 mt-2 md:hidden">
                                               <button
                                                 type="button"
@@ -3243,6 +3248,7 @@ function RestaurantDetailsContent() {
                                                 <Share2 size={14} />
                                               </button>
                                             </div>
+                                            */}
                                           </div>
                                         </div>
                                       </div>
@@ -4330,7 +4336,7 @@ function RestaurantDetailsContent() {
                   <div className="flex-1 overflow-y-auto px-4 py-4">
                     {/* Menu Options List */}
                     <div className="space-y-1">
-                      {/* Add to Collection */}
+                      {/* Add to Collection - commented out
                       <button
                         className="w-full flex items-center gap-4 px-2 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors text-left"
                         onClick={handleAddToCollection}
@@ -4340,8 +4346,9 @@ function RestaurantDetailsContent() {
                           {isFavorite(restaurant?.slug || slug || "") ? "Remove from Collection" : "Add to Collection"}
                         </span>
                       </button>
+                      */}
 
-                      {/* Share this restaurant */}
+                      {/* Share this restaurant - commented out
                       <button
                         className={`w-full flex items-center gap-4 px-2 py-3 rounded-lg text-left ${isRestaurantOffline ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"}`}
                         onClick={handleShareRestaurant}
@@ -4350,6 +4357,7 @@ function RestaurantDetailsContent() {
                         <Share2 className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                         <span className="text-base text-gray-900 dark:text-white">Share this restaurant</span>
                       </button>
+                      */}
 
                     </div>
 
