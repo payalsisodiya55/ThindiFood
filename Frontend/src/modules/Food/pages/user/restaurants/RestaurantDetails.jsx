@@ -2169,22 +2169,7 @@ function RestaurantDetailsContent() {
         return hasVisibleItems || hasVisibleSubsections
       })
 
-    if (!filters.sortBy) {
-      return visibleSections
-    }
-
-    return [...visibleSections].sort((left, right) => {
-      const leftValue = getSectionSortValue(left.section)
-      const rightValue = getSectionSortValue(right.section)
-
-      if (leftValue == null && rightValue == null) return 0
-      if (leftValue == null) return 1
-      if (rightValue == null) return -1
-
-      return filters.sortBy === "low-to-high"
-        ? leftValue - rightValue
-        : rightValue - leftValue
-    })
+    return visibleSections
   }
 
   const hasActiveMenuFilters = Boolean(

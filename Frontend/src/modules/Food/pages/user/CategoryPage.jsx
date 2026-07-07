@@ -1116,11 +1116,43 @@ export default function CategoryPage() {
   const toggleFilter = (filterId) => {
     setActiveFilters(prev => {
       const newSet = new Set(prev)
+      const distanceFilters = ['distance-under-1km', 'distance-under-2km']
+      const priceFilters = ['price-under-200', 'under-250', 'price-under-500']
+      const ratingFilters = ['rating-35-plus', 'rating-4-plus', 'rating-45-plus']
+      const timeFilters = ['under-30-mins', 'delivery-under-45']
+      const offerFilters = ['flat-50-off', 'price-match']
+      const trustFilters = ['top-rated', 'trusted']
+      const sortFilters = ['price-low', 'price-high', 'rating-high', 'rating-low']
+
+      const filterGroups = [
+        distanceFilters,
+        priceFilters,
+        ratingFilters,
+        timeFilters,
+        offerFilters,
+        trustFilters,
+        sortFilters
+      ]
+
+      for (const group of filterGroups) {
+        if (group.includes(filterId)) {
+          if (newSet.has(filterId)) {
+            newSet.delete(filterId)
+          } else {
+            group.forEach(f => newSet.delete(f))
+            newSet.add(filterId)
+          }
+          return newSet
+        }
+      }
+
+      // For any other standalone filters
       if (newSet.has(filterId)) {
         newSet.delete(filterId)
       } else {
         newSet.add(filterId)
       }
+
       return newSet
     })
     // Show loading when filter is toggled
