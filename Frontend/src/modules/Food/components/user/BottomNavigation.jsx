@@ -22,16 +22,21 @@ export default function BottomNavigation() {
   }, [])
 
   // Check active routes
-  const isDining = pathname === "/dining" || pathname.startsWith("/dining/") || pathname === "/food/dining" || pathname.startsWith("/food/user/dining")
-  const isProfile = pathname.startsWith("/profile") || pathname.startsWith("/food/profile") || pathname.startsWith("/food/user/profile")
-  const isDelivery = pathname === "/food/user/delivery" || pathname === "/food/delivery" || pathname === "/delivery"
+  const isDining = pathname === "/dining" || pathname.startsWith("/dining/") || pathname === "/food/dining" || pathname.startsWith("/food/user/dining") || pathname.startsWith("/user/dining")
+  const isProfile = pathname.startsWith("/profile") || pathname.startsWith("/food/profile") || pathname.startsWith("/food/user/profile") || pathname.startsWith("/user/profile")
+  const isDelivery = pathname === "/food/user/delivery" || pathname === "/food/delivery" || pathname === "/delivery" || pathname === "/user/delivery"
   const isTakeaway = !isDining && !isProfile && !isDelivery && (
     pathname === "/" ||
     pathname === "" ||
     pathname === "/food" ||
     pathname === "/food/" ||
     pathname === "/food/user" ||
+    pathname === "/user" ||
     (pathname.startsWith("/food/user") &&
+      !pathname.includes("/dining") &&
+      !pathname.includes("/profile") &&
+      !pathname.includes("/delivery")) ||
+    (pathname.startsWith("/user") &&
       !pathname.includes("/dining") &&
       !pathname.includes("/profile") &&
       !pathname.includes("/delivery"))

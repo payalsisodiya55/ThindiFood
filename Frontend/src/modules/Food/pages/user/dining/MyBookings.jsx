@@ -191,7 +191,7 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                 <div className="p-5 border-b border-slate-100 dark:border-[#222222] flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#808080]">Reservation Details</p>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white mt-1 break-words">{booking.restaurant?.name}</h3>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white mt-1 break-words break-all">{booking.restaurant?.name}</h3>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-[#252525] transition-colors flex-shrink-0 ml-4">
                         <X className="w-5 h-5 text-slate-400" />
