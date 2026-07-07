@@ -163,6 +163,14 @@ function RestaurantDetailsContent() {
   const [selectedMenuCategory, setSelectedMenuCategory] = useState("all")
   const [highlyReorderedIds, setHighlyReorderedIds] = useState(new Set())
   const [showInfoPopover, setShowInfoPopover] = useState(false)
+  const [popupQty, setPopupQty] = useState(1)
+
+  useEffect(() => {
+    if (selectedItem) {
+      const currentCartQty = getDishQuantity(selectedItem, selectedVariantId)
+      setPopupQty(currentCartQty > 0 ? currentCartQty : 1)
+    }
+  }, [selectedItem, selectedVariantId, quantities])
   const dishCardRefs = useRef({})
 
   const getLineItemIdForDish = (item, variant = null) =>
@@ -2459,7 +2467,9 @@ function RestaurantDetailsContent() {
       {/* Main Content Card */}
       <div className="bg-white dark:bg-[#1a1a1a] rounded-t-3xl relative z-10 min-h-[40vh]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-5 md:py-6 lg:py-8 space-y-3 md:space-y-4 lg:space-y-5 pb-0">
-          {/* Restaurant Name and Rating */}
+          {!searchQuery.trim() && (
+            <>
+              {/* Restaurant Name and Rating */}
           <div className="flex items-start justify-between relative">
             <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words break-all min-w-0">{restaurant?.name || "Unknown Restaurant"}</h1>
@@ -2696,7 +2706,9 @@ function RestaurantDetailsContent() {
               </div>
             )}
           </div>
-        </div>
+          </>
+        )}
+      </div>
 
         {/* Menu Items Section */}
         {restaurant?.menuSections && Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0 && (
@@ -3929,15 +3941,10 @@ function RestaurantDetailsContent() {
                         <button
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
-                              updateItemQuantity(
-                                selectedItem,
-                                Math.max(0, getDishQuantity(selectedItem, selectedVariantId) - 1),
-                                e,
-                                getVariantForDish(selectedItem, selectedVariantId),
-                              )
+                              setPopupQty(prev => Math.max(0, prev - 1))
                             }
                           }}
-                          disabled={getDishQuantity(selectedItem, selectedVariantId) === 0 || shouldShowGrayscale}
+                          disabled={popupQty === 0 || shouldShowGrayscale}
                           className={`${shouldShowGrayscale
                             ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
@@ -3949,18 +3956,12 @@ function RestaurantDetailsContent() {
                           ? 'text-gray-400 dark:text-gray-600'
                           : 'text-gray-900 dark:text-white'
                           }`}>
-                          {getDishQuantity(selectedItem, selectedVariantId) || 1}
+                          {popupQty}
                         </span>
                         <button
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
-                              const currentQty = getDishQuantity(selectedItem, selectedVariantId);
-                              updateItemQuantity(
-                                selectedItem,
-                                currentQty === 0 ? 2 : currentQty + 1,
-                                e,
-                                getVariantForDish(selectedItem, selectedVariantId),
-                              )
+                              setPopupQty(prev => prev + 1)
                             }
                           }}
                           disabled={shouldShowGrayscale}
@@ -3981,10 +3982,9 @@ function RestaurantDetailsContent() {
                           }`}
                         onClick={(e) => {
                           if (!shouldShowGrayscale) {
-                            const currentQty = getDishQuantity(selectedItem, selectedVariantId);
                             updateItemQuantity(
                               selectedItem,
-                              currentQty === 0 ? 1 : currentQty + 1,
+                              popupQty,
                               e,
                               getVariantForDish(selectedItem, selectedVariantId),
                             )
@@ -3993,7 +3993,7 @@ function RestaurantDetailsContent() {
                         }}
                         disabled={shouldShowGrayscale}
                       >
-                        <span>Add item</span>
+                        <span>{popupQty === 0 ? "Remove item" : "Add item"}</span>
                         <div className="flex items-center gap-1">
                           {selectedItem.offer && (
                             <span className="text-sm line-through text-red-100 opacity-70">
