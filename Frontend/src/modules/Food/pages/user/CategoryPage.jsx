@@ -1122,14 +1122,35 @@ export default function CategoryPage() {
   }, [selectedCategory, categories])
 
   const toggleFilter = (filterId) => {
+    const distanceFilters = ['distance-under-1km', 'distance-under-2km']
+    const priceFilters = ['price-under-200', 'under-250', 'price-under-500']
+    const ratingFilters = ['rating-35-plus', 'rating-4-plus', 'rating-45-plus']
+    const timeFilters = ['under-30-mins', 'delivery-under-45']
+    const offerFilters = ['flat-50-off', 'price-match']
+    const trustFilters = ['top-rated', 'trusted']
+
+    if (distanceFilters.includes(filterId)) {
+      setActiveFilterTab('distance')
+      setActiveScrollSection('distance')
+    } else if (priceFilters.includes(filterId)) {
+      setActiveFilterTab('price')
+      setActiveScrollSection('price')
+    } else if (ratingFilters.includes(filterId)) {
+      setActiveFilterTab('rating')
+      setActiveScrollSection('rating')
+    } else if (timeFilters.includes(filterId)) {
+      setActiveFilterTab('time')
+      setActiveScrollSection('time')
+    } else if (offerFilters.includes(filterId)) {
+      setActiveFilterTab('offers')
+      setActiveScrollSection('offers')
+    } else if (trustFilters.includes(filterId)) {
+      setActiveFilterTab('trust')
+      setActiveScrollSection('trust')
+    }
+
     setActiveFilters(prev => {
       const newSet = new Set(prev)
-      const distanceFilters = ['distance-under-1km', 'distance-under-2km']
-      const priceFilters = ['price-under-200', 'under-250', 'price-under-500']
-      const ratingFilters = ['rating-35-plus', 'rating-4-plus', 'rating-45-plus']
-      const timeFilters = ['under-30-mins', 'delivery-under-45']
-      const offerFilters = ['flat-50-off', 'price-match']
-      const trustFilters = ['top-rated', 'trusted']
       const sortFilters = ['price-low', 'price-high', 'rating-high', 'rating-low']
 
       const filterGroups = [
@@ -1172,32 +1193,49 @@ export default function CategoryPage() {
 
   // Scroll tracking effect for filter modal
   useEffect(() => {
-    if (!isFilterOpen || !rightContentRef.current) return
+    const container = rightContentRef.current
+    if (!isFilterOpen || !container) return
 
-    const observerOptions = {
-      root: rightContentRef.current,
-      rootMargin: '-10% 0px -60% 0px',
-      threshold: 0
+    const handleScroll = () => {
+      if (isScrollingRef.current) return
+
+      const containerTop = container.getBoundingClientRect().top
+      let activeId = 'sort'
+
+      // We determine which section is active based on which one is scrolled closest to the top of the container
+      const sortedSections = Object.entries(filterSectionRefs.current)
+        .filter(([_, el]) => !!el)
+        .map(([id, el]) => {
+          const rect = el.getBoundingClientRect()
+          return { id, topDiff: rect.top - containerTop, rect }
+        })
+
+      // Find the last section whose top is at or above the container's top (with 100px threshold for early activation)
+      for (const section of sortedSections) {
+        if (section.topDiff <= 100) {
+          activeId = section.id
+        }
+      }
+
+      // Handle the bottom-reached edge case where a short section at the end cannot reach the top of the container
+      const isAtBottom = container.scrollHeight - container.scrollTop <= container.clientHeight + 10
+      if (isAtBottom && sortedSections.length > 0) {
+        activeId = sortedSections[sortedSections.length - 1].id
+      }
+
+      if (activeId) {
+        setActiveScrollSection(activeId)
+        setActiveFilterTab(activeId)
+      }
     }
 
-    const observer = new IntersectionObserver((entries) => {
-      if (isScrollingRef.current) return // Skip observer updates during tab click scrolling
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const sectionId = entry.target.getAttribute('data-section-id')
-          if (sectionId) {
-            setActiveScrollSection(sectionId)
-            setActiveFilterTab(sectionId)
-          }
-        }
-      })
-    }, observerOptions)
+    container.addEventListener('scroll', handleScroll, { passive: true })
+    // Run once initially to capture correct starting positions
+    handleScroll()
 
-    Object.values(filterSectionRefs.current).forEach(ref => {
-      if (ref) observer.observe(ref)
-    })
-
-    return () => observer.disconnect()
+    return () => {
+      container.removeEventListener('scroll', handleScroll)
+    }
   }, [isFilterOpen])
 
   const toggleFavorite = (restaurant) => {
@@ -1922,14 +1960,19 @@ export default function CategoryPage() {
                                 isScrollingRef.current = false
                               }, 800)
                             }}
-                            className={`flex flex-col items-center gap-1 py-4 px-2 text-center relative transition-colors ${isActive ? 'bg-white dark:bg-[#1a1a1a] text-[#00c87e]' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                              }`}
+                            className={`flex flex-col items-center gap-1.5 py-4 px-2 text-center relative transition-all duration-200 ${
+                              isActive
+                                ? 'bg-[#E6FDF4] dark:bg-[#00c87e]/15 text-[#00c87e]'
+                                : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                            }`}
                           >
                             {isActive && (
                               <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#00c87e] rounded-r" />
                             )}
-                            <Icon className="h-5 w-5 md:h-6 md:w-6" strokeWidth={1.5} />
-                            <span className="text-xs md:text-sm font-medium leading-tight">{tab.label}</span>
+                            <Icon className={`h-5 w-5 md:h-6 md:w-6 transition-transform duration-200 ${isActive ? 'scale-105' : ''}`} strokeWidth={isActive ? 2.5 : 1.5} />
+                            <span className={`text-[11px] md:text-xs leading-tight transition-all duration-200 ${
+                              isActive ? 'font-bold' : 'font-medium'
+                            }`}>{tab.label}</span>
                           </button>
                         )
                       })}
@@ -1954,7 +1997,11 @@ export default function CategoryPage() {
                           ].map((option) => (
                             <button
                               key={option.id || 'relevance'}
-                              onClick={() => setSortBy(option.id)}
+                              onClick={() => {
+                                setSortBy(option.id)
+                                setActiveFilterTab('sort')
+                                setActiveScrollSection('sort')
+                              }}
                               className={`px-4 md:px-5 py-3 md:py-4 rounded-xl border text-left transition-colors ${sortBy === option.id
                                 ? 'border-[#00c87e] bg-[#E6FDF4] dark:bg-[#00c87e]/20'
                                 : 'border-gray-200 dark:border-gray-700 hover:border-[#00c87e]'

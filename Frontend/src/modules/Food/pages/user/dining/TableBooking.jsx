@@ -443,7 +443,7 @@ export default function TableBooking() {
 
   return (
     <AnimatedPage className="min-h-screen bg-[#f5f6fb] dark:bg-[#0a0a0a] pb-40">
-      <div className="relative overflow-hidden px-4 pb-10 pt-5 bg-gradient-to-b from-red-500/20 via-red-500/10 to-[#f5f6fb] dark:to-[#0a0a0a]">
+      <div className="relative overflow-hidden px-4 pb-10 pt-3 bg-gradient-to-b from-red-500/20 via-red-500/10 to-[#f5f6fb] dark:to-[#0a0a0a]">
         <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.15),transparent_65%)]" />
 
         <div className="relative z-10 mx-auto max-w-md md:max-w-3xl">
@@ -454,9 +454,9 @@ export default function TableBooking() {
             <ArrowLeft className="h-5 w-5" />
           </button>
 
-          <div className="mt-6 text-center">
-            <h1 className="text-[30px] font-black tracking-tight text-[#25314a] dark:text-white">Book a table</h1>
-            <p className="mt-1 text-sm font-medium text-[#636363] dark:text-[#a0a5b5]">{restaurant.name || restaurant.restaurantName}</p>
+          <div className="mt-2 text-center">
+            <h1 className="text-[30px] font-black tracking-tight text-[#25314a] dark:text-white">Book a Table</h1>
+            <p className="mt-1 text-sm font-medium text-[#636363] dark:text-[#a0a5b5] break-all px-4">{restaurant.name || restaurant.restaurantName}</p>
           </div>
         </div>
       </div>
@@ -471,12 +471,12 @@ export default function TableBooking() {
 
         <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-[#2f3545] dark:text-white">Select number of guests</span>
+            <span className="text-sm font-medium text-[#2f3545] dark:text-white">Select Number of Guests</span>
             <div className="relative">
               <select
                 value={selectedGuests}
                 onChange={(event) => setSelectedGuests(parseInt(event.target.value, 10))}
-                className="appearance-none rounded-full bg-[#f7f7fb] dark:bg-[#252525] py-2 pl-4 pr-9 text-sm font-semibold text-[#404040] dark:text-white outline-none"
+                className="appearance-none rounded-xl border border-gray-200 dark:border-[#2b2b2b] bg-[#f7f7fb] dark:bg-[#252525] h-10 pl-3 pr-8 text-sm font-semibold text-[#404040] dark:text-white outline-none transition-all focus:border-red-500"
               >
                 {Array.from({ length: maxGuestCount }, (_, index) => index + 1).map((count) => (
                   <option key={count} value={count}>
@@ -484,13 +484,13 @@ export default function TableBooking() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#808080]" />
+              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
             </div>
           </div>
         </section>
 
         <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
-          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select date</h3>
+          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select Date</h3>
 
           <div className="mt-4 grid grid-cols-3 gap-3">
             {dates.slice(0, 3).map((date, index) => {
@@ -519,7 +519,7 @@ export default function TableBooking() {
         </section>
 
         <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
-          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select time of day</h3>
+          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select Time of Day</h3>
 
           <div className="mt-4 flex gap-2">
             {availableMealTypes.map((periodId) => {
@@ -596,10 +596,10 @@ export default function TableBooking() {
             style={canProceed ? { backgroundColor: RED } : {}}
           >
             {!isDiningEnabled
-              ? "Dining paused"
+              ? "Dining Paused"
               : canProceed
-                ? "Proceed to confirmation"
-                : "Select a time slot to proceed"}
+                ? "Proceed to Confirmation"
+                : "Select a Time Slot to Proceed"}
           </Button>
         </div>
       </div>

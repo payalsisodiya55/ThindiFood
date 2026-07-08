@@ -98,7 +98,8 @@ const formatTimeLabel = (value) => {
   if (/[ap]m/i.test(value)) return value.toUpperCase()
   const date = new Date(`2000-01-01T${String(value).padStart(5, "0")}`)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+  const formatted = date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true })
+  return formatted ? formatted.toUpperCase() : value
 }
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
@@ -388,11 +389,11 @@ export default function DiningRestaurantDetails() {
   const offerDescription = String(diningOffer?.description || "").trim()
   const offerMinBillAmount = Number(diningOffer?.minBillAmount || 0)
   const topTabs = [
-    { id: "prebook", label: "Pre-book offers", target: "restaurant-prebook" },
-    { id: "walkin", label: "Walk-in offers", target: "restaurant-prebook" },
+    { id: "prebook", label: "Pre-Book Offers", target: "restaurant-prebook" },
+    { id: "walkin", label: "Walk-In Offers", target: "restaurant-prebook" },
     { id: "menu", label: "Menu", target: "restaurant-menu" },
     { id: "photos", label: "Photos", target: "restaurant-photos" },
-    { id: "about", label: "About", target: "restaurant-about" },
+    { id: "about", label: "About the Restaurant", target: "restaurant-about" },
   ]
 
   const handleShare = async () => {
@@ -507,9 +508,13 @@ export default function DiningRestaurantDetails() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleToggleFavorite}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#51586a]/75 text-white backdrop-blur-md"
+                className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-colors ${
+                  favorite
+                    ? "bg-[#e2281b] text-white"
+                    : "bg-[#51586a]/75 text-white"
+                }`}
               >
-                <Bookmark className={`h-4 w-4 ${favorite ? "fill-current" : ""}`} />
+                <Bookmark className={`h-4 w-4 ${favorite ? "fill-white" : ""}`} />
               </button>
             </div>
           </div>
@@ -517,18 +522,18 @@ export default function DiningRestaurantDetails() {
           <div className="absolute inset-x-0 bottom-0 px-3 pb-4 text-white">
             <div className="flex items-end justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <h1 className="text-[36px] font-black leading-none tracking-[-0.03em]">{restaurantName}</h1>
-                <p className="mt-2 max-w-[94%] text-[14px] leading-5 text-white/92">{address}</p>
+                <h1 className="text-[32px] md:text-[36px] font-black leading-tight tracking-[-0.03em] break-all line-clamp-2">{restaurantName}</h1>
+                <p className="mt-2 max-w-[94%] text-[14px] leading-5 text-white/92 break-words">{address}</p>
                 <p className={`mt-2 text-[14px] text-white/90 ${!(costForTwo || cuisines) ? "hidden" : ""}`}>
                   {costForTwo}
                   <span className="mx-1.5 text-white/65">•</span>
                   {cuisines}
                 </p>
-                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-black/28 px-2.5 py-1 text-[13px] font-medium backdrop-blur-sm">
-                  <CheckCircle2 className="h-4 w-4 text-[#48d597]" />
-                  <span>{isOpenNow ? "Open now" : "Closed"}</span>
-                  <span className="text-white/70">|</span>
-                  <span>{timingLabel}</span>
+                <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-black/28 px-2.5 py-1 text-[13px] font-semibold backdrop-blur-sm whitespace-nowrap overflow-hidden max-w-full">
+                  <CheckCircle2 className="h-4 w-4 text-[#48d597] shrink-0" />
+                  <span className="shrink-0">{isOpenNow ? "OPEN" : "CLOSED"}</span>
+                  <span className="text-white/70 shrink-0">|</span>
+                  <span className="shrink-0">{timingLabel}</span>
                 </div>
               </div>
 
@@ -552,14 +557,14 @@ export default function DiningRestaurantDetails() {
             <button
               onClick={handleOpenBookingSheet}
               disabled={!isDiningAvailable}
-              className={`flex h-[52px] items-center justify-center gap-2 rounded-full border px-3 text-[15px] font-medium shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition-opacity ${
+              className={`flex h-[52px] items-center justify-center gap-2 rounded-full border text-[16px] font-bold transition-all active:scale-[0.98] ${
                 isDiningAvailable
-                  ? "border-[#f1ebee] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] text-[#2b2118] dark:text-white"
-                  : "cursor-not-allowed border-[#f2d7da] dark:border-red-950 bg-[#fff5f6] dark:bg-[#201012] text-[#c06a79] dark:text-[#a04a55] opacity-80"
+                  ? "border-[#e2281b]/35 bg-[#e2281b]/6 hover:bg-[#e2281b]/12 text-[#e2281b] shadow-[0_8px_24px_rgba(226,40,27,0.06)]"
+                  : "cursor-not-allowed border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-600"
               }`}
             >
-              <Ticket className="h-[15px] w-[15px]" style={{ color: RED }} />
-              <span>{isDiningAvailable ? "Book a table" : isDiningEnabled ? "Closed" : "Dining paused"}</span>
+              <UtensilsCrossed className="h-[16px] w-[16px]" style={{ color: isDiningAvailable ? '#e2281b' : undefined }} />
+              <span>{isDiningAvailable ? "Book a Table" : isDiningEnabled ? "Closed" : "Dining paused"}</span>
             </button>
           </div>
 
@@ -619,7 +624,7 @@ export default function DiningRestaurantDetails() {
       <div className="mx-auto max-w-md md:max-w-5xl px-4 pt-4">
         <section id="restaurant-prebook">
           <div>
-            <h2 className="text-[29px] font-black leading-none text-[#23180f] dark:text-white">Pre-book offers</h2>
+            <h2 className="text-[29px] font-black leading-none text-[#23180f] dark:text-white">Pre-Book Offers</h2>
             <p className="mt-1 text-[15px]" style={{ color: RED }}>Limited slots with extra offers</p>
           </div>
 
@@ -694,7 +699,7 @@ export default function DiningRestaurantDetails() {
         </section>
 
         <section id="restaurant-about" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
-          <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">About the restaurant</h2>
+          <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">About the Restaurant</h2>
 
           <div className="mt-4 rounded-[18px] border border-[#ececf4] dark:border-[#222222] bg-[#fafbff] dark:bg-[#121212] p-4">
             <div className="space-y-4 text-[14px] text-[#5f6474] dark:text-[#a0a5b8]">
@@ -724,7 +729,7 @@ export default function DiningRestaurantDetails() {
               <h3 className="text-[20px] font-semibold text-[#23180f] dark:text-white">Facilities</h3>
               <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
                 {facilities.slice(0, 6).map((facility) => (
-                  <div key={facility} className="flex items-center gap-2 text-[14px] text-[#5f6474] dark:text-[#a0a5b8]">
+                  <div key={facility} className="flex items-center gap-2 text-[14px] text-[#5f6474] dark:text-[#a0a5b8] font-sans font-normal">
                     <span className="inline-block h-[7px] w-[7px] rounded-full border border-[#8a8f9d] dark:border-[#5a5f6d]" />
                     <span>{facility}</span>
                   </div>
@@ -740,14 +745,13 @@ export default function DiningRestaurantDetails() {
           <Button
             onClick={handleOpenBookingSheet}
             disabled={!isDiningAvailable}
-            className={`h-12 w-full rounded-2xl border text-[17px] font-medium transition-colors ${
+            className={`h-12 w-full rounded-2xl border text-[17px] font-bold transition-all active:scale-[0.98] ${
               isDiningAvailable
-                ? "bg-white dark:bg-[#1a1a1a] hover:bg-red-50 dark:hover:bg-red-950/20"
-                : "cursor-not-allowed border-red-100 dark:border-red-950 bg-red-50 dark:bg-red-950/20 text-red-300 dark:text-red-800 opacity-80"
+                ? "border-[#e2281b]/35 bg-[#e2281b]/6 hover:bg-[#e2281b]/12 text-[#e2281b]"
+                : "cursor-not-allowed border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-600"
             }`}
-            style={isDiningAvailable ? { borderColor: RED, color: RED } : {}}
           >
-            {isDiningAvailable ? "Book a table" : isDiningEnabled ? "Closed" : "Dining paused"}
+            {isDiningAvailable ? "Book a Table" : isDiningEnabled ? "Closed" : "Dining paused"}
           </Button>
         </div>
       </div>
