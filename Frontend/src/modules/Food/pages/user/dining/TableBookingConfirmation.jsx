@@ -279,12 +279,12 @@ export default function TableBookingConfirmation() {
         <>
             <AnimatedPage className="bg-slate-50 dark:bg-[#0a0a0a] min-h-screen pb-24">
                 {/* Header */}
-                <div className="text-white px-4 py-4 sticky top-0 z-50 shadow-md" style={{ backgroundColor: RED }}>
-                    <div className="max-w-md md:max-w-3xl mx-auto flex items-center gap-3">
-                        <button onClick={goBack} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-                            <ArrowLeft className="w-6 h-6" />
+                <div className="text-white px-4 py-4.5 sticky top-0 z-50 shadow-md" style={{ backgroundColor: RED }}>
+                    <div className="max-w-md md:max-w-3xl mx-auto flex items-start gap-3">
+                        <button onClick={goBack} className="p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0 mt-[-2px]">
+                            <ArrowLeft className="w-5 h-5" />
                         </button>
-                        <p className="font-semibold text-sm">Reach the restaurant 15 minutes before your booking time for a hassle-free experience</p>
+                        <p className="font-bold text-[15px] leading-snug">Arrive 15mins early for hassle-free experience</p>
                     </div>
                 </div>
 
@@ -310,7 +310,7 @@ export default function TableBookingConfirmation() {
                                     <Calendar className="w-5 h-5" style={{ color: RED }} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-gray-900 dark:text-white">{formattedDate} at {timeSlot}</p>
+                                    <p className="font-bold text-gray-900 dark:text-white">{formattedDate} at {String(timeSlot || "").toUpperCase()}</p>
                                     <div className="flex items-center gap-2 text-gray-500 dark:text-[#a0a5b8] text-sm mt-0.5">
                                         <Users className="w-4 h-4" />
                                         <span>{guests} guests</span>
@@ -323,7 +323,7 @@ export default function TableBookingConfirmation() {
                                     <MapPin className="w-5 h-5 text-red-500" />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-gray-900 dark:text-white">{restaurant.name}</p>
+                                    <p className="text-[17px] font-extrabold text-gray-900 dark:text-white leading-snug break-all">{restaurant.name}</p>
                                     <p className="text-gray-500 dark:text-[#a0a5b8] text-xs mt-0.5 line-clamp-1">
                                         {typeof restaurant.location === 'string'
                                             ? restaurant.location

@@ -456,7 +456,7 @@ export default function TableBooking() {
 
           <div className="mt-2 text-center">
             <h1 className="text-[30px] font-black tracking-tight text-[#25314a] dark:text-white">Book a Table</h1>
-            <p className="mt-1 text-sm font-medium text-[#636363] dark:text-[#a0a5b5] break-all px-4">{restaurant.name || restaurant.restaurantName}</p>
+            <p className="mt-1.5 text-base md:text-lg font-bold text-slate-800 dark:text-slate-200 break-all px-4 leading-tight">{restaurant.name || restaurant.restaurantName}</p>
           </div>
         </div>
       </div>
@@ -558,28 +558,19 @@ export default function TableBooking() {
                   <button
                     key={slot}
                     onClick={() => setSelectedSlot(slot)}
-                    className={`rounded-[16px] border px-3 py-4 text-center transition-colors ${
+                    className={`rounded-[16px] border px-3 py-3 text-center transition-colors ${
                       active
                         ? "bg-red-50 dark:bg-[#2d1215] border-red-500"
                         : "border-[#ececf2] dark:border-[#2b2b2b] bg-white dark:bg-[#222222]"
                     }`}
                     style={active ? { borderColor: RED } : {}}
                   >
-                    <span className="block text-sm font-medium text-[#334155] dark:text-white">{slot}</span>
-                    <span className="mt-1 block text-xs font-medium" style={{ color: RED }}>
-                      {getOfferLabel(selectedMealPeriod)}
-                    </span>
+                    <span className="block text-sm font-semibold text-[#334155] dark:text-white">{slot}</span>
                   </button>
                 )
               })
             )}
           </div>
-        </section>
-
-        <section className="rounded-[18px] bg-white dark:bg-[#1a1a1a] px-4 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.05)] dark:border dark:border-[#222222]">
-          <p className="text-sm text-[#6f7687] dark:text-[#a0a5b8]">
-            Select your preferred time slot to view available booking options
-          </p>
         </section>
       </div>
 
