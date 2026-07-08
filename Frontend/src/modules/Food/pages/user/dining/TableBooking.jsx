@@ -54,10 +54,10 @@ const buildDates = (count = 7) =>
 
 const formatTimeValue = (value) => {
   if (!value) return null
-  if (/[ap]m/i.test(value)) return String(value).trim().toLowerCase()
+  if (/[ap]m/i.test(value)) return String(value).trim().toUpperCase()
   const date = new Date(`2000-01-01T${String(value).padStart(5, "0")}`)
   if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }).toLowerCase()
+  return date.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true }).toUpperCase()
 }
 
 const parseTimeToMinutes = (value) => {
@@ -490,7 +490,7 @@ export default function TableBooking() {
         </section>
 
         <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
-          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select Date</h3>
+          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select a Date</h3>
 
           <div className="mt-4 grid grid-cols-3 gap-3">
             {dates.slice(0, 3).map((date, index) => {
@@ -519,7 +519,7 @@ export default function TableBooking() {
         </section>
 
         <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
-          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select Time of Day</h3>
+          <h3 className="text-sm font-medium text-[#2f3545] dark:text-white">Select a Time</h3>
 
           <div className="mt-4 flex gap-2">
             {availableMealTypes.map((periodId) => {
