@@ -12,7 +12,7 @@ import { FaLocationDot } from "react-icons/fa6"
 import { diningAPI, dineInAPI } from "@food/api"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import { RED } from "../../constants/color"
-import { Calendar, Users, X, AlertTriangle } from "lucide-react"
+import { Calendar, Users, X, AlertTriangle, Eye, Phone } from "lucide-react"
 import { toast } from "sonner"
 import { Badge } from "@food/components/ui/badge"
 
@@ -60,7 +60,7 @@ const formatCategoryHeading = (category) =>
 
 const getStatusLabel = (status) => {
   const key = String(status || "").toUpperCase()
-  if (key === "PENDING") return "PENDING"
+  if (key === "PENDING") return "Awaiting Restaurant Confirmation"
   if (key === "CONFIRMED" || key === "ACCEPTED") return "CONFIRMED"
   if (key === "CHECKED_IN") return "TABLE READY"
   if (key === "COMPLETED") return "COMPLETED"
@@ -139,7 +139,7 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Date</p>
-              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
+              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{`${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`}</p>
             </div>
             <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Time</p>
@@ -209,14 +209,18 @@ function CancelConfirmationModal({ booking, onClose, onConfirm, loading }) {
         </div>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
-          <Button onClick={onClose} variant="outline" className="h-12 rounded-2xl border-slate-200 text-slate-700 dark:border-gray-800 dark:text-gray-300">
+          <Button
+            onClick={onClose}
+            className="h-12 rounded-2xl text-white font-bold"
+            style={{ backgroundColor: RED }}
+          >
             No, Keep it
           </Button>
           <Button
             onClick={() => onConfirm(booking)}
             disabled={loading}
-            className="h-12 rounded-2xl text-white font-bold"
-            style={{ backgroundColor: RED }}
+            variant="outline"
+            className="h-12 rounded-2xl border-red-500 text-red-500 font-bold hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/20"
           >
             {loading ? "Cancelling..." : "Yes, Cancel"}
           </Button>
@@ -268,11 +272,12 @@ export default function DiningCategory() {
                 address: formatAddress(restaurant),
                 cuisine: `${booking.guests} Guests`,
                 status: booking.status,
-                date: new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" }),
+                date: `${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`,
                 time: booking.timeSlot,
                 price: `Booking ID: ${booking.bookingId || "N/A"}`,
-                offer: `${new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} • ${booking.timeSlot}`,
+                offer: `${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${booking.timeSlot}`,
                 rating: booking.status,
+                contactNumber: restaurant.contactNumber || restaurant.phone || restaurant.mobile || booking.restaurant?.contactNumber || "",
                 isBooking: true,
                 originalData: booking
               }
@@ -403,7 +408,7 @@ export default function DiningCategory() {
           <Button
             variant="ghost"
             onClick={handleLocationClick}
-            className="h-auto rounded-full border border-[#e7d8c5] bg-white px-4 py-2 text-left hover:bg-[#fff3e6] dark:border-gray-700 dark:bg-[#1a1a1a] dark:hover:bg-gray-800"
+            className="h-auto min-w-[135px] px-5 py-2 rounded-full border border-[#e7d8c5] bg-white text-left hover:bg-[#fff3e6] dark:border-gray-700 dark:bg-[#1a1a1a] dark:hover:bg-gray-800"
           >
             <div className="flex items-center gap-2">
               <FaLocationDot className="h-4 w-4 flex-shrink-0" style={{ color: RED }} />
@@ -510,29 +515,54 @@ export default function DiningCategory() {
                         )}
                       </div>
 
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">{isBookings ? "Reserved For" : "Reserve Your Table"}</p>
-                        <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
-                      </div>
+                      {!isBookings && (
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">Reserve Your Table</p>
+                          <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
+                        </div>
+                      )}
                     </div>
 
                     <CardContent className="space-y-4 p-5">
-                      <div className="flex items-start justify-between gap-3">
+                      {isBookings ? (
                         <div className="min-w-0 flex-1">
-                          <h2 className="truncate text-[22px] font-black leading-tight text-[#23180f] dark:text-white">{restaurant.name}</h2>
+                          <div className="flex items-center justify-between gap-3">
+                            <h2 className="truncate text-[22px] font-black leading-tight text-[#23180f] dark:text-white">{restaurant.name}</h2>
+                            {restaurant.status === "PENDING" && (
+                              <a 
+                                href={`tel:${restaurant.contactNumber}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                              >
+                                <Phone className="h-3.5 w-3.5" />
+                                <span>Call</span>
+                              </a>
+                            )}
+                          </div>
                           <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b5641] dark:text-gray-300">{restaurant.address}</p>
+                          <div className="mt-3">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-bold text-white tracking-wider ${
+                              restaurant.status === "PENDING" ? "bg-amber-500" :
+                              restaurant.status === "CONFIRMED" || restaurant.status === "ACCEPTED" ? "bg-emerald-600" :
+                              restaurant.status === "DECLINED" || restaurant.status === "CANCELLED" || restaurant.status === "LATE_CANCELLED" || restaurant.status === "NO_SHOW" || restaurant.status === "NO-SHOW" ? "bg-rose-600" :
+                              "bg-blue-600"
+                            }`}>
+                              {getStatusLabel(restaurant.status).toUpperCase()}
+                            </span>
+                          </div>
                         </div>
-                        <div className={`inline-flex flex-shrink-0 items-center gap-1 rounded-2xl px-2 py-1 text-xs font-bold text-white ${
-                          !isBookings ? "bg-emerald-600" :
-                          restaurant.status === "PENDING" ? "bg-amber-500" :
-                          restaurant.status === "CONFIRMED" || restaurant.status === "ACCEPTED" ? "bg-emerald-600" :
-                          restaurant.status === "DECLINED" || restaurant.status === "CANCELLED" || restaurant.status === "LATE_CANCELLED" || restaurant.status === "NO_SHOW" || restaurant.status === "NO-SHOW" ? "bg-rose-600" :
-                          "bg-blue-600"
-                        }`}>
-                          <span>{isBookings ? getStatusLabel(restaurant.status).toUpperCase() : restaurant.rating}</span>
-                          {!isBookings && <Star className="h-3.5 w-3.5 fill-current" />}
+                      ) : (
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <h2 className="truncate text-[22px] font-black leading-tight text-[#23180f] dark:text-white">{restaurant.name}</h2>
+                            <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#6b5641] dark:text-gray-300">{restaurant.address}</p>
+                          </div>
+                          <div className="inline-flex flex-shrink-0 items-center gap-1 rounded-2xl px-2 py-1 text-xs font-bold text-white bg-emerald-600">
+                            <span>{restaurant.rating}</span>
+                            <Star className="h-3.5 w-3.5 fill-current" />
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                       {isBookings ? (
                         <div className="flex flex-wrap gap-3">
@@ -584,14 +614,24 @@ export default function DiningCategory() {
                               <span>Scan QR</span>
                             </button>
                           )}
-                          <div 
-                            className="inline-flex items-center gap-2 text-sm font-bold cursor-pointer hover:opacity-80" 
-                            style={{ color: RED }}
-                            onClick={isBookings ? (e) => handleViewDetails(e, restaurant) : undefined}
-                          >
-                            {isBookings ? <Calendar className="h-4 w-4" /> : <BadgePercent className="h-4 w-4" />}
-                            <span>{isBookings ? "View details" : "Menu & booking"}</span>
-                          </div>
+                          {isBookings ? (
+                            <div 
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all hover:bg-slate-50 dark:hover:bg-gray-800 cursor-pointer" 
+                              style={{ borderColor: RED, color: RED }}
+                              onClick={(e) => handleViewDetails(e, restaurant)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span>View Details</span>
+                            </div>
+                          ) : (
+                            <div 
+                              className="inline-flex items-center gap-2 text-sm font-bold cursor-pointer hover:opacity-80" 
+                              style={{ color: RED }}
+                            >
+                              <BadgePercent className="h-4 w-4" />
+                              <span>Menu & booking</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </CardContent>

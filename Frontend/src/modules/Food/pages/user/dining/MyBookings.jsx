@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { ArrowLeft, Calendar, Clock, Users, MapPin, Utensils, Star, X, AlertTriangle, ChevronDown } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Users, MapPin, Utensils, Star, X, AlertTriangle, ChevronDown, Phone } from "lucide-react"
 import { diningAPI, dineInAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import AnimatedPage from "@food/components/user/AnimatedPage"
@@ -20,7 +20,7 @@ const isCancelledReservationStatus = (status) => {
 
 const getStatusLabel = (status) => {
     const key = normalizeStatus(status)
-    if (key === "PENDING") return "PENDING"
+    if (key === "PENDING") return "Awaiting Restaurant Confirmation"
     if (key === "CONFIRMED" || key === "ACCEPTED") return "CONFIRMED"
     if (key === "CHECKED_IN") return "TABLE READY"
     if (key === "COMPLETED") return "COMPLETED"
@@ -212,7 +212,7 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                     <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-2xl bg-slate-50 dark:bg-[#252525] p-4">
                             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#808080]">Date</p>
-                            <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
+                            <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{`${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`}</p>
                         </div>
                         <div className="rounded-2xl bg-slate-50 dark:bg-[#252525] p-4">
                             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#808080]">Time</p>
@@ -294,14 +294,18 @@ function CancelConfirmationModal({ booking, onClose, onConfirm, loading }) {
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
-                    <Button onClick={onClose} variant="outline" className="h-12 rounded-2xl border-slate-200 dark:border-[#333333] text-slate-700 dark:text-white hover:bg-slate-50 dark:hover:bg-[#252525]">
-                        Keep Booking
+                    <Button
+                        onClick={onClose}
+                        className="h-12 rounded-2xl text-white font-bold"
+                        style={{ backgroundColor: RED }}
+                    >
+                        No, Keep it
                     </Button>
                     <Button
                         onClick={() => onConfirm(booking)}
                         disabled={loading}
-                        className="h-12 rounded-2xl text-white font-bold"
-                        style={{ backgroundColor: RED }}
+                        variant="outline"
+                        className="h-12 rounded-2xl border-red-500 text-red-500 font-bold hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-950/20"
                     >
                         {loading ? "Cancelling..." : "Yes, Cancel"}
                     </Button>
@@ -430,21 +434,33 @@ export default function MyBookings() {
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex justify-between items-start gap-3">
+                                <div className="flex items-center justify-between gap-3">
                                     <h3 className="font-bold text-gray-900 dark:text-white truncate">{booking.restaurant?.name}</h3>
+                                    {normalizeStatus(booking.status) === "PENDING" && (
+                                        <a
+                                            href={`tel:${booking.restaurant?.contactNumber || booking.restaurantId?.contactNumber || ""}`}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="flex-shrink-0 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                        >
+                                            <Phone className="w-3 h-3" />
+                                            <span>Call</span>
+                                        </a>
+                                    )}
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-[#a0a5b8] flex items-center gap-1 mt-1.5">
+                                    <MapPin className="w-3 h-3 flex-shrink-0" />
+                                    <span className="truncate">{getRestaurantAddress(booking)}</span>
+                                </p>
+                                <div className="mt-2.5">
                                     <Badge className={getStatusBadgeClass(booking.status)}>
                                         {getStatusLabel(booking.status)}
                                     </Badge>
                                 </div>
-                                <p className="text-xs text-gray-500 dark:text-[#a0a5b8] flex items-center gap-1 mt-0.5">
-                                    <MapPin className="w-3 h-3" />
-                                    <span className="truncate">{getRestaurantAddress(booking)}</span>
-                                </p>
 
                                 <div className="flex items-center gap-4 mt-3 flex-wrap">
                                     <div className="flex items-center gap-1 text-[11px] font-bold text-gray-600 dark:text-[#a0a5b8] bg-slate-100 dark:bg-[#252525] px-2 py-0.5 rounded-lg">
                                         <Calendar className="w-3 h-3" />
-                                        {new Date(booking.date).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                                        {`${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`}
                                     </div>
                                     <div className="flex items-center gap-1 text-[11px] font-bold text-gray-600 dark:text-[#a0a5b8] bg-slate-100 dark:bg-[#252525] px-2 py-0.5 rounded-lg">
                                         <Clock className="w-3 h-3" />
