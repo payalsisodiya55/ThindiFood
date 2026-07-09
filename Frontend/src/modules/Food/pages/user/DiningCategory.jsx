@@ -112,9 +112,9 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
   const guestPhone = getBookingGuestPhone(booking)
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4 sm:items-center">
-      <div className="w-full max-w-lg rounded-[28px] bg-white shadow-2xl overflow-hidden dark:bg-[#1a1a1a]">
-        <div className="p-5 border-b border-slate-100 flex items-start justify-between dark:border-gray-800">
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-lg max-h-[82dvh] flex flex-col rounded-[28px] bg-white shadow-2xl overflow-hidden dark:bg-[#1a1a1a]">
+        <div className="p-5 border-b border-slate-100 flex items-start justify-between dark:border-gray-800 flex-shrink-0">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Reservation Details</p>
             <h3 className="text-xl font-black text-slate-900 mt-1 dark:text-white break-words">{restaurantName}</h3>
@@ -124,13 +124,13 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-4 flex-1 overflow-y-auto">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-slate-500 mb-1">Status</p>
               <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
             </div>
-            <div className="text-right">
+            <div className="text-left">
               <p className="text-sm font-semibold text-slate-500 mb-1">Booking ID</p>
               <p className="text-sm font-bold text-slate-900 dark:text-white py-0.5">{booking.bookingId || "--"}</p>
             </div>
@@ -151,7 +151,7 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
             </div>
             <div className="rounded-2xl bg-slate-50 p-4 dark:bg-gray-800/50">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Special Request</p>
-              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white truncate">{booking.specialRequest || "No special request"}</p>
+              <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white break-words">{booking.specialRequest || "No special request"}</p>
             </div>
           </div>
 
@@ -165,21 +165,9 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
             <p className="text-sm font-semibold text-slate-500">Restaurant address</p>
             <p className="mt-2 text-sm text-slate-700 dark:text-gray-300">{restaurantAddress}</p>
           </div>
-
-          {canCancel && (
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 dark:border-gray-800 dark:bg-gray-800/30">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 mt-0.5 text-slate-400" />
-                <div>
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Cancellation</p>
-                  <p className="mt-1 text-xs text-slate-600 dark:text-gray-400">Are you sure you want to cancel this reservation?</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
-        <div className="p-5 pt-0 space-y-3">
+        <div className="p-5 pt-0 space-y-3 flex-shrink-0">
           {isCheckedIn && (
             <Button
               onClick={() => window.location.assign("/user/dine-in/scan")}
@@ -215,7 +203,7 @@ function CancelConfirmationModal({ booking, onClose, onConfirm, loading }) {
             <AlertTriangle className="w-5 h-5 text-red-500" />
           </div>
           <div>
-            <h3 className="text-xl font-black text-slate-900 dark:text-white">Cancel reservation?</h3>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wide">CANCEL RESERVATION?</h3>
             <p className="mt-2 text-sm text-slate-600 dark:text-gray-400">Are you sure you want to cancel this booking? This action cannot be undone.</p>
           </div>
         </div>

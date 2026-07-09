@@ -491,34 +491,36 @@ export default function TableBookingConfirmation() {
                         onClick={() => setIsSpecialRequestOpen(false)}
                     />
                     <div 
-                        className="relative w-full max-w-lg rounded-t-[32px] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_-20px_50px_rgba(0,0,0,0.3)] z-10"
+                        className="relative w-full max-w-lg max-h-[90dvh] flex flex-col rounded-t-[32px] bg-white dark:bg-[#1a1a1a] p-6 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] dark:shadow-[0_-20px_50px_rgba(0,0,0,0.3)] z-10 overflow-hidden"
                         style={{ 
                             animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                             paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))'
                         }}
                     >
-                        <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-slate-100 dark:bg-[#333333]" />
-                        
-                        <div className="mb-6">
-                            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Special Request</h3>
-                            <p className="mt-1 text-sm text-slate-500 dark:text-[#a0a5b8] font-medium">Add any specific requests for the restaurant</p>
-                        </div>
+                        <div className="flex-1 overflow-y-auto pr-1">
+                            <div className="mx-auto mb-6 h-1.5 w-12 rounded-full bg-slate-100 dark:bg-[#333333]" />
+                            
+                            <div className="mb-6">
+                                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Special Request</h3>
+                                <p className="mt-1 text-sm text-slate-500 dark:text-[#a0a5b8] font-medium">Add any specific requests for the restaurant</p>
+                            </div>
 
-                        <div className="relative">
-                            <textarea
-                                autoFocus
-                                value={specialRequestDraft}
-                                onChange={(event) => setSpecialRequestDraft(event.target.value.slice(0, 200))}
-                                rows={4}
-                                placeholder="e.g. Quiet corner table, birthday celebration, dietary preferences..."
-                                className="w-full rounded-2xl border border-slate-100 dark:border-[#222222] bg-slate-50 dark:bg-[#252525] p-4 text-slate-800 dark:text-white outline-none focus:border-red-400 focus:bg-white dark:focus:bg-[#1a1a1a] transition-all text-base shadow-inner resize-none"
-                            />
-                            <div className="absolute bottom-3 right-4 px-2 py-1 rounded-full bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-sm border border-slate-100 dark:border-[#222222] text-[10px] font-bold text-slate-400 dark:text-[#808080]">
-                                {String(specialRequestDraft || "").length}/200
+                            <div className="relative">
+                                <textarea
+                                    autoFocus
+                                    value={specialRequestDraft}
+                                    onChange={(event) => setSpecialRequestDraft(event.target.value.slice(0, 200))}
+                                    rows={4}
+                                    placeholder="e.g. Quiet corner table, birthday celebration, dietary preferences..."
+                                    className="w-full rounded-2xl border border-slate-100 dark:border-[#222222] bg-slate-50 dark:bg-[#252525] p-4 text-slate-800 dark:text-white outline-none focus:border-red-400 focus:bg-white dark:focus:bg-[#1a1a1a] transition-all text-base shadow-inner resize-none"
+                                />
+                                <div className="absolute bottom-3 right-4 px-2 py-1 rounded-full bg-white/80 dark:bg-[#1a1a1a]/80 backdrop-blur-sm border border-slate-100 dark:border-[#222222] text-[10px] font-bold text-slate-400 dark:text-[#808080]">
+                                    {String(specialRequestDraft || "").length}/200
+                                </div>
                             </div>
                         </div>
 
-                        <div className="mt-8 grid grid-cols-2 gap-4">
+                        <div className="mt-6 grid grid-cols-2 gap-4 flex-shrink-0">
                             <Button
                                 onClick={() => {
                                     setSpecialRequestDraft("")
@@ -532,7 +534,7 @@ export default function TableBookingConfirmation() {
                             </Button>
                             <Button
                                 onClick={saveSpecialRequest}
-                                className="h-14 rounded-2xl font-bold text-white shadow-lg shadow-red-100 active:scale-95 transition-all"
+                                className="h-14 rounded-2xl font-bold text-white shadow-lg active:scale-95 transition-all"
                                 style={{ backgroundColor: RED }}
                             >
                                 Save Request

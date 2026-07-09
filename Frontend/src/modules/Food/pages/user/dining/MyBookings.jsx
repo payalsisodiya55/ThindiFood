@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
-import { ArrowLeft, Calendar, Clock, Users, MapPin, Utensils, Star, X, AlertTriangle } from "lucide-react"
+import { ArrowLeft, Calendar, Clock, Users, MapPin, Utensils, Star, X, AlertTriangle, ChevronDown } from "lucide-react"
 import { diningAPI, dineInAPI } from "@food/api"
 import Loader from "@food/components/Loader"
 import AnimatedPage from "@food/components/user/AnimatedPage"
@@ -178,7 +178,6 @@ function ReviewModal({ booking, onClose, onSubmit }) {
 }
 
 function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
-    const cancellationPreview = useMemo(() => getCancellationPreview(booking), [booking])
     const statusKey = normalizeStatus(booking?.status)
     const isCancelled = isCancelledReservationStatus(statusKey)
     const canCancel = ["PENDING", "CONFIRMED", "ACCEPTED"].includes(statusKey) && !isCancelled
@@ -186,9 +185,9 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
     const guestPhone = getBookingGuestPhone(booking)
 
     return (
-        <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="w-full max-w-lg rounded-[28px] bg-white dark:bg-[#1a1a1a] shadow-2xl dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden border border-slate-100 dark:border-[#222222]">
-                <div className="p-5 border-b border-slate-100 dark:border-[#222222] flex items-start justify-between">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="w-full max-w-lg max-h-[82dvh] flex flex-col rounded-[28px] bg-white dark:bg-[#1a1a1a] shadow-2xl dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden border border-slate-100 dark:border-[#222222]">
+                <div className="p-5 border-b border-slate-100 dark:border-[#222222] flex items-start justify-between flex-shrink-0">
                     <div className="min-w-0 flex-1">
                         <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-[#808080]">Reservation Details</p>
                         <h3 className="text-xl font-black text-slate-900 dark:text-white mt-1 break-words break-all">{booking.restaurant?.name}</h3>
@@ -198,13 +197,13 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                     </button>
                 </div>
 
-                <div className="p-5 space-y-4">
+                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
                     <div className="flex items-start justify-between gap-3">
                         <div>
                             <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8] mb-1">Status</p>
                             <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
                         </div>
-                        <div className="text-right">
+                        <div className="text-left">
                             <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8] mb-1">Booking ID</p>
                             <p className="text-sm font-bold text-slate-900 dark:text-white py-0.5">{booking.bookingId || "--"}</p>
                         </div>
@@ -225,7 +224,7 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                         </div>
                         <div className="rounded-2xl bg-slate-50 dark:bg-[#252525] p-4">
                             <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#808080]">Special Request</p>
-                            <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white">{booking.specialRequest || "No special request"}</p>
+                            <p className="mt-2 text-sm font-bold text-slate-900 dark:text-white break-words">{booking.specialRequest || "No special request"}</p>
                         </div>
                     </div>
 
@@ -239,25 +238,9 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                         <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8]">Restaurant address</p>
                         <p className="mt-2 text-sm text-slate-700 dark:text-[#c0c5d0]">{getRestaurantAddress(booking) || "Address not available"}</p>
                     </div>
-
-                    {canCancel && (
-                        <div className={`rounded-2xl border p-4 ${
-                            cancellationPreview.isLate
-                                ? "border-orange-200 dark:border-orange-900/50 bg-orange-50 dark:bg-orange-950/20"
-                                : "border-slate-100 dark:border-[#222222] bg-slate-50 dark:bg-[#252525]"
-                        }`}>
-                            <div className="flex items-start gap-3">
-                                <AlertTriangle className={`w-5 h-5 mt-0.5 ${cancellationPreview.isLate ? "text-orange-500" : "text-slate-400"}`} />
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-white">Cancellation</p>
-                                    <p className="mt-1 text-xs text-slate-600 dark:text-[#a0a5b8]">{cancellationPreview.message}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
-                <div className="p-5 pt-0 space-y-3">
+                <div className="p-5 pt-0 space-y-3 flex-shrink-0">
                     {isCancelled && (
                         <div className="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300">
                             Cancelled
@@ -305,7 +288,7 @@ function CancelConfirmationModal({ booking, onClose, onConfirm, loading }) {
                         <AlertTriangle className={`w-5 h-5 ${preview.isLate ? "text-orange-600 dark:text-orange-400" : "text-red-500"}`} />
                     </div>
                     <div>
-                        <h3 className="text-xl font-black text-slate-900 dark:text-white">Cancel reservation?</h3>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wide">CANCEL RESERVATION?</h3>
                         <p className="mt-2 text-sm text-slate-600 dark:text-[#a0a5b8]">{preview.message}</p>
                     </div>
                 </div>
