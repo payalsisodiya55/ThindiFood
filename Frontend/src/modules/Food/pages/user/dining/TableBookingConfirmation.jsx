@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { ArrowLeft, Calendar, Users, MapPin, ChevronRight, ShieldCheck, Info } from "lucide-react"
+import { ArrowLeft, Calendar, Users, MapPin, ChevronRight, ShieldCheck, FileText, User } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { diningAPI, authAPI, dineInAPI } from "@food/api"
@@ -340,16 +340,16 @@ export default function TableBookingConfirmation() {
                         onClick={openSpecialRequestEditor}
                         className="w-full bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-[#222222] flex items-center justify-between group text-left"
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-start gap-3">
                             <div className="bg-slate-100 dark:bg-[#252525] p-2 rounded-xl group-hover:bg-slate-200 dark:group-hover:bg-[#333333] transition-colors">
-                                <Info className="w-5 h-5 text-slate-600 dark:text-[#a0a0a0]" />
+                                <FileText className="w-5 h-5 text-slate-600 dark:text-[#a0a0a0]" />
                             </div>
                             <div>
-                                <span className="font-bold text-gray-700 dark:text-white">Add special request</span>
+                                <span className="font-bold text-gray-700 dark:text-white block leading-snug">Add special request</span>
                                 {specialRequest ? (
-                                    <p className="mt-1 text-xs text-slate-500 dark:text-[#a0a5b8] line-clamp-2">{specialRequest}</p>
+                                    <p className="mt-0.5 text-xs text-slate-500 dark:text-[#a0a5b8] line-clamp-2">{specialRequest}</p>
                                 ) : (
-                                    <p className="mt-1 text-xs text-slate-400 dark:text-[#808080]">Dietary notes, seating preference, birthday, etc.</p>
+                                    <p className="mt-0.5 text-xs text-slate-400 dark:text-[#808080]">Dietary notes, seating preference, birthday, etc.</p>
                                 )}
                             </div>
                         </div>
@@ -367,8 +367,8 @@ export default function TableBookingConfirmation() {
                         <div className="space-y-2">
                             <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-[#222222] flex items-center justify-between">
                                 <div className="flex items-start gap-3">
-                                    <div className="text-red-400 mt-1">
-                                        <ShieldCheck className="w-5 h-5" />
+                                    <div className="bg-red-50 dark:bg-[#2d1215] p-2 rounded-xl">
+                                        <ShieldCheck className="w-5 h-5 text-red-500" />
                                     </div>
                                     <div>
                                         <p className="font-bold text-gray-800 dark:text-white text-sm">Cancellation policy</p>
@@ -387,10 +387,15 @@ export default function TableBookingConfirmation() {
                             <div className="h-px bg-slate-200 dark:bg-[#222222] flex-1"></div>
                         </div>
 
-                        <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-[#222222] flex items-center justify-between">
-                            <div>
-                                <p className="font-bold text-gray-900 dark:text-white">{displayGuestName}</p>
-                                <p className="text-sm text-slate-400 dark:text-[#a0a5b8] mt-1">{displayGuestPhone}</p>
+                        <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-[#222222] flex items-center justify-between">
+                            <div className="flex items-start gap-3">
+                                <div className="bg-slate-100 dark:bg-[#252525] p-2 rounded-xl">
+                                    <User className="w-5 h-5 text-slate-600 dark:text-[#a0a0a0]" />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-gray-900 dark:text-white">{displayGuestName}</p>
+                                    <p className="text-sm text-slate-400 dark:text-[#a0a5b8] mt-0.5">{displayGuestPhone}</p>
+                                </div>
                             </div>
                             <button onClick={openEditDetails} className="text-sm font-bold hover:underline" style={{ color: RED }}>Edit</button>
                         </div>
