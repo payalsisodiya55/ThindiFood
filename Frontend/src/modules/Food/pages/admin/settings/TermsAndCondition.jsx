@@ -11,10 +11,15 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [viewMode, setViewMode] = useState("edit") // "edit" | "preview"
-  const [activeTab, setActiveTab] = useState(defaultTab) // "user" | "restaurant" | "delivery"
+  const [activeTab, setActiveTab] = useState(defaultTab) // "user" | "dining" | "restaurant" | "delivery"
 
   const [userTerms, setUserTerms] = useState({
     title: "Terms and Conditions",
+    content: ""
+  })
+
+  const [diningTerms, setDiningTerms] = useState({
+    title: "Dining Terms and Conditions",
     content: ""
   })
 
@@ -40,16 +45,25 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
   const fetchAllTerms = async () => {
     try {
       setLoading(true)
-      const [userResult, restResult, delivResult] = await Promise.allSettled([
+      const [userResult, restResult, delivResult, diningResult] = await Promise.allSettled([
         api.get(API_ENDPOINTS.ADMIN.TERMS, { contextModule: "admin" }),
         api.get(API_ENDPOINTS.ADMIN.RESTAURANT_TERMS, { contextModule: "admin" }),
-        api.get(API_ENDPOINTS.ADMIN.DELIVERY_TERMS, { contextModule: "admin" })
+        api.get(API_ENDPOINTS.ADMIN.DELIVERY_TERMS, { contextModule: "admin" }),
+        api.get(API_ENDPOINTS.ADMIN.DINING_TERMS, { contextModule: "admin" })
       ])
 
       if (userResult.status === "fulfilled" && userResult.value.data.success) {
         const data = userResult.value.data.data
         setUserTerms({
           ...data,
+          content: legalHtmlToPlainText(data.content || "")
+        })
+      }
+      if (diningResult.status === "fulfilled" && diningResult.value.data.success) {
+        const data = diningResult.value.data.data
+        setDiningTerms({
+          ...data,
+          title: data.title || "Dining Terms and Conditions",
           content: legalHtmlToPlainText(data.content || "")
         })
       }
@@ -79,6 +93,8 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
   const handleContentChange = (val) => {
     if (activeTab === "user") {
       setUserTerms((prev) => ({ ...prev, content: val }))
+    } else if (activeTab === "dining") {
+      setDiningTerms((prev) => ({ ...prev, content: val }))
     } else if (activeTab === "restaurant") {
       setRestaurantTerms((prev) => ({ ...prev, content: val }))
     } else {
@@ -95,6 +111,11 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
       endpoint = API_ENDPOINTS.ADMIN.TERMS;
       updateState = setUserTerms;
       label = "User";
+    } else if (activeTab === "dining") {
+      currentTerms = diningTerms;
+      endpoint = API_ENDPOINTS.ADMIN.DINING_TERMS;
+      updateState = setDiningTerms;
+      label = "Dining";
     } else if (activeTab === "restaurant") {
       currentTerms = restaurantTerms;
       endpoint = API_ENDPOINTS.ADMIN.RESTAURANT_TERMS;
@@ -134,7 +155,7 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
     }
   }
 
-  const activeData = activeTab === "user" ? userTerms : activeTab === "restaurant" ? restaurantTerms : deliveryTerms
+  const activeData = activeTab === "user" ? userTerms : activeTab === "dining" ? diningTerms : activeTab === "restaurant" ? restaurantTerms : deliveryTerms
 
   if (loading) {
     return (
@@ -159,7 +180,7 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
         </div>
 
         {/* Unified Tab Switcher */}
-        <div className="flex space-x-1 bg-slate-200/60 p-1 rounded-xl max-w-lg mb-6 border border-slate-200/30">
+        <div className="flex space-x-1 bg-slate-200/60 p-1 rounded-xl max-w-2xl mb-6 border border-slate-200/30">
           <button
             type="button"
             onClick={() => setActiveTab("user")}
@@ -170,6 +191,17 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
             }`}
           >
             User Terms
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("dining")}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 cursor-pointer ${
+              activeTab === "dining"
+                ? "bg-white text-slate-900 shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-white/30"
+            }`}
+          >
+            Dining Terms
           </button>
           <button
             type="button"
@@ -223,7 +255,7 @@ export default function TermsAndCondition({ defaultTab = "user" }) {
             <Textarea
               value={activeData.content}
               onChange={(e) => handleContentChange(e.target.value)}
-              placeholder={`Enter ${activeTab === "user" ? "user" : activeTab === "restaurant" ? "restaurant" : "delivery"} terms and conditions content...`}
+              placeholder={`Enter ${activeTab === "user" ? "user" : activeTab === "dining" ? "dining" : activeTab === "restaurant" ? "restaurant" : "delivery"} terms and conditions content...`}
               className="min-h-[600px] w-full text-sm text-slate-700 leading-relaxed resize-y"
               dir="ltr"
               style={{

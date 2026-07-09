@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { ArrowLeft, Calendar, Users, MapPin, ChevronRight, ShieldCheck, FileText, User } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
-import { diningAPI, authAPI, dineInAPI } from "@food/api"
+import apiClient, { diningAPI, authAPI, dineInAPI, API_ENDPOINTS } from "@food/api"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useEffect } from "react"
 import { toast } from "sonner"
@@ -83,6 +83,21 @@ export default function TableBookingConfirmation() {
     const [overridePhone, setOverridePhone] = useState("")
     const displayGuestName = overrideName || user?.name || "Guest"
     const displayGuestPhone = overridePhone || user?.phone || user?.email || "Phone not available"
+    const [diningTerms, setDiningTerms] = useState("")
+
+    useEffect(() => {
+        const fetchDiningTerms = async () => {
+            try {
+                const response = await apiClient.get(API_ENDPOINTS.ADMIN.DINING_TERMS_PUBLIC)
+                if (response.data.success && response.data.data?.content) {
+                    setDiningTerms(response.data.data.content)
+                }
+            } catch (error) {
+                console.error("Error fetching dining terms:", error)
+            }
+        }
+        fetchDiningTerms()
+    }, [])
 
     const isAuthError = (error) => {
         const status = Number(error?.response?.status || 0)
@@ -278,9 +293,9 @@ export default function TableBookingConfirmation() {
 
     return (
         <>
-            <AnimatedPage className="bg-slate-50 dark:bg-[#0a0a0a] min-h-screen pb-24">
+            <AnimatedPage className="bg-slate-50 dark:bg-[#0a0a0a] h-screen flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="text-white px-4 py-4.5 sticky top-0 z-50 shadow-md" style={{ backgroundColor: RED }}>
+                <div className="text-white px-4 py-4.5 flex-shrink-0 shadow-md" style={{ backgroundColor: RED }}>
                     <div className="max-w-md md:max-w-3xl mx-auto flex items-start gap-3">
                         <button onClick={goBack} className="p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0 mt-[-2px]">
                             <ArrowLeft className="w-5 h-5" />
@@ -289,7 +304,7 @@ export default function TableBookingConfirmation() {
                     </div>
                 </div>
 
-                <div className="p-4 space-y-4 max-w-md md:max-w-3xl mx-auto">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-md md:max-w-3xl mx-auto w-full pb-8">
                     {requiresLogin && (
                         <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4">
                             <p className="text-sm font-semibold text-amber-900 dark:text-amber-300">Please login to book your seat.</p>
@@ -410,29 +425,40 @@ export default function TableBookingConfirmation() {
                         </div>
 
                         <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl p-5 shadow-sm border border-slate-100 dark:border-[#222222]">
-                            <ul className="space-y-4">
-                                {[
-                                    "Please arrive 15 minutes prior to your reservation time.",
-                                    "Booking valid for the specified number of guests entered during reservation",
-                                    "You can cancel anytime before the reservation.",
-                                    "House rules are to be observed at all times",
-                                    "Special requests will be accommodated at the restaurant's discretion",
-                                    "Cancellations within 1 hour of reservation time will be marked as late cancelled.",
-                                    "If the guest does not arrive within 30 minutes after reservation time, the booking may be marked as no-show.",
-                                    "Additional service charges on the bill are at the restaurant's discretion"
-                                ].map((term, i) => (
-                                    <li key={i} className="flex gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-[#333333] mt-2 flex-shrink-0"></div>
-                                        <p className="text-xs text-slate-600 dark:text-[#a0a5b8] leading-relaxed font-medium">{term}</p>
-                                    </li>
-                                ))}
-                            </ul>
+                            {diningTerms ? (
+                                <div
+                                    className="prose prose-slate dark:prose-invert max-w-none text-xs text-slate-600 dark:text-[#a0a5b8] leading-relaxed font-medium
+                                        prose-headings:text-sm prose-headings:font-bold prose-headings:text-slate-700 dark:prose-headings:text-white
+                                        prose-p:text-xs prose-p:text-slate-600 dark:prose-p:text-[#a0a5b8] prose-p:my-1
+                                        prose-ul:list-disc prose-ul:pl-4 prose-ul:my-1
+                                        prose-li:text-xs prose-li:text-slate-600 dark:prose-li:text-[#a0a5b8] prose-li:my-1"
+                                    dangerouslySetInnerHTML={{ __html: diningTerms }}
+                                />
+                            ) : (
+                                <ul className="space-y-4">
+                                    {[
+                                        "Please arrive 15 minutes prior to your reservation time.",
+                                        "Booking valid for the specified number of guests entered during reservation",
+                                        "You can cancel anytime before the reservation.",
+                                        "House rules are to be observed at all times",
+                                        "Special requests will be accommodated at the restaurant's discretion",
+                                        "Cancellations within 1 hour of reservation time will be marked as late cancelled.",
+                                        "If the guest does not arrive within 30 minutes after reservation time, the booking may be marked as no-show.",
+                                        "Additional service charges on the bill are at the restaurant's discretion"
+                                    ].map((term, i) => (
+                                        <li key={i} className="flex gap-3">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300 dark:bg-[#333333] mt-2 flex-shrink-0"></div>
+                                            <p className="text-xs text-slate-600 dark:text-[#a0a5b8] leading-relaxed font-medium">{term}</p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
                         </div>
                     </div>
                 </div>
 
                 {/* Sticky Action Button */}
-                <div className="fixed bottom-0 left-0 w-full bg-white dark:bg-[#1a1a1a] border-t border-slate-100 dark:border-[#222222] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-50">
+                <div className="bg-white dark:bg-[#1a1a1a] border-t border-slate-100 dark:border-[#222222] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] z-50 flex-shrink-0 w-full">
                     <div className="max-w-md md:max-w-3xl mx-auto">
                         <Button
                             onClick={handleBooking}
