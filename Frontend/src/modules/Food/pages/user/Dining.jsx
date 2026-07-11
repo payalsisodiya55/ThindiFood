@@ -815,7 +815,7 @@ export default function Dining() {
                   whileHover={{ y: -2, boxShadow: "0 10px 24px -18px rgba(63, 38, 18, 0.24)" }}
                 >
                   <div className="absolute inset-x-0 top-0 z-10 px-3 pt-3 sm:px-4 sm:pt-4">
-                    <p className="font-['Poppins',_'Nunito_Sans',sans-serif] max-w-[74%] text-[13px] sm:text-[15px] md:text-[16px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#2d2722]">
+                    <p className="font-['Poppins',_'Nunito_Sans',sans-serif] w-full text-center text-[13px] sm:text-[15px] md:text-[16px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#2d2722]">
                       {category.name}
                     </p>
                   </div>
@@ -846,11 +846,11 @@ export default function Dining() {
         {/* Popular Restaurants Around You Section */}
         <div className="mb-6 mt-8 sm:mt-12">
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4 px-1">
-              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+            <div className="flex items-start justify-between mb-4 px-1 gap-3">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight flex-1">
                 Popular Restaurants in Your Zone
               </h3>
-              <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
+              <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 shrink-0 text-right mt-1">
                 {filteredRestaurants.length} nearby places
               </p>
             </div>
