@@ -471,12 +471,12 @@ export default function TableBooking() {
 
         <section className="rounded-[22px] bg-white dark:bg-[#1a1a1a] p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)] dark:border dark:border-[#222222]">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-[#2f3545] dark:text-white">Select Number of Guests</span>
+            <span className="text-sm font-medium text-[#2f3545] dark:text-white">Select Number of {selectedGuests > 1 ? 'Guests' : 'Guest'}</span>
             <div className="relative">
               <select
                 value={selectedGuests}
                 onChange={(event) => setSelectedGuests(parseInt(event.target.value, 10))}
-                className="appearance-none rounded-xl border border-gray-200 dark:border-[#2b2b2b] bg-[#f7f7fb] dark:bg-[#252525] h-10 pl-3 pr-8 text-sm font-semibold text-[#404040] dark:text-white outline-none transition-all focus:border-red-500"
+                className="appearance-none rounded-2xl border border-[#ececf2] dark:border-[#2b2b2b] bg-white dark:bg-[#222222] h-11 pl-4 pr-10 text-sm font-bold text-[#444b5f] dark:text-white outline-none transition-all focus:border-red-500 shadow-sm"
               >
                 {Array.from({ length: maxGuestCount }, (_, index) => index + 1).map((count) => (
                   <option key={count} value={count}>
@@ -484,7 +484,7 @@ export default function TableBooking() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+              <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#7b8191] dark:text-[#a0a5b8]" strokeWidth={2.5} />
             </div>
           </div>
         </section>

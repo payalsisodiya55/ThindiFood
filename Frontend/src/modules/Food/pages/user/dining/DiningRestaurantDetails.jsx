@@ -393,7 +393,7 @@ export default function DiningRestaurantDetails() {
     { id: "walkin", label: "Walk-In Offers", target: "restaurant-prebook" },
     { id: "menu", label: "Menu", target: "restaurant-menu" },
     { id: "photos", label: "Photos", target: "restaurant-photos" },
-    { id: "about", label: "About the Restaurant", target: "restaurant-about" },
+    { id: "about", label: "About The Restaurant", target: "restaurant-about" },
   ]
 
   const handleShare = async () => {
@@ -699,7 +699,7 @@ export default function DiningRestaurantDetails() {
         </section>
 
         <section id="restaurant-about" className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
-          <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">About the Restaurant</h2>
+          <h2 className="text-[28px] font-black leading-none text-[#23180f] dark:text-white">About The Restaurant</h2>
 
           <div className="mt-4 rounded-[18px] border border-[#ececf4] dark:border-[#222222] bg-[#fafbff] dark:bg-[#121212] p-4">
             <div className="space-y-4 text-[14px] text-[#5f6474] dark:text-[#a0a5b8]">

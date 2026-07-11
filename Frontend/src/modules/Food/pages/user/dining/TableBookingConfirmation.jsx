@@ -289,7 +289,7 @@ export default function TableBookingConfirmation() {
     const formattedDate = Number.isNaN(bookingDate.getTime())
         ? "Today"
         : `${bookingDate.toLocaleDateString('en-US', { weekday: 'short' })}, ${bookingDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`
-    const formattedTime = String(timeSlot || "").toLowerCase().replace(':', '.')
+    const formattedTime = String(timeSlot || "").replace(':', '.').toUpperCase()
 
     return (
         <>
@@ -329,7 +329,7 @@ export default function TableBookingConfirmation() {
                                     <p className="font-bold text-gray-900 dark:text-white">{formattedDate} at {formattedTime}</p>
                                     <div className="flex items-center gap-2 text-gray-500 dark:text-[#a0a5b8] text-sm mt-0.5">
                                         <Users className="w-4 h-4" />
-                                        <span>{guests} guests</span>
+                                        <span>{guests} {guests > 1 ? 'Guests' : 'Guest'}</span>
                                     </div>
                                 </div>
                             </div>
@@ -355,7 +355,7 @@ export default function TableBookingConfirmation() {
                     <div className="pt-4">
                         <div className="flex items-center gap-4 mb-3">
                             <div className="h-px bg-slate-200 dark:bg-[#222222] flex-1"></div>
-                            <span className="text-[10px] font-bold text-slate-400 dark:text-[#808080] uppercase tracking-widest">Guest Preferences</span>
+                            <span className="text-[10px] font-bold text-slate-400 dark:text-[#808080] uppercase tracking-widest">{guests > 1 ? 'Guests Preferences' : 'Guest Preferences'}</span>
                             <div className="h-px bg-slate-200 dark:bg-[#222222] flex-1"></div>
                         </div>
 
