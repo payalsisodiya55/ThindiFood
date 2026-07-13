@@ -1,12 +1,12 @@
 import { Link } from "react-router-dom"
-import { ArrowLeft, AlertTriangle, Phone, Shield, Loader2, Clock } from "lucide-react"
+import { ArrowLeft, AlertTriangle, Phone, Loader2, Clock, Upload, X, Film, Image as ImageIcon, RefreshCw } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
 import { Card, CardContent } from "@food/components/ui/card"
 import { Textarea } from "@food/components/ui/textarea"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { toast } from "sonner"
-import { userAPI } from "@food/api"
+import { userAPI, uploadAPI } from "@food/api"
 import {
   Dialog,
   DialogContent,
@@ -21,8 +21,43 @@ const debugError = (...args) => {}
 
 export default function ReportSafetyEmergency() {
   const [report, setReport] = useState("")
+  const textareaRef = useRef(null)
+  const [mediaFiles, setMediaFiles] = useState([])
+  const categories = useMemo(() => ["Food Tampering", "Rude Behaviour", "Contaminated Food", "Other Safety Issue"], [])
+  const [selectedCategory, setSelectedCategory] = useState("Food Tampering")
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || [])
+    const newFiles = files.map(file => ({
+      file,
+      id: Math.random().toString(36).substring(2, 9),
+      previewUrl: URL.createObjectURL(file),
+      type: file.type.startsWith('video/') ? 'video' : 'image',
+      name: file.name
+    }))
+    setMediaFiles(prev => [...prev, ...newFiles])
+  }
+
+  const removeFile = (id) => {
+    setMediaFiles(prev => {
+      const target = prev.find(f => f.id === id)
+      if (target?.previewUrl) {
+        URL.revokeObjectURL(target.previewUrl)
+      }
+      return prev.filter(f => f.id !== id)
+    })
+  }
+
+  // Clean up object URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      mediaFiles.forEach(f => {
+        if (f.previewUrl) URL.revokeObjectURL(f.previewUrl)
+      })
+    }
+  }, [mediaFiles])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [history, setHistory] = useState([])
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null)
@@ -43,6 +78,14 @@ export default function ReportSafetyEmergency() {
   }
 
   useEffect(() => {
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = "auto"
+      textarea.style.height = `${textarea.scrollHeight}px`
+    }
+  }, [report])
+
+  useEffect(() => {
     fetchHistory()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -60,8 +103,14 @@ export default function ReportSafetyEmergency() {
       urgent: "bg-red-100 text-red-700",
       resolved: "bg-green-100 text-green-700",
     }
+    const labelMap = {
+      unread: "Pending Review",
+      read: "Under Review",
+      urgent: "Urgent Action",
+      resolved: "Resolved",
+    }
     const cls = map[String(status)] || map.unread
-    const label = String(status || "unread").replace(/^\w/, (c) => c.toUpperCase())
+    const label = labelMap[String(status)] || String(status || "Pending Review").replace(/^\w/, (c) => c.toUpperCase())
     return <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${cls}`}>{label}</span>
   }
 
@@ -94,18 +143,38 @@ export default function ReportSafetyEmergency() {
       return
     }
 
-    if (trimmedReport.length < 10) {
-      toast.error('Please provide a more detailed description (at least 10 characters)')
+    if (trimmedReport.length < 30) {
+      toast.error('Please provide a more detailed description (at least 30 characters)')
       return
     }
 
     try {
       setIsSubmitting(true)
-      const response = await userAPI.createSafetyEmergencyReport(trimmedReport)
+
+      // Upload media files if any
+      const uploadedUrls = []
+      for (const item of mediaFiles) {
+        try {
+          const res = await uploadAPI.uploadMedia(item.file, { folder: "safety-reports" })
+          const url = res?.data?.data?.url || res?.data?.url
+          if (url) uploadedUrls.push(url)
+        } catch (uploadErr) {
+          debugError("Error uploading media file:", uploadErr)
+        }
+      }
+
+      let finalMessage = `Category: ${selectedCategory}\n\n${trimmedReport}`
+      if (uploadedUrls.length > 0) {
+        finalMessage += "\n\n[Attached Media Files]:\n" + uploadedUrls.map(url => `- ${url}`).join("\n")
+      }
+
+      const response = await userAPI.createSafetyEmergencyReport(finalMessage)
       
       if (response.data.success) {
         setIsSubmitted(true)
         setReport("")
+        setMediaFiles([])
+        setSelectedCategory("Food Tampering")
         toast.success('Safety emergency report submitted successfully!')
         fetchHistory()
         setTimeout(() => {
@@ -147,20 +216,33 @@ export default function ReportSafetyEmergency() {
                 <Phone className="h-5 w-5 md:h-6 md:w-6 text-red-600 dark:text-red-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-base md:text-lg lg:text-xl font-semibold text-red-900 dark:text-red-200 mb-2">
+                <h3 className="text-base md:text-lg lg:text-xl font-semibold text-red-900 dark:text-red-200 mb-1">
                   Emergency Contact
                 </h3>
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base font-semibold text-red-700 dark:text-red-300">
-                  <a href="tel:100" className="text-red-600 dark:text-red-400 hover:underline">
-                    Police: 100
+                <div className="space-y-2.5 mt-3 max-w-md">
+                  <a
+                    href="tel:100"
+                    className="flex items-center gap-3 bg-white dark:bg-[#1a1a1a] hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 py-3 px-4 rounded-xl shadow-sm text-sm font-bold transition-all active:scale-[0.98]"
+                  >
+                    <Phone className="h-4.5 w-4.5 text-red-500 shrink-0" />
+                    <span className="flex-1 text-left font-semibold text-gray-800 dark:text-neutral-200">Police</span>
+                    <span className="bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-2.5 py-0.5 rounded-full text-xs font-bold">100</span>
                   </a>
-                  <span className="text-red-300 dark:text-red-700 select-none">·</span>
-                  <a href="tel:108" className="text-red-600 dark:text-red-400 hover:underline">
-                    Ambulance: 108
+                  <a
+                    href="tel:108"
+                    className="flex items-center gap-3 bg-white dark:bg-[#1a1a1a] hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 py-3 px-4 rounded-xl shadow-sm text-sm font-bold transition-all active:scale-[0.98]"
+                  >
+                    <Phone className="h-4.5 w-4.5 text-red-500 shrink-0" />
+                    <span className="flex-1 text-left font-semibold text-gray-800 dark:text-neutral-200">Ambulance</span>
+                    <span className="bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-2.5 py-0.5 rounded-full text-xs font-bold">108</span>
                   </a>
-                  <span className="text-red-300 dark:text-red-700 select-none">·</span>
-                  <a href="tel:1091" className="text-red-600 dark:text-red-400 hover:underline">
-                    Women Helpline: 1091
+                  <a
+                    href="tel:1091"
+                    className="flex items-center gap-3 bg-white dark:bg-[#1a1a1a] hover:bg-red-50 dark:hover:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-100 dark:border-red-900/50 py-3 px-4 rounded-xl shadow-sm text-sm font-bold transition-all active:scale-[0.98]"
+                  >
+                    <Phone className="h-4.5 w-4.5 text-red-500 shrink-0" />
+                    <span className="flex-1 text-left font-semibold text-gray-800 dark:text-neutral-200">Women Helpline</span>
+                    <span className="bg-red-50 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-2.5 py-0.5 rounded-full text-xs font-bold">1091</span>
                   </a>
                 </div>
               </div>
@@ -189,17 +271,47 @@ export default function ReportSafetyEmergency() {
               </CardContent>
             </Card>
 
+            {/* Category Card */}
+            <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border-0 dark:border-gray-800 mb-4 md:mb-5 lg:mb-6">
+              <CardContent className="p-4 md:p-5 lg:p-6">
+                <label className="block text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-2 md:mb-3">
+                  Select Concern Category
+                </label>
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                  {categories.map((cat) => {
+                    const isSelected = selectedCategory === cat
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? "bg-red-600 border-red-600 text-white shadow-sm shadow-red-500/20"
+                            : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Report Form */}
             <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border-0 dark:border-gray-800 mb-4 md:mb-5 lg:mb-6">
               <CardContent className="p-4 md:p-5 lg:p-6">
                 <label className="block text-sm md:text-base font-medium text-gray-900 dark:text-white mb-2 md:mb-3">
-                  Describe the safety concern or emergency
+                  What happened?
                 </label>
                 <Textarea
-                  placeholder="Please provide details about the safety issue..."
+                  ref={textareaRef}
+                  placeholder="Tell us what happened. Include when, where, and who was involved…"
                   value={report}
                   onChange={(e) => setReport(e.target.value)}
-                  className="min-h-[150px] md:min-h-[200px] lg:min-h-[250px] w-full resize-y text-sm md:text-base leading-relaxed"
+                  maxLength={500}
+                  className="min-h-[80px] w-full resize-none overflow-hidden text-sm md:text-base leading-relaxed"
                   dir="ltr"
                   style={{
                     direction: 'ltr',
@@ -209,9 +321,63 @@ export default function ReportSafetyEmergency() {
                     maxWidth: '100%'
                   }}
                 />
-                <p className={`text-xs md:text-sm mt-2 ${report.length > 0 && report.length < 10 ? 'text-red-500 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
-                  {report.length} characters {report.length > 0 && report.length < 10 && "(minimum 10 required)"}
+                <p className={`text-xs md:text-sm mt-2 ${report.length > 0 && report.length < 30 ? 'text-red-500 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
+                  {report.length} / 500 characters {report.length > 0 && report.length < 30 && "(minimum 30 required)"}
                 </p>
+
+                {/* Media Uploader */}
+                <div className="mt-5 pt-5 border-t border-gray-100 dark:border-gray-800">
+                  <span className="block text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-2">
+                    Attach Photos or Videos <span className="text-gray-400 dark:text-gray-500 font-normal text-xs">(Optional)</span>
+                  </span>
+                  
+                  {/* Upload Trigger Area */}
+                  <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 dark:border-gray-800 hover:border-red-400 dark:hover:border-red-900 rounded-2xl py-6 px-4 cursor-pointer transition-colors bg-gray-50/50 dark:bg-gray-900/10 group">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,video/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                    <Upload className="h-6 w-6 text-gray-400 dark:text-gray-500 group-hover:text-red-500 transition-colors mb-2" />
+                    <span className="text-xs md:text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Upload files (images or videos)
+                    </span>
+                    <span className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+                      Max size: 10MB per file
+                    </span>
+                  </label>
+
+                  {/* Previews Grid */}
+                  {mediaFiles.length > 0 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mt-4">
+                      {mediaFiles.map((item) => (
+                        <div key={item.id} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-[#121212] group shadow-sm">
+                          {item.type === 'video' ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
+                              <Film className="h-6 w-6 text-gray-400 dark:text-gray-500 mb-1" />
+                              <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate w-full px-1">{item.name}</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={item.previewUrl}
+                              alt="preview"
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => removeFile(item.id)}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-colors shadow"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -227,7 +393,7 @@ export default function ReportSafetyEmergency() {
                   Submitting...
                 </>
               ) : (
-                'Report Safety Issue'
+                'Submit Report'
               )}
             </Button>
 
@@ -236,22 +402,20 @@ export default function ReportSafetyEmergency() {
               <CardContent className="p-4 md:p-5 lg:p-6">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">
-                    Your report history
+                    Your Report History
                   </h3>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={fetchHistory}
                     disabled={historyLoading}
-                    className="h-8"
+                    className="h-8 w-8 rounded-full"
+                    title="Refresh History"
                   >
                     {historyLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading
-                      </>
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Refresh"
+                      <RefreshCw className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                     )}
                   </Button>
                 </div>
