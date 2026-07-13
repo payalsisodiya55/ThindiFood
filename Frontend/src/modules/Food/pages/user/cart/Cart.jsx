@@ -2258,7 +2258,7 @@ export default function Cart() {
     cart.forEach(item => {
       if (item.offer && item.offer.maxItemsPerOrder) {
         if (item.quantity > item.offer.maxItemsPerOrder) {
-          toast.error(`Only ${item.offer.maxItemsPerOrder} item${item.offer.maxItemsPerOrder > 1 ? 's' : ''} allowed for this offer in one order.`, {
+          toast.error(`Offer applies to ${item.offer.maxItemsPerOrder} item${item.offer.maxItemsPerOrder > 1 ? 's' : ''} only`, {
             id: `offer-limit-${item.id}`, // Prevent duplicate toasts for same item
             duration: 4000,
             icon: '⚠️'

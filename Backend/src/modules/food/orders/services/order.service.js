@@ -1568,7 +1568,7 @@ async function resolveRestaurantOfferBreakdown({
           validationErrors.push({
             itemId: item.itemId || item.id,
             type: "OFFER_LIMIT_EXCEEDED",
-            message: `Only ${itemOffer.maxItemsPerOrder} item${itemOffer.maxItemsPerOrder > 1 ? "s are" : " is"} allowed for this offer in one order.`,
+            message: `Offer applies to ${itemOffer.maxItemsPerOrder} item${itemOffer.maxItemsPerOrder > 1 ? "s" : ""} only`,
           });
           return;
         }
