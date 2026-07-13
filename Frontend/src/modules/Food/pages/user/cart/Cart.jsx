@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
-import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Banknote, Zap, MessageCircle, Send, Mail, Copy, AlertCircle, Info } from "lucide-react"
+import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Banknote, Store, Zap, MessageCircle, Send, Mail, Copy, AlertCircle, Info } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
 
@@ -2039,7 +2039,7 @@ export default function Cart() {
       id: 'razorpay',
       name: 'Online Payment',
       description: 'UPI, Cards, Netbanking',
-      icon: <Zap className="w-5 h-5" />,
+      icon: <CreditCard className="w-5 h-5" />,
       color: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-400',
       selectedColor: 'bg-emerald-500 text-white',
       badge: 'SECURE'
@@ -2060,7 +2060,7 @@ export default function Cart() {
           id: 'cash',
           name: fulfillmentMode === "delivery" ? 'Cash on Delivery' : 'Pay at Restaurant',
           description: fulfillmentMode === "delivery" ? 'Pay when your order arrives' : 'Pay at the restaurant counter',
-          icon: <Banknote className="w-5 h-5" />,
+          icon: fulfillmentMode === "delivery" ? <Banknote className="w-5 h-5" /> : <Store className="w-5 h-5" />,
           color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
           selectedColor: 'bg-red-500 text-white'
         }]
@@ -3987,13 +3987,21 @@ export default function Cart() {
               onClick={() => setShowPaymentSheet(true)}
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-red-100/80 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                  selectedPaymentMethod === "wallet"
+                    ? "bg-blue-100/80 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
+                    : selectedPaymentMethod === "razorpay"
+                      ? "bg-emerald-100/80 dark:bg-emerald-900/40 text-[#00c87e]"
+                      : "bg-red-100/80 dark:bg-red-900/40 text-red-600 dark:text-red-400"
+                }`}>
                   {selectedPaymentMethod === "wallet" ? (
-                    <Wallet className="h-5 w-5 text-[#00c87e]" />
+                    <Wallet className="h-5 w-5" />
                   ) : selectedPaymentMethod === "razorpay" ? (
-                    <Zap className="h-5 w-5 text-[#00c87e]" />
+                    <CreditCard className="h-5 w-5" />
+                  ) : fulfillmentMode === "delivery" ? (
+                    <Banknote className="h-5 w-5" />
                   ) : (
-                    <Banknote className="h-5 w-5 text-[#00c87e]" />
+                    <Store className="h-5 w-5" />
                   )}
                 </div>
                 <div className="leading-tight">
@@ -4067,7 +4075,15 @@ export default function Cart() {
                   {/* Payment Info */}
                   <div className="flex items-center gap-4 mb-5">
                     <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
-                      <CreditCard className="w-6 h-6 text-gray-600" />
+                      {selectedPaymentMethod === "wallet" ? (
+                        <Wallet className="w-6 h-6 text-gray-600" />
+                      ) : selectedPaymentMethod === "razorpay" ? (
+                        <CreditCard className="w-6 h-6 text-gray-600" />
+                      ) : fulfillmentMode === "delivery" ? (
+                        <Banknote className="w-6 h-6 text-gray-600" />
+                      ) : (
+                        <Store className="w-6 h-6 text-gray-600" />
+                      )}
                     </div>
                     <div>
                       <p className="text-lg font-semibold text-gray-900">
@@ -4075,7 +4091,9 @@ export default function Cart() {
                           ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} online (Razorpay)`
                           : selectedPaymentMethod === "wallet"
                             ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} from Wallet`
-                            : `Pay on delivery (COD)`}
+                            : fulfillmentMode === "delivery"
+                              ? `Pay on delivery (COD)`
+                              : `Pay at Restaurant`}
                       </p>
                     </div>
                   </div>
@@ -4262,23 +4280,23 @@ export default function Cart() {
                   exit={{ y: "100%" }}
                   transition={{ type: "spring", damping: 30, stiffness: 350 }}
                   className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] rounded-t-[2rem] z-[101] shadow-2xl overflow-hidden max-h-[82vh] md:max-h-[60vh] flex flex-col"
-                  style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+                  style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 24px))" }}
                 >
-                  <div className="p-5 md:p-6 flex flex-col h-full min-h-0">
+                  <div className="p-5 md:p-6 flex flex-col min-h-0">
                     {/* Compact Drag handle */}
                     <div className="w-10 h-1 bg-gray-200 dark:bg-gray-800 rounded-full mx-auto mb-5" />
 
-                    <div className="flex items-center justify-between mb-5">
-                      <div>
-                        <h2 className="text-xl font-extrabold text-gray-900 dark:text-white leading-none">Payment Method</h2>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-tighter mt-1">Select how you want to pay</p>
+                    <div className="mb-5">
+                      <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-[900] text-gray-900 dark:text-white uppercase tracking-tight">SELECT A PAYMENT METHOD</h2>
+                        <button
+                          onClick={() => setShowPaymentSheet(false)}
+                          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <X className="w-4 h-4 text-gray-500" />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => setShowPaymentSheet(false)}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <X className="w-4 h-4 text-gray-500" />
-                      </button>
+                      <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-2">Select how you want to pay</p>
                     </div>
 
                     <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
@@ -4353,8 +4371,7 @@ export default function Cart() {
                     </div>
 
                     <div
-                      className="mt-auto pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 bg-white dark:bg-[#1a1a1a]"
-                      style={{ paddingBottom: "max(0.25rem, env(safe-area-inset-bottom, 0px))" }}
+                      className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 bg-white dark:bg-[#1a1a1a]"
                     >
                       <div className="flex-shrink-0">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Pay</p>

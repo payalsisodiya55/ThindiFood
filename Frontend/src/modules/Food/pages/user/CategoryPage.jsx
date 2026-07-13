@@ -880,19 +880,38 @@ export default function CategoryPage() {
                 ? restaurant.cuisines.join(", ")
                 : null
 
-              const coverImages = restaurant.coverImages && restaurant.coverImages.length > 0
-                ? restaurant.coverImages.map(img => normalizeImageUrl(img.url || img)).filter(Boolean)
-                : []
+              const extractFromVal = (val) => {
+                if (!val) return []
+                if (Array.isArray(val)) {
+                  return val.map(img => normalizeImageUrl(img.url || img)).filter(Boolean)
+                }
+                return [normalizeImageUrl(val.url || val)].filter(Boolean)
+              }
 
-              const fallbackImages = restaurant.menuImages && restaurant.menuImages.length > 0
-                ? restaurant.menuImages.map(img => normalizeImageUrl(img.url || img)).filter(Boolean)
-                : []
+              const profileCandidates = [
+                ...extractFromVal(restaurant.profileImage),
+                ...extractFromVal(restaurant.onboarding?.step2?.profileImageUrl),
+                ...extractFromVal(restaurant.image),
+                ...extractFromVal(restaurant.imageUrl)
+              ]
 
-              const allImages = coverImages.length > 0
-                ? coverImages
-                : (fallbackImages.length > 0
-                  ? fallbackImages
-                  : (restaurant.profileImage?.url ? [normalizeImageUrl(restaurant.profileImage.url)] : []))
+              const coverImgs = [
+                ...extractFromVal(restaurant.coverImages),
+                ...extractFromVal(restaurant.coverImage)
+              ]
+
+              const fallbackImgs = extractFromVal(restaurant.menuImages)
+
+              const onboardingMenuImgs = extractFromVal(restaurant.onboarding?.step2?.menuImageUrls)
+
+              const allImages = Array.from(
+                new Set([
+                  ...profileCandidates,
+                  ...coverImgs,
+                  ...fallbackImgs,
+                  ...onboardingMenuImgs
+                ].filter(Boolean))
+              )
 
               const image = allImages[0] || null
               const restaurantId = restaurant.restaurantId || restaurant._id
