@@ -3231,14 +3231,6 @@ export default function Cart() {
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0"
-              onClick={handleShare}
-            >
-              <Share2 className="h-4 w-4 md:h-5 md:w-5" />
-            </Button>
           </div>
         </div>
       </div>
@@ -3604,9 +3596,9 @@ export default function Cart() {
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
-                    <Zap className="h-5 w-5 text-green-600 fill-green-600/20" />
+                    <Clock className="h-5 w-5 text-green-600" />
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                      {fulfillmentMode === "delivery" ? "Delivery timing" : "Takeaway timing"}
+                      {fulfillmentMode === "delivery" ? "Delivery Timing" : "Takeaway Timing"}
                     </p>
                   </div>
                   <div className="pl-7">
@@ -4026,7 +4018,7 @@ export default function Cart() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-0.5 text-[#00c87e] font-bold text-[11px] tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg">
+              <div className="flex items-center gap-0.5 text-[#00c87e] font-bold text-[11px] tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg border border-red-100 dark:border-red-900/30">
                 Change <ChevronRight className="h-3.5 w-3.5" />
               </div>
             </div>
