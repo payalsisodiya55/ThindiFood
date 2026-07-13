@@ -107,9 +107,8 @@ const CustomSelect = ({ value, onChange, options, placeholder, className = "" })
           {selectedOption ? selectedOption.label : placeholder}
         </span>
         <ChevronDown
-          className={`h-4.5 w-4.5 text-gray-500 transition-transform duration-200 ${
-            isOpen ? "rotate-180 text-[#00c87e]" : ""
-          }`}
+          className={`h-4.5 w-4.5 text-gray-500 transition-transform duration-200 ${isOpen ? "rotate-180 text-[#00c87e]" : ""
+            }`}
         />
       </button>
 
@@ -126,19 +125,17 @@ const CustomSelect = ({ value, onChange, options, placeholder, className = "" })
                     onChange(option.value)
                     setIsOpen(false)
                   }}
-                  className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-colors cursor-pointer ${
-                    isSelected
+                  className={`w-full flex items-center justify-between px-4 py-3 text-sm text-left transition-colors cursor-pointer ${isSelected
                       ? "bg-[#00c87e]/15 text-[#00c87e] font-semibold"
                       : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900"
-                  }`}
+                    }`}
                 >
                   <span className="truncate pr-2">{option.label}</span>
                   <div
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                      isSelected
+                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected
                         ? "border-[#00c87e] bg-[#00c87e]/5"
                         : "border-gray-300 dark:border-gray-600"
-                    }`}
+                      }`}
                   >
                     {isSelected && (
                       <div className="w-2.5 h-2.5 rounded-full bg-[#00c87e] animate-in zoom-in-50 duration-200" />
@@ -178,8 +175,8 @@ const calculateDistanceKm = (from, to) => {
   const a =
     Math.sin(latDelta / 2) ** 2 +
     Math.cos(toRadians(fromLat)) *
-      Math.cos(toRadians(toLat)) *
-      Math.sin(lngDelta / 2) ** 2
+    Math.cos(toRadians(toLat)) *
+    Math.sin(lngDelta / 2) ** 2
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
   return earthRadiusKm * c
@@ -1050,8 +1047,8 @@ export default function Cart() {
     const selectedValue =
       pickupHour12 && pickupMinute
         ? availablePickupTimeSlots.find(
-            (slot) => slot.hour12 === pickupHour12 && slot.minute === pickupMinute,
-          )?.value || ""
+          (slot) => slot.hour12 === pickupHour12 && slot.minute === pickupMinute,
+        )?.value || ""
         : ""
 
     if (
@@ -1855,10 +1852,10 @@ export default function Cart() {
                 const resolvedDiscountAmount = isPercentageCoupon
                   ? Math.max(0, Number(coupon.discountPercentage) || 0)
                   : Math.max(
-                      0,
-                      Number(coupon.discountValue) ||
-                        Math.max(0, (coupon.originalPrice || 0) - (coupon.discountedPrice || 0))
-                    )
+                    0,
+                    Number(coupon.discountValue) ||
+                    Math.max(0, (coupon.originalPrice || 0) - (coupon.discountedPrice || 0))
+                  )
                 // Convert backend coupon format to frontend format
                 allCoupons.push({
                   code: coupon.couponCode,
@@ -2056,14 +2053,14 @@ export default function Cart() {
       disabledText: 'Low Balance'
     },
     ...(isTakeawayCodEnabled
-        ? [{
-          id: 'cash',
-          name: fulfillmentMode === "delivery" ? 'Cash on Delivery' : 'Pay at Restaurant',
-          description: fulfillmentMode === "delivery" ? 'Pay when your order arrives' : 'Pay at the restaurant counter',
-          icon: fulfillmentMode === "delivery" ? <Banknote className="w-5 h-5" /> : <Store className="w-5 h-5" />,
-          color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
-          selectedColor: 'bg-red-500 text-white'
-        }]
+      ? [{
+        id: 'cash',
+        name: fulfillmentMode === "delivery" ? 'Cash on Delivery' : 'Pay at Restaurant',
+        description: fulfillmentMode === "delivery" ? 'Pay when your order arrives' : 'Pay at the restaurant counter',
+        icon: fulfillmentMode === "delivery" ? <Banknote className="w-5 h-5" /> : <Store className="w-5 h-5" />,
+        color: 'bg-red-50 text-red-600 dark:bg-red-900/40 dark:text-red-400',
+        selectedColor: 'bg-red-500 text-white'
+      }]
       : [])
   ]
   const savings = Math.round(pricing?.savings ?? Math.max(0, totalBeforeDiscount - total))
@@ -2089,8 +2086,8 @@ export default function Cart() {
     pickupRestaurantAddress
   const successFulfillmentType = String(
     placedOrderSnapshot?.successFulfillmentType ||
-      placedOrderSnapshot?.fulfillmentType ||
-      (fulfillmentMode === "delivery" ? "delivery" : "takeaway"),
+    placedOrderSnapshot?.fulfillmentType ||
+    (fulfillmentMode === "delivery" ? "delivery" : "takeaway"),
   ).toLowerCase()
   const successDeliveryLocation =
     placedOrderSnapshot?.successDeliveryLocation ||
@@ -2178,7 +2175,7 @@ export default function Cart() {
   const showRestaurantOfferCouponConflict = (message) => {
     toast.error(
       message ||
-        "This coupon cannot be used with an active restaurant offer. Remove the offered item from your cart or continue with the restaurant offer.",
+      "This coupon cannot be used with an active restaurant offer. Remove the offered item from your cart or continue with the restaurant offer.",
     )
   }
 
@@ -2539,15 +2536,15 @@ export default function Cart() {
 
       setPricing(pricingData)
       setCouponCode(inputCode)
-        setAppliedCoupon(
-          matchedCoupon || {
-            code: inputCode,
-            discount: pricingData.appliedCoupon.discount || 0,
-            minOrder: 0,
-            customerGroup: "all",
-            discountType: undefined,
-          },
-        )
+      setAppliedCoupon(
+        matchedCoupon || {
+          code: inputCode,
+          discount: pricingData.appliedCoupon.discount || 0,
+          minOrder: 0,
+          customerGroup: "all",
+          discountType: undefined,
+        },
+      )
       setShowCoupons(false)
       toast.success("Coupon applied")
     } catch (error) {
@@ -3170,10 +3167,10 @@ export default function Cart() {
     navigate(`/user/orders/${placedOrderId}?confirmed=true`, {
       state: placedOrderSnapshot
         ? {
-            prefetchedOrder: placedOrderSnapshot,
-            prefetchedAt: Date.now(),
-            fromOrderPlacement: true,
-          }
+          prefetchedOrder: placedOrderSnapshot,
+          prefetchedAt: Date.now(),
+          fromOrderPlacement: true,
+        }
         : undefined,
     })
   }
@@ -3184,9 +3181,9 @@ export default function Cart() {
       <AnimatedPage className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a]">
         <div className="bg-white dark:bg-[#1a1a1a] border-b dark:border-gray-800 sticky top-0 z-10">
           <div className="flex items-center gap-3 px-4 py-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-8 w-8 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
               onClick={handleBack}
             >
@@ -3216,9 +3213,9 @@ export default function Cart() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between px-3 md:px-6 py-2 md:py-3">
             <div className="flex items-center gap-2 flex-1 min-w-0">
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                 onClick={handleBack}
               >
@@ -3231,6 +3228,14 @@ export default function Cart() {
                 </p>
               </div>
             </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0"
+              onClick={handleShare}
+            >
+              <Share2 className="h-4 w-4 md:h-5 md:w-5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -3268,67 +3273,68 @@ export default function Cart() {
                 <div className="space-y-3 md:space-y-4">
                   {cart.map((item) => {
                     const validationError = pricing?.validationErrors?.find(v => v.itemId === item.id || v.itemId === item.itemId);
-                    
+
                     return (
-                    <div key={item.id} className="flex flex-col gap-2">
-                      {/* Validation Warning for Offers */}
-                      {validationError && (
-                        <div className="bg-[#3b0a0a] border border-[#5c1313] text-[#fcd5d5] px-3 py-2.5 rounded-xl flex items-center justify-between gap-2 shadow-sm animate-in fade-in zoom-in duration-300">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-                            <span className="text-[11px] md:text-xs font-medium tracking-wide">{validationError.message}</span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-start gap-3 md:gap-4 p-2 bg-transparent rounded-lg">
-                        {/* Veg/Non-veg indicator */}
-                        <div className={`w-4 h-4 md:w-5 md:h-5 border-2 ${item.isVeg === true ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-1 flex-shrink-0`}>
-                          <div className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${item.isVeg === true ? 'bg-green-600' : 'bg-red-600'}`} />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 leading-tight">{item.name}</p>
-                          {item.variantName ? (
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variantName}</p>
-                          ) : null}
-                          {item.offer ? (
-                            <div className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[#00c87e]/20 bg-[#00c87e]/10 px-2 py-0.5 text-[10px] font-bold text-[#00c87e]">
-                              <Tag className="h-2.5 w-2.5" />
-                              {String(item.offer.discountType).toLowerCase() === "percentage"
-                                ? `${Number(item.offer.discountValue || 0)}% OFF`
-                                : `${RUPEE_SYMBOL}${Number(item.offer.discountValue || 0)} OFF`}
+                      <div key={item.id} className="flex flex-col gap-2">
+                        {/* Validation Warning for Offers */}
+                        {validationError && (
+                          <div className="bg-[#3b0a0a] border border-[#5c1313] text-[#fcd5d5] px-3 py-2.5 rounded-xl flex items-center justify-between gap-2 shadow-sm animate-in fade-in zoom-in duration-300">
+                            <div className="flex items-center gap-2">
+                              <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
+                              <span className="text-[11px] md:text-xs font-medium tracking-wide">{validationError.message}</span>
                             </div>
-                          ) : null}
-                        </div>
+                          </div>
+                        )}
 
-                        <div className="flex items-center gap-3 md:gap-4">
-                          {/* Quantity controls */}
-                          <div className="flex items-center border border-[#00c87e] dark:border-[#00c87e]/50 rounded">
-                            <button
-                              className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10 transition-colors"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            >
-                              <Minus className="h-3 w-3 md:h-4 md:w-4" />
-                            </button>
-                            <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-[#00c87e] dark:text-[#00c87e] min-w-[20px] md:min-w-[24px] text-center">
-                              {item.quantity}
-                            </span>
-                            <button
-                              className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10 transition-colors"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            >
-                              <Plus className="h-3 w-3 md:h-4 md:w-4" />
-                            </button>
+                        <div className="flex items-start gap-3 md:gap-4 p-2 bg-transparent rounded-lg">
+                          {/* Veg/Non-veg indicator */}
+                          <div className={`w-4 h-4 md:w-5 md:h-5 border-2 ${item.isVeg === true ? 'border-green-600' : 'border-red-600'} flex items-center justify-center mt-1 flex-shrink-0`}>
+                            <div className={`w-2 h-2 md:w-2.5 md:h-2.5 rounded-full ${item.isVeg === true ? 'bg-green-600' : 'bg-red-600'}`} />
                           </div>
 
-                          <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 min-w-[50px] md:min-w-[70px] text-right">
-                            {RUPEE_SYMBOL}{((item.price || 0) * (item.quantity || 1)).toFixed(0)}
-                          </p>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 leading-tight">{item.name}</p>
+                            {item.variantName ? (
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.variantName}</p>
+                            ) : null}
+                            {item.offer ? (
+                              <div className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-[#00c87e]/20 bg-[#00c87e]/10 px-2 py-0.5 text-[10px] font-bold text-[#00c87e]">
+                                <Tag className="h-2.5 w-2.5" />
+                                {String(item.offer.discountType).toLowerCase() === "percentage"
+                                  ? `${Number(item.offer.discountValue || 0)}% OFF`
+                                  : `${RUPEE_SYMBOL}${Number(item.offer.discountValue || 0)} OFF`}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="flex items-center gap-3 md:gap-4">
+                            {/* Quantity controls */}
+                            <div className="flex items-center border border-[#00c87e] dark:border-[#00c87e]/50 rounded">
+                              <button
+                                className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10 transition-colors"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              >
+                                <Minus className="h-3 w-3 md:h-4 md:w-4" />
+                              </button>
+                              <span className="px-2 md:px-3 text-sm md:text-base font-semibold text-[#00c87e] dark:text-[#00c87e] min-w-[20px] md:min-w-[24px] text-center">
+                                {item.quantity}
+                              </span>
+                              <button
+                                className="px-2 md:px-3 py-1 text-[#00c87e] dark:text-[#00c87e] hover:bg-red-50 dark:hover:bg-[#00c87e]/10 transition-colors"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              >
+                                <Plus className="h-3 w-3 md:h-4 md:w-4" />
+                              </button>
+                            </div>
+
+                            <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 min-w-[50px] md:min-w-[70px] text-right">
+                              {RUPEE_SYMBOL}{((item.price || 0) * (item.quantity || 1)).toFixed(0)}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )})}
+                    )
+                  })}
                 </div>
 
                 {/* Add more items */}
@@ -3437,28 +3443,25 @@ export default function Cart() {
 
               {/* Restaurant Offer Section */}
               {restaurantOfferInfo && (
-                <div className={`bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-sm border ${
-                  restaurantOfferInfo.replacedByCoupon
+                <div className={`bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-sm border ${restaurantOfferInfo.replacedByCoupon
                     ? 'border-amber-200 dark:border-amber-900/40'
                     : 'border-[#00c87e]/20'
-                }`}>
+                  }`}>
                   <div className="px-4 py-3 md:px-6 md:py-4 flex items-start gap-3">
-                    <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0 ${
-                      restaurantOfferInfo.replacedByCoupon
+                    <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0 ${restaurantOfferInfo.replacedByCoupon
                         ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
                         : 'bg-[#00c87e]/10 text-[#00c87e]'
-                    }`}>
+                      }`}>
                       {restaurantOfferInfo.replacedByCoupon
                         ? <Info className="h-4 w-4" />
                         : <Tag className="h-4 w-4" />
                       }
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-semibold break-words ${
-                        restaurantOfferInfo.replacedByCoupon
+                      <p className={`text-sm font-semibold break-words ${restaurantOfferInfo.replacedByCoupon
                           ? 'text-gray-500 dark:text-gray-400'
                           : 'text-gray-800 dark:text-gray-200'
-                      }`}>
+                        }`}>
                         {restaurantOfferInfo.replacedByCoupon
                           ? 'Restaurant offer removed'
                           : `Restaurant offer: ${restaurantOfferInfo.text}`
@@ -3488,7 +3491,9 @@ export default function Cart() {
                 {appliedCoupon ? (
                   <div className="px-4 py-3 md:px-6 md:py-4 flex items-center justify-between">
                     <div className="flex items-start gap-3">
-                      {getCouponIcon(appliedCoupon, "h-5 w-5 text-[#00c87e] mt-0.5")}
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#00c87e]/10 text-[#00c87e] flex-shrink-0 mt-0.5">
+                        {getCouponIcon(appliedCoupon, "h-4 w-4")}
+                      </div>
                       <div>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">'{appliedCoupon.code}' applied</p>
                         <p className="text-xs text-[#00c87e] font-medium mt-0.5">You saved {RUPEE_SYMBOL}{discount}</p>
@@ -3504,7 +3509,9 @@ export default function Cart() {
                     ) : availableCoupons.length > 0 ? (
                       <div className="flex items-start justify-between w-full">
                         <div className="flex items-start gap-3 flex-1">
-                          {getCouponIcon(availableCoupons[0], "h-5 w-5 text-gray-700 dark:text-gray-300 mt-0.5")}
+                          <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#00c87e]/10 text-[#00c87e] flex-shrink-0 mt-0.5">
+                            {getCouponIcon(availableCoupons[0], "h-4 w-4")}
+                          </div>
                           <div className="flex-1">
                             <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight mb-0.5">
                               {getCouponSummaryText(availableCoupons[0])}
@@ -3534,7 +3541,9 @@ export default function Cart() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-3">
-                        <Percent className="h-5 w-5 text-gray-400" />
+                        <div className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 flex-shrink-0">
+                          <Percent className="h-4 w-4" />
+                        </div>
                         <p className="text-sm text-gray-500">No offers available</p>
                       </div>
                     )}
@@ -3595,52 +3604,52 @@ export default function Cart() {
               {/* Delivery Time */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-green-600" />
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#00c87e]/10 text-[#00c87e] flex-shrink-0">
+                      <Clock className="h-4 w-4" />
+                    </div>
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200">
                       {fulfillmentMode === "delivery" ? "Delivery Timing" : "Takeaway Timing"}
                     </p>
                   </div>
-                  <div className="pl-7">
-                      <div className="mt-3 inline-flex rounded-full bg-slate-100 p-1 dark:bg-gray-800">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsPickupScheduled(false)
-                            setPickupDate("")
-                          }}
-                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                            !isPickupScheduled
-                              ? "bg-white text-[#00c87e] shadow-sm dark:bg-[#111111]"
+                  <div className="pl-11">
+                    <div className="mt-3 inline-flex rounded-full bg-slate-100 p-1 dark:bg-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsPickupScheduled(false)
+                          setPickupDate("")
+                        }}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${!isPickupScheduled
+                            ? "bg-white text-[#00c87e] shadow-sm dark:bg-[#111111]"
+                            : "text-gray-600 dark:text-gray-400"
+                          }`}
+                      >
+                        Now
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (takeawayScheduleWindow?.availableAfterOpening) return
+                          setIsPickupScheduled(true)
+                          setIsScheduled(false)
+                          setPickupDate(new Date().toLocaleDateString("en-CA"))
+                        }}
+                        disabled={Boolean(takeawayScheduleWindow?.availableAfterOpening)}
+                        className={`rounded-full px-4 py-2 text-sm font-medium transition ${isPickupScheduled
+                            ? "bg-white text-[#00c87e] shadow-sm dark:bg-[#111111]"
+                            : takeawayScheduleWindow?.availableAfterOpening
+                              ? "text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60"
                               : "text-gray-600 dark:text-gray-400"
                           }`}
-                        >
-                          Now
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (takeawayScheduleWindow?.availableAfterOpening) return
-                            setIsPickupScheduled(true)
-                            setIsScheduled(false)
-                            setPickupDate(new Date().toLocaleDateString("en-CA"))
-                          }}
-                          disabled={Boolean(takeawayScheduleWindow?.availableAfterOpening)}
-                          className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                            isPickupScheduled
-                              ? "bg-white text-[#00c87e] shadow-sm dark:bg-[#111111]"
-                              : takeawayScheduleWindow?.availableAfterOpening
-                                ? "text-gray-400 dark:text-gray-500 cursor-not-allowed opacity-60"
-                                : "text-gray-600 dark:text-gray-400"
-                          }`}
-                        >
-                          Schedule
-                        </button>
-                      </div>
-                      <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                        {takeawayScheduleWindow?.availableAfterOpening
-                          ? takeawayScheduleWindow.message
-                          : !isPickupScheduled
+                      >
+                        Schedule
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                      {takeawayScheduleWindow?.availableAfterOpening
+                        ? takeawayScheduleWindow.message
+                        : !isPickupScheduled
                           ? `${fulfillmentMode === "delivery" ? "Delivered" : "Ready"} in about ${Math.max(takeawayPrepTimeMinutes, 0)} mins`
                           : takeawayScheduleWindow?.hasSlots
                             ? "Up to 3 hours ahead • 5 min slots"
@@ -3732,11 +3741,10 @@ export default function Cart() {
                       setFulfillmentMode("takeaway")
                       setPlaceOrderErrorMessage("")
                     }}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${
-                      fulfillmentMode === "takeaway"
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${fulfillmentMode === "takeaway"
                         ? "bg-[#00c87e] text-white border-[#00c87e] shadow-sm"
                         : "bg-white text-gray-700 border-gray-300 dark:bg-[#2a2a2a] dark:text-gray-400 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#333333]"
-                    }`}
+                      }`}
                   >
                     Pickup
                   </button>
@@ -3749,166 +3757,178 @@ export default function Cart() {
                       }
                     }}
                     disabled={!canRestaurantAcceptDeliveryOrders(restaurantData)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${
-                      fulfillmentMode === "delivery"
+                    className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-200 ${fulfillmentMode === "delivery"
                         ? "bg-[#00c87e] text-white border-[#00c87e] shadow-sm"
                         : "bg-white text-gray-700 border-gray-300 dark:bg-[#2a2a2a] dark:text-gray-400 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#333333]"
-                    } disabled:opacity-50`}
+                      } disabled:opacity-50`}
                   >
                     Delivery
                   </button>
                 </div>
                 <div className="flex items-start justify-between w-full text-left">
-                  <div className="flex items-start gap-4 flex-1">
-                    <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded-xl mt-0.5">
-                      <MapPin className="h-5 w-5 text-[#00c87e]" />
+                  <div className="flex items-start gap-3 flex-1">
+                    <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#00c87e]/10 text-[#00c87e] flex-shrink-0 mt-0.5">
+                      <MapPin className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
-                        <div className="flex flex-col">
-                          <p className="text-sm md:text-base text-gray-800 dark:text-gray-200 break-all">
-                            {fulfillmentMode === "delivery" ? "Deliver to " : "Pickup at "}
-                            <span className="font-semibold">
-                              {fulfillmentMode === "delivery" ? (getDisplayAddressLabel(defaultAddress?.label || "Home")) : restaurantName}
-                            </span>
-                          </p>
-                          <div className="mt-1">
-                            {fulfillmentMode === "delivery" && recipientName && (
-                              <p className="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">
-                                {recipientName}
-                              </p>
-                            )}
-                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                              {fulfillmentMode === "delivery"
-                                ? (formatFullAddress(defaultAddress) || defaultAddress?.address || "Select a delivery location")
-                                : pickupRestaurantAddress}
+                      <div className="flex flex-col">
+                        <p className="text-sm md:text-base text-gray-800 dark:text-gray-200 break-all">
+                          {fulfillmentMode === "delivery" ? "Deliver to " : "Pickup at "}
+                          <span className="font-semibold">
+                            {fulfillmentMode === "delivery" ? (getDisplayAddressLabel(defaultAddress?.label || "Home")) : restaurantName}
+                          </span>
+                        </p>
+                        <div className="mt-1">
+                          {fulfillmentMode === "delivery" && recipientName && (
+                            <p className="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200 mb-0.5">
+                              {recipientName}
                             </p>
-                            <div className="mt-1 flex items-center gap-2">
-                              {fulfillmentMode === "takeaway" ? (
-                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-green-50 text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
-                                  {restaurantDistanceLabel}
+                          )}
+                          <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                            {fulfillmentMode === "delivery"
+                              ? (formatFullAddress(defaultAddress) || defaultAddress?.address || "Select a delivery location")
+                              : pickupRestaurantAddress}
+                          </p>
+                          <div className="mt-1 flex items-center gap-2">
+                            {fulfillmentMode === "takeaway" ? (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-green-50 text-[#00c87e] dark:bg-[#00c87e]/10 dark:text-[#00c87e] border border-[#00c87e]/30">
+                                {restaurantDistanceLabel}
+                              </span>
+                            ) : (
+                              deliveryFee > 0 && (
+                                <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                  Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(0)}
                                 </span>
-                              ) : (
-                                deliveryFee > 0 && (
-                                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                    Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(0)}
-                                  </span>
-                                )
-                              )}
-                            </div>
+                              )
+                            )}
                           </div>
                         </div>
-                        {fulfillmentMode === "delivery" && !hasSavedAddress && (
-                          <p className="text-sm text-[#00c87e] mt-2 font-medium">
-                            Select a delivery location to continue
-                          </p>
-                        )}
-                        {/* Hide user address selection UI for takeaway flow */}
-                        {false && !isPickupScheduled && <div className="flex flex-wrap gap-2 mt-3">
-                          {["Home", "Work", "Other"].map((label) => {
-                            const normalizedLabel = normalizeAddressLabel(label)
-                            const addressExists = addresses.some(addr => normalizeAddressLabel(addr.label) === normalizedLabel)
+                      </div>
+                      {fulfillmentMode === "delivery" && !hasSavedAddress && (
+                        <p className="text-sm text-[#00c87e] mt-2 font-medium">
+                          Select a delivery location to continue
+                        </p>
+                      )}
+                      {/* Hide user address selection UI for takeaway flow */}
+                      {false && !isPickupScheduled && <div className="flex flex-wrap gap-2 mt-3">
+                        {["Home", "Work", "Other"].map((label) => {
+                          const normalizedLabel = normalizeAddressLabel(label)
+                          const addressExists = addresses.some(addr => normalizeAddressLabel(addr.label) === normalizedLabel)
+                          return (
+                            <button
+                              key={label}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleSelectAddressByLabel(label)
+                              }}
+                              disabled={!addressExists}
+                              className={`text-xs px-4 py-1.5 rounded-full font-semibold transition-all ${addressExists
+                                ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-gray-800 dark:text-gray-300'
+                                : 'bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed dark:bg-gray-900'
+                                }`}
+                            >
+                              {label}
+                            </button>
+                          )
+                        })}
+                      </div>}
+                      {false && !isPickupScheduled && addresses.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          {addresses.map((address) => {
+                            const addressId = getAddressId(address)
+                            const isSelected = addressId && addressId === selectedAddressId
                             return (
                               <button
-                                key={label}
+                                key={addressId || `${address.label}-${address.street}-${address.city}`}
+                                type="button"
                                 onClick={(e) => {
                                   e.preventDefault()
                                   e.stopPropagation()
-                                  handleSelectAddressByLabel(label)
+                                  handleSelectSavedAddress(address)
                                 }}
-                                disabled={!addressExists}
-                                className={`text-xs px-4 py-1.5 rounded-full font-semibold transition-all ${addressExists
-                                  ? 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-gray-800 dark:text-gray-300'
-                                  : 'bg-gray-50 text-gray-400 border border-gray-100 cursor-not-allowed dark:bg-gray-900'
+                                className={`w-full text-left rounded-xl border-2 p-3 transition-colors ${isSelected
+                                  ? "border-[#00c87e] bg-red-50/50 dark:bg-[#00c87e]/5"
+                                  : "border-slate-100 dark:border-gray-800 hover:border-slate-200"
                                   }`}
                               >
-                                {label}
-                              </button>
-                              )
-                            })}
-                        </div>}
-                        {false && !isPickupScheduled && addresses.length > 0 && (
-                          <div className="mt-4 space-y-3">
-                            {addresses.map((address) => {
-                              const addressId = getAddressId(address)
-                              const isSelected = addressId && addressId === selectedAddressId
-                              return (
-                                <button
-                                  key={addressId || `${address.label}-${address.street}-${address.city}`}
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.preventDefault()
-                                    e.stopPropagation()
-                                    handleSelectSavedAddress(address)
-                                  }}
-                                  className={`w-full text-left rounded-xl border-2 p-3 transition-colors ${isSelected
-                                    ? "border-[#00c87e] bg-red-50/50 dark:bg-[#00c87e]/5"
-                                    : "border-slate-100 dark:border-gray-800 hover:border-slate-200"
-                                    }`}
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
-                                        {getDisplayAddressLabel(address.label)}
-                                      </p>
-                                      <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
-                                        {formatFullAddress(address) || address.address || "Address details"}
-                                      </p>
-                                    </div>
-                                    {isSelected && (
-                                      <span className="text-[10px] bg-[#00c87e] text-white px-2 py-0.5 rounded uppercase font-bold tracking-wider whitespace-nowrap">
-                                        Selected
-                                      </span>
-                                    )}
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                                      {getDisplayAddressLabel(address.label)}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mt-1">
+                                      {formatFullAddress(address) || address.address || "Address details"}
+                                    </p>
                                   </div>
-                                </button>
-                              )
-                            })}
-                          </div>
-                        )}
+                                  {isSelected && (
+                                    <span className="text-[10px] bg-[#00c87e] text-white px-2 py-0.5 rounded uppercase font-bold tracking-wider whitespace-nowrap">
+                                      Selected
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
 
-{/* Bill Details */}
+              {/* Bill Details */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-5 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800">
                 <button
                   onClick={() => setShowBillDetails(!showBillDetails)}
-                  className="flex items-center justify-between w-full"
+                  className="flex flex-col w-full text-left group"
                 >
-                  <div className="flex items-start gap-3 md:gap-4">
-                    <FileText className="h-5 w-5 text-gray-500 dark:text-gray-400 mt-0.5" />
-                    <div className="text-left">
-                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                  <div className="flex items-center justify-between w-full">
+                    <div className="flex items-center gap-3 md:gap-4">
+                      <div className="flex items-center justify-center h-8 w-8 rounded-full bg-[#00c87e]/10 text-[#00c87e] flex-shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="flex items-center gap-2">
                         <span className="text-base text-gray-800 dark:text-gray-200 font-semibold tracking-wide">Total Bill</span>
                         {savings > 0 ? (
                           <>
                             <span className="text-base text-gray-400 dark:text-gray-500 line-through font-medium">{RUPEE_SYMBOL}{totalBeforeDiscount.toFixed(2)}</span>
                             <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
-                            <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded text-center ml-1 font-semibold border border-blue-200 dark:border-blue-800">
-                              You saved {RUPEE_SYMBOL}{savings.toFixed(2)}
-                            </span>
                           </>
                         ) : (
                           <span className="text-base font-bold text-gray-900 dark:text-white">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                         )}
                       </div>
-                      {/* Incl. taxes and charges removed */}
                     </div>
+                    <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${showBillDetails ? 'rotate-90' : ''}`} />
                   </div>
-                  <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform ${showBillDetails ? 'rotate-90' : ''}`} />
+                  
+                  {savings > 0 && (
+                    <div className="pl-11 md:pl-12 mt-1.5">
+                      <span className="text-[11px] bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-semibold border border-blue-200 dark:border-blue-800">
+                        You saved {RUPEE_SYMBOL}{savings.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
                 </button>
 
                 {showBillDetails && (
-                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-3">
+                  <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-3 pl-11 md:pl-12">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Item Total</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
                     </div>
                     {fulfillmentMode === "delivery" && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-600 dark:text-gray-400">Delivery Fee</span>
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{deliveryFee.toFixed(2)}</span>
+                      <div className="flex justify-between text-sm items-center">
+                        <span className="text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                          Delivery Fee
+                          {deliveryFee === 0 && (
+                            <span className="text-[10px] bg-[#00c87e]/10 text-[#00c87e] border border-[#00c87e]/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Free</span>
+                          )}
+                        </span>
+                        <span className={`font-medium ${deliveryFee === 0 ? 'text-[#00c87e]' : 'text-gray-800 dark:text-gray-200'}`}>
+                          {deliveryFee === 0 ? "FREE" : `${RUPEE_SYMBOL}${deliveryFee.toFixed(2)}`}
+                        </span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm">
@@ -3984,13 +4004,12 @@ export default function Cart() {
               onClick={() => setShowPaymentSheet(true)}
             >
               <div className="flex items-center gap-3">
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                  selectedPaymentMethod === "wallet"
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${selectedPaymentMethod === "wallet"
                     ? "bg-blue-100/80 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400"
                     : selectedPaymentMethod === "razorpay"
                       ? "bg-emerald-100/80 dark:bg-emerald-900/40 text-[#00c87e]"
                       : "bg-red-100/80 dark:bg-red-900/40 text-red-600 dark:text-red-400"
-                }`}>
+                  }`}>
                   {selectedPaymentMethod === "wallet" ? (
                     <Wallet className="h-5 w-5" />
                   ) : selectedPaymentMethod === "razorpay" ? (
@@ -4018,7 +4037,7 @@ export default function Cart() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-0.5 text-[#00c87e] font-bold text-[11px] tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg border border-red-100 dark:border-red-900/30">
+              <div className="flex items-center gap-0.5 text-[#00c87e] font-bold text-[11px] tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg">
                 Change <ChevronRight className="h-3.5 w-3.5" />
               </div>
             </div>
@@ -4054,341 +4073,341 @@ export default function Cart() {
         </div>
       </div>
 
-          {/* Placing Order Modal */}
-          {showPlacingOrder && (
-            <div className="fixed inset-0 z-[60] h-screen w-screen overflow-hidden">
-              {/* Backdrop */}
-              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      {/* Placing Order Modal */}
+      {showPlacingOrder && (
+        <div className="fixed inset-0 z-[60] h-screen w-screen overflow-hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-              {/* Modal Sheet */}
-              <div
-                className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
-                style={{ animation: 'slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
-              >
-                <div className="px-6 py-8">
-                  {/* Title */}
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Placing your order</h2>
+          {/* Modal Sheet */}
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden"
+            style={{ animation: 'slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }}
+          >
+            <div className="px-6 py-8">
+              {/* Title */}
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Placing your order</h2>
 
-                  {/* Payment Info */}
-                  <div className="flex items-center gap-4 mb-5">
-                    <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
-                      {selectedPaymentMethod === "wallet" ? (
-                        <Wallet className="w-6 h-6 text-gray-600" />
-                      ) : selectedPaymentMethod === "razorpay" ? (
-                        <CreditCard className="w-6 h-6 text-gray-600" />
-                      ) : fulfillmentMode === "delivery" ? (
-                        <Banknote className="w-6 h-6 text-gray-600" />
-                      ) : (
-                        <Store className="w-6 h-6 text-gray-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-gray-900">
-                        {selectedPaymentMethod === "razorpay"
-                          ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} online (Razorpay)`
-                          : selectedPaymentMethod === "wallet"
-                            ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} from Wallet`
-                            : fulfillmentMode === "delivery"
-                              ? `Pay on delivery (COD)`
-                              : `Pay at Restaurant`}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Delivery Address */}
-                  <div className="flex items-center gap-4 mb-8">
-                    <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
-                      <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                        <path d="M9 22V12h6v10" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-lg font-semibold text-gray-900">Picking up from Restaurant</p>
-                      <p className="text-sm text-gray-600 mt-1">
-                        {pickupRestaurantAddress}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="relative mb-6">
-                    <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#00c87e] to-[#00c87e] rounded-full transition-all duration-100 ease-linear"
-                        style={{
-                          width: `${orderProgress}%`,
-                          boxShadow: '0 0 10px rgba(235, 89, 14, 0.5)'
-                        }}
-                      />
-                    </div>
-                    {/* Animated shimmer effect */}
-                    <div
-                      className="absolute inset-0 h-2.5 rounded-full overflow-hidden pointer-events-none"
-                      style={{
-                        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
-                        animation: 'shimmer 1.5s infinite',
-                        width: `${orderProgress}%`
-                      }}
-                    />
-                  </div>
-
-                  {/* Cancel Button */}
-                  <button
-                    onClick={() => {
-                      setShowPlacingOrder(false)
-                      setIsPlacingOrder(false)
-                    }}
-                    className="w-full text-right"
-                  >
-                    <span className="text-[#00c87e] font-semibold text-base hover:text-[#00c87e] transition-colors">
-                      CANCEL
-                    </span>
-                  </button>
+              {/* Payment Info */}
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-white shadow-sm">
+                  {selectedPaymentMethod === "wallet" ? (
+                    <Wallet className="w-6 h-6 text-gray-600" />
+                  ) : selectedPaymentMethod === "razorpay" ? (
+                    <CreditCard className="w-6 h-6 text-gray-600" />
+                  ) : fulfillmentMode === "delivery" ? (
+                    <Banknote className="w-6 h-6 text-gray-600" />
+                  ) : (
+                    <Store className="w-6 h-6 text-gray-600" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">
+                    {selectedPaymentMethod === "razorpay"
+                      ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} online (Razorpay)`
+                      : selectedPaymentMethod === "wallet"
+                        ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} from Wallet`
+                        : fulfillmentMode === "delivery"
+                          ? `Pay on delivery (COD)`
+                          : `Pay at Restaurant`}
+                  </p>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Order Success Celebration Page */}
-          {showOrderSuccess && (
-            <div
-              className="fixed inset-0 z-[70] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center h-screen w-screen overflow-hidden"
-              style={{ animation: 'fadeIn 0.3s ease-out' }}
-            >
-              {/* Confetti Background */}
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                {/* Animated confetti pieces */}
-                {[...Array(50)].map((_, i) => (
-                  <div
-                    key={i}
-                    className="absolute w-3 h-3 rounded-sm"
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `-10%`,
-                      backgroundColor: ['#00c87e', '#3b82f6', '#f59e0b', '#ef4444', '#00c87e', '#ec4899'][Math.floor(Math.random() * 6)],
-                      animation: `confettiFall ${2 + Math.random() * 2}s linear ${Math.random() * 2}s infinite`,
-                      transform: `rotate(${Math.random() * 360}deg)`,
-                    }}
-                  />
-                ))}
+              {/* Delivery Address */}
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-14 h-14 rounded-xl border border-gray-200 flex items-center justify-center bg-gray-50">
+                  <svg className="w-7 h-7 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path d="M9 22V12h6v10" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-gray-900">Picking up from Restaurant</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {pickupRestaurantAddress}
+                  </p>
+                </div>
               </div>
 
-              {/* Success Content */}
-              <div className="relative z-10 flex flex-col items-center px-6">
-                {/* Success Tick Circle */}
-                <div
-                  className="relative mb-8"
-                  style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both' }}
-                >
-                  {/* Outer ring animation */}
+              {/* Progress Bar */}
+              <div className="relative mb-6">
+                <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className="absolute inset-0 w-32 h-32 rounded-full border-4 border-green-500 dark:border-green-400"
+                    className="h-full bg-gradient-to-r from-[#00c87e] to-[#00c87e] rounded-full transition-all duration-100 ease-linear"
                     style={{
-                      animation: 'ringPulse 1.5s ease-out infinite',
-                      opacity: 0.3
+                      width: `${orderProgress}%`,
+                      boxShadow: '0 0 10px rgba(235, 89, 14, 0.5)'
                     }}
                   />
-                  {/* Main circle */}
-                  <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 dark:from-green-500 dark:to-emerald-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-200/60 dark:shadow-green-900/40">
-                    <svg
-                      className="w-16 h-16 text-white"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      style={{ animation: 'checkDraw 0.5s ease-out 0.5s both' }}
+                </div>
+                {/* Animated shimmer effect */}
+                <div
+                  className="absolute inset-0 h-2.5 rounded-full overflow-hidden pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+                    animation: 'shimmer 1.5s infinite',
+                    width: `${orderProgress}%`
+                  }}
+                />
+              </div>
+
+              {/* Cancel Button */}
+              <button
+                onClick={() => {
+                  setShowPlacingOrder(false)
+                  setIsPlacingOrder(false)
+                }}
+                className="w-full text-right"
+              >
+                <span className="text-[#00c87e] font-semibold text-base hover:text-[#00c87e] transition-colors">
+                  CANCEL
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order Success Celebration Page */}
+      {showOrderSuccess && (
+        <div
+          className="fixed inset-0 z-[70] bg-white dark:bg-[#0a0a0a] flex flex-col items-center justify-center h-screen w-screen overflow-hidden"
+          style={{ animation: 'fadeIn 0.3s ease-out' }}
+        >
+          {/* Confetti Background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            {/* Animated confetti pieces */}
+            {[...Array(50)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-3 h-3 rounded-sm"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `-10%`,
+                  backgroundColor: ['#00c87e', '#3b82f6', '#f59e0b', '#ef4444', '#00c87e', '#ec4899'][Math.floor(Math.random() * 6)],
+                  animation: `confettiFall ${2 + Math.random() * 2}s linear ${Math.random() * 2}s infinite`,
+                  transform: `rotate(${Math.random() * 360}deg)`,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Success Content */}
+          <div className="relative z-10 flex flex-col items-center px-6">
+            {/* Success Tick Circle */}
+            <div
+              className="relative mb-8"
+              style={{ animation: 'scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both' }}
+            >
+              {/* Outer ring animation */}
+              <div
+                className="absolute inset-0 w-32 h-32 rounded-full border-4 border-green-500 dark:border-green-400"
+                style={{
+                  animation: 'ringPulse 1.5s ease-out infinite',
+                  opacity: 0.3
+                }}
+              />
+              {/* Main circle */}
+              <div className="w-32 h-32 bg-gradient-to-br from-green-500 to-green-600 dark:from-green-500 dark:to-emerald-500 rounded-full flex items-center justify-center shadow-2xl shadow-green-200/60 dark:shadow-green-900/40">
+                <svg
+                  className="w-16 h-16 text-white"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ animation: 'checkDraw 0.5s ease-out 0.5s both' }}
+                >
+                  <path d="M5 12l5 5L19 7" className="check-path" />
+                </svg>
+              </div>
+              {/* Sparkles */}
+              {[...Array(6)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full"
+                  style={{
+                    top: '50%',
+                    left: '50%',
+                    animation: `sparkle 0.6s ease-out ${0.3 + i * 0.1}s both`,
+                    transform: `rotate(${i * 60}deg) translateY(-80px)`,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Location Info */}
+            <div
+              className="text-center"
+              style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}
+            >
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <div className="w-5 h-5 text-red-500 dark:text-red-400">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {successLocationTitle}
+                </h2>
+              </div>
+              <p className="text-gray-500 dark:text-gray-400 text-base">
+                {successLocationText}
+              </p>
+            </div>
+
+            {/* Order Placed Message */}
+            <div
+              className="mt-12 text-center"
+              style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
+            >
+              <h3 className="text-3xl font-bold text-[#00c87e] dark:text-red-400 mb-2">Order Placed!</h3>
+              <p className="text-gray-600 dark:text-gray-300">{successMessage}</p>
+            </div>
+
+            {/* Action Button */}
+            <button
+              onClick={handleGoToOrders}
+              className="mt-10 bg-[#00c87e] hover:bg-[#00c87e] text-white font-semibold py-4 px-12 rounded-xl shadow-lg shadow-red-200/70 dark:shadow-orange-950/40 transition-all hover:shadow-xl hover:scale-105"
+              style={{ animation: 'slideUp 0.5s ease-out 1s both' }}
+            >
+              Track Your Order
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Selection Bottom Sheet */}
+      <AnimatePresence>
+        {showPaymentSheet && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowPaymentSheet(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 350 }}
+              className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] rounded-t-[2rem] z-[101] shadow-2xl overflow-hidden max-h-[82vh] md:max-h-[60vh] flex flex-col"
+              style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 24px))" }}
+            >
+              <div className="p-5 md:p-6 flex flex-col min-h-0">
+                {/* Compact Drag handle */}
+                <div className="w-10 h-1 bg-gray-200 dark:bg-gray-800 rounded-full mx-auto mb-5" />
+
+                <div className="mb-5">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-[900] text-gray-900 dark:text-white uppercase tracking-tight">SELECT A PAYMENT METHOD</h2>
+                    <button
+                      onClick={() => setShowPaymentSheet(false)}
+                      className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <path d="M5 12l5 5L19 7" className="check-path" />
-                    </svg>
+                      <X className="w-4 h-4 text-gray-500" />
+                    </button>
                   </div>
-                  {/* Sparkles */}
-                  {[...Array(6)].map((_, i) => (
-                    <div
-                      key={i}
-                      className="absolute w-2 h-2 bg-yellow-400 dark:bg-yellow-300 rounded-full"
-                      style={{
-                        top: '50%',
-                        left: '50%',
-                        animation: `sparkle 0.6s ease-out ${0.3 + i * 0.1}s both`,
-                        transform: `rotate(${i * 60}deg) translateY(-80px)`,
+                  <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-2">Select how you want to pay</p>
+                </div>
+
+                <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
+                  {paymentOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => {
+                        if (!option.disabled) {
+                          setSelectedPaymentMethod(option.id)
+                          setShowPaymentSheet(false)
+                        }
                       }}
-                    />
+                      className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 group ${selectedPaymentMethod === option.id
+                        ? 'border-[#00c87e] bg-[#00c87e] shadow-lg shadow-red-500/30'
+                        : 'border-gray-100 dark:border-gray-800/80 bg-white dark:bg-[#222222] hover:border-red-200 dark:hover:border-red-900/30 shadow-sm'
+                        } ${option.disabled ? 'opacity-40 grayscale-[0.8] cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}`}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${selectedPaymentMethod === option.id
+                          ? 'bg-white/20 text-white'
+                          : option.color
+                          }`}>
+                          {option.icon}
+                        </div>
+                        <div className="text-left">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-black tracking-tight leading-none transition-colors ${selectedPaymentMethod === option.id ? 'text-white' : 'text-gray-900 dark:text-gray-100'
+                              }`}>
+                              {option.name}
+                            </span>
+                            {option.badge && (
+                              <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm tracking-wider ${selectedPaymentMethod === option.id
+                                ? 'bg-white/20 text-white'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                }`}>
+                                {option.badge}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <p className={`text-[11px] font-bold transition-colors ${selectedPaymentMethod === option.id ? 'text-white/80' : 'text-gray-400'
+                              }`}>
+                              {option.description}
+                            </p>
+                            {option.subInfo && !option.disabled && (
+                              <>
+                                <span className={`w-1 h-1 rounded-full ${selectedPaymentMethod === option.id ? 'bg-white/40' : 'bg-red-300 dark:bg-red-700'
+                                  }`} />
+                                <p className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${selectedPaymentMethod === option.id ? 'text-white' : 'text-green-600 dark:text-green-500'
+                                  }`}>
+                                  {option.subInfo}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                          {option.disabled && (
+                            <p className="text-[9px] font-black text-red-500 mt-1 uppercase tracking-wide">
+                              {option.disabledText}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${selectedPaymentMethod === option.id
+                        ? 'bg-white border-white'
+                        : 'border-gray-200 dark:border-gray-700'
+                        }`}>
+                        {selectedPaymentMethod === option.id && <Check className="w-3.5 h-3.5 text-[#00c87e]" strokeWidth={4} />}
+                      </div>
+                    </button>
                   ))}
                 </div>
 
-                {/* Location Info */}
                 <div
-                  className="text-center"
-                  style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}
+                  className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 bg-white dark:bg-[#1a1a1a]"
                 >
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <div className="w-5 h-5 text-red-500 dark:text-red-400">
-                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-                      </svg>
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {successLocationTitle}
-                    </h2>
+                  <div className="flex-shrink-0">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Pay</p>
+                    <p className="text-xl font-black text-[#00c87e] tabular-nums">{RUPEE_SYMBOL}{total.toFixed(0)}</p>
                   </div>
-                  <p className="text-gray-500 dark:text-gray-400 text-base">
-                    {successLocationText}
-                  </p>
+                  <Button
+                    onClick={() => setShowPaymentSheet(false)}
+                    className="flex-1 bg-[#00c87e] hover:bg-[#00c87e] text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-red-500/20 transition-all active:scale-[0.98]"
+                  >
+                    Confirm Order
+                  </Button>
                 </div>
-
-                {/* Order Placed Message */}
-                <div
-                  className="mt-12 text-center"
-                  style={{ animation: 'slideUp 0.5s ease-out 0.8s both' }}
-                >
-                  <h3 className="text-3xl font-bold text-[#00c87e] dark:text-red-400 mb-2">Order Placed!</h3>
-                  <p className="text-gray-600 dark:text-gray-300">{successMessage}</p>
-                </div>
-
-                {/* Action Button */}
-                <button
-                  onClick={handleGoToOrders}
-                  className="mt-10 bg-[#00c87e] hover:bg-[#00c87e] text-white font-semibold py-4 px-12 rounded-xl shadow-lg shadow-red-200/70 dark:shadow-orange-950/40 transition-all hover:shadow-xl hover:scale-105"
-                  style={{ animation: 'slideUp 0.5s ease-out 1s both' }}
-                >
-                  Track Your Order
-                </button>
               </div>
-            </div>
-          )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
-          {/* Payment Selection Bottom Sheet */}
-          <AnimatePresence>
-            {showPaymentSheet && (
-              <>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  onClick={() => setShowPaymentSheet(false)}
-                  className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
-                />
-                <motion.div
-                  initial={{ y: "100%" }}
-                  animate={{ y: 0 }}
-                  exit={{ y: "100%" }}
-                  transition={{ type: "spring", damping: 30, stiffness: 350 }}
-                  className="fixed bottom-0 left-0 right-0 bg-white dark:bg-[#1a1a1a] rounded-t-[2rem] z-[101] shadow-2xl overflow-hidden max-h-[82vh] md:max-h-[60vh] flex flex-col"
-                  style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom, 24px))" }}
-                >
-                  <div className="p-5 md:p-6 flex flex-col min-h-0">
-                    {/* Compact Drag handle */}
-                    <div className="w-10 h-1 bg-gray-200 dark:bg-gray-800 rounded-full mx-auto mb-5" />
-
-                    <div className="mb-5">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-xl font-[900] text-gray-900 dark:text-white uppercase tracking-tight">SELECT A PAYMENT METHOD</h2>
-                        <button
-                          onClick={() => setShowPaymentSheet(false)}
-                          className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                        >
-                          <X className="w-4 h-4 text-gray-500" />
-                        </button>
-                      </div>
-                      <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-2">Select how you want to pay</p>
-                    </div>
-
-                    <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
-                      {paymentOptions.map((option) => (
-                        <button
-                          key={option.id}
-                          onClick={() => {
-                            if (!option.disabled) {
-                              setSelectedPaymentMethod(option.id)
-                              setShowPaymentSheet(false)
-                            }
-                          }}
-                          className={`w-full flex items-center justify-between p-4 rounded-2xl border-2 transition-all duration-300 group ${selectedPaymentMethod === option.id
-                              ? 'border-[#00c87e] bg-[#00c87e] shadow-lg shadow-red-500/30'
-                              : 'border-gray-100 dark:border-gray-800/80 bg-white dark:bg-[#222222] hover:border-red-200 dark:hover:border-red-900/30 shadow-sm'
-                            } ${option.disabled ? 'opacity-40 grayscale-[0.8] cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'}`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-300 ${selectedPaymentMethod === option.id
-                                ? 'bg-white/20 text-white'
-                                : option.color
-                              }`}>
-                              {option.icon}
-                            </div>
-                            <div className="text-left">
-                              <div className="flex items-center gap-2">
-                                <span className={`text-sm font-black tracking-tight leading-none transition-colors ${selectedPaymentMethod === option.id ? 'text-white' : 'text-gray-900 dark:text-gray-100'
-                                  }`}>
-                                  {option.name}
-                                </span>
-                                {option.badge && (
-                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm tracking-wider ${selectedPaymentMethod === option.id
-                                      ? 'bg-white/20 text-white'
-                                      : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                    }`}>
-                                    {option.badge}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <p className={`text-[11px] font-bold transition-colors ${selectedPaymentMethod === option.id ? 'text-white/80' : 'text-gray-400'
-                                  }`}>
-                                  {option.description}
-                                </p>
-                                {option.subInfo && !option.disabled && (
-                                  <>
-                                    <span className={`w-1 h-1 rounded-full ${selectedPaymentMethod === option.id ? 'bg-white/40' : 'bg-red-300 dark:bg-red-700'
-                                      }`} />
-                                    <p className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${selectedPaymentMethod === option.id ? 'text-white' : 'text-green-600 dark:text-green-500'
-                                      }`}>
-                                      {option.subInfo}
-                                    </p>
-                                  </>
-                                )}
-                              </div>
-                              {option.disabled && (
-                                <p className="text-[9px] font-black text-red-500 mt-1 uppercase tracking-wide">
-                                  {option.disabledText}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${selectedPaymentMethod === option.id
-                              ? 'bg-white border-white'
-                              : 'border-gray-200 dark:border-gray-700'
-                            }`}>
-                            {selectedPaymentMethod === option.id && <Check className="w-3.5 h-3.5 text-[#00c87e]" strokeWidth={4} />}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-
-                    <div
-                      className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center gap-4 bg-white dark:bg-[#1a1a1a]"
-                    >
-                      <div className="flex-shrink-0">
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Pay</p>
-                        <p className="text-xl font-black text-[#00c87e] tabular-nums">{RUPEE_SYMBOL}{total.toFixed(0)}</p>
-                      </div>
-                      <Button
-                        onClick={() => setShowPaymentSheet(false)}
-                        className="flex-1 bg-[#00c87e] hover:bg-[#00c87e] text-white h-11 rounded-xl text-sm font-bold shadow-lg shadow-red-500/20 transition-all active:scale-[0.98]"
-                      >
-                        Confirm Order
-                      </Button>
-                    </div>
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-
-          {/* Animation Styles */}
-          <style>{`
+      {/* Animation Styles */}
+      <style>{`
         @keyframes fadeInBackdrop {
           from { opacity: 0; }
           to { opacity: 1; }
