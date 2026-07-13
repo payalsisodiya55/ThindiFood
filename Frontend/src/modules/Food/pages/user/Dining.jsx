@@ -897,51 +897,105 @@ export default function Dining() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:gap-4">
-            {loading
-              ? loadingCategoryCards.map((key, index) => (
-                <DiningCategorySkeleton key={key} index={index} />
-              ))
-              : filteredCategories.map((category, index) => (
-              <Link
-                key={category._id || category.id}
-                to={`/user/dining/${category.slug}`}
-              >
-                <motion.div
-                  className="relative h-[138px] sm:h-[154px] md:h-[166px] overflow-hidden rounded-[18px] border border-[#e9e1d8] bg-white shadow-[0_1px_2px_rgba(35,24,12,0.05)] cursor-pointer group"
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-50px" }}
-                  transition={{ duration: 0.4, delay: index * 0.05 }}
-                  whileHover={{ y: -2, boxShadow: "0 10px 24px -18px rgba(63, 38, 18, 0.24)" }}
-                >
-                  <div className="absolute inset-x-0 top-0 z-10 px-3 pt-3 sm:px-4 sm:pt-4">
-                    <p className="font-['Poppins',_'Nunito_Sans',sans-serif] w-full text-center text-[13px] sm:text-[15px] md:text-[16px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#2d2722]">
-                      {category.name}
-                    </p>
+          {filteredCategories.length > 6 ? (
+            /* More than 6: single row horizontal scroll */
+            <div
+              className="flex gap-2.5 sm:gap-3 overflow-x-auto scrollbar-hide pb-1"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {loading
+                ? loadingCategoryCards.map((key, index) => (
+                  <div key={key} className="flex-shrink-0 w-[100px] sm:w-[115px]">
+                    <DiningCategorySkeleton index={index} />
                   </div>
-
-                  <div className="absolute inset-x-0 bottom-0 h-[64%] overflow-hidden rounded-b-[18px]">
-                    {category.imageUrl ? (
-                      <OptimizedImage
-                        src={category.imageUrl}
-                        alt={category.name}
-                        className="w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
-                        objectFit="cover"
-                        sizes="(max-width: 640px) 31vw, (max-width: 768px) 180px, 220px"
-                        placeholder="blur"
-                        priority={index < 6}
-                      />
-                    ) : (
-                      <div className={`relative h-full w-full bg-[radial-gradient(circle_at_20%_20%,rgba(226,40,27,0.1),transparent_35%),linear-gradient(180deg,#fff8f8_0%,#fff0f0_100%)] ${shimmerClassName}`}>
-                        <div className="absolute inset-x-0 bottom-0 h-[70%] rounded-t-[60%] bg-white/55" />
+                ))
+                : filteredCategories.map((category, index) => (
+                  <Link
+                    key={category._id || category.id}
+                    to={`/user/dining/${category.slug}`}
+                    className="flex-shrink-0 w-[100px] sm:w-[115px]"
+                  >
+                    <motion.div
+                      className="relative h-[138px] sm:h-[154px] md:h-[166px] overflow-hidden rounded-[18px] border border-[#e9e1d8] bg-white shadow-[0_1px_2px_rgba(35,24,12,0.05)] cursor-pointer group"
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-50px" }}
+                      transition={{ duration: 0.4, delay: index * 0.05 }}
+                      whileHover={{ y: -2, boxShadow: "0 10px 24px -18px rgba(63, 38, 18, 0.24)" }}
+                    >
+                      <div className="absolute inset-x-0 top-0 z-10 px-3 pt-3 sm:px-4 sm:pt-4">
+                        <p className="font-['Poppins',_'Nunito_Sans',sans-serif] w-full text-center text-[13px] sm:text-[15px] md:text-[16px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#2d2722]">
+                          {category.name}
+                        </p>
                       </div>
-                    )}
-                  </div>
-                </motion.div>
-              </Link>
-              ))}
-          </div>
+                      <div className="absolute inset-x-0 bottom-0 h-[64%] overflow-hidden rounded-b-[18px]">
+                        {category.imageUrl ? (
+                          <OptimizedImage
+                            src={category.imageUrl}
+                            alt={category.name}
+                            className="w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
+                            objectFit="cover"
+                            sizes="(max-width: 640px) 31vw, (max-width: 768px) 180px, 220px"
+                            placeholder="blur"
+                            priority={index < 6}
+                          />
+                        ) : (
+                          <div className={`relative h-full w-full bg-[radial-gradient(circle_at_20%_20%,rgba(226,40,27,0.1),transparent_35%),linear-gradient(180deg,#fff8f8_0%,#fff0f0_100%)] ${shimmerClassName}`}>
+                            <div className="absolute inset-x-0 bottom-0 h-[70%] rounded-t-[60%] bg-white/55" />
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  </Link>
+                ))}
+            </div>
+          ) : (
+            /* 6 or fewer: normal 3-column grid */
+            <div className="grid grid-cols-3 gap-2.5 sm:gap-3 md:gap-4">
+              {loading
+                ? loadingCategoryCards.map((key, index) => (
+                  <DiningCategorySkeleton key={key} index={index} />
+                ))
+                : filteredCategories.map((category, index) => (
+                <Link
+                  key={category._id || category.id}
+                  to={`/user/dining/${category.slug}`}
+                >
+                  <motion.div
+                    className="relative h-[138px] sm:h-[154px] md:h-[166px] overflow-hidden rounded-[18px] border border-[#e9e1d8] bg-white shadow-[0_1px_2px_rgba(35,24,12,0.05)] cursor-pointer group"
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-50px" }}
+                    transition={{ duration: 0.4, delay: index * 0.05 }}
+                    whileHover={{ y: -2, boxShadow: "0 10px 24px -18px rgba(63, 38, 18, 0.24)" }}
+                  >
+                    <div className="absolute inset-x-0 top-0 z-10 px-3 pt-3 sm:px-4 sm:pt-4">
+                      <p className="font-['Poppins',_'Nunito_Sans',sans-serif] w-full text-center text-[13px] sm:text-[15px] md:text-[16px] font-semibold leading-[1.02] tracking-[-0.02em] text-[#2d2722]">
+                        {category.name}
+                      </p>
+                    </div>
+                    <div className="absolute inset-x-0 bottom-0 h-[64%] overflow-hidden rounded-b-[18px]">
+                      {category.imageUrl ? (
+                        <OptimizedImage
+                          src={category.imageUrl}
+                          alt={category.name}
+                          className="w-full h-full transition-transform duration-500 group-hover:scale-[1.03]"
+                          objectFit="cover"
+                          sizes="(max-width: 640px) 31vw, (max-width: 768px) 180px, 220px"
+                          placeholder="blur"
+                          priority={index < 6}
+                        />
+                      ) : (
+                        <div className={`relative h-full w-full bg-[radial-gradient(circle_at_20%_20%,rgba(226,40,27,0.1),transparent_35%),linear-gradient(180deg,#fff8f8_0%,#fff0f0_100%)] ${shimmerClassName}`}>
+                          <div className="absolute inset-x-0 bottom-0 h-[70%] rounded-t-[60%] bg-white/55" />
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                </Link>
+                ))}
+            </div>
+          )}
         </div>
 
         {/* Popular Restaurants Around You Section */}
