@@ -136,7 +136,7 @@ export default function ReportSafetyEmergency() {
               <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-black dark:text-white" />
             </Button>
           </Link>
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-black dark:text-white">Report a safety emergency</h1>
+          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-black dark:text-white">Report a Safety Concern</h1>
         </div>
 
         {/* Emergency Contact Card */}
@@ -147,18 +147,22 @@ export default function ReportSafetyEmergency() {
                 <Phone className="h-5 w-5 md:h-6 md:w-6 text-red-600 dark:text-red-400" />
               </div>
               <div className="flex-1">
-                <h3 className="text-base md:text-lg lg:text-xl font-semibold text-red-900 dark:text-red-200 mb-1 md:mb-2">
+                <h3 className="text-base md:text-lg lg:text-xl font-semibold text-red-900 dark:text-red-200 mb-2">
                   Emergency Contact
                 </h3>
-                <p className="text-sm md:text-base text-red-700 dark:text-red-300 mb-3 md:mb-4">
-                  For immediate emergencies, please call your local emergency services.
-                </p>
-                <a
-                  href="tel:100"
-                  className="text-red-600 dark:text-red-400 font-semibold text-base md:text-lg lg:text-xl hover:underline"
-                >
-                  Emergency: 100
-                </a>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm md:text-base font-semibold text-red-700 dark:text-red-300">
+                  <a href="tel:100" className="text-red-600 dark:text-red-400 hover:underline">
+                    Police: 100
+                  </a>
+                  <span className="text-red-300 dark:text-red-700 select-none">·</span>
+                  <a href="tel:108" className="text-red-600 dark:text-red-400 hover:underline">
+                    Ambulance: 108
+                  </a>
+                  <span className="text-red-300 dark:text-red-700 select-none">·</span>
+                  <a href="tel:1091" className="text-red-600 dark:text-red-400 hover:underline">
+                    Women Helpline: 1091
+                  </a>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -171,7 +175,7 @@ export default function ReportSafetyEmergency() {
               <CardContent className="p-4 md:p-5 lg:p-6">
                 <div className="flex items-start gap-3 md:gap-4">
                   <div className="bg-gray-100 dark:bg-gray-800 rounded-full p-2 md:p-3 mt-0.5">
-                    <Shield className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-gray-300" />
+                    <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-gray-300" />
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900 dark:text-white mb-1 md:mb-2">
@@ -298,7 +302,7 @@ export default function ReportSafetyEmergency() {
                     Report Details
                   </DialogTitle>
                   <DialogDescription className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
-                    Full details of your safety emergency report.
+                    Full details of your safety concern report.
                   </DialogDescription>
                 </DialogHeader>
 
