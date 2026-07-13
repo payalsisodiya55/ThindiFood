@@ -440,8 +440,9 @@ export default function UserOrderDetails() {
       doc.setFont('helvetica', 'bold')
       doc.text('Restaurant Name:', 20, yPos)
       doc.setFont('helvetica', 'normal')
-      doc.text(restaurantName, 60, yPos)
-      yPos += 7
+      const restaurantNameLines = doc.splitTextToSize(restaurantName || 'N/A', 130)
+      doc.text(restaurantNameLines, 60, yPos)
+      yPos += restaurantNameLines.length * 7
 
       // Restaurant Address
       doc.setFont('helvetica', 'bold')
@@ -683,8 +684,8 @@ export default function UserOrderDetails() {
 
         {/* Restaurant Info Card */}
         <div className="bg-white dark:bg-[#1a1a1a] p-4 rounded-xl shadow-sm border border-transparent dark:border-gray-800">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <img
                 src={
                   // Prefer the food image from the first ordered item
@@ -695,11 +696,11 @@ export default function UserOrderDetails() {
                   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80"
                 }
                 alt={restaurantName}
-                className="w-10 h-10 rounded-lg object-cover"
+                className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
               />
-              <div>
-                <h3 className="font-semibold text-gray-800 dark:text-white">{restaurantName}</h3>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{restaurantLocation}</p>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-semibold text-gray-800 dark:text-white break-words break-all">{restaurantName}</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 break-words break-all">{restaurantLocation}</p>
               </div>
             </div>
 

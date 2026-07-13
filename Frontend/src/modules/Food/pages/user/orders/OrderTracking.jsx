@@ -214,8 +214,8 @@ const SectionItem = ({ icon: Icon, iconNode, title, subtitle, onClick, showArrow
       )}
     </div>
     <div className="flex-1 min-w-0">
-      <p className={`font-semibold text-gray-900 dark:text-white ${noTruncate ? "" : "truncate"}`}>{title}</p>
-      {subtitle && <div className={`text-sm text-gray-500 dark:text-gray-400 mt-0.5 ${noTruncate ? "" : "truncate"}`}>{subtitle}</div>}
+      <p className={`font-semibold text-gray-900 dark:text-white ${noTruncate ? "break-words break-all" : "truncate"}`}>{title}</p>
+      {subtitle && <div className={`text-sm text-gray-500 dark:text-gray-400 mt-0.5 ${noTruncate ? "break-words break-all" : "truncate"}`}>{subtitle}</div>}
     </div>
     {rightContent || (showArrow && <ChevronRight className="w-5 h-5 text-gray-400 dark:text-gray-500 flex-shrink-0" />)}
   </motion.button>
@@ -2107,7 +2107,7 @@ export default function OrderTracking() {
               <ArrowLeft className="w-6 h-6" />
             </motion.button>
           </Link>
-          <h2 className="font-semibold text-lg">{order.restaurant}</h2>
+          <h2 className="font-semibold text-lg text-center px-2 flex-1 min-w-0 break-words break-all">{order.restaurant}</h2>
           <motion.button
             className="w-10 h-10 flex items-center justify-center cursor-pointer"
             whileTap={{ scale: 0.9 }}
