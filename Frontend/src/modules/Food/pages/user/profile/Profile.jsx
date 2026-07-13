@@ -24,6 +24,10 @@ import {
   ShoppingCart,
   MapPin,
   Share2,
+  Gift,
+  ShoppingBag,
+  CalendarDays,
+  HelpCircle,
 } from "lucide-react";
 
 import AnimatedPage from "@food/components/user/AnimatedPage";
@@ -465,10 +469,10 @@ export default function Profile() {
     <AnimatedPage className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a]">
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-4 pb-20 sm:pb-24">
         {/* Header: Back Arrow */}
-        <div className="flex items-center mb-4">
+        <div className="flex items-center mb-4 mt-2">
           <Link to="/user">
-            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
-              <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
+            <Button variant="outline" size="icon" className="rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a] flex-shrink-0">
+              <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
             </Button>
           </Link>
         </div>
@@ -563,7 +567,7 @@ export default function Profile() {
                       <Tag className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Your coupons
+                      Your Coupons
                     </span>
                   </div>
                   <motion.div
@@ -590,7 +594,7 @@ export default function Profile() {
                       <ShoppingCart className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Your cart
+                      Your Cart
                     </span>
                   </div>
                   <motion.div
@@ -608,43 +612,29 @@ export default function Profile() {
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
             <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    <motion.div
-                      className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
-                      whileHover={{ rotate: 15, scale: 1.1 }}
-                      transition={{ duration: 0.3 }}>
-                      <Tag className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                    </motion.div>
-                    <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Refer & Earn
-                    </span>
-                  </div>
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
+                    whileHover={{ rotate: 15, scale: 1.1 }}
+                    transition={{ duration: 0.3 }}>
+                    <Gift className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                  </motion.div>
+                  <span className="text-base font-medium text-gray-900 dark:text-white">
+                    Refer & Earn
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
                   {referralReward > 0 && (
                     <span className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
                       Earn {"\u20B9"}{referralReward}
                     </span>
                   )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Invite a friend. Reward is added to your wallet when they
-                    sign up.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handleShareReferral();
-                    }}
-                    className="inline-flex items-center gap-1 text-xs font-medium ml-2 px-2 py-1 rounded-md"
-                    style={{ color: RED }}
-                    disabled={!referralLink}>
-                    <Share2 className="h-3.5 w-3.5" />
-                    Refer
-                  </button>
+                  <motion.div
+                    whileHover={{ x: 4 }}
+                    transition={{ duration: 0.2 }}>
+                    <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                  </motion.div>
                 </div>
               </CardContent>
             </Card>
@@ -658,32 +648,22 @@ export default function Profile() {
               className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
               onClick={openLocationSelector}>
               <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3">
                   <motion.div
                     className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                     whileHover={{ rotate: 15, scale: 1.1 }}
                     transition={{ duration: 0.3 }}>
                     <MapPin className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                   </motion.div>
-                  <div className="min-w-0">
-                    <p className="text-base font-medium text-gray-900 dark:text-white">
-                      Saved addresses
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {savedAddressSummary}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                    {addresses?.length || 0}
+                  <span className="text-base font-medium text-gray-900 dark:text-white">
+                    Saved Addresses
                   </span>
-                  <motion.div
-                    whileHover={{ x: 4 }}
-                    transition={{ duration: 0.2 }}>
-                    <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                  </motion.div>
                 </div>
+                <motion.div
+                  whileHover={{ x: 4 }}
+                  transition={{ duration: 0.2 }}>
+                  <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                </motion.div>
               </CardContent>
             </Card>
           </motion.div>
@@ -702,7 +682,7 @@ export default function Profile() {
                       <User className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Your profile
+                      Your Profile
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -826,7 +806,7 @@ export default function Profile() {
                       <Bookmark className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Your collections
+                      Your Collections
                     </span>
                   </div>
                   <motion.div
@@ -860,10 +840,10 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        <ShoppingCart className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                        <ShoppingBag className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">
-                        Your orders
+                        Your Orders
                       </span>
                     </div>
                     <motion.div
@@ -887,10 +867,10 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        <Building2 className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                        <CalendarDays className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">
-                        Table bookings
+                        Table Bookings
                       </span>
                     </div>
                     <motion.div
@@ -952,10 +932,10 @@ export default function Profile() {
                         className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
                         whileHover={{ rotate: 15, scale: 1.1 }}
                         transition={{ duration: 0.3 }}>
-                        <PenSquare className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                        <HelpCircle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">
-                        Help and support
+                        Help And Support
                       </span>
                     </div>
                     <motion.div
@@ -982,7 +962,7 @@ export default function Profile() {
                         <AlertTriangle className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                       </motion.div>
                       <span className="text-base font-medium text-gray-900 dark:text-white">
-                        Report safety concern
+                        Report Safety Concern
                       </span>
                     </div>
                     <motion.div
