@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import { MapPin, SlidersHorizontal, Star, X, ArrowDownUp, Timer, IndianRupee, Clock, Bookmark, UtensilsCrossed, ChevronRight, Utensils, QrCode } from "lucide-react"
@@ -141,6 +142,8 @@ export default function Dining() {
   const [activeFilterTab, setActiveFilterTab] = useState('sort')
   const [sortBy, setSortBy] = useState(null)
   const [selectedCuisine, setSelectedCuisine] = useState(null)
+  const [toast, setToast] = useState(null)
+  const toastTimerRef = useRef(null)
   const filterSectionRefs = useRef({})
   const rightContentRef = useRef(null)
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
@@ -664,7 +667,61 @@ export default function Dining() {
             transform: translateX(200%);
           }
         }
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateY(-16px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
       `}</style>
+
+      {/* Favourite Toast Notification – rendered via portal so CSS transform on
+          AnimatedPage doesn't break the fixed positioning */}
+      {toast && typeof document !== 'undefined' && createPortal(
+        <>
+          <style>{`@keyframes toastSlideIn{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}`}</style>
+          <div
+            style={{
+              position: 'fixed',
+              top: '72px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 99999,
+              minWidth: '280px',
+              maxWidth: 'calc(100vw - 32px)',
+              pointerEvents: 'none',
+            }}
+          >
+            <div style={{ animation: 'toastSlideIn 0.3s ease-out' }}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                backgroundColor: '#fff',
+                border: '1px solid #d1fae5',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+              }}>
+                <div style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '50%',
+                  backgroundColor: '#22c55e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}>
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#111827' }}>{toast.message}</span>
+              </div>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
       <div
         ref={stickyHeaderRef}
         className={`md:hidden sticky top-0 overflow-x-clip z-[80] ${hasScrolledPastBanner ? 'bg-white' : ''}`}
@@ -945,8 +1002,10 @@ export default function Dining() {
               const handleToggleFavorite = (e) => {
                 e.preventDefault()
                 e.stopPropagation()
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
                 if (favorite) {
                   removeFavorite(restaurantSlug)
+                  setToast({ message: 'Removed from your favourite restaurants collection', type: 'remove' })
                 } else {
                   addFavorite({
                     slug: restaurantSlug,
@@ -957,7 +1016,9 @@ export default function Dining() {
                     distance: restaurant.distance,
                     image: restaurant.image
                   })
+                  setToast({ message: 'Added to your favourite restaurants collection', type: 'add' })
                 }
+                toastTimerRef.current = setTimeout(() => setToast(null), 3000)
               }
 
               return (
@@ -1055,20 +1116,7 @@ export default function Dining() {
                             }}
                           />
 
-                          {/* Featured Dish Badge - Top Left */}
-                          <motion.div
-                            className="absolute top-3 left-3 flex items-center z-10 max-w-[calc(100%-4rem)]"
-                            variants={{
-                              rest: { scale: 1, y: 0 },
-                              hover: { scale: 1.05, y: -2 }
-                            }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <div className="bg-gray-800/90 backdrop-blur-sm text-white px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium shadow-lg flex items-center gap-1.5 w-full">
-                              <span className="truncate">{restaurant.featuredDish}</span>
-                              <span className="shrink-0 text-white/80">• ₹{restaurant.featuredPrice}</span>
-                            </div>
-                          </motion.div>
+
 
                           {/* Bookmark Icon - Top Right */}
                           <motion.div
@@ -1085,7 +1133,7 @@ export default function Dining() {
                               className="h-9 w-9 bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-[#2a2a2a] transition-colors"
                               onClick={handleToggleFavorite}
                             >
-                              <Bookmark className={`h-5 w-5 ${favorite ? "fill-gray-800 dark:fill-gray-200 text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
+                              <Bookmark className={`h-5 w-5 ${favorite ? "fill-[#E2281B] text-[#E2281B]" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
                             </Button>
                           </motion.div>
 
@@ -1201,8 +1249,10 @@ export default function Dining() {
               const handleToggleFavorite = (e) => {
                 e.preventDefault()
                 e.stopPropagation()
+                if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
                 if (favorite) {
                   removeFavorite(restaurantSlug)
+                  setToast({ message: 'Removed from your favourite restaurants collection', type: 'remove' })
                 } else {
                   addFavorite({
                     slug: restaurantSlug,
@@ -1213,7 +1263,9 @@ export default function Dining() {
                     distance: restaurant.distance,
                     image: restaurant.image
                   })
+                  setToast({ message: 'Added to your favourite restaurants collection', type: 'add' })
                 }
+                toastTimerRef.current = setTimeout(() => setToast(null), 3000)
               }
 
               return (
@@ -1310,14 +1362,6 @@ export default function Dining() {
                             }}
                           />
 
-                          {/* Featured Dish Badge - Top Left */}
-                           <div className="absolute top-3 left-3 max-w-[calc(100%-4rem)]">
-                             <div className="bg-gray-800/80 backdrop-blur-sm text-white px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 w-full">
-                               <span className="truncate">{restaurant.featuredDish}</span>
-                               <span className="shrink-0 text-white/80">• ₹{restaurant.featuredPrice}</span>
-                             </div>
-                           </div>
-
                           {/* Bookmark Icon - Top Right */}
                           <Button
                             variant="ghost"
@@ -1325,7 +1369,7 @@ export default function Dining() {
                             className="absolute top-3 right-3 h-9 w-9 bg-white/90 dark:bg-[#1a1a1a]/90 backdrop-blur-sm rounded-lg hover:bg-white dark:hover:bg-[#2a2a2a] transition-colors"
                             onClick={handleToggleFavorite}
                           >
-                            <Bookmark className={`h-5 w-5 ${favorite ? "fill-gray-800 dark:fill-gray-200 text-gray-800 dark:text-gray-200" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
+                            <Bookmark className={`h-5 w-5 ${favorite ? "fill-[#E2281B] text-[#E2281B]" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
                           </Button>
 
                           {/* Blue Section - Bottom 40% */}
