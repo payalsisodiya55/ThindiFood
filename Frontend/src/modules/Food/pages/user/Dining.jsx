@@ -764,11 +764,12 @@ export default function Dining() {
             diningHeroBanners.length > 0 ? (
               <div
                 ref={bannerShellRef}
-                className="h-full w-full"
+                className="h-full w-full relative"
                 onTouchStart={handleBannerTouchStart}
                 onTouchMove={handleBannerTouchMove}
                 onTouchEnd={handleBannerTouchEnd}
               >
+                {/* Slides strip */}
                 <div
                   className="flex h-full w-full transition-transform duration-500 ease-out"
                   style={{ transform: `translateX(-${currentBannerIndex * 100}%)` }}
@@ -786,6 +787,24 @@ export default function Dining() {
                     </div>
                   ))}
                 </div>
+
+                {/* Dots */}
+                {diningHeroBanners.length > 1 && (
+                  <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 pointer-events-none z-10">
+                    {diningHeroBanners.map((_, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          width: idx === currentBannerIndex ? '20px' : '6px',
+                          height: '6px',
+                          borderRadius: '3px',
+                          backgroundColor: idx === currentBannerIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+                          transition: 'width 0.3s ease, background-color 0.3s ease',
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             ) : null
           }

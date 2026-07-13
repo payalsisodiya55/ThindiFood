@@ -204,8 +204,8 @@ export default function HomeHeader({
       {showBanner && isFood && bannerContent && (
         <div className="absolute inset-0 z-0 flex justify-center overflow-hidden">
           {bannerContent}
-          <div className="absolute inset-0 bg-gradient-to-b from-[#c93a31]/32 via-[#ffdad7]/14 via-[28%] to-black/16" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/18 via-transparent to-black/16" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#c93a31]/32 via-[#ffdad7]/14 via-[28%] to-black/16" />
+          <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-black/18 via-transparent to-black/16" />
         </div>
       )}
 
