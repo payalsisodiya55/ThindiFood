@@ -113,6 +113,8 @@ import exploreCollection from "@food/assets/explore more icons/collection.png";
 const VideoCarousel = React.memo(function VideoCarousel({ videos }) {
   const [current, setCurrent] = React.useState(0);
   const containerRef = React.useRef(null);
+  const touchStartXRef = React.useRef(0);
+  const touchStartYRef = React.useRef(0);
 
   const handleScroll = React.useCallback((e) => {
     const container = e.currentTarget;
@@ -137,6 +139,23 @@ const VideoCarousel = React.memo(function VideoCarousel({ videos }) {
     }
   }, []);
 
+  const handleTouchStart = React.useCallback((e) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = React.useCallback((e) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const deltaY = Math.abs(e.changedTouches[0].clientY - touchStartYRef.current);
+    if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > deltaY) {
+      if (deltaX < 0) {
+        goTo(Math.min(current + 1, videos.length - 1));
+      } else {
+        goTo(Math.max(current - 1, 0));
+      }
+    }
+  }, [current, videos.length, goTo]);
+
   if (!videos || videos.length === 0) return null;
 
   return (
@@ -149,8 +168,10 @@ const VideoCarousel = React.memo(function VideoCarousel({ videos }) {
       <div
         ref={containerRef}
         className="flex h-full w-full overflow-x-auto snap-x snap-mandatory scroll-smooth no-scrollbar"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', touchAction: 'pan-x' }}
         onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
       >
         {videos.map((src, idx) => (
           <div key={idx} className="h-full w-full flex-shrink-0 snap-start snap-always relative">
@@ -161,6 +182,7 @@ const VideoCarousel = React.memo(function VideoCarousel({ videos }) {
               playsInline
               loop
               className="h-full w-full max-w-none object-cover object-center"
+              style={{ pointerEvents: 'none' }}
             />
           </div>
         ))}
