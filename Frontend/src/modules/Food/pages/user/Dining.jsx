@@ -1198,8 +1198,8 @@ export default function Dining() {
                                   PRE-BOOK TABLE
                                 </p>
                                 <div className="h-px bg-white/30 mb-2 w-24"></div>
-                                <p className="text-white text-sm sm:text-base font-bold line-clamp-1 break-all pr-2">
-                                  {restaurant.offer}
+                                <p className="text-white text-sm sm:text-base font-bold line-clamp-1 pr-2">
+                                  Reserve &amp; Save
                                 </p>
                               </div>
                             </div>
@@ -1268,18 +1268,7 @@ export default function Dining() {
                               <span className="font-medium">{restaurant.distance}</span>
                             </div>
 
-                            {/* Offer Badge */}
-                            {restaurant.offer && (
-                              <div className="flex items-center gap-2 text-sm mt-1">
-                              <span 
-                                className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
-                                style={{ backgroundColor: `${RED}1A`, color: RED }}
-                              >
-                                Off
-                              </span>
-                                <span className="text-gray-700 dark:text-gray-300 font-medium truncate flex-1 min-w-0">{restaurant.offer}</span>
-                              </div>
-                            )}
+
                           </CardContent>
                         </motion.div>
                       </Card>
@@ -1433,8 +1422,8 @@ export default function Dining() {
                                   PRE-BOOK TABLE
                                 </p>
                                 <div className="h-px bg-white/30 mb-2 w-24"></div>
-                                 <p className="text-white text-sm sm:text-base font-bold line-clamp-1 break-all pr-2">
-                                   {restaurant.offer}
+                                 <p className="text-white text-sm sm:text-base font-bold line-clamp-1 pr-2">
+                                   Reserve &amp; Save
                                  </p>
                               </div>
                             </div>
@@ -1483,18 +1472,7 @@ export default function Dining() {
                             <span className="font-medium">{restaurant.distance}</span>
                           </div>
 
-                          {/* Offer Badge */}
-                          {restaurant.offer && (
-                             <div className="flex items-center gap-2 text-sm mt-1">
-                               <div
-                                 className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full"
-                                 style={{ backgroundColor: `${RED}1A`, color: RED }}
-                               >
-                                 <Percent className="h-3 w-3" strokeWidth={2.5} />
-                               </div>
-                               <span className="text-gray-700 dark:text-gray-300 font-medium truncate flex-1 min-w-0 text-xs sm:text-sm">{restaurant.offer}</span>
-                             </div>
-                           )}
+
                         </CardContent>
                       </Card>
                     </Link>
