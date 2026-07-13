@@ -2450,10 +2450,10 @@ export const userAPI = {
       { contextModule: "user" },
     ),
   /** POST /food/user/safety-emergency-reports (Bearer USER) */
-  createSafetyEmergencyReport: (message) =>
+  createSafetyEmergencyReport: (payload) =>
     apiClient.post(
       "/food/user/safety-emergency-reports",
-      { message: String(message || "") },
+      payload,
       { contextModule: "user" },
     ),
   /** GET /food/user/safety-emergency-reports (Bearer USER) */

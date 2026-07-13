@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { ArrowLeft, AlertTriangle, Phone, Loader2, Clock, Upload, X, Film, Image as ImageIcon, RefreshCw } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
@@ -6,7 +6,7 @@ import { Card, CardContent } from "@food/components/ui/card"
 import { Textarea } from "@food/components/ui/textarea"
 import { useEffect, useMemo, useState, useRef } from "react"
 import { toast } from "sonner"
-import { userAPI, uploadAPI } from "@food/api"
+import { userAPI, uploadAPI, orderAPI } from "@food/api"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,35 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const parseSafetyMessage = (rawMessage) => {
+  if (!rawMessage) return { cleanMessage: "", mediaUrls: [] }
+  const mediaMarker = "[Attached Media Files]:"
+  const markerIndex = rawMessage.indexOf(mediaMarker)
+  if (markerIndex === -1) {
+    return { cleanMessage: rawMessage, mediaUrls: [] }
+  }
+  
+  const cleanMessage = rawMessage.slice(0, markerIndex).trim()
+  const mediaSection = rawMessage.slice(markerIndex + mediaMarker.length)
+  
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const mediaUrls = mediaSection.match(urlRegex) || []
+  
+  return { cleanMessage, mediaUrls }
+}
+
+const isVideoUrl = (url) => {
+  if (!url) return false
+  const lower = url.toLowerCase()
+  return (
+    lower.includes('/video/upload/') ||
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.mov') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.ogg')
+  )
+}
+
 
 export default function ReportSafetyEmergency() {
   const [report, setReport] = useState("")
@@ -27,6 +56,22 @@ export default function ReportSafetyEmergency() {
   const [selectedCategory, setSelectedCategory] = useState("Food Tampering")
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const [searchParams] = useSearchParams()
+  const initialOrderId = searchParams.get('orderId') || ""
+  const [selectedOrderId, setSelectedOrderId] = useState(initialOrderId)
+  const [recentOrders, setRecentOrders] = useState([])
+
+  useEffect(() => {
+    if (!initialOrderId) {
+      orderAPI.getOrders({ limit: 10, page: 1 })
+        .then(res => {
+          const list = res?.data?.data?.orders || []
+          setRecentOrders(list)
+        })
+        .catch(err => debugError("Failed to fetch recent orders", err))
+    }
+  }, [initialOrderId])
 
   const handleFileChange = (e) => {
     const files = Array.from(e.target.files || [])
@@ -62,6 +107,10 @@ export default function ReportSafetyEmergency() {
   const [history, setHistory] = useState([])
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null)
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false)
+
+  const parsedHistoryItem = useMemo(() => {
+    return parseSafetyMessage(selectedHistoryItem?.message)
+  }, [selectedHistoryItem])
 
   const fetchHistory = async () => {
     try {
@@ -168,7 +217,10 @@ export default function ReportSafetyEmergency() {
         finalMessage += "\n\n[Attached Media Files]:\n" + uploadedUrls.map(url => `- ${url}`).join("\n")
       }
 
-      const response = await userAPI.createSafetyEmergencyReport(finalMessage)
+      const response = await userAPI.createSafetyEmergencyReport({
+        message: finalMessage,
+        relatedOrderId: selectedOrderId || undefined
+      })
       
       if (response.data.success) {
         setIsSubmitted(true)
@@ -299,6 +351,52 @@ export default function ReportSafetyEmergency() {
               </CardContent>
             </Card>
 
+            {/* Related Order Card */}
+            {(initialOrderId || recentOrders.length > 0) && (
+              <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border-0 dark:border-gray-800 mb-4 md:mb-5 lg:mb-6">
+                <CardContent className="p-4 md:p-5 lg:p-6">
+                  <label className="block text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-2 md:mb-3">
+                    Related Order <span className="text-gray-400 dark:text-gray-500 font-normal text-xs">(Optional)</span>
+                  </label>
+                  {initialOrderId ? (
+                    <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Order #{initialOrderId}
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedOrderId}
+                      onChange={(e) => setSelectedOrderId(e.target.value)}
+                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
+                    >
+                      <option value="">Select an order (Optional)</option>
+                      {recentOrders.map(order => {
+                        const restName = order?.restaurant?.name || order?.restaurantId?.name || order?.restaurantName || "";
+                        const orderIdText = order?.shortId || order?.id?.slice(-6) || order?._id?.slice(-6) || "Unknown";
+                        
+                        let dateText = "";
+                        try {
+                          if (order?.createdAt) {
+                            dateText = new Date(order.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+                          }
+                        } catch (e) {}
+
+                        const parts = [];
+                        if (restName) parts.push(restName);
+                        parts.push(`Order #${orderIdText}`);
+                        if (dateText) parts.push(dateText);
+
+                        return (
+                          <option key={order.id || order._id} value={order.id || order._id}>
+                            {parts.join(" • ")}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Report Form */}
             <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border-0 dark:border-gray-800 mb-4 md:mb-5 lg:mb-6">
               <CardContent className="p-4 md:p-5 lg:p-6">
@@ -323,6 +421,9 @@ export default function ReportSafetyEmergency() {
                 />
                 <p className={`text-xs md:text-sm mt-2 ${report.length > 0 && report.length < 30 ? 'text-red-500 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                   {report.length} / 500 characters {report.length > 0 && report.length < 30 && "(minimum 30 required)"}
+                </p>
+                <p className="text-xs md:text-sm mt-3 text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900/40 p-3 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50">
+                  Describe what happened. Our safety team reviews every report within 15 minutes and will follow up with you directly.
                 </p>
 
                 {/* Media Uploader */}
@@ -439,6 +540,11 @@ export default function ReportSafetyEmergency() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
+                            {item?.reportId && (
+                              <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">
+                                {item.reportId}
+                              </p>
+                            )}
                             <p className="text-sm md:text-base font-medium text-gray-900 dark:text-white truncate">
                               {item?.message || "—"}
                             </p>
@@ -461,9 +567,16 @@ export default function ReportSafetyEmergency() {
             <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
               <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-6 md:p-8 bg-white dark:bg-[#121212] border border-gray-100 dark:border-gray-800 shadow-2xl rounded-2xl [&_[data-slot=dialog-close]]:!p-1 [&_[data-slot=dialog-close]]:!border-0 [&_[data-slot=dialog-close]]:!bg-transparent [&_[data-slot=dialog-close]]:!text-neutral-400 dark:[&_[data-slot=dialog-close]]:!text-neutral-500 hover:[&_[data-slot=dialog-close]]:!text-neutral-600 dark:hover:[&_[data-slot=dialog-close]]:!text-neutral-400 [&_[data-slot=dialog-close]]:!ring-0 [&_[data-slot=dialog-close]]:!shadow-none [&_[data-slot=dialog-close]_svg]:!h-3.5 [&_[data-slot=dialog-close]_svg]:!w-3.5">
                 <DialogHeader className="text-left space-y-2 pb-4 border-b border-neutral-100 dark:border-neutral-800 pr-8">
-                  <DialogTitle className="flex items-center gap-2.5 text-xl font-bold text-neutral-900 dark:text-white">
-                    <AlertTriangle className="h-5.5 w-5.5 text-red-500 shrink-0" />
-                    Report Details
+                  <DialogTitle className="flex items-center justify-between gap-3 text-xl font-bold text-neutral-900 dark:text-white flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <AlertTriangle className="h-5.5 w-5.5 text-red-500 shrink-0" />
+                      Report Details
+                    </div>
+                    {selectedHistoryItem && (
+                      <span className="text-xs font-mono font-bold px-2.5 py-1 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-full border border-red-100/50 dark:border-red-900/30">
+                        {selectedHistoryItem?.reportId || `RPT-${String(selectedHistoryItem?._id || selectedHistoryItem?.id || '').slice(-6).toUpperCase()}`}
+                      </span>
+                    )}
                   </DialogTitle>
                   <DialogDescription className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
                     Full details of your safety concern report.
@@ -473,9 +586,8 @@ export default function ReportSafetyEmergency() {
                 {selectedHistoryItem && (
                   <div className="space-y-5 pt-4">
                     <div className="flex items-center justify-between gap-3 text-xs md:text-sm">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
                         {getStatusPill(selectedHistoryItem?.status)}
-                        {selectedHistoryItem?.priority ? getPriorityPill(selectedHistoryItem?.priority) : null}
                       </div>
                       {selectedHistoryItem?.createdAt ? (
                         <span className="text-xs text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5 font-medium whitespace-nowrap shrink-0">
@@ -484,6 +596,13 @@ export default function ReportSafetyEmergency() {
                         </span>
                       ) : null}
                     </div>
+                    
+                    {selectedHistoryItem?.relatedOrder && (
+                      <div className="flex items-center gap-2 mb-2 bg-gray-50 dark:bg-gray-900/40 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-800 w-fit">
+                        <span className="text-xs font-bold uppercase tracking-wider">Related Order:</span>
+                        <span className="text-sm font-mono font-bold">#{selectedHistoryItem.relatedOrder?.shortId || "Linked"}</span>
+                      </div>
+                    )}
 
                     <div className="space-y-1.5">
                       <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500">
@@ -491,8 +610,40 @@ export default function ReportSafetyEmergency() {
                       </span>
                       <div className="rounded-xl border border-neutral-100 dark:border-neutral-800 bg-[#f8fafc] dark:bg-neutral-900/40 p-4">
                         <p className="text-sm text-neutral-700 dark:text-neutral-300 whitespace-pre-wrap leading-relaxed break-words font-medium">
-                          {selectedHistoryItem?.message || "—"}
+                          {parsedHistoryItem.cleanMessage || "—"}
                         </p>
+
+                        {parsedHistoryItem.mediaUrls.length > 0 && (
+                          <div className="mt-4 pt-4 border-t border-neutral-100 dark:border-neutral-800">
+                            <span className="block text-[10px] md:text-xs font-bold uppercase tracking-wider text-neutral-400 dark:text-neutral-500 mb-2">
+                              Attached Media
+                            </span>
+                            <div className="grid grid-cols-2 gap-3">
+                              {parsedHistoryItem.mediaUrls.map((url, idx) => {
+                                const isVideo = isVideoUrl(url)
+                                return (
+                                  <div key={idx} className="relative rounded-xl overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-[#121212] aspect-video">
+                                    {isVideo ? (
+                                      <video
+                                        src={url}
+                                        controls
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                                        <img
+                                          src={url}
+                                          alt={`attached-media-${idx}`}
+                                          className="w-full h-full object-cover hover:scale-105 transition-transform"
+                                        />
+                                      </a>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -524,9 +675,9 @@ export default function ReportSafetyEmergency() {
               <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-5 lg:mb-6">
                 <AlertTriangle className="h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-red-600 dark:text-red-400" />
               </div>
-              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 md:mb-3">Report Submitted</h2>
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white mb-2 md:mb-3">Report Submitted Successfully</h2>
               <p className="text-sm md:text-base lg:text-lg text-gray-600 dark:text-gray-400 mb-3 md:mb-4">
-                Your safety report has been submitted. Our team will review it immediately and take appropriate action.
+                Your safety report has been submitted successfully. Our safety team will review it and contact you within 15 minutes.
               </p>
               <p className="text-xs md:text-sm text-red-600 dark:text-red-400 font-medium">
                 If this is a life-threatening emergency, please call 100 immediately.

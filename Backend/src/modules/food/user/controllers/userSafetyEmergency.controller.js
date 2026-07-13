@@ -6,7 +6,7 @@ export const createSafetyEmergencyReportController = async (req, res, next) => {
     try {
         const userId = req.user?.userId;
         const body = validateSafetyEmergencyCreateDto(req.body || {});
-        const result = await createSafetyEmergencyReport(userId, body.message);
+        const result = await createSafetyEmergencyReport(userId, body.message, body.relatedOrderId);
         return sendResponse(res, 201, 'Safety emergency report submitted successfully', result);
     } catch (error) {
         next(error);

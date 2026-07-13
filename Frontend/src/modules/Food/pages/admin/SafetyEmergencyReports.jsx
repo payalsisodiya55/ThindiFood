@@ -24,6 +24,35 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+const parseSafetyMessage = (rawMessage) => {
+  if (!rawMessage) return { cleanMessage: "", mediaUrls: [] }
+  const mediaMarker = "[Attached Media Files]:"
+  const markerIndex = rawMessage.indexOf(mediaMarker)
+  if (markerIndex === -1) {
+    return { cleanMessage: rawMessage, mediaUrls: [] }
+  }
+  
+  const cleanMessage = rawMessage.slice(0, markerIndex).trim()
+  const mediaSection = rawMessage.slice(markerIndex + mediaMarker.length)
+  
+  const urlRegex = /(https?:\/\/[^\s]+)/g
+  const mediaUrls = mediaSection.match(urlRegex) || []
+  
+  return { cleanMessage, mediaUrls }
+}
+
+const isVideoUrl = (url) => {
+  if (!url) return false
+  const lower = url.toLowerCase()
+  return (
+    lower.includes('/video/upload/') ||
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.mov') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.ogg')
+  )
+}
+
 
 export default function SafetyEmergencyReports() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -35,6 +64,10 @@ export default function SafetyEmergencyReports() {
   const [priorityFilter, setPriorityFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
+
+  const parsedReport = useMemo(() => {
+    return parseSafetyMessage(selectedReport?.message)
+  }, [selectedReport])
 
   useEffect(() => {
     fetchReports()
@@ -485,10 +518,42 @@ export default function SafetyEmergencyReports() {
                   <div className="w-1 h-6 bg-gradient-to-b from-red-500 to-orange-600 rounded-full"></div>
                   Safety Emergency Report
                 </h3>
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-700 shadow-sm">
+                 <div className="bg-white dark:bg-slate-800 rounded-lg p-5 border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
                   <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
-                    {selectedReport.message}
+                    {parsedReport.cleanMessage || "—"}
                   </p>
+
+                  {parsedReport.mediaUrls.length > 0 && (
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+                      <span className="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">
+                        Attached Media Files
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {parsedReport.mediaUrls.map((url, idx) => {
+                          const isVideo = isVideoUrl(url)
+                          return (
+                            <div key={idx} className="relative rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 aspect-video">
+                              {isVideo ? (
+                                <video
+                                  src={url}
+                                  controls
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <a href={url} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+                                  <img
+                                    src={url}
+                                    alt={`attached-media-${idx}`}
+                                    className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                                  />
+                                </a>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
+import crypto from 'crypto';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodSafetyEmergencyReport } from '../../admin/models/safetyEmergencyReport.model.js';
 
-export const createSafetyEmergencyReport = async (userId, message) => {
+export const createSafetyEmergencyReport = async (userId, message, relatedOrderId) => {
     const id = String(userId || '');
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw new ValidationError('User not found');
@@ -13,8 +14,14 @@ export const createSafetyEmergencyReport = async (userId, message) => {
         throw new ValidationError('User not found');
     }
 
+    const reportId = 'RPT-' + crypto.randomBytes(3).toString('hex').toUpperCase();
+
     const created = await FoodSafetyEmergencyReport.create({
+        reportId,
         userId: new mongoose.Types.ObjectId(id),
+        relatedOrder: relatedOrderId && mongoose.Types.ObjectId.isValid(relatedOrderId) 
+            ? new mongoose.Types.ObjectId(relatedOrderId) 
+            : null,
         userName: user.name || '',
         userEmail: user.email || '',
         userPhone: user.phone || '',
@@ -37,7 +44,12 @@ export const listMySafetyEmergencyReports = async (userId, query = {}) => {
 
     const filter = { userId: new mongoose.Types.ObjectId(id) };
     const [list, total] = await Promise.all([
-        FoodSafetyEmergencyReport.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+        FoodSafetyEmergencyReport.find(filter)
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit)
+            .populate('relatedOrder', 'shortId status createdAt')
+            .lean(),
         FoodSafetyEmergencyReport.countDocuments(filter)
     ]);
 
