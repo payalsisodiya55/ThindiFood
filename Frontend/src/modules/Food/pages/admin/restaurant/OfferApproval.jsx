@@ -257,11 +257,11 @@ export default function OfferApproval() {
                       <tr key={offer._id || offer.id} className="hover:bg-gray-50">
                         <td className="px-3 py-3 font-semibold">{index + 1}</td>
                         <td className="px-3 py-3">
-                          <div className="font-semibold text-gray-900">{offer.restaurantName || "Restaurant"}</div>
-                          <div className="text-gray-500 text-[10px]">{offer.restaurantId}</div>
+                          <div className="font-semibold text-gray-900 break-words max-w-[160px]">{offer.restaurantName || "Restaurant"}</div>
+                          <div className="text-gray-500 text-[10px] break-all">{offer.restaurantId}</div>
                         </td>
-                        <td className="px-3 py-3 font-semibold">{offer.title}</td>
-                        <td className="px-3 py-3">
+                        <td className="px-3 py-3 font-semibold break-words max-w-[160px]">{offer.title}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">
                           {offer.discountType === 'percentage' ? `${offer.discountValue}% Off` : `₹${offer.discountValue} Off`}
                         </td>
                         <td className="px-3 py-3">

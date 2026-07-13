@@ -3227,20 +3227,7 @@ export default function Cart() {
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 truncate">{restaurantName}</p>
                 <p className="text-sm md:text-base font-medium text-gray-800 dark:text-white truncate">
-                  {fulfillmentMode === "delivery" ? (
-                    <>
-                      Deliver to  <span className="font-semibold">{getDisplayAddressLabel(defaultAddress?.label || "Home")}</span>
-                    </>
-                  ) : (
-                    <>
-                      Pickup at <span className="font-semibold">{restaurantName}</span>
-                    </>
-                  )}
-                  <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs md:text-sm">
-                    {fulfillmentMode === "delivery"
-                      ? (formatFullAddress(defaultAddress) || defaultAddress?.address || "Select a delivery location")
-                      : pickupRestaurantAddress}
-                  </span>
+                  {fulfillmentMode === "delivery" ? "Delivery Order" : "Pickup Order"}
                 </p>
               </div>
             </div>
@@ -3448,7 +3435,7 @@ export default function Cart() {
                           {addon.description && (
                             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{addon.description}</p>
                           )}
-                          <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">{RUPEE_SYMBOL}{addon.price}</p>
+                          <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">{RUPEE_SYMBOL}{Number(addon.price || 0).toFixed(2).replace(/\.?0+$/, '') || '0'}</p>
                         </div>
                       ))}
                     </div>
@@ -3458,18 +3445,36 @@ export default function Cart() {
 
               {/* Restaurant Offer Section */}
               {restaurantOfferInfo && (
-                <div className="bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden border border-[#00c87e]/20 shadow-sm">
+                <div className={`bg-white dark:bg-[#1a1a1a] rounded-2xl overflow-hidden shadow-sm border ${
+                  restaurantOfferInfo.replacedByCoupon
+                    ? 'border-amber-200 dark:border-amber-900/40'
+                    : 'border-[#00c87e]/20'
+                }`}>
                   <div className="px-4 py-3 md:px-6 md:py-4 flex items-start gap-3">
-                    <div className="mt-0.5 flex h-8 w-8 items-center justify-center rounded-full bg-[#00c87e]/10 text-[#00c87e]">
-                      <Tag className="h-4 w-4" />
+                    <div className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full flex-shrink-0 ${
+                      restaurantOfferInfo.replacedByCoupon
+                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600'
+                        : 'bg-[#00c87e]/10 text-[#00c87e]'
+                    }`}>
+                      {restaurantOfferInfo.replacedByCoupon
+                        ? <Info className="h-4 w-4" />
+                        : <Tag className="h-4 w-4" />
+                      }
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 break-all">
-                        Restaurant offer: {restaurantOfferInfo.text}
+                      <p className={`text-sm font-semibold break-words ${
+                        restaurantOfferInfo.replacedByCoupon
+                          ? 'text-gray-500 dark:text-gray-400'
+                          : 'text-gray-800 dark:text-gray-200'
+                      }`}>
+                        {restaurantOfferInfo.replacedByCoupon
+                          ? 'Restaurant offer removed'
+                          : `Restaurant offer: ${restaurantOfferInfo.text}`
+                        }
                       </p>
                       {restaurantOfferInfo.replacedByCoupon ? (
                         <p className="mt-0.5 text-xs font-medium text-amber-600">
-                          Coupon applied, so this restaurant offer has been removed.
+                          Your coupon gave a better discount, so the {restaurantOfferInfo.text} restaurant offer was removed.
                         </p>
                       ) : restaurantOfferInfo.appliedAmount > 0 ? (
                         <p className="mt-0.5 text-xs font-medium text-[#00c87e]">
