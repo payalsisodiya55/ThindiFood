@@ -3497,7 +3497,7 @@ export default function Cart() {
                         <p className="text-xs text-[#00c87e] font-medium mt-0.5">You saved {RUPEE_SYMBOL}{discount}</p>
                       </div>
                     </div>
-                    <button onClick={handleRemoveCoupon} className="text-[#00c87e] text-xs font-semibold px-2 hover:underline">REMOVE</button>
+                    <button onClick={handleRemoveCoupon} className="text-[#00c87e] text-xs font-semibold px-2 hover:underline">Remove</button>
                   </div>
                 ) : (
                   /* Available / Input View */
@@ -4005,8 +4005,8 @@ export default function Cart() {
                   )}
                 </div>
                 <div className="leading-tight">
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400 font-bold opacity-80">
-                    PAYING WITH
+                  <p className="text-[10px] tracking-wider text-gray-500 dark:text-gray-400 font-bold opacity-80">
+                    Paying With
                   </p>
                   <div className="flex items-center gap-1.5">
                     <p className="text-sm font-bold text-gray-800 dark:text-gray-100">
@@ -4021,8 +4021,8 @@ export default function Cart() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-0.5 text-[#00c87e] font-bold text-[11px] uppercase tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg">
-                CHANGE <ChevronRight className="h-3.5 w-3.5" />
+              <div className="flex items-center gap-0.5 text-[#00c87e] font-bold text-[11px] tracking-widest bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg">
+                Change <ChevronRight className="h-3.5 w-3.5" />
               </div>
             </div>
 
