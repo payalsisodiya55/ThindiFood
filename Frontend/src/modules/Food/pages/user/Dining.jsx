@@ -1057,15 +1057,16 @@ export default function Dining() {
 
                           {/* Featured Dish Badge - Top Left */}
                           <motion.div
-                            className="absolute top-3 left-3 flex items-center z-10"
+                            className="absolute top-3 left-3 flex items-center z-10 max-w-[calc(100%-4rem)]"
                             variants={{
                               rest: { scale: 1, y: 0 },
                               hover: { scale: 1.05, y: -2 }
                             }}
                             transition={{ duration: 0.3 }}
                           >
-                            <div className="bg-gray-800/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium shadow-lg">
-                              {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
+                            <div className="bg-gray-800/90 backdrop-blur-sm text-white px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium shadow-lg flex items-center gap-1.5 w-full">
+                              <span className="truncate">{restaurant.featuredDish}</span>
+                              <span className="shrink-0 text-white/80">• ₹{restaurant.featuredPrice}</span>
                             </div>
                           </motion.div>
 
@@ -1096,7 +1097,7 @@ export default function Dining() {
                                   PRE-BOOK TABLE
                                 </p>
                                 <div className="h-px bg-white/30 mb-2 w-24"></div>
-                                <p className="text-white text-base sm:text-lg font-bold">
+                                <p className="text-white text-sm sm:text-base font-bold line-clamp-1 break-all pr-2">
                                   {restaurant.offer}
                                 </p>
                               </div>
@@ -1168,14 +1169,14 @@ export default function Dining() {
 
                             {/* Offer Badge */}
                             {restaurant.offer && (
-                              <div className="flex items-center gap-2 text-sm">
+                              <div className="flex items-center gap-2 text-sm mt-1">
                               <span 
-                                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
+                                className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
                                 style={{ backgroundColor: `${RED}1A`, color: RED }}
                               >
                                 Off
                               </span>
-                                <span className="text-gray-700 dark:text-gray-300 font-medium">{restaurant.offer}</span>
+                                <span className="text-gray-700 dark:text-gray-300 font-medium truncate flex-1 min-w-0">{restaurant.offer}</span>
                               </div>
                             )}
                           </CardContent>
@@ -1310,11 +1311,12 @@ export default function Dining() {
                           />
 
                           {/* Featured Dish Badge - Top Left */}
-                          <div className="absolute top-3 left-3">
-                            <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
-                              {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
-                            </div>
-                          </div>
+                           <div className="absolute top-3 left-3 max-w-[calc(100%-4rem)]">
+                             <div className="bg-gray-800/80 backdrop-blur-sm text-white px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-medium flex items-center gap-1.5 w-full">
+                               <span className="truncate">{restaurant.featuredDish}</span>
+                               <span className="shrink-0 text-white/80">• ₹{restaurant.featuredPrice}</span>
+                             </div>
+                           </div>
 
                           {/* Bookmark Icon - Top Right */}
                           <Button
@@ -1334,9 +1336,9 @@ export default function Dining() {
                                   PRE-BOOK TABLE
                                 </p>
                                 <div className="h-px bg-white/30 mb-2 w-24"></div>
-                                <p className="text-white text-base sm:text-lg font-bold">
-                                  {restaurant.offer}
-                                </p>
+                                 <p className="text-white text-sm sm:text-base font-bold line-clamp-1 break-all pr-2">
+                                   {restaurant.offer}
+                                 </p>
                               </div>
                             </div>
                           </div>
@@ -1386,16 +1388,16 @@ export default function Dining() {
 
                           {/* Offer Badge */}
                           {restaurant.offer && (
-                            <div className="flex items-center gap-2 text-sm">
-                              <span 
-                                className="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
-                                style={{ backgroundColor: `${RED}1A`, color: RED }}
-                              >
-                                Off
-                              </span>
-                              <span className="text-gray-700 dark:text-gray-300 font-medium">{restaurant.offer}</span>
-                            </div>
-                          )}
+                             <div className="flex items-center gap-2 text-sm mt-1">
+                               <span 
+                                 className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
+                                 style={{ backgroundColor: `${RED}1A`, color: RED }}
+                               >
+                                 Off
+                               </span>
+                               <span className="text-gray-700 dark:text-gray-300 font-medium truncate flex-1 min-w-0">{restaurant.offer}</span>
+                             </div>
+                           )}
                         </CardContent>
                       </Card>
                     </Link>
