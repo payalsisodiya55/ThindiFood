@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
-import { MapPin, SlidersHorizontal, Star, X, ArrowDownUp, Timer, IndianRupee, Clock, Bookmark, UtensilsCrossed, ChevronRight, Utensils, QrCode } from "lucide-react"
+import { MapPin, SlidersHorizontal, Star, X, ArrowDownUp, Timer, IndianRupee, Clock, Bookmark, UtensilsCrossed, ChevronRight, Utensils, QrCode, Percent } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Card, CardContent } from "@food/components/ui/card"
 import AnimatedPage from "@food/components/user/AnimatedPage"
@@ -137,11 +137,13 @@ export default function Dining() {
   const [heroSearch, setHeroSearch] = useState("")
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [availabilityTick] = useState(Date.now())
-  const [activeFilters, setActiveFilters] = useState(new Set())
+  const [discountFilter, setDiscountFilter] = useState(null)
+  const [distanceFilter, setDistanceFilter] = useState(null)
+  const [ratingFilter, setRatingFilter] = useState(null)
+  const [selectedCategories, setSelectedCategories] = useState(new Set())
   const [isFilterOpen, setIsFilterOpen] = useState(false)
   const [activeFilterTab, setActiveFilterTab] = useState('sort')
   const [sortBy, setSortBy] = useState(null)
-  const [selectedCuisine, setSelectedCuisine] = useState(null)
   const [toast, setToast] = useState(null)
   const toastTimerRef = useRef(null)
   const filterSectionRefs = useRef({})
@@ -465,13 +467,13 @@ export default function Dining() {
     })
   }, [availabilityTick, normalizedRestaurantList])
 
-  const toggleFilter = (filterId) => {
-    setActiveFilters(prev => {
+  const toggleCategory = (category) => {
+    setSelectedCategories(prev => {
       const newSet = new Set(prev)
-      if (newSet.has(filterId)) {
-        newSet.delete(filterId)
+      if (newSet.has(category)) {
+        newSet.delete(category)
       } else {
-        newSet.add(filterId)
+        newSet.add(category)
       }
       return newSet
     })
@@ -480,43 +482,62 @@ export default function Dining() {
   const filteredRestaurants = useMemo(() => {
     let filtered = [...nearbyPopularRestaurants]
 
-    if (activeFilters.has('delivery-under-30')) {
-      filtered = filtered.filter(r => {
-        const timeMatch = r.deliveryTime.match(/(\d+)/)
-        return timeMatch && parseInt(timeMatch[1]) <= 30
-      })
+    if (distanceFilter === 'nearby') {
+      filtered = filtered.filter(r => r.distanceValue <= 1.0)
+    } else if (distanceFilter === 'under-2km') {
+      filtered = filtered.filter(r => r.distanceValue <= 2.0)
+    } else if (distanceFilter === 'under-5km') {
+      filtered = filtered.filter(r => r.distanceValue <= 5.0)
+    } else if (distanceFilter === 'under-10km') {
+      filtered = filtered.filter(r => r.distanceValue <= 10.0)
     }
-    if (activeFilters.has('delivery-under-45')) {
-      filtered = filtered.filter(r => {
-        const timeMatch = r.deliveryTime.match(/(\d+)/)
-        return timeMatch && parseInt(timeMatch[1]) <= 45
-      })
-    }
-    if (activeFilters.has('distance-under-1km')) {
-      filtered = filtered.filter(r => {
-        const distMatch = r.distance.match(/(\d+\.?\d*)/)
-        return distMatch && parseFloat(distMatch[1]) <= 1.0
-      })
-    }
-    if (activeFilters.has('distance-under-2km')) {
-      filtered = filtered.filter(r => {
-        const distMatch = r.distance.match(/(\d+\.?\d*)/)
-        return distMatch && parseFloat(distMatch[1]) <= 2.0
-      })
-    }
-    if (activeFilters.has('rating-35-plus')) {
+
+    if (ratingFilter === '3.5-plus') {
       filtered = filtered.filter(r => r.rating >= 3.5)
-    }
-    if (activeFilters.has('rating-4-plus')) {
+    } else if (ratingFilter === '4-plus') {
       filtered = filtered.filter(r => r.rating >= 4.0)
-    }
-    if (activeFilters.has('rating-45-plus')) {
+    } else if (ratingFilter === '4.5-plus') {
       filtered = filtered.filter(r => r.rating >= 4.5)
     }
 
-    // Apply cuisine filter
-    if (selectedCuisine) {
-      filtered = filtered.filter(r => r.cuisine.toLowerCase().includes(selectedCuisine.toLowerCase()))
+    if (discountFilter) {
+      // Assuming r.offer contains percentage like "10% OFF" or "Up to 20% OFF"
+      // We will extract numbers to filter properly, or since there is no structured discount field, 
+      // we do a text match on the offer string. If there is no exact percentage, we just check if it has offer.
+      filtered = filtered.filter(r => {
+        if (!r.offer || r.offer === "Pre-book table") return false
+        const match = r.offer.match(/(\d+)%/)
+        const pct = match ? parseInt(match[1]) : 0
+        if (discountFilter === 'upto-10') return pct > 0 && pct <= 10
+        if (discountFilter === '10-20') return pct > 10 && pct <= 20
+        if (discountFilter === '20-30') return pct > 20 && pct <= 30
+        if (discountFilter === '50-plus') return pct >= 50
+        return false
+      })
+    }
+
+    // Apply category filter
+    if (selectedCategories.size > 0) {
+      filtered = filtered.filter(r => {
+        const rCategorySlugs = new Set()
+        
+        if (Array.isArray(r.categories)) {
+          r.categories.forEach(c => {
+             if (typeof c === 'string') rCategorySlugs.add(slugifyValue(c))
+             else if (c && typeof c === 'object') rCategorySlugs.add(slugifyValue(c.slug || c.name || c.title || ''))
+          })
+        }
+        
+        if (r.diningSettings?.diningType) {
+           rCategorySlugs.add(slugifyValue(r.diningSettings.diningType))
+        }
+        
+        const cuisinesStr = r.cuisine.toLowerCase()
+
+        return Array.from(selectedCategories).some(slug => 
+           rCategorySlugs.has(slug) || cuisinesStr.includes(slug.replace(/-/g, ' '))
+        )
+      })
     }
 
     // Apply sorting
@@ -524,10 +545,14 @@ export default function Dining() {
       filtered.sort((a, b) => b.rating - a.rating)
     } else if (sortBy === 'rating-low') {
       filtered.sort((a, b) => a.rating - b.rating)
+    } else if (sortBy === 'cost-high') {
+      filtered.sort((a, b) => (b.featuredPrice || 0) - (a.featuredPrice || 0))
+    } else if (sortBy === 'cost-low') {
+      filtered.sort((a, b) => (a.featuredPrice || 0) - (b.featuredPrice || 0))
     }
 
     return filtered
-  }, [nearbyPopularRestaurants, activeFilters, selectedCuisine, sortBy])
+  }, [nearbyPopularRestaurants, distanceFilter, ratingFilter, discountFilter, selectedCategories, sortBy])
 
   useEffect(() => {
     setCurrentBannerIndex((prev) => {
@@ -965,21 +990,30 @@ export default function Dining() {
 
                 {/* Filter Buttons */}
                 {[
-                  { id: 'delivery-under-30', label: 'Under 30 mins' },
-                  { id: 'delivery-under-45', label: 'Under 45 mins' },
-                  { id: 'distance-under-1km', label: 'Under 1km', icon: MapPin },
-                  { id: 'distance-under-2km', label: 'Under 2km', icon: MapPin },
-                  { id: 'rating-35-plus', label: '3.5+ Rating' },
-                  { id: 'rating-4-plus', label: '4.0+ Rating' },
-                  { id: 'rating-45-plus', label: '4.5+ Rating' },
+                  { id: 'discount-upto-10', type: 'discount', value: 'upto-10', label: '10% Off', icon: Percent },
+                  { id: 'distance-nearby', type: 'distance', value: 'nearby', label: 'Nearby', icon: MapPin },
+                  { id: 'distance-under-2km', type: 'distance', value: 'under-2km', label: 'Under 2km', icon: MapPin },
+                  { id: 'rating-3.5-plus', type: 'rating', value: '3.5-plus', label: '3.5+ Rating', icon: Star },
+                  { id: 'rating-4-plus', type: 'rating', value: '4-plus', label: '4.0+ Rating', icon: Star },
+                  { id: 'rating-4.5-plus', type: 'rating', value: '4.5-plus', label: '4.5+ Rating', icon: Star },
                 ].map((filter) => {
                   const Icon = filter.icon
-                  const isActive = activeFilters.has(filter.id)
+                  let isActive = false
+                  if (filter.type === 'discount') isActive = discountFilter === filter.value
+                  if (filter.type === 'distance') isActive = distanceFilter === filter.value
+                  if (filter.type === 'rating') isActive = ratingFilter === filter.value
+
+                  const handleToggle = () => {
+                     if (filter.type === 'discount') setDiscountFilter(isActive ? null : filter.value)
+                     if (filter.type === 'distance') setDistanceFilter(isActive ? null : filter.value)
+                     if (filter.type === 'rating') setRatingFilter(isActive ? null : filter.value)
+                  }
+
                   return (
                     <Button
                       key={filter.id}
                       variant="outline"
-                      onClick={() => toggleFilter(filter.id)}
+                      onClick={handleToggle}
                       className={`h-7 sm:h-8 px-2 sm:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 transition-all font-medium ${isActive
                         ? 'text-white border'
                         : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300'
@@ -1452,13 +1486,13 @@ export default function Dining() {
                           {/* Offer Badge */}
                           {restaurant.offer && (
                              <div className="flex items-center gap-2 text-sm mt-1">
-                               <span 
-                                 className="shrink-0 inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
+                               <div
+                                 className="shrink-0 flex h-5 w-5 items-center justify-center rounded-full"
                                  style={{ backgroundColor: `${RED}1A`, color: RED }}
                                >
-                                 Off
-                               </span>
-                               <span className="text-gray-700 dark:text-gray-300 font-medium truncate flex-1 min-w-0">{restaurant.offer}</span>
+                                 <Percent className="h-3 w-3" strokeWidth={2.5} />
+                               </div>
+                               <span className="text-gray-700 dark:text-gray-300 font-medium truncate flex-1 min-w-0 text-xs sm:text-sm">{restaurant.offer}</span>
                              </div>
                            )}
                         </CardContent>
@@ -1489,9 +1523,11 @@ export default function Dining() {
               <h2 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Filters and sorting</h2>
               <button
                 onClick={() => {
-                  setActiveFilters(new Set())
+                  setDiscountFilter(null)
+                  setDistanceFilter(null)
+                  setRatingFilter(null)
                   setSortBy(null)
-                  setSelectedCuisine(null)
+                  setSelectedCategories(new Set())
                 }}
                 style={{ color: RED }}
                 className="font-medium text-sm md:text-base"
@@ -1506,11 +1542,10 @@ export default function Dining() {
               <div className="w-24 sm:w-28 md:w-32 bg-gray-50 dark:bg-[#0a0a0a] border-r dark:border-gray-800 flex flex-col">
                 {[
                   { id: 'sort', label: 'Sort By', icon: ArrowDownUp },
-                  { id: 'time', label: 'Time', icon: Timer },
+                  { id: 'discount', label: 'Discount', icon: Percent },
                   { id: 'rating', label: 'Rating', icon: Star },
                   { id: 'distance', label: 'Distance', icon: MapPin },
-                  { id: 'price', label: 'Dish Price', icon: IndianRupee },
-                  { id: 'cuisine', label: 'Cuisine', icon: UtensilsCrossed },
+                  { id: 'category', label: 'Category', icon: UtensilsCrossed },
                 ].map((tab) => {
                   const Icon = tab.icon
                   const isActive = activeFilterTab === tab.id
@@ -1543,17 +1578,25 @@ export default function Dining() {
                         { id: null, label: 'Relevance' },
                         { id: 'rating-high', label: 'Rating: High to Low' },
                         { id: 'rating-low', label: 'Rating: Low to High' },
+                        { id: 'cost-high', label: 'Cost: High to Low' },
+                        { id: 'cost-low', label: 'Cost: Low to High' },
                       ].map((option) => (
                         <button
                           key={option.id || 'relevance'}
                           onClick={() => setSortBy(option.id)}
-                          className={`px-4 md:px-5 py-3 md:py-4 rounded-xl border text-left transition-colors ${sortBy === option.id
+                          className={`flex items-center gap-3 px-4 md:px-5 py-3 md:py-4 rounded-xl border text-left transition-colors ${sortBy === option.id
                             ? 'border'
                             : 'border-gray-200 dark:border-gray-700'
                             }`}
                           style={sortBy === option.id ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
                         >
-                          <span className={`text-sm md:text-base font-medium ${sortBy === option.id ? '' : 'text-gray-700 dark:text-gray-300'}`} style={sortBy === option.id ? { color: RED } : {}}>
+                          <div
+                            className="w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                            style={sortBy === option.id ? { borderColor: RED } : { borderColor: '#d1d5db' }}
+                          >
+                            {sortBy === option.id && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: RED }} />}
+                          </div>
+                          <span className={`text-sm md:text-base font-medium flex-1 ${sortBy === option.id ? '' : 'text-gray-700 dark:text-gray-300'}`} style={sortBy === option.id ? { color: RED } : {}}>
                             {option.label}
                           </span>
                         </button>
@@ -1562,33 +1605,37 @@ export default function Dining() {
                   </div>
                 )}
 
-                {/* Time Tab */}
-                {activeFilterTab === 'time' && (
+                {/* Discount Tab */}
+                {activeFilterTab === 'discount' && (
                   <div className="space-y-4 mb-8">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Estimated Time</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => toggleFilter('delivery-under-30')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('delivery-under-30')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('delivery-under-30') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <Timer className="h-6 w-6" style={activeFilters.has('delivery-under-30') ? { color: RED } : { color: '#4b5563' }} strokeWidth={1.5} />
-                        <span className="text-sm font-medium" style={activeFilters.has('delivery-under-30') ? { color: RED } : { color: '#374151' }}>Under 30 mins</span>
-                      </button>
-                      <button
-                        onClick={() => toggleFilter('delivery-under-45')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('delivery-under-45')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('delivery-under-45') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <Timer className="h-6 w-6" style={activeFilters.has('delivery-under-45') ? { color: RED } : { color: '#4b5563' }} strokeWidth={1.5} />
-                        <span className="text-sm font-medium" style={activeFilters.has('delivery-under-45') ? { color: RED } : { color: '#374151' }}>Under 45 mins</span>
-                      </button>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Discount</h3>
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { id: 'upto-10', label: 'Up to 10% Off' },
+                        { id: '10-20', label: '10% - 20%' },
+                        { id: '20-30', label: '20% - 30%' },
+                        { id: '50-plus', label: 'Up to 50% or more' },
+                      ].map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => setDiscountFilter(discountFilter === option.id ? null : option.id)}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${discountFilter === option.id
+                            ? 'border'
+                            : 'border-gray-200 dark:border-gray-700'
+                            }`}
+                          style={discountFilter === option.id ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
+                        >
+                          <div
+                            className="w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                            style={discountFilter === option.id ? { borderColor: RED } : { borderColor: '#d1d5db' }}
+                          >
+                            {discountFilter === option.id && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: RED }} />}
+                          </div>
+                          <span className={`text-sm font-medium flex-1 ${discountFilter === option.id ? '' : 'text-gray-700 dark:text-gray-300'}`} style={discountFilter === option.id ? { color: RED } : {}}>
+                            {option.label}
+                          </span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1597,40 +1644,33 @@ export default function Dining() {
                 {activeFilterTab === 'rating' && (
                   <div className="space-y-4 mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Restaurant Rating</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => toggleFilter('rating-35-plus')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-35-plus')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('rating-35-plus') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <Star className="h-6 w-6" style={activeFilters.has('rating-35-plus') ? { color: RED, fill: RED } : { color: '#9ca3af' }} />
-                        <span className="text-sm font-medium" style={activeFilters.has('rating-35-plus') ? { color: RED } : { color: '#374151' }}>Rated 3.5+</span>
-                      </button>
-                      <button
-                        onClick={() => toggleFilter('rating-4-plus')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-4-plus')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('rating-4-plus') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <Star className="h-6 w-6" style={activeFilters.has('rating-4-plus') ? { color: RED, fill: RED } : { color: '#9ca3af' }} />
-                        <span className="text-sm font-medium" style={activeFilters.has('rating-4-plus') ? { color: RED } : { color: '#374151' }}>Rated 4.0+</span>
-                      </button>
-                      <button
-                        onClick={() => toggleFilter('rating-45-plus')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('rating-45-plus')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('rating-45-plus') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <Star className="h-6 w-6" style={activeFilters.has('rating-45-plus') ? { color: RED, fill: RED } : { color: '#9ca3af' }} />
-                        <span className="text-sm font-medium" style={activeFilters.has('rating-45-plus') ? { color: RED } : { color: '#374151' }}>Rated 4.5+</span>
-                      </button>
+                    <div className="flex flex-col gap-3">
+                      {[
+                        { id: '3.5-plus', label: 'Rated 3.5+', val: 3.5 },
+                        { id: '4-plus', label: 'Rated 4.0+', val: 4.0 },
+                        { id: '4.5-plus', label: 'Rated 4.5+', val: 4.5 },
+                      ].map((option) => (
+                        <button
+                          key={option.id}
+                          onClick={() => setRatingFilter(ratingFilter === option.id ? null : option.id)}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${ratingFilter === option.id
+                            ? 'border'
+                            : 'border-gray-200 dark:border-gray-700'
+                            }`}
+                          style={ratingFilter === option.id ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
+                        >
+                          <div
+                            className="w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                            style={ratingFilter === option.id ? { borderColor: RED } : { borderColor: '#d1d5db' }}
+                          >
+                            {ratingFilter === option.id && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: RED }} />}
+                          </div>
+                          <span className={`text-sm font-medium flex-1 ${ratingFilter === option.id ? '' : 'text-gray-700 dark:text-gray-300'}`} style={ratingFilter === option.id ? { color: RED } : {}}>
+                            {option.label}
+                          </span>
+                          <Star className="h-5 w-5 ml-2" style={ratingFilter === option.id ? { color: RED, fill: RED } : { color: '#9ca3af' }} />
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
@@ -1639,80 +1679,72 @@ export default function Dining() {
                 {activeFilterTab === 'distance' && (
                   <div className="space-y-4 mb-8">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Distance</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => toggleFilter('distance-under-1km')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('distance-under-1km')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('distance-under-1km') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <MapPin className="h-6 w-6" style={activeFilters.has('distance-under-1km') ? { color: RED } : { color: '#4b5563' }} strokeWidth={1.5} />
-                        <span className="text-sm font-medium" style={activeFilters.has('distance-under-1km') ? { color: RED } : { color: '#374151' }}>Under 1 km</span>
-                      </button>
-                      <button
-                        onClick={() => toggleFilter('distance-under-2km')}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-xl border transition-colors ${activeFilters.has('distance-under-2km')
-                          ? 'border'
-                          : 'border-gray-200 dark:border-gray-700'
-                          }`}
-                        style={activeFilters.has('distance-under-2km') ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
-                      >
-                        <MapPin className="h-6 w-6" style={activeFilters.has('distance-under-2km') ? { color: RED } : { color: '#4b5563' }} strokeWidth={1.5} />
-                        <span className="text-sm font-medium" style={activeFilters.has('distance-under-2km') ? { color: RED } : { color: '#374151' }}>Under 2 km</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Price Tab */}
-                {activeFilterTab === 'price' && (
-                  <div className="space-y-4 mb-8">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Dish Price</h3>
                     <div className="flex flex-col gap-3">
-                      <button
-                        onClick={() => toggleFilter('price-under-200')}
-                        className={`px-4 py-3 rounded-xl border text-left transition-colors ${activeFilters.has('price-under-200')
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-green-500'
-                          }`}
-                      >
-                        <span className={`text-sm font-medium ${activeFilters.has('price-under-200') ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>Under ₹200</span>
-                      </button>
-                      <button
-                        onClick={() => toggleFilter('price-under-500')}
-                        className={`px-4 py-3 rounded-xl border text-left transition-colors ${activeFilters.has('price-under-500')
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                          : 'border-gray-200 dark:border-gray-700 hover:border-green-500'
-                          }`}
-                      >
-                        <span className={`text-sm font-medium ${activeFilters.has('price-under-500') ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-300'}`}>Under ₹500</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Cuisine Tab */}
-                {activeFilterTab === 'cuisine' && (
-                  <div className="space-y-4 mb-8">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Cuisine</h3>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['Continental', 'Italian', 'Asian', 'Indian', 'Chinese', 'American', 'Seafood', 'Cafe'].map((cuisine) => (
+                      {[
+                        { id: 'nearby', label: 'Nearby (Under 1km)' },
+                        { id: 'under-2km', label: 'Less than 2 km' },
+                        { id: 'under-5km', label: 'Less than 5 km' },
+                        { id: 'under-10km', label: 'Less than 10 km' },
+                      ].map((option) => (
                         <button
-                          key={cuisine}
-                          onClick={() => setSelectedCuisine(selectedCuisine === cuisine ? null : cuisine)}
-                          className={`px-4 py-3 rounded-xl border text-center transition-colors ${selectedCuisine === cuisine
+                          key={option.id}
+                          onClick={() => setDistanceFilter(distanceFilter === option.id ? null : option.id)}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${distanceFilter === option.id
                             ? 'border'
                             : 'border-gray-200 dark:border-gray-700'
                             }`}
-                          style={selectedCuisine === cuisine ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
+                          style={distanceFilter === option.id ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
                         >
-                          <span className="text-sm font-medium" style={selectedCuisine === cuisine ? { color: RED } : { color: '#374151' }}>
-                            {cuisine}
+                          <div
+                            className="w-5 h-5 rounded-full border-[1.5px] flex items-center justify-center shrink-0"
+                            style={distanceFilter === option.id ? { borderColor: RED } : { borderColor: '#d1d5db' }}
+                          >
+                            {distanceFilter === option.id && <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: RED }} />}
+                          </div>
+                          <span className={`text-sm font-medium flex-1 ${distanceFilter === option.id ? '' : 'text-gray-700 dark:text-gray-300'}`} style={distanceFilter === option.id ? { color: RED } : {}}>
+                            {option.label}
                           </span>
                         </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Category Tab */}
+                {activeFilterTab === 'category' && (
+                  <div className="space-y-4 mb-8">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Restaurant Category</h3>
+                    <div className="flex flex-col gap-3">
+                      {/* Dynamically display all categories using safeCategories */}
+                      {safeCategories.length > 0 ? (
+                        safeCategories.map((category) => {
+                          const isSelected = selectedCategories.has(category.slug)
+                          return (
+                            <button
+                              key={category.slug}
+                              onClick={() => toggleCategory(category.slug)}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${isSelected
+                                ? 'border'
+                                : 'border-gray-200 dark:border-gray-700'
+                                }`}
+                              style={isSelected ? { backgroundColor: `${RED}1A`, borderColor: RED } : {}}
+                            >
+                              {/* Checkbox styling */}
+                              <div
+                                className="w-5 h-5 rounded-md border-[1.5px] flex items-center justify-center shrink-0 transition-colors"
+                                style={isSelected ? { backgroundColor: RED, borderColor: RED } : { borderColor: '#d1d5db' }}
+                              >
+                                {isSelected && <ChevronRight className="h-3 w-3 text-white stroke-[3]" />}
+                              </div>
+                              <span className={`text-sm font-medium flex-1 ${isSelected ? '' : 'text-gray-700 dark:text-gray-300'}`} style={isSelected ? { color: RED } : {}}>
+                                {category.name}
+                              </span>
+                            </button>
+                          )
+                        })
+                      ) : (
+                        <p className="text-sm text-gray-500">No categories found.</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1729,13 +1761,13 @@ export default function Dining() {
               </button>
               <button
                 onClick={() => setIsFilterOpen(false)}
-                  style={(activeFilters.size > 0 || sortBy || selectedCuisine) ? { backgroundColor: RED } : {}}
-                  className={`flex-1 py-3 md:py-4 font-semibold rounded-xl transition-colors text-sm md:text-base ${activeFilters.size > 0 || sortBy || selectedCuisine
+                  style={(discountFilter || distanceFilter || ratingFilter || sortBy || selectedCategories.size > 0) ? { backgroundColor: RED } : {}}
+                  className={`flex-1 py-3 md:py-4 font-semibold rounded-xl transition-colors text-sm md:text-base ${discountFilter || distanceFilter || ratingFilter || sortBy || selectedCategories.size > 0
                     ? 'text-white hover:bg-opacity-90'
                     : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                     }`}
               >
-                {activeFilters.size > 0 || sortBy || selectedCuisine
+                {discountFilter || distanceFilter || ratingFilter || sortBy || selectedCategories.size > 0
                   ? `Show ${filteredRestaurants.length} results`
                   : 'Show results'}
               </button>
