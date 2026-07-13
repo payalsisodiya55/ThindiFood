@@ -546,7 +546,7 @@ export default function Profile() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-base font-semibold text-green-600 dark:text-green-400">
+                      <span className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
                         {"\u20B9"}{Number(walletBalance || 0).toFixed(0)}
                       </span>
                       <motion.div
@@ -651,11 +651,7 @@ export default function Profile() {
                     </div>
                     <div className="flex items-center gap-2">
                       <motion.span
-                        className={`text-xs font-medium px-2 py-1 rounded ${isComplete
-                            ? "bg-green-100 text-green-700 border border-green-300"
-                            : "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300"
-                          }`}
-                        style={!isComplete ? { color: RED, backgroundColor: `${RED}10` } : {}}
+                        className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300"
                         whileHover={{ scale: 1.1 }}
                         transition={{ duration: 0.2 }}>
                         {profileCompletion}% completed
