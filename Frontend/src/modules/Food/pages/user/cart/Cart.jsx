@@ -3926,8 +3926,8 @@ export default function Cart() {
                             <span className="text-[10px] bg-[#00c87e]/10 text-[#00c87e] border border-[#00c87e]/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Free</span>
                           )}
                         </span>
-                        <span className={`font-medium ${deliveryFee === 0 ? 'text-[#00c87e]' : 'text-gray-800 dark:text-gray-200'}`}>
-                          {deliveryFee === 0 ? "FREE" : `${RUPEE_SYMBOL}${deliveryFee.toFixed(2)}`}
+                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                          {RUPEE_SYMBOL}{deliveryFee.toFixed(2)}
                         </span>
                       </div>
                     )}
