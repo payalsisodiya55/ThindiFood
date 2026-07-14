@@ -674,10 +674,10 @@ export default function EditProfile() {
                 value={formData.gender || ""}
                 onValueChange={(value) => handleChange('gender', value)}
               >
-                <SelectTrigger className={`h-12 text-base border border-gray-300 dark:border-gray-700 focus:border-[${RED}] focus:ring-1 focus:ring-[${RED}] rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white`}>
+                <SelectTrigger className={`w-full h-12 text-base border border-gray-300 dark:border-gray-700 focus:border-[${RED}] focus:ring-1 focus:ring-[${RED}] rounded-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white`}>
                   <SelectValue placeholder="Gender" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="w-full">
                   {genderOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
