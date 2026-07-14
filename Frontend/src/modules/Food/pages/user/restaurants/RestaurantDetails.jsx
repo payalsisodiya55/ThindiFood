@@ -2475,9 +2475,9 @@ function RestaurantDetailsContent() {
             <>
               {/* Restaurant Name and Rating */}
           <div className="flex items-start justify-between relative">
-            <div className="flex items-center gap-2 min-w-0 flex-1 mr-3">
+            <div className="flex items-start gap-2 min-w-0 flex-1 mr-3">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white break-words break-all min-w-0">{restaurant?.name || "Unknown Restaurant"}</h1>
-              <div className={`group/info ${shouldShowGrayscale ? 'pointer-events-none' : ''}`}>
+              <div className={`group/info mt-1.5 shrink-0 ${shouldShowGrayscale ? 'pointer-events-none' : ''}`}>
                 <Info 
                   className={`h-5 w-5 cursor-help transition-colors ${showInfoPopover ? "text-[#00c87e]" : "text-gray-400 hover:text-[#00c87e]"}`} 
                   onClick={() => !shouldShowGrayscale && setShowInfoPopover(!showInfoPopover)}
@@ -3528,12 +3528,12 @@ function RestaurantDetailsContent() {
                 >
                   {/* Header with X button */}
                   <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-800">
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Filters and Sorting</h2>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Filters & Sorting</h2>
                     <button
                       onClick={() => setShowFilterSheet(false)}
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
+                      className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 transition-colors"
                     >
-                      <X className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+                      <X className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                     </button>
                   </div>
 
@@ -3649,7 +3649,7 @@ function RestaurantDetailsContent() {
                         setSearchQuery("")
                         setShowSearch(false)
                       }}
-                      className="border border-gray-200 dark:border-gray-700 text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-800/50 hover:border-gray-300 dark:hover:border-gray-600 px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200"
+                      className="border border-red-200 dark:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-800 px-6 py-2.5 rounded-lg font-medium text-sm transition-all duration-200"
                     >
                       Clear All
                     </button>
