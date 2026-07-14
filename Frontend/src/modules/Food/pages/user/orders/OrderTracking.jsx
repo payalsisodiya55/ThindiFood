@@ -1306,6 +1306,7 @@ export default function OrderTracking() {
     if (raw === "confirmed" || raw === "accepted") return "CONFIRMED"
     if (raw === "preparing") return "PREPARING"
     if (raw === "ready" || raw === "ready_for_pickup") return "READY FOR PICKUP"
+    if (raw === "assigned_to_boy") return "ASSIGNED TO CAPTAIN"
     if (raw === "out_for_delivery" || raw === "outfordelivery" || raw === "picked_up") {
       return isTakeawayOrder ? "READY FOR PICKUP" : "OUT FOR DELIVERY"
     }
