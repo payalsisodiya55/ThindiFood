@@ -22,7 +22,8 @@ import {
   Shield,
   Receipt,
   CircleSlash,
-  Loader2
+  Loader2,
+  Info
 } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Card, CardContent } from "@food/components/ui/card"
@@ -739,6 +740,7 @@ export default function OrderTracking() {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showCancelDialog, setShowCancelDialog] = useState(false)
   const [showOrderDetails, setShowOrderDetails] = useState(false)
+  const [showGSTInfo, setShowGSTInfo] = useState(false)
   const [cancellationReason, setCancellationReason] = useState("")
   const [isCancelling, setIsCancelling] = useState(false)
   const [showRefundPreference, setShowRefundPreference] = useState(false)
@@ -2790,7 +2792,17 @@ export default function OrderTracking() {
               )}
 
               <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600 dark:text-gray-400">Taxes & Charges (GST)</span>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-600 dark:text-gray-400">Taxes & Charges (GST)</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowGSTInfo(true)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-0.5"
+                    aria-label="Taxes info"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </div>
                 <span className="text-gray-900 dark:text-white font-medium">₹{Number(order?.gst || 0).toFixed(2)}</span>
               </div>
 
@@ -2834,6 +2846,29 @@ export default function OrderTracking() {
               className="w-full bg-green-600 hover:bg-green-700 text-white font-bold h-12 rounded-xl transition-colors"
             >
               Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* GST Info Dialog */}
+      <Dialog open={showGSTInfo} onOpenChange={setShowGSTInfo}>
+        <DialogContent closeClassName="h-8 w-8 flex items-center justify-center rounded-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1a1a1a] shadow-sm" className="max-w-[calc(100vw-32px)] sm:max-w-md bg-white dark:bg-[#1a1a1a] rounded-2xl p-6 border-none outline-none">
+          <DialogHeader className="pb-2 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-center gap-2">
+              <Info className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+              <DialogTitle className="text-lg font-bold text-gray-900 dark:text-white">GST Information</DialogTitle>
+            </div>
+          </DialogHeader>
+          <div className="mt-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            The GST amount collected is passed on to the restaurant in accordance with applicable tax regulations.
+          </div>
+          <div className="mt-6">
+            <Button
+              className="w-full h-11 text-white rounded-xl font-bold bg-green-600 hover:bg-green-700 transition-colors"
+              onClick={() => setShowGSTInfo(false)}
+            >
+              Got it
             </Button>
           </div>
         </DialogContent>
