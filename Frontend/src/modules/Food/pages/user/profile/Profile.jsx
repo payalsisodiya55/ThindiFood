@@ -674,17 +674,29 @@ export default function Profile() {
                 className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer"
                 onClick={openLocationSelector}>
                 <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <motion.div
-                      className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
-                      whileHover={{ rotate: 15, scale: 1.1 }}
-                      transition={{ duration: 0.3 }}>
-                      <MapPin className="h-5 w-5 text-gray-700 dark:text-gray-300" />
-                    </motion.div>
-                    <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Saved Addresses
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        className="bg-gray-100 dark:bg-gray-800 rounded-full p-2 shrink-0"
+                        whileHover={{ rotate: 15, scale: 1.1 }}
+                        transition={{ duration: 0.3 }}>
+                        <MapPin className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                      </motion.div>
+                      <div className="flex flex-col text-left overflow-hidden">
+                        <span className="text-base font-medium text-gray-900 dark:text-white truncate">
+                          Saved Addresses
+                        </span>
+                        {defaultAddress && (
+                          <>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5 max-w-[200px] sm:max-w-[250px]">
+                              {savedAddressSummary}
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              Phone: {defaultAddress.phone || userProfile?.phone || "Not provided"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   <motion.div
                     whileHover={{ x: 4 }}
                     transition={{ duration: 0.2 }}>
