@@ -359,11 +359,20 @@ export default function AllOrdersPage() {
 
   const formatDateRange = () => {
     if (!startDate || !endDate) return "Select date range"
+    const startMonth = startDate.toLocaleString('en-US', { month: 'short' })
+    const endMonth = endDate.toLocaleString('en-US', { month: 'short' })
     const startDay = startDate.getDate()
     const endDay = endDate.getDate()
-    const month = startDate.toLocaleString('en-US', { month: 'short' })
-    const year = startDate.getFullYear().toString().slice(-2)
-    return `${startDay} - ${endDay} ${month}'${year}`
+    const startYear = startDate.getFullYear()
+    const endYear = endDate.getFullYear()
+
+    if (startYear !== endYear) {
+      return `${startMonth} ${startDay}, ${startYear} – ${endMonth} ${endDay}, ${endYear}`
+    }
+    if (startMonth !== endMonth) {
+      return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${startYear}`
+    }
+    return `${startMonth} ${startDay} – ${endDay}, ${startYear}`
   }
 
   const handleCopyOrderId = (orderId, e) => {
@@ -421,32 +430,66 @@ export default function AllOrdersPage() {
     return Object.values(filters).some(arr => arr.length > 0)
   }
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "REJECTED":
-      case "CANCELLED":
-        return "bg-red-700 text-white"
-      case "DELIVERED":
-        return "bg-green-600 text-white"
-      case "PREPARING":
-        return "bg-yellow-600 text-white"
-      case "READY":
-        return "bg-blue-600 text-white"
-      case "OUT FOR DELIVERY":
-        return "bg-purple-600 text-white"
-      default:
-        return "bg-gray-600 text-white"
+  const formatStatusText = (status) => {
+    if (!status) return ""
+    const normalized = status.toUpperCase().replace(/_/g, " ")
+    if (normalized === "CANCELLED BY RESTAURANT") {
+      return "Cancelled by Restaurant"
     }
+    if (normalized === "CANCELLED BY CUSTOMER") {
+      return "Cancelled by Customer"
+    }
+    return normalized.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
+  }
+
+  const getStatusColor = (status) => {
+    const normalized = String(status || "").toUpperCase()
+    if (normalized.includes("CANCEL") || normalized.includes("REJECT")) {
+      return "bg-red-50 text-red-700 border border-red-200"
+    }
+    if (normalized === "DELIVERED") {
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200"
+    }
+    if (normalized === "PREPARING" || normalized === "READY" || normalized === "PENDING" || normalized === "CREATED") {
+      return "bg-amber-50 text-amber-700 border border-amber-200"
+    }
+    return "bg-gray-50 text-gray-700 border border-gray-200"
+  }
+
+  const getTagStyle = (tag) => {
+    const normalized = String(tag || "").toUpperCase().trim()
+    
+    // Dietary -> green/orange
+    if (normalized === "VEG ONLY" || normalized === "VEG") {
+      return "bg-emerald-50 text-emerald-700 border border-emerald-200"
+    }
+    if (normalized === "NON-VEG" || normalized === "NON-VEG ONLY") {
+      return "bg-orange-50 text-orange-700 border border-orange-200"
+    }
+
+    // Order type -> blue
+    if (normalized.includes("DELIVERY") || normalized === "TAKEAWAY" || normalized === "DINE-IN" || normalized === "DINE IN") {
+      return "bg-blue-50 text-blue-700 border border-blue-200"
+    }
+
+    // Special/Others -> gray/neutral
+    return "bg-slate-100 text-slate-600 border border-slate-200"
   }
 
   const filteredOrders = orders.filter(order => {
-    // Search filter - search in order ID (both full ID and numeric part)
+    // Search filter - search in order ID, customer, or items
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase().trim()
       const orderIdLower = order.id.toLowerCase()
-      // Extract numeric part from order ID (e.g., "ORD-1768751659979-588" -> "1768751659979588")
       const numericPart = order.id.replace(/\D/g, '')
-      if (!orderIdLower.includes(searchLower) && !numericPart.includes(searchLower)) {
+      const customerLower = (order.customer || "").toLowerCase()
+      const hasMatchingItem = (order.items || []).some(item => 
+        (item.name || "").toLowerCase().includes(searchLower)
+      )
+      if (!orderIdLower.includes(searchLower) && 
+          !numericPart.includes(searchLower) && 
+          !customerLower.includes(searchLower) && 
+          !hasMatchingItem) {
         return false
       }
     }
@@ -491,7 +534,7 @@ export default function AllOrdersPage() {
             >
               <ArrowLeft className="w-6 h-6" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">
+            <h1 className="text-lg font-bold text-gray-900 break-words pr-4">
               {restaurantData?.name || 'Restaurant'}
             </h1>
           </div>
@@ -509,7 +552,7 @@ export default function AllOrdersPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by order ID"
+              placeholder="Search by order ID, customer, or item"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -626,10 +669,10 @@ export default function AllOrdersPage() {
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className={`px-2.5 py-1 rounded text-xs font-bold ${getStatusColor(order.status)}`}>
-                  {order.status}
+                  {formatStatusText(order.status)}
                 </span>
                 {order.tags && order.tags.map((tag, idx) => (
-                  <span key={idx} className="px-2.5 py-1 rounded text-xs font-bold bg-green-600 text-white">
+                  <span key={idx} className={`px-2.5 py-1 rounded text-xs font-bold ${getTagStyle(tag)}`}>
                     {tag}
                   </span>
                 ))}
@@ -653,7 +696,7 @@ export default function AllOrdersPage() {
             </div>
 
             {/* Restaurant Info */}
-            <p className="text-sm text-gray-900 mb-1">
+            <p className="text-sm text-gray-900 mb-1 break-words">
               {order.restaurant}, {order.address}
             </p>
 
