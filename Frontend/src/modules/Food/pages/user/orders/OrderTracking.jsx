@@ -2028,7 +2028,7 @@ export default function OrderTracking() {
     cancelled: {
       title: "Order cancelled",
       subtitle: "This order has been cancelled",
-      color: "bg-[#00c87e]",
+      color: "bg-red-500",
       iconType: 'cancelled'
     }
   }
@@ -2689,7 +2689,7 @@ export default function OrderTracking() {
                 <div className="h-8 w-px bg-gray-100 dark:bg-gray-800" />
                 <div className="flex-1">
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</p>
-                  <span className="text-sm font-bold text-green-600 uppercase">
+                  <span className={`text-sm font-bold uppercase ${orderDetailsStatusLabel === "CANCELLED" ? "text-red-600" : "text-green-600"}`}>
                     {orderDetailsStatusLabel}
                   </span>
                 </div>
