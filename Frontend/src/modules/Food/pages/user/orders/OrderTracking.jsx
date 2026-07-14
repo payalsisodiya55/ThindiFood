@@ -2667,6 +2667,11 @@ export default function OrderTracking() {
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Order Details</DialogTitle>
             </div>
+            {order?.restaurant && (
+              <p className="text-sm font-bold text-gray-800 dark:text-gray-200 mt-1">
+                {order.restaurant}
+              </p>
+            )}
           </DialogHeader>
 
           <div className="p-6 pt-4 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -2715,7 +2720,7 @@ export default function OrderTracking() {
                 order?.restaurantAddress && order.restaurantAddress !== 'Restaurant location' && (
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pickup Address</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mt-0.5">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5 break-words">
                       {order.restaurantAddress}
                     </p>
                   </div>
@@ -2724,7 +2729,7 @@ export default function OrderTracking() {
                 order?.address?.formattedAddress && (
                   <div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider">Delivery Address</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white line-clamp-2 mt-0.5">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5 break-words">
                       {order.address.formattedAddress}
                     </p>
                   </div>
