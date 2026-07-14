@@ -49,7 +49,7 @@ import { useProfile } from "@food/context/ProfileContext"
 import AddToCartAnimation from "@food/components/user/AddToCartAnimation"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
 import { isModuleAuthenticated } from "@food/utils/auth"
-import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { getRestaurantAvailabilityStatus, formatTimeLabel } from "@food/utils/restaurantAvailability"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useLoginRequired } from "@food/context/LoginRequiredContext"
 import {
@@ -614,6 +614,7 @@ function RestaurantDetailsContent() {
           const transformedRestaurant = {
             id: actualRestaurant?.restaurantId || actualRestaurant?._id || actualRestaurant?.id || apiRestaurant?.restaurantId || apiRestaurant?._id || null,
             mongoId: actualRestaurant?._id || apiRestaurant?._id || null,
+            contactNumber: actualRestaurant?.primaryContactNumber || apiRestaurant?.primaryContactNumber || actualRestaurant?.ownerPhone || apiRestaurant?.ownerPhone || actualRestaurant?.onboarding?.step1?.contactNumber || apiRestaurant?.onboarding?.step1?.contactNumber || actualRestaurant?.onboarding?.step1?.mobileNumber || apiRestaurant?.onboarding?.step1?.mobileNumber || null,
             name:
               actualRestaurant?.name ||
               actualRestaurant?.restaurantName ||
@@ -2366,6 +2367,20 @@ function RestaurantDetailsContent() {
   const disableBlackCards = settings?.disableBlackCardsWhenNoLocation === true
   const shouldShowGrayscale = (isOutOfService && !disableBlackCards) || isRestaurantOffline
 
+  const getTomorrowOpeningTime = () => {
+    try {
+      const tomorrow = new Date(availabilityTick)
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const tomorrowStatus = getRestaurantAvailabilityStatus(restaurant, tomorrow, { ignoreOperationalStatus: true })
+      if (tomorrowStatus && tomorrowStatus.openingTime) {
+        return formatTimeLabel(tomorrowStatus.openingTime)
+      }
+    } catch (e) {
+      debugError("Error getting tomorrow opening time:", e)
+    }
+    return formatTimeLabel(restaurant?.deliveryTimings?.openingTime || restaurant?.openingTime || "09:00")
+  }
+
   return (
     <AnimatedPage
       id="scrollingelement"
@@ -2520,7 +2535,7 @@ function RestaurantDetailsContent() {
 
           {isRestaurantOffline && (
             <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              This restaurant is currently offline. Orders are unavailable right now.
+              We're currently closed. We'll reopen tomorrow at {getTomorrowOpeningTime()}
             </div>
           )}
 

@@ -94,7 +94,7 @@ const getMinutesUntilClosing = (nowMinutes, openingMinutes, closingMinutes) => {
   return (24 * 60 - nowMinutes) + closingMinutes
 }
 
-const formatTimeLabel = (timeValue) => {
+export const formatTimeLabel = (timeValue) => {
   const totalMinutes = parseTimeToMinutes(timeValue)
   if (totalMinutes === null) return timeValue || null
 
