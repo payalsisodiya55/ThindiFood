@@ -2400,7 +2400,7 @@ export default function Inventory() {
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                           category.inStock
                             ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700"
+                            : "bg-rose-50 text-rose-700"
                         }`}>
                           {category.inStock ? "Healthy" : "Needs attention"}
                         </span>
@@ -2415,12 +2415,17 @@ export default function Inventory() {
                           </p>
                         ) : (
                           <p className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
-                            {getOutOfStockCount(category)} out of {(category.items?.length || category.itemCount || 0)} item{(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''} out of stock
+                            {getOutOfStockCount(category) === (category.items?.length || category.itemCount || 0)
+                              ? `Out of Stock (${category.items?.length || category.itemCount || 0} item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''})`
+                              : `${getOutOfStockCount(category)} out of ${(category.items?.length || category.itemCount || 0)} item{(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''} out of stock`
+                            }
                           </p>
                         )}
-                        <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                          {(categoryItems.filter((item) => item.isRecommended).length)} Recommended
-                        </p>
+                        {categoryItems.filter((item) => item.isRecommended).length > 0 && (
+                          <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+                            {(categoryItems.filter((item) => item.isRecommended).length)} Recommended
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -2873,7 +2878,7 @@ export default function Inventory() {
 
 
       {/* Floating Buttons & Menu Popup */}
-      <div className="fixed right-4 bottom-24 z-30 flex flex-col items-end gap-2">
+      <div className="fixed right-4 bottom-28 z-30 flex flex-col items-end gap-2">
         {activeTab !== "add-ons" ? (
           <>
           <motion.button
@@ -2936,7 +2941,7 @@ export default function Inventory() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.2 }}
-                  className="fixed right-4 bottom-36 z-30 h-[45vh] w-[60vw] max-w-sm overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_24px_60px_-30px_rgba(15,23,42,0.55)]"
+                  className="fixed right-4 bottom-44 z-30 h-[45vh] w-[60vw] max-w-sm overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_24px_60px_-30px_rgba(15,23,42,0.55)]"
                 >
                   <div className="h-full flex flex-col">
                     <div className="bg-[linear-gradient(135deg,#f8fbff_0%,#eef6ff_100%)] px-4 pt-4 pb-3">
