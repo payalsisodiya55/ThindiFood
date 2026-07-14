@@ -476,7 +476,7 @@ export default function TableBooking() {
               <select
                 value={selectedGuests}
                 onChange={(event) => setSelectedGuests(parseInt(event.target.value, 10))}
-                className="appearance-none rounded-2xl border border-[#ececf2] dark:border-[#2b2b2b] bg-white dark:bg-[#222222] h-11 pl-4 pr-10 text-sm font-bold text-[#444b5f] dark:text-white outline-none transition-all focus:border-red-500 shadow-sm"
+                className="appearance-none rounded-2xl border border-[#ececf2] dark:border-[#2b2b2b] bg-white dark:bg-[#222222] h-11 pl-4 pr-10 text-sm font-bold text-[#444b5f] dark:text-white outline-none transition-all focus:border-gray-300 dark:focus:border-gray-600 shadow-sm"
               >
                 {Array.from({ length: maxGuestCount }, (_, index) => index + 1).map((count) => (
                   <option key={count} value={count}>
