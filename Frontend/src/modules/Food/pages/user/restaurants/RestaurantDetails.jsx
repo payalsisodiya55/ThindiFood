@@ -2863,8 +2863,8 @@ function RestaurantDetailsContent() {
                           >
                             {/* Left Side - Details */}
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-start gap-2 mb-1">
-                                <div className="mt-0.5 md:mt-1 flex-shrink-0">
+                              <div className="flex flex-col mb-1">
+                                <div className="mb-1.5 flex-shrink-0">
                                   {isVeg ? (
                                     <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-[1.5px] md:border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
                                       <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-600 rounded-full"></div>
@@ -3135,8 +3135,8 @@ function RestaurantDetailsContent() {
                                     >
                                       {/* Left Side - Details */}
                                       <div className="flex-1 min-w-0">
-                                        <div className="flex items-start gap-2 mb-1">
-                                          <div className="mt-0.5 md:mt-1 flex-shrink-0">
+                                        <div className="flex flex-col mb-1">
+                                          <div className="mb-1.5 flex-shrink-0">
                                             {isVeg ? (
                                               <div className="w-3.5 h-3.5 md:w-4 md:h-4 border-[1.5px] md:border-2 border-green-600 flex items-center justify-center rounded-sm flex-shrink-0">
                                                 <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-600 rounded-full"></div>
