@@ -398,9 +398,11 @@ export default function DeliveryBoyOrderDetail() {
                         <h3 className="text-base font-black text-slate-900 leading-tight">
                           {nextAction ? nextAction.label : "Delivery completed"}
                         </h3>
-                        <p className="text-sm text-slate-500 mt-1 leading-normal">
-                          {nextAction?.helper || "This order has no pending delivery person action."}
-                        </p>
+                        {nextAction?.helper && (
+                          <p className="text-sm text-slate-500 mt-1 leading-normal">
+                            {nextAction.helper}
+                          </p>
+                        )}
                       </div>
                     </div>
 
