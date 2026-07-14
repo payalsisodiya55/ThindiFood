@@ -4352,7 +4352,7 @@ export default function Cart() {
 
                 <div className="mb-5">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-[900] text-gray-900 dark:text-white uppercase tracking-tight">SELECT A PAYMENT METHOD</h2>
+                    <h2 className="text-xl font-[900] text-gray-900 dark:text-white tracking-tight">Select A Payment Method</h2>
                     <button
                       onClick={() => setShowPaymentSheet(false)}
                       className="w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -4360,7 +4360,6 @@ export default function Cart() {
                       <X className="w-4 h-4 text-gray-500" />
                     </button>
                   </div>
-                  <p className="text-[12px] font-semibold text-gray-500 dark:text-gray-400 mt-2">Select how you want to pay</p>
                 </div>
 
                 <div className="space-y-3 overflow-y-auto pr-1 custom-scrollbar pb-4 flex-1 min-h-0">
