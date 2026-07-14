@@ -2149,15 +2149,18 @@ export default function Inventory() {
                         value={addonPrice}
                         onChange={(e) => {
                           let val = e.target.value;
-                          if (val.includes(".")) {
-                            const [integer, decimal] = val.split(".");
-                            if (decimal && decimal.length > 2) {
-                              val = `${integer}.${decimal.slice(0, 2)}`;
+                          const parts = val.split(".");
+                          const integerPart = parts[0];
+                          if (integerPart.length > 5) {
+                            return;
+                          }
+                          if (parts.length > 1) {
+                            const decimalPart = parts[1];
+                            if (decimalPart.length > 2) {
+                              val = `${integerPart}.${decimalPart.slice(0, 2)}`;
                             }
                           }
-                          if (val.length <= 8) {
-                            setAddonPrice(val);
-                          }
+                          setAddonPrice(val);
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:outline-none"
                         style={{ "--restaurant-brand": RESTAURANT_THEME.brand }}

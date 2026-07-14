@@ -9,7 +9,7 @@ import {
   Check,
   ChevronDown,
   Plus,
-  X,
+  X as CloseIcon,
   Camera,
   ThumbsUp,
   ChevronLeft,
@@ -54,7 +54,7 @@ export default function ItemDetailsPage() {
   const location = useLocation();
   const isNewItem = id === "new";
   const groupId = location.state?.groupId;
-  const defaultCategory = location.state?.category || "Select category";
+  const defaultCategory = location.state?.category || "Select Category";
   const defaultCategoryId = location.state?.categoryId || "";
   const fileInputRef = useRef(null);
 
@@ -105,6 +105,7 @@ export default function ItemDetailsPage() {
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [touchedFields, setTouchedFields] = useState({});
   const [saveAttempted, setSaveAttempted] = useState(false);
+  const [activeVariantDropdown, setActiveVariantDropdown] = useState(null);
 
   const maxNameLength = 50;
   const maxDescriptionLength = 250;
@@ -1178,7 +1179,7 @@ export default function ItemDetailsPage() {
               className={`w-full px-4 py-3 border rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors ${shouldShowFieldError("category", Boolean(selectedCategoryId)) && categoryError ? "border-red-500" : "border-gray-300"}`}>
               
               <span className="text-sm text-gray-900">
-                {category || "Select category"}
+                {category || "Select Category"}
               </span>
               <ChevronDown className="w-5 h-5 text-gray-500" />
             </button>
@@ -1199,7 +1200,7 @@ export default function ItemDetailsPage() {
                 onChange={(e) => setItemName(e.target.value)}
                 onBlur={() => setTouchedFields((prev) => ({ ...prev, itemName: true }))}
                 maxLength={maxNameLength}
-                className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "border-red-500" : "border-gray-300"}`}
+                className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "border-red-500" : "border-gray-300"}`}
                 placeholder="Enter item name" />
               
             </div>
@@ -1227,7 +1228,7 @@ export default function ItemDetailsPage() {
                 maxLength={maxDescriptionLength}
                 rows={4}
                 placeholder="Eg: Yummy veg paneer burger with a soft patty, veggies, cheese, and special sauce"
-                className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "border-red-500" : "border-gray-300"}`} />
+                className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent resize-none ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "border-red-500" : "border-gray-300"}`} />
               
             </div>
             <div className="flex items-center justify-between mt-1">
@@ -1288,8 +1289,10 @@ export default function ItemDetailsPage() {
                     onChange={(e) => {
                       const value = e.target.value.replace(/[\u20B9\s,]/g, '').replace(/[^0-9.]/g, '');
                       const parts = value.split('.');
+                      const integerPart = parts[0];
+                      if (integerPart.length > 5) return;
                       const cleanedValue = parts.length > 2 ?
-                      parts[0] + '.' + parts.slice(1).join('') :
+                      integerPart + '.' + parts.slice(1).join('') :
                       value;
                       setBasePrice(cleanedValue);
                     }}
@@ -1301,7 +1304,7 @@ export default function ItemDetailsPage() {
                     }}
                     placeholder="Enter price"
                     maxLength={5}
-                    className={`w-full pl-8 pr-12 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${shouldShowFieldError("basePrice", basePrice.length > 0) && basePriceError ? "border-red-500" : "border-gray-300"}`} />
+                    className={`w-full pl-8 pr-12 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${shouldShowFieldError("basePrice", basePrice.length > 0) && basePriceError ? "border-red-500" : "border-gray-300"}`} />
                   
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
                   </div>
@@ -1345,34 +1348,53 @@ export default function ItemDetailsPage() {
                         const showNameError = Boolean(touchedFields[`variant-${variant.localId}-name`] || variant.name || saveAttempted) && fieldErrors.name;
                         const showPriceError = Boolean(touchedFields[`variant-${variant.localId}-price`] || variant.price || saveAttempted) && fieldErrors.price;
                         return (
-                          <div key={variant.localId} className="relative rounded-lg border border-gray-200 bg-gray-50 p-3 pr-12">
+                          <div key={variant.localId} className="relative rounded-lg border border-gray-200 bg-gray-50 p-3 pr-12 z-[1]">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                               <div>
                                 <label className="block text-xs text-gray-600 mb-1">Variant name</label>
                                 <div className="relative">
-                                  <select
-                                    value={variant.name}
-                                    onChange={(e) => handleVariantChange(variant.localId, "name", e.target.value)}
-                                    onBlur={() => setTouchedFields((prev) => ({ ...prev, [`variant-${variant.localId}-name`]: true }))}
-                                    className={`w-full px-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none pr-8 ${
+                                  {/* Custom Variant Dropdown Selector */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveVariantDropdown(activeVariantDropdown === variant.localId ? null : variant.localId)}
+                                    className={`w-full px-3 py-2 border rounded-lg text-left text-sm text-gray-900 bg-white flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${
                                       showNameError || isDuplicateName ? "border-red-500 ring-2 ring-red-500/20" : "border-gray-300"
                                     }`}
                                   >
-                                    <option value="">Select variant</option>
-                                    {["Full", "Half", "Small", "Medium", "Large"].map((opt) => (
-                                      <option key={opt} value={opt}>
-                                        {opt}
-                                      </option>
-                                    ))}
-                                    {variant.name && !["Full", "Half", "Small", "Medium", "Large"].includes(variant.name) && (
-                                      <option value={variant.name}>{variant.name}</option>
-                                    )}
-                                  </select>
-                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                  </div>
+                                    <span>{variant.name || "Select Variant"}</span>
+                                    <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${activeVariantDropdown === variant.localId ? "rotate-180" : ""}`} />
+                                  </button>
+                                  
+                                  {activeVariantDropdown === variant.localId && (
+                                    <>
+                                      {/* Backdrop to close click outside */}
+                                      <div 
+                                        className="fixed inset-0 z-30" 
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setActiveVariantDropdown(null);
+                                        }}
+                                      />
+                                      {/* Dropdown Options List */}
+                                      <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-40 py-1 max-h-48 overflow-y-auto">
+                                        {["Full", "Half", "Small", "Medium", "Large"].map((opt) => (
+                                          <button
+                                            key={opt}
+                                            type="button"
+                                            onClick={() => {
+                                              handleVariantChange(variant.localId, "name", opt);
+                                              setActiveVariantDropdown(null);
+                                            }}
+                                            className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-green-50 hover:text-green-700 ${
+                                              variant.name === opt ? "bg-green-50 text-green-700 font-semibold" : "text-gray-700"
+                                            }`}
+                                          >
+                                            {opt}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                                 <div className="flex items-center justify-between mt-1 px-0.5">
                                   {showNameError ? (
@@ -1389,15 +1411,17 @@ export default function ItemDetailsPage() {
                                     onChange={(e) => {
                                       const value = e.target.value.replace(/[\u20B9\s,]/g, '').replace(/[^0-9.]/g, '');
                                       const parts = value.split('.');
+                                      const integerPart = parts[0];
+                                      if (integerPart.length > 5) return;
                                       const cleanedValue = parts.length > 2 ?
-                                      parts[0] + '.' + parts.slice(1).join('') :
+                                      integerPart + '.' + parts.slice(1).join('') :
                                       value;
                                       handleVariantChange(variant.localId, "price", cleanedValue);
                                     }}
                                     onBlur={() => setTouchedFields((prev) => ({ ...prev, [`variant-${variant.localId}-price`]: true }))}
                                     placeholder="Enter price"
                                     maxLength={5}
-                                    className={`w-full pl-8 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                                    className={`w-full pl-8 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${
                                       showPriceError || isDuplicatePrice ? "border-red-500 ring-2 ring-red-500/20" : "border-gray-300"
                                     }`} />
                                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-600">{"\u20B9"}</span>
@@ -1441,7 +1465,7 @@ export default function ItemDetailsPage() {
                       setTouchedFields((prev) => ({ ...prev, preparationTime: true }));
                     }}
                     onBlur={() => setTouchedFields((prev) => ({ ...prev, preparationTime: true }))}
-                    className={`w-full pl-4 pr-10 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none ${
+                    className={`w-full pl-4 pr-10 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent appearance-none ${
                       shouldShowFieldError("preparationTime", Boolean(preparationTime)) && preparationTimeError
                         ? "border-red-500 ring-2 ring-red-500/20"
                         : "border-gray-300"
@@ -1516,26 +1540,28 @@ export default function ItemDetailsPage() {
             className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}>
             
+              {/* Absolute Close Button in Top-Right Corner */}
+              <button
+                onClick={() => setIsCategoryPopupOpen(false)}
+                className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center z-10"
+              >
+                <CloseIcon className="w-5 h-5" />
+              </button>
+
               <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-bold text-gray-900">Select category</h2>
-                <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-gray-900">Select Category</h2>
+                <div className="mr-8">
                   <button
                   onClick={() => {
                     setIsCategoryPopupOpen(false);
                     navigate('/restaurant/menu-categories');
                   }}
-                  className="p-2 rounded-lg text-white transition-colors flex items-center gap-1.5 hover:opacity-90"
+                  className="px-3 py-1.5 rounded-lg text-white transition-colors flex items-center gap-1.5 hover:opacity-90 text-sm font-medium"
                   style={{ backgroundColor: RESTAURANT_THEME.brand }}
                   title="Add Category">
                   
                     <Plus className="w-4 h-4" />
-                    <span className="text-sm font-medium">Add</span>
-                  </button>
-                  <button
-                  onClick={() => setIsCategoryPopupOpen(false)}
-                  className="p-1 rounded-full hover:bg-gray-100">
-                  
-                    <X className="w-5 h-5 text-gray-600" />
+                    <span>Add</span>
                   </button>
                 </div>
               </div>
