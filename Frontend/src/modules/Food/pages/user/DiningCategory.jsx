@@ -272,10 +272,10 @@ export default function DiningCategory() {
                 address: formatAddress(restaurant),
                 cuisine: `${booking.guests} Guests`,
                 status: booking.status,
-                date: `${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}`,
+                date: `${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
                 time: booking.timeSlot,
                 price: `Booking ID: ${booking.bookingId || "N/A"}`,
-                offer: `${new Date(booking.date).toLocaleDateString('en-US', { weekday: 'short' })}, ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} • ${booking.timeSlot}`,
+                offer: `${booking.timeSlot} • ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
                 rating: booking.status,
                 contactNumber: restaurant.contactNumber || restaurant.phone || restaurant.mobile || booking.restaurant?.contactNumber || "",
                 isBooking: true,
@@ -515,12 +515,12 @@ export default function DiningCategory() {
                         )}
                       </div>
 
-                      {!isBookings && (
-                        <div className="absolute bottom-4 left-4 right-4">
-                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">Reserve Your Table</p>
-                          <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
-                        </div>
-                      )}
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
+                          {isBookings ? "Reserved For" : "Reserve Your Table"}
+                        </p>
+                        <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
+                      </div>
                     </div>
 
                     <CardContent className="space-y-4 p-5">
