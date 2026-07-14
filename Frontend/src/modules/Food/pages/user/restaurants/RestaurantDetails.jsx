@@ -2299,11 +2299,11 @@ function RestaurantDetailsContent() {
     return () => clearInterval(interval)
   }, [restaurant?.offers?.length || 0])
 
-  // Auto-rotate highlight offer text every 2 seconds
+  // Auto-rotate highlight offer text every 3 seconds
   useEffect(() => {
     const interval = setInterval(() => {
       setHighlightIndex((prev) => (prev + 1) % highlightOffers.length)
-    }, 2000)
+    }, 3000)
 
     return () => clearInterval(interval)
   }, [highlightOffers.length])
@@ -2562,7 +2562,7 @@ function RestaurantDetailsContent() {
 
           {/* Location */}
           <div className="flex items-start gap-1 text-sm text-gray-700 dark:text-gray-300">
-            <MapPin className="h-4 w-4 mt-0.5" />
+            <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
             <span>{restaurant?.distance || "1.2 km"} {restaurant?.location || "Location"}</span>
           </div>
 
@@ -2573,7 +2573,7 @@ function RestaurantDetailsContent() {
               <span>{restaurant?.deliveryTime || "25-30 mins"}</span>
             </div>
             <Badge className={`${isRestaurantOffline ? "bg-rose-600" : "bg-emerald-600"} text-white`}>
-              {isRestaurantOffline ? "Offline" : "Open now"}
+              {isRestaurantOffline ? "CLOSED" : "OPEN"}
             </Badge>
           </div>
 
