@@ -3390,6 +3390,7 @@ function RestaurantDetailsContent() {
         !showFilterSheet &&
         !showMenuSheet &&
         !showMenuOptionsSheet &&
+        !showSearch &&
         createPortal(
           <motion.div
             drag
@@ -4481,6 +4482,7 @@ function RestaurantDetailsContent() {
 
       {/* Add to Cart Animation Component - Rendered via Portal to prevent transform interference */}
       {typeof window !== "undefined" &&
+        !showSearch &&
         createPortal(
           <AddToCartAnimation
             bottomOffset={32}
