@@ -1017,7 +1017,7 @@ export default function AddressSelectorPage() {
             <div>
               <Label className="text-sm font-bold text-gray-900 mb-2 block">Primary Address (Street / Area / Landmark)</Label>
               <Input 
-                placeholder="Search or drag to update street/area" 
+                placeholder="Updated from pin location" 
                 value={addressFormData.street} 
                 onChange={e => setAddressFormData({...addressFormData, street: e.target.value})}
                 onFocus={() => scrollFieldIntoView("street")}
