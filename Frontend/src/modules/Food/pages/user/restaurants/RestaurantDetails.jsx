@@ -2483,65 +2483,7 @@ function RestaurantDetailsContent() {
                   onClick={() => !shouldShowGrayscale && setShowInfoPopover(!showInfoPopover)}
                 />
                 
-                {/* Overlay for mobile to close when clicking outside */}
-                {showInfoPopover && (
-                  <div 
-                    className="fixed inset-0 z-[90] md:hidden" 
-                    onClick={() => setShowInfoPopover(false)}
-                  />
-                )}
 
-                <div className={`absolute left-0 top-full mt-3 w-[85vw] max-w-72 p-4 bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] border border-gray-100 dark:border-gray-800 transition-all duration-300 z-[100] transform 
-                  ${showInfoPopover 
-                    ? "opacity-100 visible translate-y-0" 
-                    : "opacity-0 invisible -translate-y-2 md:group-hover/info:opacity-100 md:group-hover/info:visible md:group-hover/info:translate-y-0"
-                  }`}
-                >
-                  <div className="space-y-3">
-                    <div className="pb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-gray-900 dark:text-white text-sm">Restaurant Info</h3>
-                      </div>
-                      <button 
-                        onClick={() => setShowInfoPopover(false)}
-                        className="md:hidden p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
-                      >
-                        <X className="h-4 w-4 text-gray-500" />
-                      </button>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-5 h-5 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 shrink-0 flex items-center justify-center">
-                            <MapPin className="h-3 w-3 text-[#00c87e]" />
-                          </div>
-                          <p className="text-[10px] font-bold text-[#00c87e] uppercase tracking-tight">Outlet Address</p>
-                        </div>
-                        <p className="text-[11px] text-[#00c87e] font-medium leading-relaxed pl-[26px]">
-                          {restaurant?.location || "Address not available"}
-                        </p>
-                      </div>
-
-                      {(restaurant?.onboarding?.step3?.fssai?.registrationNumber || restaurant?.licenseNo) && (
-                        <div className="flex items-start gap-2.5 pt-2 border-t border-gray-50 dark:border-gray-800">
-                          <div className="mt-0.5 p-1 rounded-md bg-gray-50 dark:bg-gray-800 shrink-0">
-                            <img src={fssaiLogo} className="h-3 w-auto object-contain" alt="FSSAI" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight mb-0.5">License Number</p>
-                            <p className="text-[11px] font-bold text-gray-700 dark:text-gray-200">
-                              {restaurant?.onboarding?.step3?.fssai?.registrationNumber || restaurant?.licenseNo}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Arrow pointer (Top) */}
-                  <div className="absolute -top-1.5 left-8 w-3 h-3 bg-white dark:bg-[#1a1a1a] rotate-45 border-l border-t border-gray-100 dark:border-gray-800" />
-                </div>
               </div>
             </div>
             <div className="flex flex-col items-end flex-shrink-0 overflow-visible">
@@ -4613,6 +4555,104 @@ function RestaurantDetailsContent() {
                       >
                         Continue on Website
                       </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
+      {/* Restaurant Info Centered Modal */}
+      {typeof window !== "undefined" &&
+        createPortal(
+          <AnimatePresence>
+            {showInfoPopover && (
+              <>
+                <motion.div
+                  className="fixed inset-0 bg-black/60 z-[10050] backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowInfoPopover(false)}
+                />
+                <motion.div
+                  className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-md z-[10051] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800"
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.95, opacity: 0 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 350 }}
+                >
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">
+                          {restaurant?.name || "Restaurant Info"}
+                        </h2>
+                      </div>
+                      <button 
+                        onClick={() => setShowInfoPopover(false)}
+                        className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors shrink-0 -mt-1 -mr-1"
+                      >
+                        <X className="h-5 w-5 text-gray-500" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Address */}
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#00c87e]/10 dark:bg-[#00c87e]/20 flex items-center justify-center shrink-0">
+                          <MapPin className="h-4 w-4 text-[#00c87e]" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-tight mb-0.5">Outlet Address</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 font-medium leading-relaxed">
+                            {restaurant?.location || "Address not available"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Contact */}
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
+                          <Smartphone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-tight mb-0.5">Contact Number</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                            {restaurant?.contactNumber || restaurant?.phone || restaurant?.onboarding?.step1?.contactNumber || restaurant?.onboarding?.step1?.mobileNumber || "Contact not available"}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Distance */}
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center shrink-0">
+                          <MapPin className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-tight mb-0.5">Distance</p>
+                          <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                            {restaurant?.distance || "Distance not available"}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* FSSAI */}
+                      {(restaurant?.onboarding?.step3?.fssai?.registrationNumber || restaurant?.licenseNo) && (
+                        <div className="flex gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+                          <div className="w-8 h-8 rounded-full bg-gray-50 dark:bg-gray-800 flex items-center justify-center shrink-0 p-1.5">
+                            <img src={fssaiLogo} className="w-full h-full object-contain" alt="FSSAI" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-tight mb-0.5">License Number</p>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
+                              {restaurant?.onboarding?.step3?.fssai?.registrationNumber || restaurant?.licenseNo}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </motion.div>
