@@ -4291,17 +4291,17 @@ export default function Cart() {
               className="text-center"
               style={{ animation: 'slideUp 0.5s ease-out 0.6s both' }}
             >
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <div className="w-5 h-5 text-red-500 dark:text-red-400">
+              <div className="flex items-center justify-center gap-2 mb-2 w-full">
+                <div className="w-5 h-5 flex-shrink-0 text-red-500 dark:text-red-400">
                   <svg viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
                   </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white break-words break-all">
                   {successLocationTitle}
                 </h2>
               </div>
-              <p className="text-gray-500 dark:text-gray-400 text-base">
+              <p className="text-gray-500 dark:text-gray-400 text-base break-words break-all">
                 {successLocationText}
               </p>
             </div>

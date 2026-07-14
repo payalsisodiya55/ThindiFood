@@ -2668,7 +2668,7 @@ export default function OrderTracking() {
               <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white">Order Details</DialogTitle>
             </div>
             {order?.restaurant && (
-              <p className="text-sm font-bold text-gray-800 dark:text-gray-200 mt-1">
+              <p className="text-sm font-bold text-gray-800 dark:text-gray-200 mt-1 break-words break-all">
                 {order.restaurant}
               </p>
             )}
