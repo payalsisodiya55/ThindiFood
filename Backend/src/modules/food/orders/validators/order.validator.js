@@ -115,6 +115,8 @@ export function validateCreateOrderDto(body) {
         deliveryType: z.enum(['partner', 'self']).optional(),
 
         sendCutlery: z.boolean().optional(),
+        notes: z.string().optional(),
+        specialInstructions: z.string().optional(),
         fulfillmentType: z.enum(['delivery', 'takeaway']).optional(),
         order_type: z.enum(['IMMEDIATE', 'SCHEDULED']).optional(),
         scheduledAt: z.string().optional(),

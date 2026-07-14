@@ -330,6 +330,7 @@ const orderSchema = new mongoose.Schema(
             default: () => ({})
         },
         sendCutlery: { type: Boolean, default: true },
+        notes: { type: String, default: '', trim: true },
         deliveryFleet: { type: String, default: 'standard', trim: true },
         deliveryType: { type: String, enum: ['partner', 'self'], default: 'partner', trim: true },
         fulfillmentType: { type: String, enum: ['delivery', 'takeaway'], default: 'delivery' },

@@ -573,7 +573,26 @@ export default function Cart() {
     phone: "",
   })
 
+  const [orderNote, setOrderNote] = useState("")
   const [sendCutlery, setSendCutlery] = useState(true)
+
+  useEffect(() => {
+    if (!hasRestoredNoteRef.current) {
+      const savedNote = localStorage.getItem(CART_ORDER_NOTE_STORAGE_KEY)
+      if (savedNote) {
+        setOrderNote(savedNote)
+      }
+      hasRestoredNoteRef.current = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (orderNote.trim() !== "") {
+      localStorage.setItem(CART_ORDER_NOTE_STORAGE_KEY, orderNote)
+    } else {
+      localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
+    }
+  }, [orderNote])
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [placeOrderErrorMessage, setPlaceOrderErrorMessage] = useState("")
   const [showBillDetails, setShowBillDetails] = useState(true)
@@ -2927,6 +2946,8 @@ export default function Cart() {
         order_type: orderTypeValue,
         // pickupAt only for takeaway (pickup window)
         ...(fulfillmentType === "takeaway" && pickupAtIso ? { pickupAt: pickupAtIso } : {}),
+        notes: orderNote,
+        specialInstructions: orderNote,
       };
       // Log final order details (including paymentMethod for COD debugging)
       debugLog('?? FINAL: Sending order to backend with:', {
@@ -2936,6 +2957,7 @@ export default function Cart() {
         totalAmount: orderPricing.total,
         paymentMethod: orderPayload.paymentMethod
       });
+      console.log("[NOTE DEBUG] Order being sent with notes:", orderPayload.notes, "specialInstructions:", orderPayload.specialInstructions);
 
       // Check wallet balance if wallet payment selected
       if (selectedPaymentMethod === "wallet" && walletBalance < total) {
@@ -2960,6 +2982,8 @@ export default function Cart() {
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
         clearCart()
+        setOrderNote("")
+        localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
         setIsPlacingOrder(false)
         return
       }
@@ -2973,6 +2997,8 @@ export default function Cart() {
         setShowOrderSuccess(true)
         window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
         clearCart()
+        setOrderNote("")
+        localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
         setIsPlacingOrder(false)
         // Refresh wallet balance
         try {
@@ -3067,6 +3093,8 @@ export default function Cart() {
               setShowOrderSuccess(true)
               window.dispatchEvent(new CustomEvent('order-placed', { detail: { order, placedAt: Date.now() } }))
               clearCart()
+              setOrderNote("")
+              localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
               setIsPlacingOrder(false)
             } else {
               throw new Error(verifyResponse.data.message || "Payment verification failed")
@@ -3347,6 +3375,26 @@ export default function Cart() {
                 </button>
               </div>
 
+              {/* Restaurant Note */}
+              <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 flex flex-col gap-3">
+                <div className="flex items-center gap-2 md:gap-3 mb-1">
+                  <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Note for Restaurant</span>
+                </div>
+                <div className="flex items-start gap-3 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+                  <MessageCircle className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <textarea
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                    placeholder="Any specific instructions for the chef?"
+                    className="w-full text-sm bg-transparent border-none focus:ring-0 p-0 text-gray-800 dark:text-gray-200 resize-none outline-none min-h-[40px]"
+                    rows={2}
+                    onInput={(e) => {
+                      e.target.style.height = 'auto';
+                      e.target.style.height = e.target.scrollHeight + 'px';
+                    }}
+                  />
+                </div>
+              </div>
 
               {/* Cutlery */}
               {fulfillmentMode !== "takeaway" && (

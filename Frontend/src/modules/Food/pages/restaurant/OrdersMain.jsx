@@ -239,7 +239,9 @@ const normalizeOrderForPopup = (orderLike) => {
       Number(orderLike.prep_time) > 0
         ? Number(orderLike.prep_time)
         : orderLike.estimatedDeliveryTime || 30,
-    note: orderLike.note || "",
+    note: orderLike.note || orderLike.notes || orderLike.specialInstructions || "",
+    notes: orderLike.notes || orderLike.note || orderLike.specialInstructions || "",
+    specialInstructions: orderLike.specialInstructions || orderLike.notes || orderLike.note || "",
     sendCutlery: orderLike.sendCutlery,
     paymentMethod: orderLike.paymentMethod || orderLike.payment?.method || null,
     payment: orderLike.payment,
@@ -388,6 +390,9 @@ const transformOrderForList = (order) => ({
   customerName: order.userId?.name || order.customerName || "Customer",
   customerPhone: getOrderCustomerPhone(order),
   type: getRestaurantOrderTypeLabel(order),
+  note: order.note || order.notes || order.specialInstructions || "",
+  notes: order.notes || order.note || order.specialInstructions || "",
+  specialInstructions: order.specialInstructions || order.notes || order.note || "",
   fulfillmentType: order.fulfillmentType || "delivery",
   deliveryType: order.deliveryType || null,
   customerAddress:
@@ -2569,6 +2574,18 @@ export default function OrdersMain() {
 
       const normalizedIncomingOrder = normalizeOrderForPopup(newOrder);
 
+      // DEBUG: log note fields
+      console.log("[NOTE DEBUG] Raw newOrder fields:", {
+        note: newOrder?.note,
+        notes: newOrder?.notes,
+        specialInstructions: newOrder?.specialInstructions,
+      });
+      console.log("[NOTE DEBUG] Normalized note fields:", {
+        note: normalizedIncomingOrder?.note,
+        notes: normalizedIncomingOrder?.notes,
+        specialInstructions: normalizedIncomingOrder?.specialInstructions,
+      });
+
       if (
         !hasOrderBeenShown(newOrder) &&
         (
@@ -4531,6 +4548,21 @@ export default function OrdersMain() {
                       )}
                     </AnimatePresence>
                   </div>
+
+                  {/* Note for Restaurant */}
+                  {((popupOrder || newOrder)?.notes || (popupOrder || newOrder)?.note || (popupOrder || newOrder)?.specialInstructions) && (
+                    <div className="mb-2 rounded-lg p-3 bg-blue-50/50 border border-blue-100">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="h-4 w-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider">Note for Restaurant</span>
+                      </div>
+                      <p className="text-sm font-medium text-blue-900 ml-6 break-words whitespace-pre-wrap">
+                        {(popupOrder || newOrder)?.notes || (popupOrder || newOrder)?.note || (popupOrder || newOrder)?.specialInstructions}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Cutlery preference */}
                   <div

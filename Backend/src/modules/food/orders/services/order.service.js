@@ -2180,6 +2180,7 @@ export async function createOrder(userId, dto) {
     ],
 
     sendCutlery: dto.sendCutlery !== false,
+    notes: String(dto.notes || dto.specialInstructions || '').trim(),
     deliveryFleet:
       orderType === "food"
         ? fulfillmentType === "delivery" && deliveryType === "self"

@@ -654,7 +654,7 @@ export default function Profile() {
                         className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300"
                         whileHover={{ scale: 1.1 }}
                         transition={{ duration: 0.2 }}>
-                        {profileCompletion}% completed
+                        {profileCompletion}% Completed
                       </motion.span>
                       <motion.div
                         whileHover={{ x: 4 }}
@@ -1018,7 +1018,7 @@ export default function Profile() {
                       <Power className="h-5 w-5 text-gray-700 dark:text-gray-300" />
                     </motion.div>
                     <span className="text-base font-medium text-gray-900 dark:text-white">
-                      Log out
+                      Log Out
                     </span>
                   </div>
                   <motion.div
@@ -1186,7 +1186,7 @@ export default function Profile() {
             <div className="w-16 h-16 bg-green-50 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
               <Power className="h-8 w-8" style={{ color: RED }} />
             </div>
-            <DialogTitle className="text-xl font-bold mb-2 dark:text-white">Log out of {companyName}?</DialogTitle>
+            <DialogTitle className="text-xl font-bold mb-2 dark:text-white">Log Out of {companyName}?</DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400 mb-6">
               Are you sure you want to log out? You'll need to sign in again to place orders.
             </DialogDescription>
@@ -1204,7 +1204,7 @@ export default function Profile() {
                 onClick={handleLogout}
                 loading={isLoggingOut}
                 disabled={isLoggingOut}>
-                Log out
+                Log Out
               </Button>
             </div>
           </div>
