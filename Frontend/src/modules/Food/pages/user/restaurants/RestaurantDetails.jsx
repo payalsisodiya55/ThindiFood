@@ -2501,7 +2501,6 @@ function RestaurantDetailsContent() {
                     <div className="pb-2 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold text-gray-900 dark:text-white text-sm">Restaurant Info</h3>
-                        <Info className="h-3.5 w-3.5 text-[#00c87e]" />
                       </div>
                       <button 
                         onClick={() => setShowInfoPopover(false)}
@@ -2638,9 +2637,6 @@ function RestaurantDetailsContent() {
                     >
                       <div className="h-3 w-3 rounded-full bg-green-500" />
                       Veg
-                      {filters.vegNonVeg === "veg" && (
-                        <X className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                      )}
                     </Button>
                     <Button
                       variant="outline"
@@ -2656,9 +2652,6 @@ function RestaurantDetailsContent() {
                     >
                       <div className="h-3 w-3 rounded-full bg-amber-700" />
                       Non-veg
-                      {filters.vegNonVeg === "non-veg" && (
-                        <X className="h-3 w-3 text-gray-600 dark:text-gray-400" />
-                      )}
                     </Button>
                   </>
                 )}
