@@ -2478,7 +2478,7 @@ export default function OrderTracking() {
           </div>
         </motion.div>
 
-        {canShowCancelOrder && (
+        {/* {canShowCancelOrder && (
           <motion.div
             className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm overflow-hidden border border-transparent dark:border-gray-800"
             initial={{ opacity: 0, y: 20 }}
@@ -2492,7 +2492,7 @@ export default function OrderTracking() {
               onClick={handleCancelOrder}
             />
           </motion.div>
-        )}
+        )} */}
 
       </div>
 
