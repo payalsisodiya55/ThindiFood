@@ -235,9 +235,9 @@ const buildStockRule = ({
 }
 
 const getRuleStatusLabel = (rule) => {
-  if (!rule) return "No time set. Turn item in stock manually."
+  if (!rule) return "Manually Deactivated. Toggle to restore availability."
   if (rule.mode === "manual") {
-    return "Manual off. Turn item in stock manually."
+    return "Manually Deactivated. Toggle to restore availability."
   }
 
   const resumeAt = new Date(rule.resumeAt || "")
@@ -1861,7 +1861,7 @@ export default function Inventory() {
             className={`relative overflow-hidden rounded-[24px] border px-5 py-4 text-sm font-semibold whitespace-nowrap ${
               activeTab === "all-items"
                 ? "text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.8)]"
-                : "border-white/80 bg-white/80 text-slate-700 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.4)]"
+                : "border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50/50 hover:border-slate-300"
             }`}
             style={activeTab === "all-items" ? { borderColor: RESTAURANT_THEME.brand } : undefined}
             animate={{
@@ -1897,7 +1897,7 @@ export default function Inventory() {
             className={`relative overflow-hidden rounded-[24px] border px-5 py-4 text-sm font-semibold whitespace-nowrap ${
               activeTab === "add-ons"
                 ? "text-white shadow-[0_18px_32px_-24px_rgba(15,23,42,0.8)]"
-                : "border-white/80 bg-white/80 text-slate-700 shadow-[0_16px_40px_-34px_rgba(15,23,42,0.4)]"
+                : "border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50/50 hover:border-slate-300"
             }`}
             style={activeTab === "add-ons" ? { borderColor: RESTAURANT_THEME.brand } : undefined}
             animate={{
@@ -2079,13 +2079,13 @@ export default function Inventory() {
                     className={`shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold transition-colors ${
                       isActive
                         ? "text-white shadow-[0_14px_28px_-24px_rgba(15,23,42,0.9)]"
-                        : "border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300 hover:bg-white"
+                        : "border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50"
                     }`}
                     style={isActive ? { borderColor: RESTAURANT_THEME.brand, backgroundColor: RESTAURANT_THEME.brand } : undefined}
                   >
                     <span>{option.label}</span>
                     <span className={`ml-2 inline-flex min-w-[20px] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] ${
-                      isActive ? "bg-white/15 text-white" : "bg-white text-slate-500"
+                      isActive ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500"
                     }`}>
                       {count}
                     </span>
@@ -2419,7 +2419,7 @@ export default function Inventory() {
                           </p>
                         )}
                         <p className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-                          {(categoryItems.filter((item) => item.isRecommended).length)} recommended
+                          {(categoryItems.filter((item) => item.isRecommended).length)} Recommended
                         </p>
                       </div>
                     </div>
@@ -2476,87 +2476,97 @@ export default function Inventory() {
 
                           return (
                           <div key={item.id}>
-                            <div className="flex items-center justify-between gap-3 rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-3">
-                              <div className="flex flex-1 items-start gap-3 min-w-0">
-                                {/* Veg/Non-veg Icon */}
-                                <div className={`mt-0.5 h-4 w-4 rounded-sm border-2 flex items-center justify-center shrink-0 ${item.isVeg ? 'border-green-600' : 'border-red-500'
-                                  }`}>
-                                  <div className={`h-2 w-2 rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-500'
-                                    }`} />
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
-                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                      item.isVeg
-                                        ? "bg-emerald-50 text-emerald-700"
-                                        : "bg-rose-50 text-rose-700"
+                            <div className="flex flex-col gap-3 rounded-[22px] border border-slate-200 bg-slate-50/80 px-4 py-3">
+                              {/* Top Row: Main Info (left) and Actions (right) */}
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex flex-1 items-start gap-3 min-w-0">
+                                  {/* Veg/Non-veg Icon */}
+                                  <div className={`mt-0.5 h-4 w-4 rounded-sm border-2 flex items-center justify-center shrink-0 ${item.isVeg ? 'border-green-600' : 'border-red-500'
                                     }`}>
-                                      {item.isVeg ? "Veg" : "Non-veg"}
-                                    </span>
-                                    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${approvalMeta.className}`}>
-                                      {approvalMeta.label}
-                                    </span>
-                                    {item.isRecommended ? (
-                                      <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
-                                        Recommended
-                                      </span>
-                                    ) : null}
+                                    <div className={`h-2 w-2 rounded-full ${item.isVeg ? 'bg-green-600' : 'bg-red-500'
+                                      }`} />
                                   </div>
-                                  <p className={`mt-1 text-xs font-medium ${
-                                    item.inStock ? "text-green-600" : "text-rose-600"
-                                  }`}>
-                                    {item.inStock ? "In stock" : getRuleStatusLabel(item.stockRule)}
-                                  </p>
-                                  {item.approvalStatus === "rejected" && item.rejectionReason ? (
-                                    <p className="mt-1 line-clamp-2 text-[11px] font-medium text-red-600">
-                                      Reason: {item.rejectionReason}
-                                    </p>
-                                  ) : null}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <p className="truncate text-sm font-semibold text-slate-900">{item.name}</p>
+                                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                        item.isVeg
+                                          ? "bg-emerald-50 text-emerald-700"
+                                          : "bg-rose-50 text-rose-700"
+                                      }`}>
+                                        {item.isVeg ? "Veg" : "Non-veg"}
+                                      </span>
+                                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${approvalMeta.className}`}>
+                                        {approvalMeta.label}
+                                      </span>
+                                      {item.isRecommended ? (
+                                        <span className="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-semibold text-sky-700">
+                                          Recommended
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    {item.inStock && (
+                                      <p className="mt-1 text-xs font-medium text-green-600">
+                                        In stock
+                                      </p>
+                                    )}
+                                    {item.approvalStatus === "rejected" && item.rejectionReason ? (
+                                      <p className="mt-1 line-clamp-2 text-[11px] font-medium text-red-600">
+                                        Reason: {item.rejectionReason}
+                                      </p>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditItem(category, item)}
+                                      className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                                        isRejectedItem
+                                          ? "bg-red-600 text-white hover:bg-red-700"
+                                          : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                                      }`}
+                                    >
+                                      <Pencil className="h-3 w-3" />
+                                      {isRejectedItem ? "Fix & resubmit" : "Edit"}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  {/* Recommend Button */}
                                   <button
-                                    type="button"
-                                    onClick={() => handleEditItem(category, item)}
-                                    className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold transition-colors ${
-                                      isRejectedItem
-                                        ? "bg-red-600 text-white hover:bg-red-700"
-                                        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-100"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleRecommendToggle(category.id, item.id)
+                                    }}
+                                    className={`rounded-full p-2.5 transition-colors border flex items-center justify-center shadow-sm ${
+                                      item.isRecommended
+                                        ? "bg-blue-50 border-blue-200 text-blue-600 animate-pulse-once"
+                                        : "bg-white border-slate-200 text-slate-400 hover:bg-slate-50"
                                     }`}
+                                    title={item.isRecommended ? "Recommended" : "Click to recommend"}
                                   >
-                                    <Pencil className="h-3 w-3" />
-                                    {isRejectedItem ? "Fix & resubmit" : "Edit"}
+                                    <ThumbsUp className="w-4 h-4" />
                                   </button>
+                                  {/* Item Toggle Switch */}
+                                  <div
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="rounded-full bg-white px-2 py-1 shadow-inner"
+                                  >
+                                    <Switch
+                                      checked={item.inStock}
+                                      onCheckedChange={(checked) =>
+                                        handleToggleChange("item", category.id, item.id, checked)
+                                      }
+                                      className="data-[state=checked]:bg-green-600"
+                                    />
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                {/* Recommend Thumb Icon */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    handleRecommendToggle(category.id, item.id)
-                                  }}
-                                  className={`rounded-2xl p-2 transition-colors ${
-                                    item.isRecommended
-                                      ? "bg-blue-100 text-blue-600"
-                                      : "bg-white text-gray-400 hover:bg-slate-100"
-                                  }`}
-                                  title={item.isRecommended ? "Recommended" : "Click to recommend"}
-                                >
-                                  <ThumbsUp className="w-4 h-4" />
-                                </button>
-                                {/* Item Toggle Switch */}
-                                <div
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="rounded-full bg-white px-2 py-1 shadow-inner"
-                                >
-                                  <Switch
-                                    checked={item.inStock}
-                                    onCheckedChange={(checked) =>
-                                      handleToggleChange("item", category.id, item.id, checked)
-                                    }
-                                    className="data-[state=checked]:bg-green-600"
-                                  />
+
+                              {/* Bottom Row: Deactivation / Stock Rule Status */}
+                              {!item.inStock && (
+                                <div className="mt-1 pt-2 border-t border-slate-100 text-xs font-medium text-rose-600">
+                                  {getRuleStatusLabel(item.stockRule)}
                                 </div>
-                              </div>
+                              )}
                             </div>
                           </div>
                           )
