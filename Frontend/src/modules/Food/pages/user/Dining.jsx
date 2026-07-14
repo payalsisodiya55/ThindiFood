@@ -1643,7 +1643,7 @@ export default function Dining() {
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Discount</h3>
                     <div className="flex flex-col gap-3">
                       {[
-                        { id: 'upto-10', label: 'Up to 10% Off' },
+                        { id: 'upto-10', label: 'Up to 10%' },
                         { id: '10-20', label: '10% - 20%' },
                         { id: '20-30', label: '20% - 30%' },
                         { id: '50-plus', label: 'Up to 50% or more' },
