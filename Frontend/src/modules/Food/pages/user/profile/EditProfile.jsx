@@ -136,9 +136,11 @@ export default function EditProfile() {
   const [imagePreview, setImagePreview] = useState(initialProfile?.profileImage || "")
   const [photoPickerOpen, setPhotoPickerOpen] = useState(false)
   const [fieldErrors, setFieldErrors] = useState({
+    name: "",
     mobile: "",
     email: "",
     dateOfBirth: "",
+    anniversary: "",
   })
   const fileInputRef = useRef(null)
   const hydratedFromDraftRef = useRef(Boolean(draftProfile))
@@ -187,8 +189,13 @@ export default function EditProfile() {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "" : "Please enter a valid email"
   }
 
+  const validateName = (value) => {
+    if (!value || !String(value).trim()) return "Name is required"
+    return ""
+  }
+
   const validateMobile = (value) => {
-    if (!value) return ""
+    if (!value || !String(value).trim()) return "Mobile number is required"
     return /^\d{10}$/.test(value) ? "" : "Mobile number must be 10 digits"
   }
 
@@ -199,11 +206,20 @@ export default function EditProfile() {
     return dob.isAfter(dayjs(), "day") ? "Date of birth cannot be in the future" : ""
   }
 
+  const validateAnniversary = (value) => {
+    if (!value) return ""
+    const ann = dayjs(value)
+    if (!ann.isValid()) return "Please select a valid anniversary date"
+    return ann.isAfter(dayjs(), "day") ? "Anniversary cannot be in the future" : ""
+  }
+
   const handleChange = (field, value) => {
     let normalizedValue = value
     let errorMessage = ""
 
-    if (field === "mobile") {
+    if (field === "name") {
+      errorMessage = validateName(normalizedValue)
+    } else if (field === "mobile") {
       normalizedValue = String(value || "").replace(/\D/g, "").slice(0, 10)
       errorMessage = validateMobile(normalizedValue)
     } else if (field === "email") {
@@ -211,6 +227,8 @@ export default function EditProfile() {
       errorMessage = validateEmail(normalizedValue)
     } else if (field === "dateOfBirth") {
       errorMessage = validateDateOfBirth(normalizedValue)
+    } else if (field === "anniversary") {
+      errorMessage = validateAnniversary(normalizedValue)
     }
 
     setFormData((prev) => ({
@@ -218,7 +236,7 @@ export default function EditProfile() {
       [field]: normalizedValue
     }))
 
-    if (field === "mobile" || field === "email" || field === "dateOfBirth") {
+    if (field === "name" || field === "mobile" || field === "email" || field === "dateOfBirth" || field === "anniversary") {
       setFieldErrors((prev) => ({
         ...prev,
         [field]: errorMessage
@@ -315,9 +333,11 @@ export default function EditProfile() {
 
   const validateForm = () => {
     const nextErrors = {
+      name: validateName(formData.name),
       mobile: validateMobile(formData.mobile),
       email: validateEmail(formData.email),
       dateOfBirth: validateDateOfBirth(formData.dateOfBirth),
+      anniversary: validateAnniversary(formData.anniversary),
     }
     setFieldErrors(nextErrors)
     return !Object.values(nextErrors).some(Boolean)
@@ -406,7 +426,7 @@ export default function EditProfile() {
           >
             <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-white" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Your Profile</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">Your Profile</h1>
         </div>
       </div>
 
@@ -476,6 +496,9 @@ export default function EditProfile() {
                   </button>
                 )}
               </div>
+              {fieldErrors.name && (
+                <p className="text-xs text-red-600">{fieldErrors.name}</p>
+              )}
             </div>
 
             {/* Mobile Field */}
@@ -596,6 +619,7 @@ export default function EditProfile() {
                   <DatePicker
                     value={formData.anniversary}
                     onChange={(newValue) => handleChange('anniversary', newValue)}
+                    maxDate={dayjs()}
                     slotProps={{
                       textField: {
                         className: "w-full",
@@ -636,6 +660,9 @@ export default function EditProfile() {
                   />
                 </LocalizationProvider>
               </div>
+              {fieldErrors.anniversary && (
+                <p className="text-xs text-red-600">{fieldErrors.anniversary}</p>
+              )}
             </div>
 
             {/* Gender Field */}
