@@ -695,7 +695,9 @@ Order again from this restaurant in the ${companyName} app.`
       <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] pb-10">
         <div className="bg-white dark:bg-[#1a1a1a] p-4 flex items-center shadow-sm sticky top-0 z-10">
           <Link to="/user">
-            <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-300 cursor-pointer" />
+            <button className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+              <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            </button>
           </Link>
           <h1 className="ml-4 text-xl font-semibold text-gray-800 dark:text-white">Your Orders</h1>
         </div>
@@ -711,7 +713,9 @@ Order again from this restaurant in the ${companyName} app.`
       <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] pb-10">
         <div className="bg-white dark:bg-[#1a1a1a] p-4 flex items-center shadow-sm sticky top-0 z-10">
           <Link to="/user">
-            <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-300 cursor-pointer" />
+            <button className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors">
+              <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            </button>
           </Link>
           <h1 className="ml-4 text-xl font-semibold text-gray-800 dark:text-white">Your Orders</h1>
         </div>

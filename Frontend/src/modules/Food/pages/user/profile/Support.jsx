@@ -230,7 +230,7 @@ export default function Support() {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-8 w-8 p-0"
+            className="h-9 w-9 p-0 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
             onClick={() => {
               if (step !== "pick") {
                 setStep("pick")

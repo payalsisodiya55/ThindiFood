@@ -150,7 +150,7 @@ export default function Favorites() {
         <div className="max-w-4xl mx-auto space-y-6">
           <ScrollReveal>
             <div className="flex items-center gap-3 sm:gap-4">
-              <Button onClick={goBack} variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
+              <Button onClick={goBack} variant="ghost" size="icon" className="rounded-full h-9 w-9 sm:h-10 sm:w-10 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold dark:text-white">My Favorites</h1>
@@ -178,7 +178,7 @@ export default function Favorites() {
         <ScrollReveal>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3 sm:gap-4">
-              <Button onClick={goBack} variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10 dark:text-white dark:hover:bg-zinc-800">
+              <Button onClick={goBack} variant="ghost" size="icon" className="rounded-full h-9 w-9 sm:h-10 sm:w-10 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800">
                 <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
               <div>

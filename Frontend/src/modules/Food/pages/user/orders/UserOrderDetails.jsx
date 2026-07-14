@@ -645,7 +645,7 @@ export default function UserOrderDetails() {
           <button
             type="button"
             onClick={goBack}
-            className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="w-9 h-9 flex items-center justify-center border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
           >
             <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-300 cursor-pointer" />
           </button>

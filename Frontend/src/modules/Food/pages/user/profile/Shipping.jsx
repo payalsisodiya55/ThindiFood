@@ -63,7 +63,7 @@ export default function Shipping() {
             variant="ghost" 
             size="icon" 
             onClick={handleBack}
-            className="h-10 w-10 rounded-full hover:bg-gray-100 dark:hover:bg-gray-900 transition-all active:scale-95"
+            className="h-10 w-10 rounded-full border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-900 transition-all active:scale-95"
           >
             <ArrowLeft className="h-6 w-6 text-gray-900 dark:text-white" />
           </Button>

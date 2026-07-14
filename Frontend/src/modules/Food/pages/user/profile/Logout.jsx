@@ -112,7 +112,7 @@ export default function Logout() {
         {/* Header */}
         <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6 lg:mb-8">
           <Link to="/user/profile">
-            <Button variant="ghost" size="icon" className="h-8 w-8 md:h-10 md:w-10 p-0">
+            <Button variant="ghost" size="icon" className="h-9 w-9 md:h-10 md:w-10 p-0 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
               <ArrowLeft className="h-4 w-4 md:h-5 md:w-5 text-black dark:text-white" />
             </Button>
           </Link>

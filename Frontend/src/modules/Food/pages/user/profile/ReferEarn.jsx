@@ -129,7 +129,7 @@ export default function ReferEarn() {
       <div className="max-w-md mx-auto px-4 py-4 pb-24">
         <div className="flex items-center gap-3 mb-5">
           <Link to="/user/profile">
-            <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+            <Button variant="ghost" size="icon" className="h-9 w-9 p-0 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
               <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
             </Button>
           </Link>
