@@ -19,6 +19,7 @@ const TRANSACTION_TYPES = {
   ADDITIONS: "additions",
   DEDUCTIONS: "deductions",
   REFUNDS: "refunds",
+  REFERRALS: "referrals",
 }
 
 export default function Wallet() {
@@ -90,6 +91,13 @@ export default function Wallet() {
       if (selectedFilter === TRANSACTION_TYPES.REFUNDS) {
         return transaction.type === "refund"
       }
+      if (selectedFilter === TRANSACTION_TYPES.REFERRALS) {
+        return (
+          transaction.type === "addition" &&
+          (transaction?.metadata?.source === "referral_signup" ||
+            String(transaction.description || "").toLowerCase().startsWith("referral reward"))
+        )
+      }
       return true
     })
   }, [selectedFilter, transactions])
@@ -155,7 +163,7 @@ export default function Wallet() {
             >
               <ArrowLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-700 dark:text-white" />
             </button>
-            <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Wallet</h1>
+            <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Taamio Money</h1>
           </div>
         </div>
       </div>
@@ -178,30 +186,19 @@ export default function Wallet() {
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-8 lg:gap-10">
               <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6 lg:gap-8 flex-1">
                 <div className="relative flex-shrink-0">
-                  <div className="w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 xl:w-32 xl:h-32 bg-gradient-to-br from-red-500 via-red-600 to-red-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform rotate-[-5deg]">
+                  <div className="w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 xl:w-32 xl:h-32 bg-gradient-to-br from-green-400 via-green-500 to-green-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg transform rotate-[-5deg]">
                     <div className="w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24 xl:w-28 xl:h-28 bg-white/10 rounded-lg md:rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
                       <IndianRupee className="h-10 w-10 md:h-12 md:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 text-white" strokeWidth={2.5} />
                     </div>
                   </div>
-                  <div className="absolute inset-0 bg-red-800 rounded-xl md:rounded-2xl transform rotate-[-5deg] translate-y-1 -z-10 opacity-25" />
+                  <div className="absolute inset-0 bg-green-800 rounded-xl md:rounded-2xl transform rotate-[-5deg] translate-y-1 -z-10 opacity-25" />
                 </div>
 
                 <div className="flex flex-col md:items-start items-center text-center md:text-left">
-                  <h2 className="text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-2 md:mb-3">
-                    {companyName} Money
-                  </h2>
-
                   <div className="mb-2 md:mb-3">
                     <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm lg:text-base mb-1">Current Balance</p>
-                    <p className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-gray-900 dark:text-white">
+                    <p className="text-2xl md:text-3xl lg:text-4xl xl:text-5xl 2xl:text-6xl font-bold text-green-600 dark:text-green-400">
                       {formatAmount(currentBalance)}
-                    </p>
-                  </div>
-
-                  <div className="mb-2 md:mb-3">
-                    <p className="text-gray-500 dark:text-gray-400 text-xs md:text-sm lg:text-base mb-1">Referral Earnings</p>
-                    <p className="text-lg md:text-xl lg:text-2xl font-semibold text-green-600 dark:text-green-400">
-                      {formatAmount(referralEarnings)}
                     </p>
                   </div>
 
@@ -234,6 +231,7 @@ export default function Wallet() {
                     { id: TRANSACTION_TYPES.ADDITIONS, label: "Added" },
                     { id: TRANSACTION_TYPES.DEDUCTIONS, label: "Spent" },
                     { id: TRANSACTION_TYPES.REFUNDS, label: "Refunds" },
+                    { id: TRANSACTION_TYPES.REFERRALS, label: "Referrals" },
                   ].map((filter) => {
                     const isSelected = selectedFilter === filter.id
                     return (
