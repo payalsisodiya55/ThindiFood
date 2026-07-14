@@ -239,7 +239,7 @@ export default function ScanAndDine() {
                 ) : (
                   <>
                     <Camera className="mr-2 h-4 w-4" />
-                    Start Camera Scan
+                    Scan QR
                   </>
                 )}
               </Button>
@@ -267,12 +267,16 @@ export default function ScanAndDine() {
           </p>
         </div>
 
-        {/* ── Manual Fallback Card ── */}
+        {/* OR Divider */}
+        <div className="flex items-center justify-center my-4 px-2">
+          <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1" />
+          <span className="px-4 text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">or</span>
+          <div className="h-px bg-gray-200 dark:bg-gray-800 flex-1" />
+        </div>
+
+        {/* ── Manual Card ── */}
         <div className="rounded-3xl bg-white p-6 shadow-sm border border-gray-100">
-          <p className="mb-1 text-sm font-bold text-gray-800">Manual QR Input (Fallback)</p>
-          <p className="mb-3 text-xs text-gray-400">
-            If camera doesn't work, paste the QR URL or JSON here.
-          </p>
+          <p className="mb-3 text-sm font-bold text-gray-800">Manual QR Input</p>
           <textarea
             value={rawInput}
             onChange={(e) => setRawInput(e.target.value)}

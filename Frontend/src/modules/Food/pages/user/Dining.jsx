@@ -850,16 +850,16 @@ export default function Dining() {
             onClick={() => navigate("/user/dine-in/scan")}
             className="w-full rounded-[2rem] bg-white border border-gray-100 p-5 shadow-sm flex items-center justify-between text-left cursor-pointer"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <QrCode className="w-6 h-6 text-[#00c87e]" />
               </div>
-              <div>
+              <div className="pt-0.5">
                 <p className="text-sm font-black text-gray-900 uppercase tracking-wide">Scan & Dine</p>
-                <p className="text-xs text-gray-500">Scan table QR and start dine-in instantly</p>
+                <p className="text-xs text-gray-500 mt-0.5">Scan table QR and start dine-in instantly</p>
               </div>
             </div>
-            <div className="text-[#00c87e] text-xs font-black uppercase tracking-wider">Open</div>
+            <div className="text-[#00c87e] text-xs font-black uppercase tracking-wider self-center">Open</div>
           </button>
         </motion.div>
 
