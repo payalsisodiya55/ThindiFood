@@ -1005,9 +1005,6 @@ export default function Dining() {
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight flex-1">
                 Popular Restaurants in Your Zone
               </h3>
-              <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 shrink-0 text-right mt-1">
-                {filteredRestaurants.length} nearby places
-              </p>
             </div>
           </div>
 
@@ -1244,20 +1241,7 @@ export default function Dining() {
                             </Button>
                           </motion.div>
 
-                          {/* Blue Section - Bottom 40% */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r" style={{ backgroundImage: `linear-gradient(to right, ${RED}, transparent)`, height: '40%' }}>
-                            <div className="h-full flex flex-col justify-end">
-                              <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
-                                <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
-                                  PRE-BOOK TABLE
-                                </p>
-                                <div className="h-px bg-white/30 mb-2 w-24"></div>
-                                <p className="text-white text-sm sm:text-base font-bold line-clamp-1 pr-2">
-                                  Reserve &amp; Save
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+
                         </div>
 
                         {/* Content Section */}
@@ -1468,20 +1452,7 @@ export default function Dining() {
                             <Bookmark className={`h-5 w-5 ${favorite ? "fill-[#E2281B] text-[#E2281B]" : "text-gray-600 dark:text-gray-400"}`} strokeWidth={2} />
                           </Button>
 
-                          {/* Blue Section - Bottom 40% */}
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r" style={{ backgroundImage: `linear-gradient(to right, ${RED}, transparent)`, height: '40%' }}>
-                            <div className="h-full flex flex-col justify-end">
-                              <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
-                                <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
-                                  PRE-BOOK TABLE
-                                </p>
-                                <div className="h-px bg-white/30 mb-2 w-24"></div>
-                                 <p className="text-white text-sm sm:text-base font-bold line-clamp-1 pr-2">
-                                   Reserve &amp; Save
-                                 </p>
-                              </div>
-                            </div>
-                          </div>
+
                         </div>
 
                         {/* Content Section */}

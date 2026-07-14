@@ -388,20 +388,7 @@ export default function DiningExplore50() {
                           <Bookmark className={`h-5 w-5 ${favorite ? "fill-gray-800 text-gray-800" : "text-gray-600"}`} strokeWidth={2} />
                         </Button>
 
-                        {/* Blue Section - Bottom 40% */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-r from-[#00c87e] to-transparent" style={{ height: '40%' }}>
-                          <div className="h-full flex flex-col justify-end">
-                            <div className="pl-4 sm:pl-5 pb-4 sm:pb-5">
-                              <p className="text-white text-xs sm:text-sm font-medium uppercase tracking-wide mb-1">
-                                PRE-BOOK TABLE
-                              </p>
-                              <div className="h-px bg-white/30 mb-2 w-24"></div>
-                              <p className="text-white text-base sm:text-lg font-bold">
-                                {restaurant.offer}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
+
                       </div>
 
                       {/* Content Section */}
