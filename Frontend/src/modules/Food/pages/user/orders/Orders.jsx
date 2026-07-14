@@ -912,19 +912,7 @@ Order again from this restaurant in the ${companyName} app.`
                           key={`${item._id || item.id || item.itemId || item.variantId || item.name || "item"}-${idx}`}
                           className="flex items-start gap-3"
                         >
-                          {/* Item Image */}
-                          {itemImage && (
-                            <div className="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden flex-shrink-0">
-                              <img
-                                src={itemImage}
-                                alt={itemName}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.style.display = 'none'
-                                }}
-                              />
-                            </div>
-                          )}
+
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start gap-2">
