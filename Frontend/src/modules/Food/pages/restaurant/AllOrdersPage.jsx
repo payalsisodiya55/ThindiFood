@@ -118,18 +118,18 @@ const filterOptions = {
     { id: "1-star", label: "1★", key: "ratings", value: 1 }
   ],
   "KPT delay": [
-    { id: "0-10", label: "0-10 mins", key: "kptDelay" },
-    { id: "10-20", label: "10-20 mins", key: "kptDelay" },
-    { id: "20-30", label: "20-30 mins", key: "kptDelay" },
-    { id: "30-plus", label: "30+ mins", key: "kptDelay" }
+    { id: "under-10", label: "Under 10 min", key: "kptDelay" },
+    { id: "10-20", label: "10–20 min", key: "kptDelay" },
+    { id: "20-30", label: "20–30 min", key: "kptDelay" },
+    { id: "over-30", label: "Over 30 min", key: "kptDelay" }
   ],
   "Complaints": [
     { id: "order-delayed", label: "Order delayed", key: "complaints" },
-    { id: "wrong-items", label: "Wrong item(s) delivered", key: "complaints" },
-    { id: "missing-items", label: "Item(s) missing or not delivered", key: "complaints" },
+    { id: "wrong-items", label: "Wrong items delivered", key: "complaints" },
+    { id: "missing-items", label: "Item missing or not delivered", key: "complaints" },
     { id: "poor-taste", label: "Poor taste or quality", key: "complaints" },
     { id: "poor-packaging", label: "Poor packaging or spillage", key: "complaints" },
-    { id: "out-of-stock", label: "Item(s) out of stock", key: "complaints" },
+    { id: "out-of-stock", label: "Item out of stock", key: "complaints" },
     { id: "not-delivered", label: "Order not delivered", key: "complaints" }
   ],
   "Order type": [
@@ -163,7 +163,7 @@ export default function AllOrdersPage() {
     orderStatus: [],
     deliveryTiming: [],
     payment: [],
-    ratings: [],
+    ratings: [1, 5],
     kptDelay: [],
     complaints: [],
     orderType: []
@@ -307,6 +307,8 @@ export default function AllOrdersPage() {
     const paymentMethodRaw = String(order.payment?.method || "").toLowerCase()
     const paymentCategory = paymentMethodRaw === "cash" ? "cash" : (paymentMethodRaw ? "online" : "unknown")
     const deliveryTiming = order.scheduledAt ? "scheduled" : "immediate"
+    const rating = order.ratings?.restaurant?.rating || order.rating || null
+    const prepTime = Number(order.prep_time || 0)
 
     return {
       id: order.orderId || order._id?.toString() || '',
@@ -327,7 +329,9 @@ export default function AllOrdersPage() {
       deliveryAssignmentStatus,
       hasDeliveryPartner,
       paymentCategory,
-      deliveryTiming
+      deliveryTiming,
+      rating,
+      prepTime
     }
   }, [restaurantData])
 
@@ -471,12 +475,9 @@ export default function AllOrdersPage() {
     const key = option.key
     const value = option.id
 
-    // For ratings, only allow one selection (radio button behavior)
+    // For ratings, do nothing as we use custom range inputs now
     if (key === "ratings") {
-      setFilters(prev => ({
-        ...prev,
-        [key]: prev[key].includes(value) ? [] : [value]
-      }))
+      return
     } else {
       // For other filters, allow multiple selections (checkbox behavior)
       setFilters(prev => ({
@@ -493,7 +494,7 @@ export default function AllOrdersPage() {
       orderStatus: [],
       deliveryTiming: [],
       payment: [],
-      ratings: [],
+      ratings: [1, 5],
       kptDelay: [],
       complaints: [],
       orderType: []
@@ -514,8 +515,58 @@ export default function AllOrdersPage() {
   }
 
   const hasActiveFilters = () => {
-    return Object.values(filters).some(arr => arr.length > 0)
+    return Object.entries(filters).some(([key, val]) => {
+      if (key === "ratings") {
+        return val && (val[0] > 1 || val[1] < 5)
+      }
+      return val && val.length > 0
+    })
   }
+
+  const getOptionCount = useCallback((option) => {
+    const key = option.key
+    const value = option.id
+
+    return orders.filter(order => {
+      if (key === "orderStatus") {
+        const s = order.status
+        if (value === 'preparing') return s === 'PREPARING'
+        if (value === 'ready') return s === 'READY' || s.includes('READY')
+        if (value === 'out-for-delivery') return s.includes('DELIVERY') || s.includes('PICKUP') || s === 'PICKED_UP'
+        if (value === 'delivered') return s.includes('DELIVER')
+        if (value === 'rejected-by-restaurant') return s.includes('REJECT')
+        if (value === 'cancelled-by-restaurant') return s === 'CANCELLED_BY_RESTAURANT'
+        if (value === 'cancelled-by-customer') return s === 'CANCELLED_BY_USER' || s === 'CANCELLED_BY_CUSTOMER'
+        return false
+      }
+      if (key === "deliveryTiming") {
+        return order.deliveryTiming === value
+      }
+      if (key === "payment") {
+        return order.paymentCategory === value
+      }
+      if (key === "ratings") {
+        return false
+      }
+      if (key === "kptDelay") {
+        const pt = order.prepTime || 0
+        if (value === 'under-10') return pt < 10
+        if (value === '10-20') return pt >= 10 && pt <= 20
+        if (value === '20-30') return pt >= 20 && pt <= 30
+        if (value === 'over-30') return pt > 30
+        return false
+      }
+      if (key === "complaints") {
+        const orderComplaints = order.complaints || []
+        return orderComplaints.includes(value)
+      }
+      if (key === "orderType") {
+        const tagLower = value.toLowerCase().replace(/\s+/g, '-')
+        return order.tags?.some(tag => tag.toLowerCase().replace(/\s+/g, '-') === tagLower)
+      }
+      return false
+    }).length
+  }, [orders])
 
   const formatStatusText = (status) => {
     if (!status) return ""
@@ -591,7 +642,7 @@ export default function AllOrdersPage() {
         if (statusId === 'delivered') return s.includes('DELIVER')
         if (statusId === 'rejected-by-restaurant') return s.includes('REJECT')
         if (statusId === 'cancelled-by-restaurant') return s === 'CANCELLED_BY_RESTAURANT'
-        if (statusId === 'cancelled-by-customer') return s === 'CANCELLED_BY_CUSTOMER'
+        if (statusId === 'cancelled-by-customer') return s === 'CANCELLED_BY_USER' || s === 'CANCELLED_BY_CUSTOMER'
         return false
       })
       if (!matchesStatus) return false
@@ -605,6 +656,31 @@ export default function AllOrdersPage() {
     // Payment filter
     if (filters.payment && filters.payment.length > 0) {
       if (!filters.payment.includes(order.paymentCategory)) return false
+    }
+
+    // Ratings filter range
+    if (filters.ratings) {
+      const min = filters.ratings[0] || 1
+      const max = filters.ratings[1] || 5
+      const ratingActive = min > 1 || max < 5
+      if (ratingActive) {
+        if (!order.rating || order.rating < min || order.rating > max) {
+          return false
+        }
+      }
+    }
+
+    // Prep time delay filter
+    if (filters.kptDelay && filters.kptDelay.length > 0) {
+      const matchesKpt = filters.kptDelay.some(delayId => {
+        const pt = order.prepTime || 0
+        if (delayId === 'under-10') return pt < 10
+        if (delayId === '10-20') return pt >= 10 && pt <= 20
+        if (delayId === '20-30') return pt >= 20 && pt <= 30
+        if (delayId === 'over-30') return pt > 30
+        return false
+      })
+      if (!matchesKpt) return false
     }
 
     // Order type filter
@@ -698,7 +774,7 @@ export default function AllOrdersPage() {
               Filters:
             </span>
             {Object.values(filterOptions).flat().filter(opt =>
-              filters[opt.key]?.includes(opt.id)
+              opt.key !== "ratings" && filters[opt.key]?.includes(opt.id)
             ).map(opt => (
               <button
                 key={`${opt.key}-${opt.id}`}
@@ -710,6 +786,16 @@ export default function AllOrdersPage() {
                 <X className="w-3 h-3" />
               </button>
             ))}
+            {filters.ratings && (filters.ratings[0] > 1 || filters.ratings[1] < 5) && (
+              <button
+                onClick={() => setFilters(prev => ({ ...prev, ratings: [1, 5] }))}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shrink-0"
+                style={{ backgroundColor: RESTAURANT_THEME.brand }}
+              >
+                Rating: {filters.ratings[0]}★ - {filters.ratings[1]}★
+                <X className="w-3 h-3" />
+              </button>
+            )}
             <button
               onClick={handleClearFilters}
               className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400 transition-colors shrink-0"
@@ -1027,7 +1113,12 @@ export default function AllOrdersPage() {
                 {/* Sidebar Categories */}
                 <div className="w-28 bg-gray-50 border-r border-gray-200 overflow-y-auto">
                   {filterCategories.map((category) => {
-                    const count = filters[category.key]?.length || 0
+                    let count = 0
+                    if (category.key === "ratings") {
+                      count = (filters.ratings && (filters.ratings[0] > 1 || filters.ratings[1] < 5)) ? 1 : 0
+                    } else {
+                      count = filters[category.key]?.length || 0
+                    }
                     return (
                       <button
                         key={category.id}
@@ -1056,33 +1147,65 @@ export default function AllOrdersPage() {
                 <div className="flex-1 flex flex-col overflow-hidden">
                   {/* Options List */}
                   <div className="flex-1 overflow-y-auto px-3 py-2">
-                    {filterOptions[activeFilterCategory]
-                      ?.map((option) => {
-                        const isChecked = isFilterChecked(option)
-                        const isRadio = activeFilterCategory === "Ratings"
+                    {activeFilterCategory === "Ratings" ? (
+                      <div className="py-4 px-2 space-y-4">
+                        <div className="text-sm font-semibold text-gray-700">Filter by Rating Range</div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-500 block mb-1">Minimum Rating</label>
+                            <select
+                              value={filters.ratings?.[0] || 1}
+                              onChange={(e) => {
+                                const minVal = Number(e.target.value)
+                                const maxVal = filters.ratings?.[1] || 5
+                                setFilters(prev => ({
+                                  ...prev,
+                                  ratings: [minVal, Math.max(minVal, maxVal)]
+                                }))
+                              }}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            >
+                              {[1, 2, 3, 4, 5].map(num => (
+                                <option key={num} value={num}>{num} ★</option>
+                              ))}
+                            </select>
+                          </div>
+                          <span className="text-gray-400 mt-5">to</span>
+                          <div className="flex-1">
+                            <label className="text-xs text-gray-500 block mb-1">Maximum Rating</label>
+                            <select
+                              value={filters.ratings?.[1] || 5}
+                              onChange={(e) => {
+                                const maxVal = Number(e.target.value)
+                                const minVal = filters.ratings?.[0] || 1
+                                setFilters(prev => ({
+                                  ...prev,
+                                  ratings: [Math.min(minVal, maxVal), maxVal]
+                                }))
+                              }}
+                              className="w-full bg-gray-50 border border-gray-200 rounded-lg p-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                            >
+                              {[1, 2, 3, 4, 5].map(num => (
+                                <option key={num} value={num}>{num} ★</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                          Showing orders with ratings between {filters.ratings?.[0] || 1}★ and {filters.ratings?.[1] || 5}★.
+                        </p>
+                      </div>
+                    ) : (
+                      filterOptions[activeFilterCategory]
+                        ?.map((option) => {
+                          const isChecked = isFilterChecked(option)
 
-                        return (
-                          <label
-                            key={option.id}
-                            className="flex items-center py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg px-2 transition-colors"
-                          >
-                            <div className="relative flex items-center justify-center">
-                              {isRadio ? (
-                                <div
-                                  onClick={() => handleFilterToggle(option)}
-                                  className={`w-5 h-5 rounded-full border-2 cursor-pointer transition-all ${isChecked
-                                      ? 'bg-white'
-                                      : 'border-gray-300 bg-white'
-                                    }`}
-                                  style={isChecked ? { borderColor: RESTAURANT_THEME.brand } : undefined}
-                                >
-                                  {isChecked && (
-                                    <div className="w-full h-full rounded-full flex items-center justify-center">
-                                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RESTAURANT_THEME.brand }}></div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
+                          return (
+                            <label
+                              key={option.id}
+                              className="flex items-center py-2.5 cursor-pointer hover:bg-gray-50 rounded-lg px-2 transition-colors"
+                            >
+                              <div className="relative flex items-center justify-center">
                                 <input
                                   type="checkbox"
                                   checked={isChecked}
@@ -1097,12 +1220,15 @@ export default function AllOrdersPage() {
                                     backgroundRepeat: 'no-repeat'
                                   }}
                                 />
-                              )}
-                            </div>
-                            <span className="ml-3 text-sm text-gray-900">{option.label}</span>
-                          </label>
-                        )
-                      })}
+                              </div>
+                              <span className="ml-3 text-sm text-gray-900 flex-1 flex justify-between items-center">
+                                <span>{option.label}</span>
+                                <span className="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-0.5 rounded-full">({getOptionCount(option)})</span>
+                              </span>
+                            </label>
+                          )
+                        })
+                    )}
                   </div>
                 </div>
               </div>
