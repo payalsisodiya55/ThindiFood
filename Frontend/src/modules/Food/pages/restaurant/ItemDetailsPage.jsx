@@ -1299,7 +1299,7 @@ export default function ItemDetailsPage() {
                   <button
                     type="button"
                     onClick={handleAddVariant}
-                    className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${hasIncompleteVariant ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"}`}>
+                    className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">
                     
                     <Plus className="w-3.5 h-3.5" />
                     Add Variant
@@ -1570,7 +1570,7 @@ export default function ItemDetailsPage() {
                   style={String(selectedCategoryId || "") === String(cat.id) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
                   
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-sm font-medium">{cat.name}</span>
+                          <span className="text-sm font-medium capitalize">{cat.name}</span>
                           <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cat.foodTypeScope === "Veg" ?
                     "border-green-200 bg-green-50 text-green-700" :
                     cat.foodTypeScope === "Non-Veg" ?

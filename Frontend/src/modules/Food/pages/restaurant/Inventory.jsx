@@ -2006,7 +2006,7 @@ export default function Inventory() {
                 <p className="mt-1 text-xs text-slate-500">
                   {activeTab === "add-ons"
                     ? `${filteredAddons.length} add-on${filteredAddons.length !== 1 ? "s" : ""} in this view`
-                    : `${listToRender.length} categor${listToRender.length !== 1 ? "ies" : "y"} and ${activeFilterCount} item${activeFilterCount !== 1 ? "s" : ""} in focus`}
+                    : `Managing ${listToRender.length} categor${listToRender.length !== 1 ? "ies" : "y"} and ${activeFilterCount} menu item${activeFilterCount !== 1 ? "s" : ""}`}
                 </p>
               </div>
               {hasActiveTools ? (
@@ -2391,7 +2391,7 @@ export default function Inventory() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="mb-2 flex items-center gap-2 flex-wrap">
-                        <h3 className="text-lg font-bold tracking-[-0.02em] text-slate-950">
+                        <h3 className="text-lg font-bold tracking-[-0.02em] text-slate-950 capitalize">
                           {category.name}
                         </h3>
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
@@ -2436,7 +2436,7 @@ export default function Inventory() {
                       {/* Category Toggle Switch */}
                       <div
                         onClick={(e) => e.stopPropagation()}
-                        className="rounded-full bg-slate-100 px-2 py-1 shadow-inner"
+                        className="px-2 py-1"
                       >
                         <Switch
                           checked={category.inStock}
@@ -2931,7 +2931,7 @@ export default function Inventory() {
               <>
                 {/* Backdrop */}
                 <motion.div
-                  className="fixed inset-0 bg-black/40 z-30"
+                  className="fixed inset-0 bg-black/50 z-50"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -2944,7 +2944,7 @@ export default function Inventory() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 20 }}
                   transition={{ duration: 0.2 }}
-                  className="fixed right-4 bottom-44 z-30 h-[45vh] w-[60vw] max-w-sm overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_24px_60px_-30px_rgba(15,23,42,0.55)]"
+                  className="fixed right-4 bottom-44 z-50 h-[45vh] w-[60vw] max-w-sm overflow-hidden rounded-[28px] border border-white/80 bg-white shadow-[0_24px_60px_-30px_rgba(15,23,42,0.55)]"
                 >
                   <div className="h-full flex flex-col">
                     <div className="bg-[linear-gradient(135deg,#f8fbff_0%,#eef6ff_100%)] px-4 pt-4 pb-3">
@@ -2968,10 +2968,10 @@ export default function Inventory() {
                             className="w-full text-left py-3 focus:outline-none"
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium text-slate-900">
+                              <span className="text-sm font-medium text-slate-900 capitalize">
                                 {category.name}
                               </span>
-                              <span className="flex h-7 min-w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700">
+                              <span className="flex h-6 min-w-[24px] px-2 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
                                 {itemCount}
                               </span>
                             </div>
