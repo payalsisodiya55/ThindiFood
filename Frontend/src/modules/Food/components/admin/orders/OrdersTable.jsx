@@ -219,16 +219,18 @@ export default function OrdersTable({
                 )}
 
                 {visibleColumns.customer && (
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 max-w-[200px]">
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-slate-700">{order.customerName}</span>
+                      <span className="text-sm font-medium text-slate-700 break-all line-clamp-2" title={order.customerName}>{order.customerName}</span>
                       <span className="text-xs text-slate-500 mt-0.5">{order.customerPhone}</span>
                     </div>
                   </td>
                 )}
                 {visibleColumns.restaurant && (
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-medium text-slate-700">{formatRestaurantName(order.restaurant)}</span>
+                  <td className="px-6 py-4 max-w-[200px]">
+                    <div className="text-sm font-medium text-slate-700 break-all line-clamp-3" title={formatRestaurantName(order.restaurant)}>
+                      {formatRestaurantName(order.restaurant)}
+                    </div>
                   </td>
                 )}
                 {visibleColumns.foodItems && (

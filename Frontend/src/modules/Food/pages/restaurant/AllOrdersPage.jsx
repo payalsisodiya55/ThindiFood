@@ -124,22 +124,27 @@ const filterOptions = {
     { id: "over-30", label: "Over 30 min", key: "kptDelay" }
   ],
   "Complaints": [
-    { id: "order-delayed", label: "Order delayed", key: "complaints" },
-    { id: "wrong-items", label: "Wrong items delivered", key: "complaints" },
-    { id: "missing-items", label: "Item missing or not delivered", key: "complaints" },
+    { type: "header", label: "Food Issues" },
     { id: "poor-taste", label: "Poor taste or quality", key: "complaints" },
+    { id: "wrong-items", label: "Wrong items delivered", key: "complaints" },
+    { type: "header", label: "Packaging and Delivery" },
     { id: "poor-packaging", label: "Poor packaging or spillage", key: "complaints" },
+    { id: "order-delayed", label: "Order delayed", key: "complaints" },
+    { id: "not-delivered", label: "Order not delivered", key: "complaints" },
+    { type: "header", label: "Service Issues" },
+    { id: "missing-items", label: "Item missing or not delivered", key: "complaints" },
     { id: "out-of-stock", label: "Item out of stock", key: "complaints" },
-    { id: "not-delivered", label: "Order not delivered", key: "complaints" }
+    { type: "header", label: "Billing" },
+    { id: "billing-issue", label: "Billing issue", key: "complaints" },
+    { type: "header", label: "Other" },
+    { id: "no-complaints", label: "No Complaints", key: "complaints" }
   ],
   "Order type": [
     { id: "self-delivery", label: "Self delivery", key: "orderType" },
     { id: "food-rescue", label: "Food rescue", key: "orderType" },
     { id: "large-order", label: "Large order", key: "orderType" },
     { id: "veg-only", label: "Veg only", key: "orderType" },
-    { id: "irctc", label: "IRCTC", key: "orderType" },
-    { id: "replacement", label: "Replacement", key: "orderType" },
-    { id: "hospital", label: "Hospital", key: "orderType" }
+    { id: "replacement", label: "Replacement", key: "orderType" }
   ]
 }
 
@@ -295,10 +300,15 @@ export default function AllOrdersPage() {
     // Delivery assignment info (for non-cancelled delivery orders)
     const deliveryFleetType = String(order.deliveryFleet || '').toLowerCase()
     const selfDeliveryStatus = order.selfDelivery?.status || null
-    const selfDeliveryBoyId = order.selfDelivery?.deliveryBoyId
+    const selfDeliveryBoy = order.selfDelivery?.deliveryBoyId
+    const selfDeliveryBoyName = selfDeliveryBoy && typeof selfDeliveryBoy === 'object' ? selfDeliveryBoy.name : null
+    
     const dispatchStatus = order.dispatch?.status || null
-    const dispatchPartnerId = order.dispatch?.deliveryPartnerId
-    const hasDeliveryPartner = !!(selfDeliveryBoyId || dispatchPartnerId)
+    const dispatchPartner = order.dispatch?.deliveryPartnerId
+    const dispatchPartnerName = dispatchPartner && typeof dispatchPartner === 'object' ? dispatchPartner.name : null
+    
+    const hasDeliveryPartner = !!(selfDeliveryBoy || dispatchPartner)
+    const deliveryPartnerName = selfDeliveryBoyName || dispatchPartnerName || null
     // Use selfDelivery status for self-fleet, dispatch status otherwise
     const deliveryAssignmentStatus = (deliveryFleetType === 'self' || selfDeliveryStatus)
       ? selfDeliveryStatus
@@ -328,6 +338,7 @@ export default function AllOrdersPage() {
       mongoId: order._id?.toString(),
       deliveryAssignmentStatus,
       hasDeliveryPartner,
+      deliveryPartnerName,
       paymentCategory,
       deliveryTiming,
       rating,
@@ -558,6 +569,7 @@ export default function AllOrdersPage() {
       }
       if (key === "complaints") {
         const orderComplaints = order.complaints || []
+        if (value === "no-complaints") return orderComplaints.length === 0
         return orderComplaints.includes(value)
       }
       if (key === "orderType") {
@@ -681,6 +693,16 @@ export default function AllOrdersPage() {
         return false
       })
       if (!matchesKpt) return false
+    }
+
+    // Complaints filter
+    if (filters.complaints && filters.complaints.length > 0) {
+      const hasMatchingComplaint = filters.complaints.some(complaintId => {
+        const orderComplaints = order.complaints || []
+        if (complaintId === "no-complaints") return orderComplaints.length === 0
+        return orderComplaints.includes(complaintId)
+      })
+      if (!hasMatchingComplaint) return false
     }
 
     // Order type filter
@@ -910,7 +932,7 @@ export default function AllOrdersPage() {
                           ? 'bg-emerald-50 text-emerald-700'
                           : 'bg-amber-50 text-amber-700'
                       }`}>
-                        {order.hasDeliveryPartner ? 'Partner assigned' : 'Unassigned'}
+                        {order.hasDeliveryPartner ? (order.deliveryPartnerName || 'Partner assigned') : 'Unassigned'}
                       </span>
                       {order.deliveryAssignmentStatus && (
                         <span className="text-xs text-gray-400 capitalize">
@@ -1197,7 +1219,14 @@ export default function AllOrdersPage() {
                       </div>
                     ) : (
                       filterOptions[activeFilterCategory]
-                        ?.map((option) => {
+                        ?.map((option, idx) => {
+                          if (option.type === "header") {
+                            return (
+                              <div key={`header-${idx}`} className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-4 mb-2 px-2 first:mt-1">
+                                {option.label}
+                              </div>
+                            )
+                          }
                           const isChecked = isFilterChecked(option)
 
                           return (
