@@ -1019,7 +1019,7 @@ export default function ItemDetailsPage() {
             
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <h1 className="text-xl font-bold text-gray-900">Item details</h1>
+          <h1 className="text-xl font-bold text-gray-900">Item Details</h1>
         </div>
       </div>
 
@@ -1041,8 +1041,8 @@ export default function ItemDetailsPage() {
         {/* Image Carousel */}
         <div className="relative bg-white">
           <div className="px-4 pt-4">
-            <p className="text-sm font-medium text-gray-900">
-              Item image<span className="text-rose-500 ml-1">*</span>
+            <p className="text-sm font-bold text-gray-900 mb-2">
+              Item Image<span className="text-rose-500 ml-1">*</span>
             </p>
             {shouldShowFieldError("image") && imageError ?
             <p className="mt-1 text-xs text-red-500">{imageError}</p> :
@@ -1139,8 +1139,8 @@ export default function ItemDetailsPage() {
                 <div className="w-20 h-20 bg-white/80 rounded-full flex items-center justify-center mx-auto mb-3 shadow-lg">
                   <Camera className="w-10 h-10 text-gray-400" />
                 </div>
-                <p className="text-sm font-medium text-gray-600">No images added yet</p>
-                <p className="text-xs text-gray-500 mt-1">Tap the button below to add one image</p>
+                <p className="text-sm font-medium text-gray-600">No image available.</p>
+                <p className="text-xs text-gray-500 mt-1">Tap the button to upload.</p>
               </div>
             </div>
           }
@@ -1171,7 +1171,7 @@ export default function ItemDetailsPage() {
         <div className="p-4 space-y-3">
           {/* Category Selector */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
+            <label className="block text-sm font-bold text-gray-900 mb-2">
               Category
             </label>
             <button
@@ -1190,8 +1190,8 @@ export default function ItemDetailsPage() {
 
           {/* Item Name */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Item name
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Item Name
             </label>
             <div className="relative">
               <input
@@ -1201,7 +1201,7 @@ export default function ItemDetailsPage() {
                 onBlur={() => setTouchedFields((prev) => ({ ...prev, itemName: true }))}
                 maxLength={maxNameLength}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "border-red-500" : "border-gray-300"}`}
-                placeholder="Enter item name" />
+                placeholder="e.g., Paneer Butter Masala" />
               
             </div>
             <div className="flex items-center justify-between mt-1">
@@ -1217,8 +1217,8 @@ export default function ItemDetailsPage() {
 
           {/* Item Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Item description
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Item Description
             </label>
             <div className="relative">
               <textarea
@@ -1275,13 +1275,13 @@ export default function ItemDetailsPage() {
 
           {/* Item Price */}
           <div>
-            <label className="block text-sm font-medium text-gray-900 mb-2">
-              Item price
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Item Price
             </label>
             <div className="space-y-3">
               {variants.length === 0 ?
               <div>
-                  <label className="block text-xs text-gray-600 mb-1">Base price</label>
+                  <label className="block text-xs text-gray-600 mb-1">Base Price</label>
                   <div className="relative">
                     <input
                     type="text"
@@ -1321,7 +1321,7 @@ export default function ItemDetailsPage() {
               <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Variants</p>
+                    <p className="text-sm font-bold text-gray-900">Variants</p>
                     <p className="text-xs text-gray-500">Optional. Add multiple names and prices like Half, Full, Small, Large.</p>
                   </div>
                   <button

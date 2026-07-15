@@ -2395,7 +2395,10 @@ export default function Inventory() {
                           {category.name}
                         </h3>
                         <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                          {category.items?.length || category.itemCount || 0} items
+                          {(() => {
+                            const count = category.items?.length || category.itemCount || 0;
+                            return `${count} ${count === 1 ? 'Item' : 'Items'}`;
+                          })()}
                         </span>
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                           category.inStock
@@ -2416,8 +2419,8 @@ export default function Inventory() {
                         ) : (
                           <p className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
                             {getOutOfStockCount(category) === (category.items?.length || category.itemCount || 0)
-                              ? `Out of Stock (${category.items?.length || category.itemCount || 0} item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''})`
-                              : `${getOutOfStockCount(category)} out of ${(category.items?.length || category.itemCount || 0)} item{(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''} out of stock`
+                              ? `Out of Stock (${category.items?.length || category.itemCount || 0} Item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''})`
+                              : `${getOutOfStockCount(category)} out of ${(category.items?.length || category.itemCount || 0)} Item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''} out of stock`
                             }
                           </p>
                         )}
