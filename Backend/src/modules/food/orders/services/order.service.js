@@ -2969,6 +2969,7 @@ export async function updateOrderStatusRestaurant(
   orderId,
   restaurantId,
   orderStatus,
+  reason = ""
 ) {
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
@@ -3043,12 +3044,16 @@ export async function updateOrderStatusRestaurant(
   if (nextStatus === "confirmed" || nextStatus === "preparing") {
     order.isAcceptedByRestaurant = true;
   }
-  pushStatusHistory(order, {
+   pushStatusHistory(order, {
     byRole: "RESTAURANT",
     byId: restaurantId,
     from,
     to: orderStatus,
+    note: reason || "",
   });
+  if (String(orderStatus || "").toLowerCase().includes("cancel")) {
+    order.cancellationReason = reason || "";
+  }
 
   let refundOutcome = {
     mode: null,

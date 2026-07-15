@@ -83,11 +83,11 @@ const dateRangeOptions = [
 
 // Filter categories and options
 const filterCategories = [
-  { id: "Order status", label: "Order status" },
-  { id: "Ratings", label: "Ratings" },
-  { id: "KPT delay", label: "KPT delay" },
-  { id: "Complaints", label: "Complaints" },
-  { id: "Order type", label: "Order type" }
+  { id: "Order status", label: "Order Status", key: "orderStatus" },
+  { id: "Ratings", label: "Ratings", key: "ratings" },
+  { id: "KPT delay", label: "KPT Delay", key: "kptDelay" },
+  { id: "Complaints", label: "Complaints", key: "complaints" },
+  { id: "Order type", label: "Order Type", key: "orderType" }
 ]
 
 const filterOptions = {
@@ -223,15 +223,37 @@ export default function AllOrdersPage() {
     else if (status === 'OUT_FOR_DELIVERY' || status === 'OUT FOR DELIVERY') status = 'OUT FOR DELIVERY'
 
     // Get rejection/cancellation reason
+    // Uses statusHistory note first, then falls back to order fields
     let reason = null
-    if (status === 'REJECTED' && order.rejectionReason) {
-      reason = `Rejected by Restaurant: ${order.rejectionReason}`
-    } else if (status === 'CANCELLED' && order.cancellationReason) {
-      reason = `Cancelled by ${order.cancelledBy === 'customer' ? 'customer' : 'restaurant'}: ${order.cancellationReason}`
-    } else if (status === 'REJECTED') {
-      reason = 'Rejected by Restaurant'
-    } else if (status === 'CANCELLED') {
-      reason = 'Cancelled by customer'
+    const statusUpper = status.toUpperCase()
+    const isCancelled = statusUpper.includes('CANCEL')
+    const isRejected = statusUpper.includes('REJECT')
+
+    if (isCancelled || isRejected) {
+      // Try to extract a meaningful note from statusHistory
+      const cancelEntry = (order.statusHistory || []).slice().reverse().find(h =>
+        String(h.to || '').toUpperCase().includes('CANCEL') ||
+        String(h.to || '').toUpperCase().includes('REJECT')
+      )
+      if (cancelEntry?.note) {
+        const note = String(cancelEntry.note)
+        reason = note.toLowerCase().startsWith('reason') ? note : `Reason: ${note}`
+      }
+
+      // Fallback to explicit fields
+      if (!reason) {
+        if (isRejected && order.rejectionReason) {
+          reason = `Rejected by Restaurant: ${order.rejectionReason}`
+        } else if (isCancelled && order.cancellationReason) {
+          const who = statusUpper.includes('CUSTOMER') ? 'customer' : 'restaurant'
+          reason = `Cancelled by ${who}: ${order.cancellationReason}`
+        } else if (isRejected) {
+          reason = 'Rejected by Restaurant'
+        } else if (isCancelled) {
+          const who = statusUpper.includes('CUSTOMER') ? 'customer' : 'restaurant'
+          reason = `Cancelled by ${who}`
+        }
+      }
     }
 
     const fulfillmentType = String(order.fulfillmentType || "").trim().toLowerCase()
@@ -257,6 +279,18 @@ export default function AllOrdersPage() {
       tags.push('VEG ONLY')
     }
 
+    // Delivery assignment info (for non-cancelled delivery orders)
+    const deliveryFleetType = String(order.deliveryFleet || '').toLowerCase()
+    const selfDeliveryStatus = order.selfDelivery?.status || null
+    const selfDeliveryBoyId = order.selfDelivery?.deliveryBoyId
+    const dispatchStatus = order.dispatch?.status || null
+    const dispatchPartnerId = order.dispatch?.deliveryPartnerId
+    const hasDeliveryPartner = !!(selfDeliveryBoyId || dispatchPartnerId)
+    // Use selfDelivery status for self-fleet, dispatch status otherwise
+    const deliveryAssignmentStatus = (deliveryFleetType === 'self' || selfDeliveryStatus)
+      ? selfDeliveryStatus
+      : dispatchStatus
+
     return {
       id: order.orderId || order._id?.toString() || '',
       status,
@@ -272,7 +306,9 @@ export default function AllOrdersPage() {
       reason,
       tags: tags.length > 0 ? tags : undefined,
       createdAt: order.createdAt,
-      mongoId: order._id?.toString()
+      mongoId: order._id?.toString(),
+      deliveryAssignmentStatus,
+      hasDeliveryPartner
     }
   }, [restaurantData])
 
@@ -524,19 +560,18 @@ export default function AllOrdersPage() {
       }
     }
 
-    // Order status filter
+    // Order status filter — use includes() because real statuses are e.g. CANCELLED_BY_RESTAURANT
     if (filters.orderStatus.length > 0) {
-      const statusMap = {
-        'preparing': 'PREPARING',
-        'ready': 'READY',
-        'out-for-delivery': 'OUT FOR DELIVERY',
-        'delivered': 'DELIVERED',
-        'rejected': 'REJECTED',
-        'cancelled': 'CANCELLED'
-      }
-      const matchesStatus = filters.orderStatus.some(
-        statusId => statusMap[statusId] === order.status
-      )
+      const matchesStatus = filters.orderStatus.some(statusId => {
+        const s = order.status
+        if (statusId === 'preparing') return s === 'PREPARING'
+        if (statusId === 'ready') return s === 'READY' || s.includes('READY')
+        if (statusId === 'out-for-delivery') return s.includes('DELIVERY') || s.includes('PICKUP') || s === 'PICKED_UP'
+        if (statusId === 'delivered') return s.includes('DELIVER')
+        if (statusId === 'rejected') return s.includes('REJECT')
+        if (statusId === 'cancelled') return s.includes('CANCEL')
+        return false
+      })
       if (!matchesStatus) return false
     }
 
@@ -553,16 +588,16 @@ export default function AllOrdersPage() {
   })
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 overflow-x-hidden">
       <div className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
         <div className="flex flex-col">
-          <div className="flex items-center gap-3 w-full min-w-0">
+          <div className="flex items-start gap-3 w-full min-w-0">
             <button
               onClick={goBack}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0 mt-0.5"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-5 h-5" />
             </button>
             <h1 className="text-lg font-bold text-gray-900 break-all flex-1 min-w-0 pr-2">
               {restaurantData?.name || 'Restaurant'}
@@ -590,14 +625,10 @@ export default function AllOrdersPage() {
           </div>
           <button
             onClick={() => setShowFilterPopup(true)}
-            className={`p-2.5 border rounded-lg transition-colors relative ${hasActiveFilters()
-                ? 'hover:opacity-90'
-                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-              }`}
-            style={hasActiveFilters() ? { backgroundColor: RESTAURANT_THEME.softBackground, borderColor: RESTAURANT_THEME.brand } : undefined}
+            className="p-2.5 bg-gray-50 border border-gray-200 hover:bg-gray-100 rounded-lg transition-colors relative"
             aria-label="Filter"
           >
-            <Filter className="w-5 h-5" style={hasActiveFilters() ? { color: RESTAURANT_THEME.brand } : { color: '#111827' }} />
+            <Filter className="w-5 h-5 text-gray-900" />
             {hasActiveFilters() && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold" style={{ backgroundColor: RESTAURANT_THEME.brand }}>
                 {Object.values(filters).flat().length}
@@ -622,25 +653,34 @@ export default function AllOrdersPage() {
         </button>
       </div>
 
-      {/* Active Filters Summary */}
+      {/* Active Filter Chips */}
       {hasActiveFilters() && (
         <div className="px-4 pb-2">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="border rounded-lg p-3 flex items-center justify-between"
-            style={{ backgroundColor: RESTAURANT_THEME.softBackground, borderColor: RESTAURANT_THEME.softBorder }}
+            className="flex flex-wrap items-center gap-2"
           >
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4" style={{ color: RESTAURANT_THEME.brand }} />
-              <span className="text-sm text-slate-800">
-                <span className="font-semibold" style={{ color: RESTAURANT_THEME.brand }}>{Object.values(filters).flat().length}</span> filter{Object.values(filters).flat().length !== 1 ? 's' : ''} applied
-              </span>
-            </div>
+            <span className="text-xs text-gray-500 flex items-center gap-1 shrink-0">
+              <Filter className="w-3 h-3" />
+              Filters:
+            </span>
+            {Object.values(filterOptions).flat().filter(opt =>
+              filters[opt.key]?.includes(opt.id)
+            ).map(opt => (
+              <button
+                key={`${opt.key}-${opt.id}`}
+                onClick={() => handleFilterToggle(opt)}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium text-white shrink-0"
+                style={{ backgroundColor: RESTAURANT_THEME.brand }}
+              >
+                {opt.label}
+                <X className="w-3 h-3" />
+              </button>
+            ))}
             <button
               onClick={handleClearFilters}
-              className="text-xs font-medium hover:underline"
-              style={{ color: RESTAURANT_THEME.brand }}
+              className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 hover:border-gray-400 transition-colors shrink-0"
             >
               Clear all
             </button>
@@ -673,9 +713,11 @@ export default function AllOrdersPage() {
             {filteredOrders.length === 0 ? (
               <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
                 <div className="flex flex-col items-center gap-3">
-                  <p className="text-gray-900 font-medium text-sm">No orders found</p>
+                  <p className="text-gray-900 font-medium text-sm">
+                    {hasActiveFilters() || searchQuery ? 'No orders match your filters' : 'No orders found'}
+                  </p>
                   <p className="text-gray-500 text-xs">
-                    Try changing the date range or search filters.
+                    {hasActiveFilters() || searchQuery ? 'Try changing or clearing your filters.' : 'Try changing the date range.'}
                   </p>
                 </div>
               </div>
@@ -740,6 +782,23 @@ export default function AllOrdersPage() {
                     <div className="flex items-start gap-1.5 text-gray-600 mt-1">
                       <span className="text-gray-500 shrink-0">Delivery Address:</span>
                       <span className="break-words font-normal">{order.address}</span>
+                    </div>
+                  )}
+                  {order.isDelivery && !order.status.includes('CANCEL') && !order.status.includes('REJECT') && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-gray-500 text-sm shrink-0">Delivery:</span>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        order.hasDeliveryPartner
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : 'bg-amber-50 text-amber-700'
+                      }`}>
+                        {order.hasDeliveryPartner ? 'Partner assigned' : 'Unassigned'}
+                      </span>
+                      {order.deliveryAssignmentStatus && (
+                        <span className="text-xs text-gray-400 capitalize">
+                          · {order.deliveryAssignmentStatus.replace(/_/g, ' ')}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -935,22 +994,30 @@ export default function AllOrdersPage() {
               <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar Categories */}
                 <div className="w-28 bg-gray-50 border-r border-gray-200 overflow-y-auto">
-                  {filterCategories.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => {
-                        setActiveFilterCategory(category.id)
-                        setFilterSearch("")
-                      }}
-                      className={`w-full px-2 py-3 text-left text-xs transition-colors border-b border-gray-200 ${activeFilterCategory === category.id
-                          ? 'bg-white text-gray-900 font-semibold border-2'
-                          : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      style={activeFilterCategory === category.id ? { borderLeft: `3px solid ${RESTAURANT_THEME.brand}` } : undefined}
-                    >
-                      {category.label}
-                    </button>
-                  ))}
+                  {filterCategories.map((category) => {
+                    const count = filters[category.key]?.length || 0
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setActiveFilterCategory(category.id)
+                          setFilterSearch("")
+                        }}
+                        className={`w-full px-2 py-3 text-left text-xs transition-colors border-b border-gray-200 flex items-center justify-between gap-1 ${activeFilterCategory === category.id
+                            ? 'bg-white text-gray-900 font-semibold'
+                            : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        style={activeFilterCategory === category.id ? { borderLeft: `3px solid ${RESTAURANT_THEME.brand}` } : undefined}
+                      >
+                        <span className="leading-tight">{category.label}</span>
+                        {count > 0 && (
+                          <span className="shrink-0 w-4 h-4 rounded-full text-white text-[10px] flex items-center justify-center font-bold" style={{ backgroundColor: RESTAURANT_THEME.brand }}>
+                            {count}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 {/* Filter Options */}
@@ -1029,7 +1096,7 @@ export default function AllOrdersPage() {
               <div className="flex items-center gap-3 px-4 py-3 border-t border-gray-200 bg-white">
                 <button
                   onClick={handleClearFilters}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2.5 border-2 border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-100 hover:border-gray-400 active:scale-95 transition-all"
                 >
                   Clear all
                 </button>

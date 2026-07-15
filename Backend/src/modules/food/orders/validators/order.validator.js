@@ -243,7 +243,8 @@ export function validateOrderStatusDto(body) {
             'delivered',
             'delivered_self',
             'cancelled_by_restaurant'
-        ])
+        ]),
+        reason: z.string().optional()
     });
     const result = schema.safeParse(body);
     if (!result.success) {
