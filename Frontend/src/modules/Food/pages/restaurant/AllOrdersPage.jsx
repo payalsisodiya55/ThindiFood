@@ -84,8 +84,10 @@ const dateRangeOptions = [
 // Filter categories and options
 const filterCategories = [
   { id: "Order status", label: "Order Status", key: "orderStatus" },
+  { id: "Delivery timing", label: "Delivery Timing", key: "deliveryTiming" },
+  { id: "Payment", label: "Payment", key: "payment" },
   { id: "Ratings", label: "Ratings", key: "ratings" },
-  { id: "KPT delay", label: "KPT Delay", key: "kptDelay" },
+  { id: "KPT delay", label: "Prep time delay", key: "kptDelay" },
   { id: "Complaints", label: "Complaints", key: "complaints" },
   { id: "Order type", label: "Order Type", key: "orderType" }
 ]
@@ -96,8 +98,17 @@ const filterOptions = {
     { id: "ready", label: "Ready", key: "orderStatus" },
     { id: "out-for-delivery", label: "Out for delivery", key: "orderStatus" },
     { id: "delivered", label: "Delivered", key: "orderStatus" },
-    { id: "rejected", label: "Rejected", key: "orderStatus" },
-    { id: "cancelled", label: "Cancelled", key: "orderStatus" }
+    { id: "rejected-by-restaurant", label: "Rejected by restaurant", key: "orderStatus" },
+    { id: "cancelled-by-restaurant", label: "Cancelled by Restaurant", key: "orderStatus" },
+    { id: "cancelled-by-customer", label: "Cancelled by customer", key: "orderStatus" }
+  ],
+  "Delivery timing": [
+    { id: "immediate", label: "Immediate / ASAP", key: "deliveryTiming" },
+    { id: "scheduled", label: "Scheduled", key: "deliveryTiming" }
+  ],
+  "Payment": [
+    { id: "cash", label: "Cash on Delivery", key: "payment" },
+    { id: "online", label: "Online Payment", key: "payment" }
   ],
   "Ratings": [
     { id: "5-star", label: "5★ or less", key: "ratings", value: 5 },
@@ -150,6 +161,8 @@ export default function AllOrdersPage() {
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
   const [filters, setFilters] = useState({
     orderStatus: [],
+    deliveryTiming: [],
+    payment: [],
     ratings: [],
     kptDelay: [],
     complaints: [],
@@ -291,6 +304,10 @@ export default function AllOrdersPage() {
       ? selfDeliveryStatus
       : dispatchStatus
 
+    const paymentMethodRaw = String(order.payment?.method || "").toLowerCase()
+    const paymentCategory = paymentMethodRaw === "cash" ? "cash" : (paymentMethodRaw ? "online" : "unknown")
+    const deliveryTiming = order.scheduledAt ? "scheduled" : "immediate"
+
     return {
       id: order.orderId || order._id?.toString() || '',
       status,
@@ -308,7 +325,9 @@ export default function AllOrdersPage() {
       createdAt: order.createdAt,
       mongoId: order._id?.toString(),
       deliveryAssignmentStatus,
-      hasDeliveryPartner
+      hasDeliveryPartner,
+      paymentCategory,
+      deliveryTiming
     }
   }, [restaurantData])
 
@@ -472,6 +491,8 @@ export default function AllOrdersPage() {
   const handleClearFilters = () => {
     setFilters({
       orderStatus: [],
+      deliveryTiming: [],
+      payment: [],
       ratings: [],
       kptDelay: [],
       complaints: [],
@@ -568,11 +589,22 @@ export default function AllOrdersPage() {
         if (statusId === 'ready') return s === 'READY' || s.includes('READY')
         if (statusId === 'out-for-delivery') return s.includes('DELIVERY') || s.includes('PICKUP') || s === 'PICKED_UP'
         if (statusId === 'delivered') return s.includes('DELIVER')
-        if (statusId === 'rejected') return s.includes('REJECT')
-        if (statusId === 'cancelled') return s.includes('CANCEL')
+        if (statusId === 'rejected-by-restaurant') return s.includes('REJECT')
+        if (statusId === 'cancelled-by-restaurant') return s === 'CANCELLED_BY_RESTAURANT'
+        if (statusId === 'cancelled-by-customer') return s === 'CANCELLED_BY_CUSTOMER'
         return false
       })
       if (!matchesStatus) return false
+    }
+
+    // Delivery timing filter
+    if (filters.deliveryTiming && filters.deliveryTiming.length > 0) {
+      if (!filters.deliveryTiming.includes(order.deliveryTiming)) return false
+    }
+
+    // Payment filter
+    if (filters.payment && filters.payment.length > 0) {
+      if (!filters.payment.includes(order.paymentCategory)) return false
     }
 
     // Order type filter
@@ -1022,27 +1054,10 @@ export default function AllOrdersPage() {
 
                 {/* Filter Options */}
                 <div className="flex-1 flex flex-col overflow-hidden">
-                  {/* Search Bar */}
-                  <div className="p-3 border-b border-gray-200">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <input
-                        type="text"
-                        placeholder="Search"
-                        value={filterSearch}
-                        onChange={(e) => setFilterSearch(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-                  </div>
-
                   {/* Options List */}
                   <div className="flex-1 overflow-y-auto px-3 py-2">
                     {filterOptions[activeFilterCategory]
-                      ?.filter(option =>
-                        option.label.toLowerCase().includes(filterSearch.toLowerCase())
-                      )
-                      .map((option) => {
+                      ?.map((option) => {
                         const isChecked = isFilterChecked(option)
                         const isRadio = activeFilterCategory === "Ratings"
 
