@@ -12,6 +12,7 @@ import {
   Copy,
   ChevronRight,
   X,
+  Info
 } from "lucide-react"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
 import { restaurantAPI } from "@food/api"
@@ -70,13 +71,35 @@ const getLast30Days = () => {
   return { start: thirtyDaysAgo, end: today }
 }
 
+const getToday = () => {
+  const today = new Date()
+  return { start: today, end: today }
+}
+
+const getYesterday = () => {
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(today.getDate() - 1)
+  return { start: yesterday, end: yesterday }
+}
+
+const getLastMonth = () => {
+  const today = new Date()
+  const startOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const endOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0)
+  return { start: startOfLastMonth, end: endOfLastMonth }
+}
+
 const currentWeekDates = getCurrentWeek()
 const lastWeekDates = getLastWeek()
 
 const dateRangeOptions = [
+  { label: "today", getDates: getToday },
+  { label: "yesterday", getDates: getYesterday },
   { label: "last 2 days", getDates: getLast2Days },
   { label: "this week", getDates: getCurrentWeek },
   { label: "last week", getDates: getLastWeek },
+  { label: "last month", getDates: getLastMonth },
   { label: "last 30 days", getDates: getLast30Days },
   { label: "custom date range", custom: true }
 ]
@@ -140,11 +163,12 @@ const filterOptions = {
     { id: "no-complaints", label: "No Complaints", key: "complaints" }
   ],
   "Order type": [
-    { id: "self-delivery", label: "Self delivery", key: "orderType" },
-    { id: "food-rescue", label: "Food rescue", key: "orderType" },
-    { id: "large-order", label: "Large order", key: "orderType" },
+    { id: "self-delivery", label: "Self Delivered", key: "orderType" },
+    { id: "large-order", label: "Large Order (10+ Items)", key: "orderType" },
     { id: "veg-only", label: "Veg only", key: "orderType" },
-    { id: "replacement", label: "Replacement", key: "orderType" }
+    { id: "replacement", label: "Replacement", key: "orderType" },
+    { id: "dine-in", label: "Dine-in", key: "orderType" },
+    { id: "takeaway", label: "Takeaway", key: "orderType" }
   ]
 }
 
@@ -176,6 +200,8 @@ export default function AllOrdersPage() {
 
   // Toast state
   const [showToast, setShowToast] = useState(false)
+  const [showWeekTooltip, setShowWeekTooltip] = useState(false)
+  const weekTooltipTimerRef = useRef(null)
 
   // Real data states
   const [orders, setOrders] = useState([])
@@ -1003,10 +1029,12 @@ export default function AllOrdersPage() {
               </div>
 
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-                <h2 className="text-lg font-bold text-gray-900">Select date range</h2>
+                <div className="flex flex-col">
+                  <h2 className="text-lg font-bold text-gray-900">Select Date Range</h2>
+                </div>
                 <button
                   onClick={() => setShowDateRangePopup(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded-full border border-gray-300 transition-colors flex items-center justify-center"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5 text-gray-900" />
@@ -1030,7 +1058,25 @@ export default function AllOrdersPage() {
                       style={isSelected ? { borderColor: RESTAURANT_THEME.brand, backgroundColor: RESTAURANT_THEME.softBackground } : undefined}
                     >
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 capitalize">{option.label}</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-sm font-semibold text-gray-900 capitalize">{option.label}</p>
+                          {option.label.toLowerCase() === 'this week' && (
+                            <span className="relative flex items-center" onClick={(e) => {
+                              e.stopPropagation()
+                              if (weekTooltipTimerRef.current) clearTimeout(weekTooltipTimerRef.current)
+                              setShowWeekTooltip(true)
+                              weekTooltipTimerRef.current = setTimeout(() => setShowWeekTooltip(false), 3000)
+                            }}>
+                              <Info className="w-3.5 h-3.5 text-gray-400 cursor-pointer" />
+                              {showWeekTooltip && (
+                                <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-50 whitespace-nowrap bg-gray-900 text-white text-[11px] font-medium px-3 py-1.5 rounded-md shadow-lg">
+                                  Weeks start on Monday
+                                  <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
+                                </div>
+                              )}
+                            </span>
+                          )}
+                        </div>
                         {!option.custom && (
                           <p className="text-xs text-gray-500 mt-0.5">
                             {(() => {
@@ -1042,7 +1088,6 @@ export default function AllOrdersPage() {
                           </p>
                         )}
                       </div>
-                      {isSelected && <span className="text-xs font-semibold" style={{ color: RESTAURANT_THEME.brand }}>Selected</span>}
                     </button>
                   )
                 })}
@@ -1123,7 +1168,7 @@ export default function AllOrdersPage() {
                 <h2 className="text-lg font-bold text-gray-900">Filters</h2>
                 <button
                   onClick={() => setShowFilterPopup(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded-full border border-gray-300 transition-colors flex items-center justify-center"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5 text-gray-900" />

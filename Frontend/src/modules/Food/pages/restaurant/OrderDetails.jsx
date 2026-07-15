@@ -78,7 +78,25 @@ export default function OrderDetails() {
         
         if (response.data?.success && response.data.data?.order) {
           const order = response.data.data.order
+          // Debug: log all cancel-related fields to find correct key
+          console.log('[OrderDetails] Raw order cancel fields:', {
+            status: order.status,
+            orderStatus: order.orderStatus,
+            cancellationReason: order.cancellationReason,
+            cancelReason: order.cancelReason,
+            reason: order.reason,
+            rejectedReason: order.rejectedReason,
+            cancelledBy: order.cancelledBy,
+            statusHistory: order.statusHistory,
+          })
           const orderStatusRaw = String(order.status || order.orderStatus || "").toLowerCase()
+          // Extract cancellation reason — also check statusHistory notes as reliable fallback
+          const cancellationReasonFromHistory = Array.isArray(order.statusHistory)
+            ? [...order.statusHistory].reverse().find(e =>
+                String(e?.to || '').toLowerCase().includes('cancel') ||
+                String(e?.to || '').toLowerCase().includes('reject')
+              )?.note || ''
+            : ''
           const pricing = order.pricing || {}
           const computedSubtotal = Array.isArray(order.items)
             ? order.items.reduce((sum, item) => {
@@ -223,16 +241,22 @@ export default function OrderDetails() {
             delivered: order.tracking?.delivered?.status || statusLower === "delivered"
           }
 
+          const formatStatus = (statusStr) => {
+            if (!statusStr) return '';
+            return statusStr.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+          };
+
           // Transform API order data to match component structure
           const transformedOrder = {
             id: order.orderId || order._id,
-            status: orderStatusRaw.toUpperCase() || 'PENDING',
+            status: formatStatus(orderStatusRaw.toUpperCase() || 'PENDING'),
             date: new Date(order.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
             time: new Date(order.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
             restaurant: restaurantName,
             address: fullAddress,
             customer: {
               name: customerName,
+              phone: order.phoneNumber || order.mobile || order.customer?.phone || order.userId?.phone || order.customerPhone || '',
               orderCount: order.userId?.orderCount || 1,
               location: fullAddress,
               distance: order.deliveryDistance ? `${order.deliveryDistance} km` : ''
@@ -271,7 +295,20 @@ export default function OrderDetails() {
             },
             deliveryPartnerId: order.deliveryPartnerId || order.dispatch?.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
-            reason: order.cancellationReason || '',
+            reason: (
+              order.cancellationReason ||
+              order.cancelReason ||
+              order.cancellation?.reason ||
+              order.cancellation?.note ||
+              order.cancelledByRestaurantReason ||
+              order.restaurantCancelReason ||
+              order.rejectedReason ||
+              order.reason ||
+              cancellationReasonFromHistory ||
+              (order.cancellation ? (order.cancellation.byRestaurant || order.cancellation.byUser ? 
+                (order.cancellation.byRestaurant?.reason || order.cancellation.byUser?.reason || '') : '') : '') ||
+              ''
+            ),
             timeline: (() => {
               const list = [
                 { 
@@ -321,9 +358,19 @@ export default function OrderDetails() {
                 }
                 list.push({ 
                   event: 'Cancelled', 
-                  timestamp: order.cancelledAt ? new Date(order.cancelledAt).toLocaleString('en-GB') : '', 
+                  timestamp: (order.cancelledAt || order.updatedAt) ? new Date(order.cancelledAt || order.updatedAt).toLocaleString('en-GB') : '', 
                   status: 'rejected', 
-                  reason: order.cancellationReason 
+                  reason: (
+                    order.cancellationReason ||
+                    order.cancelReason ||
+                    order.cancellation?.reason ||
+                    order.cancellation?.note ||
+                    order.cancelledByRestaurantReason ||
+                    order.restaurantCancelReason ||
+                    order.rejectedReason ||
+                    order.reason ||
+                    (order.cancellation?.byRestaurant?.reason || order.cancellation?.byUser?.reason || '')
+                  ) || ''
                 })
               } else {
                 list.push({ 
@@ -726,14 +773,13 @@ export default function OrderDetails() {
   }
 
   const getStatusColor = (status) => {
-    switch (status) {
-      case "REJECTED":
-      case "CANCELLED":
-        return "bg-red-700 text-white"
-      case "DELIVERED":
-        return "bg-green-600 text-white"
-      default:
-        return "bg-gray-600 text-white"
+    const s = String(status || '').toUpperCase()
+    if (s.includes("REJECTED") || s.includes("CANCEL")) {
+      return "bg-red-700 text-white"
+    } else if (s.includes("DELIVERED")) {
+      return "bg-green-600 text-white"
+    } else {
+      return "bg-gray-600 text-white"
     }
   }
 
@@ -802,10 +848,7 @@ export default function OrderDetails() {
             <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-base font-bold text-gray-900">Order details</h1>
-            <p className="text-xs text-gray-600 truncate">
-              ID: {orderData.id}, {orderData.restaurant?.substring(0, 20) || 'Restaurant'}...
-            </p>
+            <h1 className="text-base font-bold text-gray-900">Order Details</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -854,7 +897,7 @@ export default function OrderDetails() {
         <div className="bg-white rounded-lg p-4">
           {/* Status and Order ID Row */}
           <div className="flex items-start justify-between mb-3">
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex flex-col items-start gap-1">
               <span className={`px-2.5 py-1 rounded text-xs font-bold ${getStatusColor(orderData.status)}`}>
                 {orderData.status}
               </span>
@@ -864,7 +907,7 @@ export default function OrderDetails() {
 
           {/* Order ID */}
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-base font-bold text-gray-900">ID: {orderData.id}</span>
+            <span className="text-base font-bold text-gray-900">{orderData.id}</span>
             <button
               onClick={handleCopyOrderId}
               className="p-1 hover:bg-gray-100 rounded transition-colors"
@@ -875,43 +918,52 @@ export default function OrderDetails() {
           </div>
 
           {/* Restaurant Info */}
-          <p className="text-sm text-gray-900 mb-3">
-            {orderData.restaurant}, {orderData.address}
+          <p className="text-sm font-bold text-gray-900 mb-3">
+            {orderData.restaurant}
           </p>
 
           {/* Divider */}
           <div className="border-t border-gray-200 my-3"></div>
 
-          {/* Rejection Reason */}
-          {orderData.reason && (
-            <p className="text-sm text-red-600">{orderData.reason}</p>
-          )}
+          {/* Cancellation Reason */}
+          {(() => {
+            const isCancelledStatus = String(orderData.status || '').toLowerCase().includes('cancel') || String(orderData.status || '').toLowerCase().includes('reject')
+            if (!isCancelledStatus) return null
+            return (
+              <div className="bg-red-50 border border-red-100 rounded-lg p-3">
+                <p className="text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Cancellation Reason</p>
+                <p className="text-sm text-red-800">
+                  {orderData.reason && orderData.reason.trim() ? orderData.reason : 'No reason provided'}
+                </p>
+              </div>
+            )
+          })()}
         </div>
 
         {/* Customer Details Section */}
         <div>
-          <h2 className="text-base font-bold text-gray-900 mb-3">Customer details</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-3">Customer Details</h2>
           
           {/* Customer Card */}
-          <div className="bg-white rounded-lg p-4 gap-8 flex flex-col mb-3">
+          <div className="bg-white rounded-lg p-4 flex flex-col gap-3 mb-3">
+            {/* Name + Phone Row */}
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
                 <User className="w-5 h-5 text-gray-600" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900">{orderData.customer.name}</p>
+                {orderData.customer.phone && <p className="text-sm text-gray-700">{orderData.customer.phone}</p>}
                 <p className="text-xs text-gray-500 mt-0.5">{orderData.customer.orderCount} order with you</p>
               </div>
-
-              <hr className="border-gray-200 my-3" />
-              
             </div>
-               <div className="flex items-start gap-3">
-              <MapPin className="w-5 h-5 text-gray-600 shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">{orderData.customer.location}</p>
-              </div>
-              <p className="text-sm text-gray-600 shrink-0 mt-0.5">{orderData.customer.distance}</p>
+
+            <hr className="border-gray-100" />
+
+            {/* Address Row */}
+            <div className="flex items-start gap-3">
+              <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-gray-700 flex-1 leading-relaxed">{orderData.customer.location}</p>
             </div>
           </div>
 
@@ -919,7 +971,7 @@ export default function OrderDetails() {
 
         {/* Item Details Section */}
         <div>
-          <h2 className="text-base font-bold text-gray-900 mb-3">Item details</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-3">Item Details</h2>
           
           {orderData.items.map((item, index) => (
             <div key={index} className="bg-white rounded-lg p-4">
@@ -936,10 +988,9 @@ export default function OrderDetails() {
                     </p>
                     <p className="text-sm font-semibold text-gray-900">{formatMoney(item.price)}</p>
                   </div>
-                  {(item.type || getOrderItemVariantLabel(item)) && (
+                  {(getOrderItemVariantLabel(item)) && (
                     <div className="flex items-center gap-2 text-xs text-gray-500">
-                      {getOrderItemVariantLabel(item) ? <span>{getOrderItemVariantLabel(item)}</span> : null}
-                      {item.type ? <span>{item.type}</span> : null}
+                      <span>{getOrderItemVariantLabel(item)}</span>
                     </div>
                   )}
                 </div>
@@ -950,7 +1001,7 @@ export default function OrderDetails() {
 
         {/* Bill Details Section */}
         <div>
-          <h2 className="text-base font-bold text-gray-900 mb-3">Bill details</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-3">Bill Details</h2>
           
           <div className="bg-white  rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
@@ -1066,7 +1117,7 @@ export default function OrderDetails() {
 
         {/* Order Timeline Section */}
         <div>
-          <h2 className="text-base font-bold text-gray-900 mb-3">Order timeline</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-3">Order Timeline</h2>
           
           <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="relative">
