@@ -121,7 +121,7 @@ export default function ItemDetailsPage() {
    const isBasePriceValid = Number.isFinite(parsedBasePrice) && parsedBasePrice > 0;
   const nameError =
   !itemName.trim() ?
-  "Please enter an item name" :
+  "Item name is required" :
   null;
   const descriptionError =
   itemDescription.trim().length > 0 && itemDescription.trim().length < minDescriptionLength ?
@@ -142,7 +142,7 @@ export default function ItemDetailsPage() {
   const basePriceError =
   variants.length === 0 ? (
     !basePrice.trim() ?
-    "Please enter a base price" :
+    "Base price is required" :
     !isBasePriceValid ?
     "Please enter a base price greater than 0" :
     null
@@ -680,7 +680,7 @@ export default function ItemDetailsPage() {
     }));
 
     if (!itemName.trim()) {
-      toast.error("Please enter an item name");
+      toast.error("Item name is required");
       return;
     }
     if (itemDescription.trim() && itemDescription.trim().length < minDescriptionLength) {
@@ -1206,7 +1206,7 @@ export default function ItemDetailsPage() {
             </div>
             <div className="flex items-center justify-between mt-1">
               <span className={`text-xs ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "text-red-500" : "text-gray-500"}`}>
-                {shouldShowFieldError("itemName", itemName.length > 0) && nameError ? nameError : "Maximum 50 characters allowed"}
+                {shouldShowFieldError("itemName", itemName.length > 0) && nameError ? nameError : "Max 50 characters"}
               </span>
               <span className="text-xs text-gray-500">
                 {nameLength} / {maxNameLength}
@@ -1227,13 +1227,13 @@ export default function ItemDetailsPage() {
                 onBlur={() => setTouchedFields((prev) => ({ ...prev, itemDescription: true }))}
                 maxLength={maxDescriptionLength}
                 rows={4}
-                placeholder="Eg: Yummy veg paneer burger with a soft patty, veggies, cheese, and special sauce"
+                placeholder="E.g., Classic paneer burger with fresh veggies and signature sauce"
                 className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent resize-none ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "border-red-500" : "border-gray-300"}`} />
               
             </div>
             <div className="flex items-center justify-between mt-1">
               <span className={`text-xs ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "text-red-500" : "text-gray-500"}`}>
-                {shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? descriptionError : "Maximum 250 characters allowed"}
+                {shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? descriptionError : "Max 250 characters"}
               </span>
               <span className="text-xs text-gray-500">
                 {descriptionLength} / {maxDescriptionLength}
@@ -1302,7 +1302,7 @@ export default function ItemDetailsPage() {
                         e.target.value = e.target.value.replace(/[\u20B9\s]+/g, '');
                       }
                     }}
-                    placeholder="Enter price"
+                    placeholder="Enter Price"
                     maxLength={5}
                     className={`w-full pl-8 pr-12 py-3 border rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${shouldShowFieldError("basePrice", basePrice.length > 0) && basePriceError ? "border-red-500" : "border-gray-300"}`} />
                   
@@ -1314,7 +1314,7 @@ export default function ItemDetailsPage() {
                 </div> :
 
               <div className="rounded-lg border border-orange-100 bg-orange-50 px-3 py-2 text-sm text-orange-700">
-                  Customers will see the lowest variant price first.
+                  Menu displays lowest variant price by default.
                 </div>
               }
 
@@ -1322,7 +1322,7 @@ export default function ItemDetailsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-gray-900">Variants</p>
-                    <p className="text-xs text-gray-500">Optional. Add multiple names and prices like Half, Full, Small, Large.</p>
+                    <p className="text-xs text-gray-500">Base price applies unless variants (e.g., Half/Full) are added</p>
                   </div>
                   <button
                     type="button"
@@ -1419,7 +1419,7 @@ export default function ItemDetailsPage() {
                                       handleVariantChange(variant.localId, "price", cleanedValue);
                                     }}
                                     onBlur={() => setTouchedFields((prev) => ({ ...prev, [`variant-${variant.localId}-price`]: true }))}
-                                    placeholder="Enter price"
+                                    placeholder="Enter Price"
                                     maxLength={5}
                                     className={`w-full pl-8 pr-3 py-2 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${
                                       showPriceError || isDuplicatePrice ? "border-red-500 ring-2 ring-red-500/20" : "border-gray-300"
@@ -1471,7 +1471,7 @@ export default function ItemDetailsPage() {
                         : "border-gray-300"
                     }`}>
                     
-                    <option value="">Select timing</option>
+                    <option value="">Select Duration</option>
                     <option value="10-20 mins">10-20 mins</option>
                     <option value="20-25 mins">20-25 mins</option>
                     <option value="25-35 mins">25-35 mins</option>

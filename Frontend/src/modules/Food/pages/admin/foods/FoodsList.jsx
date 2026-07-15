@@ -1368,7 +1368,7 @@ export default function FoodsList() {
                   className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white disabled:bg-slate-100 disabled:text-slate-400" />
                 
                 {(foodForm.variants || []).length > 0 ?
-                <p className="mt-1 text-xs text-slate-500">Variants are active, so customers will see the lowest variant price as the starting price.</p> :
+                <p className="mt-1 text-xs text-slate-500">Menu displays lowest variant price by default.</p> :
                 null}
               </div>
               <div>
@@ -1408,7 +1408,7 @@ export default function FoodsList() {
                     onChange={(e) => setFoodForm((prev) => ({ ...prev, preparationTime: e.target.value }))}
                     className="w-full px-3 py-2.5 pr-10 border border-slate-300 rounded-lg text-sm bg-white appearance-none">
                     
-                    <option value="">Select preparation timing</option>
+                    <option value="">Select Duration</option>
                     <option value="5-10 mins">5-10 mins</option>
                     <option value="10-20 mins">10-20 mins</option>
                     <option value="20-25 mins">20-25 mins</option>
@@ -1462,7 +1462,7 @@ export default function FoodsList() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Variants</p>
-                  <p className="text-xs text-slate-500">Optional. Add multiple names and prices such as Half, Full, Small, or Large.</p>
+                  <p className="text-xs text-slate-500">Base price applies unless variants (e.g., Half/Full) are added</p>
                 </div>
                 <button
                   type="button"
@@ -1486,7 +1486,7 @@ export default function FoodsList() {
                               onChange={(e) => handleVariantChange(variant.id, "name", e.target.value)}
                               className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
-                              <option value="">Select variant</option>
+                              <option value="">Select Variant</option>
                               {["Full", "Half", "Small", "Medium", "Large"].map((opt) => (
                                 <option key={opt} value={opt}>
                                   {opt}

@@ -3416,7 +3416,7 @@ export default function RestaurantOnboarding() {
             maxLength={30}
           />
           {renderFieldMessage("featuredDish")}
-          <p className="text-[11px] text-gray-500 mt-1">Maximum 30 characters allowed</p>
+          <p className="text-[11px] text-gray-500 mt-1">Max 30 characters</p>
         </div>
 
         <div>
@@ -3429,7 +3429,7 @@ export default function RestaurantOnboarding() {
             maxLength={80}
           />
           <p className="text-[11px] text-gray-500 mt-1">
-            Maximum 80 characters allowed. Optional. Leave this blank if you do not want to highlight an offer.
+            Max 80 characters. Optional. Leave this blank if you do not want to highlight an offer.
           </p>
         </div>
 

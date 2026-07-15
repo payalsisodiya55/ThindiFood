@@ -544,7 +544,7 @@ export default function MenuCategoriesPage() {
                   placeholder="Enter category name"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900 text-slate-700 placeholder:text-slate-400" />
                   <div className="flex items-center justify-between mt-1 px-0.5">
-                    <span className="text-[10px] text-slate-500">Maximum 30 characters allowed</span>
+                    <span className="text-[10px] text-slate-500">Max 30 characters</span>
                     <span className="text-[10px] text-slate-500">{(formData.name || "").length} / 30</span>
                   </div>
                 
@@ -581,7 +581,7 @@ export default function MenuCategoriesPage() {
                   placeholder="Examples: Starters, Desserts, Drinks"
                   className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-slate-900 text-slate-700 placeholder:text-slate-400" />
                   <div className="flex items-center justify-between mt-1 px-0.5">
-                    <span className="text-[10px] text-slate-500">Maximum 30 characters allowed</span>
+                    <span className="text-[10px] text-slate-500">Max 30 characters</span>
                     <span className="text-[10px] text-slate-500">{(formData.type || "").length} / 30</span>
                   </div>
                 
