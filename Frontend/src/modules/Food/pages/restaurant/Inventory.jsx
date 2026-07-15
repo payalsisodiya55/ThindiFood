@@ -2120,7 +2120,7 @@ export default function Inventory() {
                         maxLength={50}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:outline-none"
                         style={{ "--restaurant-brand": RESTAURANT_THEME.brand }}
-                        placeholder="e.g., Coke, Chips"
+                        placeholder="E.g. Coke, Chips"
                       />
                     </div>
                     <div>

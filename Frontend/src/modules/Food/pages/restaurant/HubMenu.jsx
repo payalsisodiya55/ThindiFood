@@ -2253,7 +2253,7 @@ export default function HubMenu() {
                   type="text"
                   value={addonName}
                   onChange={(e) => setAddonName(e.target.value)}
-                  placeholder="e.g., Coke, Chips, Sauce"
+                  placeholder="E.g. Coke, Chips, Sauce"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent" />
                 
                 </div>

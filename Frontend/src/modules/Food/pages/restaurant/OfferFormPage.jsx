@@ -372,7 +372,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 <Input
                   value={form.title}
                   onChange={(e) => setField("title", e.target.value)}
-                  placeholder="e.g. Combo Saver"
+                  placeholder="E.g. Combo Saver"
                   className="h-12"
                 />
               </div>
@@ -537,7 +537,7 @@ export default function OfferFormPage({ mode = "create" }) {
                     const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                     setField("discountValue", finalVal)
                   }}
-                  placeholder={isPercentage ? "e.g. 10" : "e.g. 50"}
+                  placeholder={isPercentage ? "E.g. 10" : "E.g. 50"}
                   className="h-12"
                 />
               </div>
@@ -558,7 +558,7 @@ export default function OfferFormPage({ mode = "create" }) {
                       const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                       setField("maxDiscount", finalVal)
                     }}
-                    placeholder="e.g. 100"
+                    placeholder="E.g. 100"
                     className="h-12"
                   />
                 </div>
@@ -574,7 +574,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   value={form.maxItemsPerOrder}
                   maxLength={6}
                   onChange={(e) => setField("maxItemsPerOrder", e.target.value.replace(/\D/g, ""))}
-                  placeholder="e.g. 5"
+                  placeholder="E.g. 5"
                   className="h-12"
                 />
                 <p className="mt-1 text-xs text-slate-500">Leave empty for unlimited. Minimum 1 if set.</p>
@@ -588,7 +588,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   value={form.perUserRedeemLimit}
                   maxLength={6}
                   onChange={(e) => setField("perUserRedeemLimit", e.target.value.replace(/\D/g, ""))}
-                  placeholder="e.g. 2"
+                  placeholder="E.g. 2"
                   className="h-12"
                 />
                 <p className="mt-1 text-xs text-slate-500">Leave empty for unlimited. Minimum 1 if set.</p>

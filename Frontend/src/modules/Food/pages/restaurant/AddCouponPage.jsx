@@ -346,7 +346,7 @@ export default function AddCouponPage(props = {}) {
                   <Input
                     value={form.couponCode}
                     onChange={(e) => setField("couponCode", e.target.value.slice(0, 15).toUpperCase())}
-                    placeholder="e.g. SAVE50"
+                    placeholder="E.g. SAVE50"
                     maxLength={15}
                     className="h-12"
                   />
@@ -397,7 +397,7 @@ export default function AddCouponPage(props = {}) {
                     const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                     setField("discountValue", finalVal)
                   }}
-                  placeholder="e.g. 20"
+                  placeholder="E.g. 20"
                   className="h-12"
                 />
               </div>
@@ -417,7 +417,7 @@ export default function AddCouponPage(props = {}) {
                     const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                     setField("maxDiscount", finalVal)
                   }}
-                  placeholder="e.g. 150"
+                  placeholder="E.g. 150"
                   disabled={!isPercentage}
                   className="h-12 disabled:bg-slate-100"
                 />
@@ -436,7 +436,7 @@ export default function AddCouponPage(props = {}) {
                     const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                     setField("minOrderValue", finalVal)
                   }}
-                  placeholder="e.g. 299"
+                  placeholder="E.g. 299"
                   className="h-12"
                 />
               </div>

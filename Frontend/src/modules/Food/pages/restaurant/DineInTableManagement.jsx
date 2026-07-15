@@ -546,7 +546,7 @@ const DineInTableManagement = () => {
                                             type="text" 
                                             value={newTable.tableNumber}
                                             onChange={(e) => setNewTable({...newTable, tableNumber: e.target.value})}
-                                            placeholder="e.g. 1, A1, VIP-2"
+                                            placeholder="E.g. 1, A1, VIP-2"
                                             maxLength={10}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
@@ -557,7 +557,7 @@ const DineInTableManagement = () => {
                                             type="text" 
                                             value={newTable.tableLabel}
                                             onChange={(e) => setNewTable({...newTable, tableLabel: e.target.value})}
-                                            placeholder="e.g. Window Side, Rooftop"
+                                            placeholder="E.g. Window Side, Rooftop"
                                             maxLength={25}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
@@ -616,7 +616,7 @@ const DineInTableManagement = () => {
                                             type="text"
                                             value={editTableForm.tableNumber}
                                             onChange={(e) => setEditTableForm({ ...editTableForm, tableNumber: e.target.value })}
-                                            placeholder="e.g. 1, A1, VIP-2"
+                                            placeholder="E.g. 1, A1, VIP-2"
                                             maxLength={10}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
@@ -627,7 +627,7 @@ const DineInTableManagement = () => {
                                             type="text"
                                             value={editTableForm.tableLabel}
                                             onChange={(e) => setEditTableForm({ ...editTableForm, tableLabel: e.target.value })}
-                                            placeholder="e.g. Window Side, Rooftop"
+                                            placeholder="E.g. Window Side, Rooftop"
                                             maxLength={25}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />

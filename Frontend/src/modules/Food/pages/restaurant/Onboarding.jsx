@@ -3412,7 +3412,7 @@ export default function RestaurantOnboarding() {
             }}
             onBlur={() => handleFieldBlur("featuredDish")}
             className={getFieldClassName("featuredDish", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-            placeholder="e.g., Butter Chicken Special"
+            placeholder="E.g. Butter Chicken Special"
             maxLength={30}
           />
           {renderFieldMessage("featuredDish")}
@@ -3425,7 +3425,7 @@ export default function RestaurantOnboarding() {
             value={step4.offer || ""}
             onChange={(e) => setStep4({ ...step4, offer: e.target.value.slice(0, 80) })}
             className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
-            placeholder="e.g., Flat 50 Rs. OFF on Order Above Rs.199"
+            placeholder="E.g. Flat 50 Rs. OFF on Order Above Rs.199"
             maxLength={80}
           />
           <p className="text-[11px] text-gray-500 mt-1">

@@ -1462,7 +1462,7 @@ export default function FoodsList() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-slate-900">Variants</p>
-                  <p className="text-xs text-slate-500">Base price applies unless variants (e.g., Half/Full) are added</p>
+                  <p className="text-xs text-slate-500">Base price applies unless variants (E.g. Half/Full) are added</p>
                 </div>
                 <button
                   type="button"

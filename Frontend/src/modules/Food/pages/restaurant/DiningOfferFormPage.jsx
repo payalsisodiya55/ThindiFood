@@ -307,7 +307,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                 <label className="mb-1 block text-sm font-medium text-slate-800">
                   Title <span className="text-red-500 font-bold">*</span>
                 </label>
-                <Input value={form.title} onChange={(e) => setField("title", e.target.value)} placeholder="e.g. Weekend Dining Special" className="h-12" />
+                <Input value={form.title} onChange={(e) => setField("title", e.target.value)} placeholder="E.g. Weekend Dining Special" className="h-12" />
               </div>
 
               <div className="md:col-span-2">
@@ -348,7 +348,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                     const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                     setField("discountValue", finalVal)
                   }}
-                  placeholder={isPercentage ? "e.g. 10" : "e.g. 50"}
+                  placeholder={isPercentage ? "E.g. 10" : "E.g. 50"}
                   className="h-12"
                 />
               </div>
@@ -367,7 +367,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                       const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                       setField("maxDiscount", finalVal)
                     }}
-                    placeholder="e.g. 100"
+                    placeholder="E.g. 100"
                     className="h-12"
                   />
                 </div>
@@ -388,7 +388,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                     const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
                     setField("minBillAmount", finalVal)
                   }}
-                  placeholder="e.g. 500"
+                  placeholder="E.g. 500"
                   className="h-12"
                 />
               </div>

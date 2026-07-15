@@ -1201,7 +1201,7 @@ export default function ItemDetailsPage() {
                 onBlur={() => setTouchedFields((prev) => ({ ...prev, itemName: true }))}
                 maxLength={maxNameLength}
                 className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent ${shouldShowFieldError("itemName", itemName.length > 0) && nameError ? "border-red-500" : "border-gray-300"}`}
-                placeholder="e.g., Paneer Butter Masala" />
+                placeholder="E.g. Paneer Butter Masala" />
               
             </div>
             <div className="flex items-center justify-between mt-1">
@@ -1227,7 +1227,7 @@ export default function ItemDetailsPage() {
                 onBlur={() => setTouchedFields((prev) => ({ ...prev, itemDescription: true }))}
                 maxLength={maxDescriptionLength}
                 rows={4}
-                placeholder="E.g., Classic paneer burger with fresh veggies and signature sauce"
+                placeholder="E.g. Classic paneer burger with fresh veggies and signature sauce"
                 className={`w-full px-4 py-3 pr-12 border rounded-lg text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--restaurant-brand)] focus:border-transparent resize-none ${shouldShowFieldError("itemDescription", itemDescription.length > 0) && descriptionError ? "border-red-500" : "border-gray-300"}`} />
               
             </div>
@@ -1322,7 +1322,7 @@ export default function ItemDetailsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-gray-900">Variants</p>
-                    <p className="text-xs text-gray-500">Base price applies unless variants (e.g., Half/Full) are added</p>
+                    <p className="text-xs text-gray-500">Base price applies unless variants (E.g. Half/Full) are added</p>
                   </div>
                   <button
                     type="button"

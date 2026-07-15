@@ -2509,7 +2509,7 @@ export default function OrderTracking() {
               <Textarea
                 value={cancellationReason}
                 onChange={(e) => setCancellationReason(e.target.value)}
-                placeholder="e.g., Changed my mind, Wrong address, etc."
+                placeholder="E.g. Changed my mind, Wrong address, etc."
                 className="w-full min-h-[100px] resize-none border-2 border-gray-300 dark:border-gray-700 rounded-lg px-4 py-3 text-sm text-gray-900 dark:text-white bg-white dark:bg-[#111111] placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500 focus:ring-2 focus:ring-red-200 dark:focus:ring-red-950 focus:outline-none transition-colors disabled:bg-gray-100 dark:disabled:bg-[#161616] disabled:cursor-not-allowed disabled:border-gray-200 dark:disabled:border-gray-800"
                 disabled={isCancelling}
               />
