@@ -1470,7 +1470,7 @@ export default function FoodsList() {
                   className="inline-flex items-center gap-1 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50">
                   
                   <Plus className="w-3.5 h-3.5" />
-                  Add variant
+                  Add Variant
                 </button>
               </div>
               {(foodForm.variants || []).length ?

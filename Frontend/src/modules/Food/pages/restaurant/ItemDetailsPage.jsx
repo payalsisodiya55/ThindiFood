@@ -903,7 +903,7 @@ export default function ItemDetailsPage() {
       const imageCount = allImageUrls.length;
       toast.success(
         isNewItem ?
-        `Item created successfully with ${imageCount} image(s)` :
+        "New menu item saved successfully." :
         `Item updated and sent for approval again with ${imageCount} image(s)`
       );
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -934,34 +934,6 @@ export default function ItemDetailsPage() {
   };
 
   const handleAddVariant = () => {
-    setTouchedFields((prev) => ({
-      ...prev,
-      itemName: true,
-      itemDescription: true,
-      category: true,
-      image: true,
-      basePrice: true
-    }));
-    if (!itemName.trim()) {
-      toast.error("Please enter item name before adding variants");
-      return;
-    }
-    if (itemDescription.trim() && itemDescription.trim().length < minDescriptionLength) {
-      toast.error("Please enter at least 5 characters in description before adding variants");
-      return;
-    }
-    if (!selectedCategoryId) {
-      toast.error("Please select category before adding variants");
-      return;
-    }
-    if (!images.some((img) => typeof img === "string" && String(img).trim() !== "")) {
-      toast.error("Please add item image before adding variants");
-      return;
-    }
-    if (variants.length === 0 && !isBasePriceValid) {
-      toast.error("Please enter a valid base price before adding variants");
-      return;
-    }
     if (hasIncompleteVariant) {
       toast.error("Please complete the current variant before adding another one");
       return;
@@ -1330,7 +1302,7 @@ export default function ItemDetailsPage() {
                     className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${hasIncompleteVariant ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100" : "border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100"}`}>
                     
                     <Plus className="w-3.5 h-3.5" />
-                    Add variant
+                    Add Variant
                   </button>
                 </div>
 
