@@ -6,7 +6,7 @@ import { isModuleAuthenticated } from "@food/utils/auth"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { RED } from "@food/constants/color"
 import {
-    ArrowLeft,
+  ArrowLeft,
   Bookmark,
   CheckCircle2,
   IndianRupee,
@@ -17,6 +17,9 @@ import {
   Ticket,
   UtensilsCrossed,
   X,
+  ChevronDown,
+  ChevronUp,
+  Clock
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { toast } from "sonner"
@@ -27,6 +30,36 @@ const DINING_MEAL_LABELS = {
   breakfast: "Breakfast",
   lunch: "Lunch",
   dinner: "Dinner",
+}
+
+const WEEKDAYS = [
+  { value: 1, label: "Mon" },
+  { value: 2, label: "Tue" },
+  { value: 3, label: "Wed" },
+  { value: 4, label: "Thu" },
+  { value: 5, label: "Fri" },
+  { value: 6, label: "Sat" },
+  { value: 0, label: "Sun" },
+]
+
+const getScheduleDisplayLabel = (schedule) => {
+  if (!schedule) return "All Days"
+  let daysLabel = "All Days"
+  if (schedule.mode === "weekdays") daysLabel = "Weekdays (Mon-Fri)"
+  else if (schedule.mode === "weekends") daysLabel = "Weekends (Sat-Sun)"
+  else if (schedule.mode === "custom") {
+    const dayNames = (schedule.customDays || [])
+      .map((d) => WEEKDAYS.find((wd) => wd.value === d)?.label || "")
+      .filter(Boolean)
+    daysLabel = dayNames.length > 0 ? dayNames.join(", ") : "Custom Days"
+  }
+
+  const happyHours = schedule.happyHours || []
+  if (happyHours.length > 0) {
+    const timeSlots = happyHours.map((slot) => `${slot.start} - ${slot.end}`).join(", ")
+    return `${daysLabel} (${timeSlots})`
+  }
+  return daysLabel
 }
 
 const normalizeDiningMealTypes = (mealTypes, isEnabled = true) => {
@@ -54,7 +87,6 @@ const buildImageList = (restaurant) => {
     restaurant?.coverImage?.url,
     restaurant?.coverImage,
     ...(Array.isArray(restaurant?.coverImages) ? restaurant.coverImages.map((image) => image?.url || image) : []),
-    // removed menuImages
     restaurant?.profileImage?.url,
     restaurant?.profileImage,
   ]
@@ -197,6 +229,7 @@ export default function DiningRestaurantDetails() {
   const [activeTab, setActiveTab] = useState("prebook")
   const [diningOffer, setDiningOffer] = useState(null)
   const [outletTimings, setOutletTimings] = useState(location.state?.restaurant?.outletTimings || null)
+  const [isTcOpen, setIsTcOpen] = useState(false)
 
   useEffect(() => {
     const fetchRestaurantData = async () => {
@@ -500,7 +533,7 @@ export default function DiningRestaurantDetails() {
           <div className="absolute left-0 right-0 top-0 z-10 flex items-center justify-between px-3 pt-3">
             <button
               onClick={handleBack}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#51586a]/75 text-white backdrop-blur-md"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#51586a]/75 text-white backdrop-blur-md cursor-pointer"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
@@ -508,7 +541,7 @@ export default function DiningRestaurantDetails() {
             <div className="flex items-center gap-2">
               <button
                 onClick={handleToggleFavorite}
-                className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-colors ${
+                className={`flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-md transition-colors cursor-pointer ${
                   favorite
                     ? "bg-[#e2281b] text-white"
                     : "bg-[#51586a]/75 text-white"
@@ -557,7 +590,7 @@ export default function DiningRestaurantDetails() {
             <button
               onClick={handleOpenBookingSheet}
               disabled={!isDiningAvailable}
-              className={`flex h-[52px] items-center justify-center gap-2 rounded-full border text-[16px] font-bold transition-all active:scale-[0.98] ${
+              className={`flex h-[52px] items-center justify-center gap-2 rounded-full border text-[16px] font-bold transition-all active:scale-[0.98] cursor-pointer ${
                 isDiningAvailable
                   ? "border-[#e2281b]/35 bg-[#e2281b]/6 hover:bg-[#e2281b]/12 text-[#e2281b] shadow-[0_8px_24px_rgba(226,40,27,0.06)]"
                   : "cursor-not-allowed border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-600"
@@ -587,6 +620,12 @@ export default function DiningRestaurantDetails() {
                   <p className="mt-1 text-[14px] font-medium text-red-800 dark:text-red-400">
                     {offerDescription || (offerMinBillAmount > 0 ? `on bills above ${"\u20B9"}${offerMinBillAmount}` : "on your dining bill")}
                   </p>
+                  {diningOffer.schedule && (
+                    <div className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-red-700 dark:text-red-400/90 font-semibold uppercase tracking-wide">
+                      <Clock className="h-3 w-3" />
+                      <span>{getScheduleDisplayLabel(diningOffer.schedule)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="rounded-full bg-red-100 dark:bg-red-950/40 p-2 text-red-600 dark:text-red-400">
                   <Percent className="h-5 w-5" />
@@ -607,7 +646,7 @@ export default function DiningRestaurantDetails() {
                   setActiveTab(tab.id)
                   scrollToSection(tab.target)
                 }}
-                className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
+                className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors cursor-pointer ${
                   activeTab === tab.id
                     ? "bg-white dark:bg-[#1a1a1a] text-[#2a2018] dark:text-white"
                     : "border-[#ece9e1] dark:border-[#222222] bg-[#fafafa] dark:bg-[#151515] text-[#8b8881] dark:text-[#a0a0a0]"
@@ -629,23 +668,53 @@ export default function DiningRestaurantDetails() {
           </div>
 
           {diningOffer ? (
-            <div className="mt-3 overflow-hidden rounded-[18px] text-white shadow-[0_10px_26px_rgba(226,40,27,0.2)]" style={{ background: `linear-gradient(135deg, ${RED}, #b31d14)` }}>
-              <div className="flex items-start justify-between px-4 pb-3 pt-4">
-                <div>
-                  <p className="text-[28px] font-black leading-none">{offerHeadline}</p>
-                  <p className="mt-2 text-[14px] text-white/80">{offerDescription || diningOffer?.title || "Dining offer"}</p>
+            <div className="mt-3 space-y-3">
+              <div className="overflow-hidden rounded-[18px] text-white shadow-[0_10px_26px_rgba(226,40,27,0.2)]" style={{ background: `linear-gradient(135deg, ${RED}, #b31d14)` }}>
+                <div className="flex items-start justify-between px-4 pb-3 pt-4">
+                  <div>
+                    <p className="text-[28px] font-black leading-none">{offerHeadline}</p>
+                    <p className="mt-2 text-[14px] text-white/80">{offerDescription || diningOffer?.title || "Dining offer"}</p>
+                    {diningOffer.schedule && (
+                      <div className="mt-2.5 inline-flex items-center gap-1 rounded bg-black/25 px-2 py-0.5 text-[11px] font-semibold tracking-wide text-white/90">
+                        <Clock className="h-3 w-3" />
+                        <span>Schedule: {getScheduleDisplayLabel(diningOffer.schedule)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleOpenBookingSheet}
+                    disabled={!isDiningAvailable}
+                    className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm disabled:opacity-60 cursor-pointer hover:bg-black/60 transition-all shrink-0"
+                  >
+                    Book now
+                  </button>
                 </div>
-                <button
-                  onClick={handleOpenBookingSheet}
-                  disabled={!isDiningAvailable}
-                  className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-semibold text-white backdrop-blur-sm disabled:opacity-60"
-                >
-                  Book now
-                </button>
+                <div className="border-t border-white/10 px-4 py-2 text-center text-[12px] text-white/75">
+                  {offerMinBillAmount > 0 ? `Valid on bills above ${"\u20B9"}${offerMinBillAmount}` : "Valid on your dining bill"}
+                </div>
               </div>
-              <div className="border-t border-white/10 px-4 py-2 text-center text-[12px] text-white/75">
-                {offerMinBillAmount > 0 ? `Valid on bills above ${"\u20B9"}${offerMinBillAmount}` : "Valid on your dining bill"}
-              </div>
+
+              {/* Collapsible Terms and Conditions */}
+              {diningOffer.termsAndConditions && (
+                <div className="rounded-[18px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#151515] overflow-hidden">
+                  <button
+                    onClick={() => setIsTcOpen(!isTcOpen)}
+                    className="flex w-full items-center justify-between px-4 py-3.5 text-left text-sm font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-[#1a1a1a] transition-all cursor-pointer"
+                  >
+                    <span>Terms & Conditions</span>
+                    {isTcOpen ? (
+                      <ChevronUp className="h-4 w-4 text-slate-500" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-slate-500" />
+                    )}
+                  </button>
+                  {isTcOpen && (
+                    <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-3 text-xs text-slate-600 dark:text-slate-400 font-sans leading-relaxed whitespace-pre-line animate-in fade-in duration-100">
+                      {diningOffer.termsAndConditions}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="mt-3 rounded-[18px] border border-[#efe4dc] dark:border-[#222222] bg-white dark:bg-[#1a1a1a] px-4 py-4 text-[14px] text-[#7f6f63] dark:text-[#a0a0a0]">
@@ -723,8 +792,6 @@ export default function DiningRestaurantDetails() {
               </div>
             </div>
 
-
-
             <div className="mt-5 border-t border-[#e8e8ef] dark:border-[#222222] pt-4">
               <h3 className="text-[20px] font-semibold text-[#23180f] dark:text-white">Facilities</h3>
               <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3">
@@ -745,7 +812,7 @@ export default function DiningRestaurantDetails() {
           <Button
             onClick={handleOpenBookingSheet}
             disabled={!isDiningAvailable}
-            className={`h-12 w-full rounded-2xl border text-[17px] font-bold transition-all active:scale-[0.98] ${
+            className={`h-12 w-full rounded-2xl border text-[17px] font-bold transition-all active:scale-[0.98] cursor-pointer ${
               isDiningAvailable
                 ? "border-[#e2281b]/35 bg-[#e2281b]/6 hover:bg-[#e2281b]/12 text-[#e2281b]"
                 : "cursor-not-allowed border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#1a1a1a] text-gray-400 dark:text-gray-600"
@@ -760,11 +827,11 @@ export default function DiningRestaurantDetails() {
         <div className="fixed inset-0 z-40 flex items-end md:items-center justify-center">
           <button
             aria-label="Close booking sheet"
-            className="absolute inset-0 bg-black/35"
+            className="absolute inset-0 bg-black/35 cursor-pointer"
             onClick={() => setIsBookingSheetOpen(false)}
           />
 
-          <div className="relative w-full max-w-md rounded-t-[28px] md:rounded-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)] md:shadow-[0_20px_60px_rgba(15,23,42,0.25)] z-50 md:mx-4">
+          <div className="relative w-full max-w-md rounded-t-[28px] md:rounded-[28px] bg-white dark:bg-[#1a1a1a] px-4 pb-6 pt-4 shadow-[0_-20px_60px_rgba(15,23,42,0.18)] md:shadow-[0_20px_60px_rgba(15,23,42,0.25)] z-50 md:mx-4 animate-in slide-in-from-bottom duration-250">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-xl font-black text-[#23180f] dark:text-white">Select number of guests</h3>
@@ -772,7 +839,7 @@ export default function DiningRestaurantDetails() {
               </div>
               <button
                 onClick={() => setIsBookingSheetOpen(false)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] dark:bg-[#2b2b2b] text-[#5b5b5b] dark:text-[#a0a0a0]"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#f5f5f5] dark:bg-[#2b2b2b] text-[#5b5b5b] dark:text-[#a0a0a0] cursor-pointer hover:bg-slate-200 dark:hover:bg-[#3b3b3b]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -783,7 +850,7 @@ export default function DiningRestaurantDetails() {
                 <button
                   key={`sheet-${count}`}
                   onClick={() => setSelectedGuests(count)}
-                  className={`rounded-2xl border px-3 py-4 text-sm font-bold transition-colors ${
+                  className={`rounded-2xl border px-3 py-4 text-sm font-bold transition-colors cursor-pointer ${
                     selectedGuests === count
                       ? "bg-red-50 dark:bg-[#2d1215]"
                       : "border-[#ece7de] dark:border-[#2b2b2b] bg-white dark:bg-[#252525] text-[#23180f] dark:text-white"
@@ -797,7 +864,7 @@ export default function DiningRestaurantDetails() {
 
             <Button
               onClick={handleContinueBooking}
-              className="mt-6 h-12 w-full rounded-2xl text-base font-bold text-white transition-opacity hover:opacity-90"
+              className="mt-6 h-12 w-full rounded-2xl text-base font-bold text-white transition-opacity hover:opacity-90 cursor-pointer"
               style={{ backgroundColor: RED }}
             >
               Continue

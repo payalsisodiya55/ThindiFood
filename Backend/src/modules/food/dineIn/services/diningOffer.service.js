@@ -29,6 +29,9 @@ const normalizeOffer = (doc) => {
         _id: String(obj._id),
         restaurantId: obj.restaurantId ? String(obj.restaurantId) : null,
         createdById: obj.createdById ? String(obj.createdById) : null,
+        // Ensure schedule always present in API responses
+        schedule: obj.schedule || { mode: 'all_days', customDays: [], happyHours: [] },
+        termsAndConditions: obj.termsAndConditions || '',
     };
 };
 
@@ -37,6 +40,172 @@ const toDateOrNull = (value) => {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? null : date;
 };
+
+const toOfferBoundaryDate = (value, boundary = 'start') => {
+    if (!value) return null;
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        const normalized = new Date(value);
+        if (boundary === 'end') {
+            normalized.setHours(23, 59, 59, 999);
+        } else {
+            normalized.setHours(0, 0, 0, 0);
+        }
+        return normalized;
+    }
+
+    const normalizedValue = String(value).trim();
+    const dateParts = normalizedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateParts) {
+        const [, year, month, day] = dateParts;
+        return boundary === 'end'
+            ? new Date(Number(year), Number(month) - 1, Number(day), 23, 59, 59, 999)
+            : new Date(Number(year), Number(month) - 1, Number(day), 0, 0, 0, 0);
+    }
+
+    const parsed = new Date(normalizedValue);
+    if (Number.isNaN(parsed.getTime())) return null;
+    if (boundary === 'end') {
+        parsed.setHours(23, 59, 59, 999);
+    } else {
+        parsed.setHours(0, 0, 0, 0);
+    }
+    return parsed;
+};
+
+// ─── Schedule helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Parse 'HH:MM' string into total minutes since midnight.
+ * Returns NaN for invalid input.
+ */
+const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== 'string') return NaN;
+    const [h, m] = timeStr.split(':').map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) return NaN;
+    return h * 60 + m;
+};
+
+/**
+ * Validate and normalize a schedule object from request payload.
+ * Throws ValidationError on invalid input.
+ */
+const normalizeSchedulePayload = (rawSchedule) => {
+    if (!rawSchedule || typeof rawSchedule !== 'object') {
+        return { mode: 'all_days', customDays: [], happyHours: [] };
+    }
+
+    const VALID_MODES = ['all_days', 'weekdays', 'weekends', 'custom'];
+    const mode = VALID_MODES.includes(rawSchedule.mode) ? rawSchedule.mode : 'all_days';
+
+    // Validate customDays
+    let customDays = [];
+    if (mode === 'custom') {
+        const rawDays = Array.isArray(rawSchedule.customDays) ? rawSchedule.customDays : [];
+        customDays = [...new Set(rawDays.map(Number).filter((d) => Number.isFinite(d) && d >= 0 && d <= 6))];
+        if (customDays.length === 0) {
+            throw new ValidationError('Custom schedule requires at least one selected day');
+        }
+    }
+
+    // Validate happyHours
+    const rawHours = Array.isArray(rawSchedule.happyHours) ? rawSchedule.happyHours : [];
+    const happyHours = rawHours
+        .filter((slot) => slot && typeof slot === 'object')
+        .map((slot) => ({
+            start: String(slot.start || '').trim(),
+            end: String(slot.end || '').trim(),
+        }));
+
+    for (const slot of happyHours) {
+        const startMins = parseTimeToMinutes(slot.start);
+        const endMins = parseTimeToMinutes(slot.end);
+        if (Number.isNaN(startMins) || Number.isNaN(endMins)) {
+            throw new ValidationError('Happy hour times must be in HH:MM format (e.g. 15:00)');
+        }
+        if (endMins <= startMins) {
+            throw new ValidationError(`Happy hour slot ${slot.start}–${slot.end}: end time must be after start time`);
+        }
+    }
+
+    // Check for overlapping slots
+    const sorted = [...happyHours].sort((a, b) => parseTimeToMinutes(a.start) - parseTimeToMinutes(b.start));
+    for (let i = 1; i < sorted.length; i++) {
+        if (parseTimeToMinutes(sorted[i].start) < parseTimeToMinutes(sorted[i - 1].end)) {
+            throw new ValidationError(
+                `Happy hour slots overlap: ${sorted[i - 1].start}–${sorted[i - 1].end} and ${sorted[i].start}–${sorted[i].end}`
+            );
+        }
+    }
+
+    return { mode, customDays, happyHours };
+};
+
+const isDateAllowedBySchedule = (date, schedule) => {
+    if (!date || !schedule) return true;
+    const day = date.getDay();
+    if (schedule.mode === 'all_days') return true;
+    if (schedule.mode === 'weekdays') return day >= 1 && day <= 5;
+    if (schedule.mode === 'weekends') return day === 0 || day === 6;
+    if (schedule.mode === 'custom') {
+        const days = Array.isArray(schedule.customDays) ? schedule.customDays : [];
+        return days.includes(day);
+    }
+    return true;
+};
+
+const dateRangeIncludesApplicableScheduleDay = (startDate, endDate, schedule) => {
+    if (!startDate || !endDate || !schedule) return false;
+    const cursor = new Date(startDate);
+    cursor.setHours(0, 0, 0, 0);
+    const limit = new Date(endDate);
+    limit.setHours(0, 0, 0, 0);
+
+    while (cursor.getTime() <= limit.getTime()) {
+        if (isDateAllowedBySchedule(cursor, schedule)) return true;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return false;
+};
+
+const getScheduleWindowLabel = (schedule) => {
+    if (!schedule) return 'selected day(s)';
+    if (schedule.mode === 'weekdays') return 'weekday(s)';
+    if (schedule.mode === 'weekends') return 'weekend day(s)';
+    if (schedule.mode === 'custom') return 'selected custom day(s)';
+    return 'selected day(s)';
+};
+
+/**
+ * Return true if the offer's schedule allows the given moment (defaults to now).
+ */
+const isOfferActiveForSchedule = (offer, now = new Date()) => {
+    const schedule = offer?.schedule;
+    if (!schedule || schedule.mode === 'all_days') return true;
+
+    const dayOfWeek = now.getDay(); // 0=Sun … 6=Sat
+
+    if (schedule.mode === 'weekdays' && (dayOfWeek === 0 || dayOfWeek === 6)) return false;
+    if (schedule.mode === 'weekends' && dayOfWeek >= 1 && dayOfWeek <= 5) return false;
+    if (schedule.mode === 'custom') {
+        const days = Array.isArray(schedule.customDays) ? schedule.customDays : [];
+        if (!days.includes(dayOfWeek)) return false;
+    }
+
+    // Check happy hours (if any configured)
+    const happyHours = Array.isArray(schedule.happyHours) ? schedule.happyHours : [];
+    if (happyHours.length === 0) return true;
+
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    return happyHours.some((slot) => {
+        const startMins = parseTimeToMinutes(slot.start);
+        const endMins = parseTimeToMinutes(slot.end);
+        if (Number.isNaN(startMins) || Number.isNaN(endMins)) return false;
+        return currentMins >= startMins && currentMins < endMins;
+    });
+};
+
+// ─── Restaurant helpers ───────────────────────────────────────────────────────
 
 const getRestaurantForOffer = async (restaurantId) => {
     const rid = ensureObjectId(restaurantId, 'Invalid restaurant id');
@@ -88,14 +257,23 @@ const buildOfferPayload = (payload, { restaurantId, restaurantName, fundedBy, cr
     status,
     approvalStatus,
     rejectionReason,
-    startDate: toDateOrNull(payload.startDate),
-    endDate: toDateOrNull(payload.endDate),
+    startDate: toOfferBoundaryDate(payload.startDate, 'start'),
+    endDate: toOfferBoundaryDate(payload.endDate, 'end'),
     priority: payload.priority !== undefined ? Number(payload.priority) || 0 : 0,
+    // ─── NEW fields ───────────────────────────────────────────────────────────
+    schedule: normalizeSchedulePayload(payload.schedule),
+    termsAndConditions: String(payload.termsAndConditions || '').trim(),
 });
 
 const validateOfferPayload = (payload) => {
     if (!String(payload.title || '').trim()) {
         throw new ValidationError('Title is required');
+    }
+    if (String(payload.title || '').trim().length > 100) {
+        throw new ValidationError('Title cannot exceed 100 characters');
+    }
+    if (payload.description && String(payload.description).trim().length > 500) {
+        throw new ValidationError('Description cannot exceed 500 characters');
     }
     if (!Number.isFinite(Number(payload.discountValue)) || Number(payload.discountValue) <= 0) {
         throw new ValidationError('Discount value must be greater than 0');
@@ -119,13 +297,33 @@ const validateOfferPayload = (payload) => {
             throw new ValidationError('Per user limit must be at least 1');
         }
     }
+    if (payload.termsAndConditions && String(payload.termsAndConditions).trim().length > 2000) {
+        throw new ValidationError('Terms and conditions cannot exceed 2000 characters');
+    }
 
-    const startDate = toDateOrNull(payload.startDate);
-    const endDate = toDateOrNull(payload.endDate);
-    if (startDate && endDate && endDate.getTime() <= startDate.getTime()) {
-        throw new ValidationError('End date must be after start date');
+    // Validate schedule (throws on invalid input)
+    const scheduleObj = normalizeSchedulePayload(payload.schedule);
+    const startDate = toOfferBoundaryDate(payload.startDate, 'start');
+    const endDate = toOfferBoundaryDate(payload.endDate, 'end');
+
+    if (!startDate || !endDate) {
+        throw new ValidationError('Start date and end date are required for every dining offer');
+    }
+    if (endDate.getTime() < startDate.getTime()) {
+        throw new ValidationError('End date cannot be earlier than start date');
+    }
+
+    if (!dateRangeIncludesApplicableScheduleDay(startDate, endDate, scheduleObj)) {
+        throw new ValidationError(`The selected date range does not include any ${getScheduleWindowLabel(scheduleObj)}. Please adjust the dates or schedule.`);
+    }
+
+    if (scheduleObj.happyHours && scheduleObj.happyHours.length > 0) {
+        if (scheduleObj.mode === 'custom' && (!scheduleObj.customDays || scheduleObj.customDays.length === 0)) {
+            throw new ValidationError('Please select the applicable day(s) before configuring Happy Hours.');
+        }
     }
 };
+
 
 export const createRestaurantDiningOffer = async (restaurantId, payload) => {
     validateOfferPayload(payload);
@@ -271,13 +469,15 @@ export const updateAdminDiningOffer = async (offerId, payload) => {
         : existing.minBillAmount;
     if (payload.fundedBy !== undefined) existing.fundedBy = payload.fundedBy === 'restaurant' ? 'restaurant' : 'platform';
     if (payload.status !== undefined) existing.status = payload.status === 'inactive' ? 'inactive' : 'active';
-    if (payload.startDate !== undefined) existing.startDate = toDateOrNull(payload.startDate);
-    if (payload.endDate !== undefined) existing.endDate = toDateOrNull(payload.endDate);
+    if (payload.startDate !== undefined) existing.startDate = toOfferBoundaryDate(payload.startDate, 'start');
+    if (payload.endDate !== undefined) existing.endDate = toOfferBoundaryDate(payload.endDate, 'end');
     if (payload.priority !== undefined) existing.priority = Number(payload.priority) || 0;
     if (payload.usageLimit !== undefined) existing.usageLimit = normalizePositiveIntegerOrNull(payload.usageLimit);
     if (payload.perUserLimit !== undefined || payload.perUserRedeemLimit !== undefined) {
         existing.perUserLimit = normalizePositiveIntegerOrNull(payload.perUserLimit ?? payload.perUserRedeemLimit);
     }
+    if (payload.schedule !== undefined) existing.schedule = normalizeSchedulePayload(payload.schedule);
+    if (payload.termsAndConditions !== undefined) existing.termsAndConditions = String(payload.termsAndConditions || '').trim();
     existing.approvalStatus = 'approved';
     existing.rejectionReason = '';
     await existing.save();
@@ -360,6 +560,11 @@ export const getBestApplicableDiningOffer = async ({ restaurantId, subtotal, use
         filter._id = { $nin: excludedIds };
     }
     let offers = await FoodDiningOffer.find(filter).lean();
+
+    if (!offers.length) return null;
+
+    // ─── Schedule-aware filtering ──────────────────────────────────────────────
+    offers = offers.filter((offer) => isOfferActiveForSchedule(offer, now));
 
     if (!offers.length) return null;
 
@@ -490,7 +695,9 @@ export const getDisplayDiningOfferForRestaurant = async (restaurantId) => {
     const rid = ensureObjectId(restaurantId, 'Invalid restaurant id');
     const now = new Date();
 
-    const offer = await FoodDiningOffer.findOne({
+    // Fetch all date-range-eligible offers and apply schedule check in memory,
+    // so the richest matching offer (highest priority, correct schedule) is returned.
+    const candidates = await FoodDiningOffer.find({
         restaurantId: rid,
         status: 'active',
         approvalStatus: 'approved',
@@ -500,5 +707,9 @@ export const getDisplayDiningOfferForRestaurant = async (restaurantId) => {
         .sort({ priority: -1, createdAt: 1 })
         .lean();
 
+    const offer = candidates.find((o) => isOfferActiveForSchedule(o, now)) || null;
     return normalizeOffer(offer);
 };
+
+// Export schedule helper so it can be used in other modules if needed
+export { isOfferActiveForSchedule };

@@ -1,12 +1,22 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, CalendarDays } from "lucide-react"
+import { ArrowLeft, CalendarDays, Plus, Trash2 } from "lucide-react"
 import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { Calendar } from "@food/components/ui/calendar"
+import {
+  DATE_RANGE_REQUIRED_MESSAGE,
+  DINING_OFFER_SCHEDULE_OPTIONS,
+  HAPPY_HOURS_DAYS_MESSAGE,
+  WEEKDAYS,
+  normalizeSchedule,
+  parseLocalDate,
+  validateDiningOfferSchedule,
+} from "@food/utils/diningOfferSchedule"
+import { toast } from "sonner"
 
 const toInputDate = (value) => {
   if (!value) return ""
@@ -23,14 +33,6 @@ const getTodayDateString = () => {
   const month = String(today.getMonth() + 1).padStart(2, "0")
   const day = String(today.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
-}
-
-const parseLocalDate = (value) => {
-  if (!value) return undefined
-  const parts = value.split("-").map(Number)
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return undefined
-  const [year, month, day] = parts
-  return new Date(year, month - 1, day)
 }
 
 const formatDisplayDate = (value) => {
@@ -55,20 +57,37 @@ const createInitialForm = () => ({
   perUserLimit: "",
   startDate: "",
   endDate: "",
+  schedule: {
+    mode: "all_days",
+    customDays: [],
+    happyHoursEnabled: false,
+    happyHours: [],
+  },
+  termsAndConditions: "",
 })
 
-const mapOfferToForm = (offer) => ({
-  title: String(offer?.title || ""),
-  description: String(offer?.description || ""),
-  discountType: offer?.discountType === "flat" ? "flat" : "percentage",
-  discountValue: offer?.discountValue != null ? String(Number(offer.discountValue)) : "",
-  maxDiscount: offer?.maxDiscount != null ? String(Number(offer.maxDiscount)) : "",
-  minBillAmount: offer?.minBillAmount != null ? String(Number(offer.minBillAmount)) : "",
-  usageLimit: offer?.usageLimit != null ? String(Number(offer.usageLimit)) : "",
-  perUserLimit: (offer?.perUserLimit ?? offer?.perUserRedeemLimit) != null ? String(Number(offer?.perUserLimit ?? offer?.perUserRedeemLimit)) : "",
-  startDate: toInputDate(offer?.startDate),
-  endDate: toInputDate(offer?.endDate),
-})
+const mapOfferToForm = (offer) => {
+  const happyHours = offer?.schedule?.happyHours || []
+  return {
+    title: String(offer?.title || ""),
+    description: String(offer?.description || ""),
+    discountType: offer?.discountType === "flat" ? "flat" : "percentage",
+    discountValue: offer?.discountValue != null ? String(Number(offer.discountValue)) : "",
+    maxDiscount: offer?.maxDiscount != null ? String(Number(offer.maxDiscount)) : "",
+    minBillAmount: offer?.minBillAmount != null ? String(Number(offer.minBillAmount)) : "",
+    usageLimit: offer?.usageLimit != null ? String(Number(offer.usageLimit)) : "",
+    perUserLimit: (offer?.perUserLimit ?? offer?.perUserRedeemLimit) != null ? String(Number(offer?.perUserLimit ?? offer?.perUserRedeemLimit)) : "",
+    startDate: toInputDate(offer?.startDate),
+    endDate: toInputDate(offer?.endDate),
+    schedule: {
+      mode: offer?.schedule?.mode || "all_days",
+      customDays: offer?.schedule?.customDays || [],
+      happyHoursEnabled: happyHours.length > 0,
+      happyHours: happyHours.map((slot) => ({ start: slot.start || "", end: slot.end || "" })),
+    },
+    termsAndConditions: String(offer?.termsAndConditions || ""),
+  }
+}
 
 const discountTypeOptions = [
   { value: "percentage", label: "Percentage" },
@@ -147,6 +166,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
   const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false)
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false)
   const isPercentage = form.discountType === "percentage"
+  const currentYear = new Date().getFullYear()
 
   useEffect(() => {
     if (!isEditMode) {
@@ -183,6 +203,97 @@ export default function DiningOfferFormPage({ mode = "create" }) {
     setForm((prev) => ({ ...prev, [key]: value }))
     if (error) setError("")
   }
+
+  const setScheduleField = (key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      schedule: {
+        ...prev.schedule,
+        [key]: value,
+      },
+    }))
+    if (error) setError("")
+  }
+
+  const toggleCustomDay = (dayValue) => {
+    const currentDays = form.schedule.customDays
+    const newDays = currentDays.includes(dayValue)
+      ? currentDays.filter((d) => d !== dayValue)
+      : [...currentDays, dayValue]
+    setScheduleField("customDays", newDays)
+  }
+
+  const addHappyHourSlot = () => {
+    const currentSlots = form.schedule.happyHours
+    setScheduleField("happyHours", [...currentSlots, { start: "12:00", end: "15:00" }])
+  }
+
+  const removeHappyHourSlot = (index) => {
+    const currentSlots = form.schedule.happyHours
+    setScheduleField("happyHours", currentSlots.filter((_, i) => i !== index))
+  }
+
+  const updateHappyHourSlot = (index, key, value) => {
+    const currentSlots = form.schedule.happyHours
+    const updated = currentSlots.map((slot, i) => (i === index ? { ...slot, [key]: value } : slot))
+    setScheduleField("happyHours", updated)
+  }
+
+  const handleHappyHoursToggle = (enabled) => {
+    if (enabled) {
+      const dependencyError = validateDiningOfferSchedule({
+        startDate: form.startDate,
+        endDate: form.endDate,
+        schedule: form.schedule,
+        happyHoursEnabled: false,
+        requireFutureDates: !isEditMode,
+        todayDateString: getTodayDateString(),
+      })
+      if (dependencyError) {
+        toast.error(dependencyError === DATE_RANGE_REQUIRED_MESSAGE ? "Select a valid start date and end date before enabling Happy Hours." : dependencyError)
+        return
+      }
+
+      setScheduleField("happyHoursEnabled", true)
+      if (form.schedule.happyHours.length === 0) {
+        setScheduleField("happyHours", [{ start: "12:00", end: "15:00" }])
+      }
+      return
+    }
+    setScheduleField("happyHoursEnabled", false)
+  }
+
+  const normalizedSchedule = useMemo(() => normalizeSchedule(form.schedule), [form.schedule])
+  const scheduleValidationError = useMemo(
+    () =>
+      validateDiningOfferSchedule({
+        startDate: form.startDate,
+        endDate: form.endDate,
+        schedule: normalizedSchedule,
+        happyHoursEnabled: form.schedule.happyHoursEnabled,
+        requireFutureDates: !isEditMode,
+        todayDateString: getTodayDateString(),
+      }),
+    [form.startDate, form.endDate, normalizedSchedule, form.schedule.happyHoursEnabled, isEditMode]
+  )
+  const hasDateRangeError =
+    scheduleValidationError === DATE_RANGE_REQUIRED_MESSAGE ||
+    scheduleValidationError === "Start date cannot be in the past." ||
+    scheduleValidationError === "End date cannot be in the past." ||
+    scheduleValidationError === "End date cannot be earlier than start date."
+  const hasScheduleError =
+    scheduleValidationError &&
+    !hasDateRangeError &&
+    scheduleValidationError !== HAPPY_HOURS_DAYS_MESSAGE &&
+    !scheduleValidationError.startsWith("Add at least one valid Happy Hour time slot.") &&
+    !scheduleValidationError.startsWith("All Happy Hour slots must have a start and end time.") &&
+    !scheduleValidationError.startsWith("Happy Hour slot ") &&
+    !scheduleValidationError.startsWith("Happy Hour slots ")
+  const hasHappyHoursError =
+    form.schedule.happyHoursEnabled &&
+    Boolean(scheduleValidationError) &&
+    !hasDateRangeError &&
+    !hasScheduleError
 
   const validationError = useMemo(() => {
     if (!String(form.title || "").trim()) return "Title is required"
@@ -250,22 +361,23 @@ export default function DiningOfferFormPage({ mode = "create" }) {
       }
     }
 
+    // Terms and conditions length limit
+    if (form.termsAndConditions && form.termsAndConditions.length > 1000) {
+      return "Terms and conditions cannot exceed 1000 characters"
+    }
+
     const todayStr = getTodayDateString()
-    if (!isEditMode && form.startDate && form.startDate < todayStr) {
-      return "Start date cannot be in the past"
-    }
-    if (!isEditMode && form.endDate && form.endDate < todayStr) {
-      return "End date cannot be in the past"
-    }
-    if (form.startDate && form.endDate && new Date(form.startDate).getTime() > new Date(form.endDate).getTime()) {
-      return "Start date cannot be later than the end date. Please select a valid date range."
-    }
+    if (scheduleValidationError) return scheduleValidationError
     return ""
-  }, [form, isPercentage, isEditMode])
+  }, [form, isPercentage, isEditMode, scheduleValidationError])
 
   const handleSubmit = async () => {
     setShowErrors(true)
-    if (validationError || submitting || loadingOffer) return
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
+    if (submitting || loadingOffer) return
     try {
       setSubmitting(true)
       setError("")
@@ -280,6 +392,12 @@ export default function DiningOfferFormPage({ mode = "create" }) {
         perUserLimit: form.perUserLimit !== "" ? Number(form.perUserLimit) : null,
         startDate: form.startDate || null,
         endDate: form.endDate || null,
+        schedule: {
+          mode: normalizedSchedule.mode,
+          customDays: normalizedSchedule.mode === "custom" ? normalizedSchedule.customDays : [],
+          happyHours: form.schedule.happyHoursEnabled ? form.schedule.happyHours : [],
+        },
+        termsAndConditions: String(form.termsAndConditions || "").trim(),
       }
 
       if (isEditMode) {
@@ -290,7 +408,9 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
       navigate("/food/restaurant/dining-offers")
     } catch (err) {
-      setError(err?.response?.data?.message || `Failed to ${isEditMode ? "update" : "create"} dining offer`)
+      const message = err?.response?.data?.message || `Failed to ${isEditMode ? "update" : "create"} dining offer`
+      setError(message)
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
@@ -300,7 +420,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
     <div className="min-h-screen bg-[#f3f6f8] pb-36">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex w-full max-w-md md:max-w-3xl items-center gap-3">
-          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
+          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100 animate-in cursor-pointer">
             <ArrowLeft className="h-5 w-5" />
           </button>
           <h1 className="text-2xl font-semibold text-slate-900">
@@ -460,13 +580,156 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                 </div>
               </div>
 
+              {/* Scheduling Section */}
+              <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                <h3 className="text-base font-semibold text-slate-900 mb-3">Offer Schedule</h3>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-800">Applicable Days</label>
+                    <p className="mb-2 text-xs text-slate-500">Optional. If you do not configure a schedule, this offer will run on all days within the selected date range.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {DINING_OFFER_SCHEDULE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setScheduleField("mode", opt.value)}
+                          className={`rounded-xl px-4 py-2.5 text-sm font-medium border cursor-pointer transition-all ${
+                            form.schedule.mode === opt.value
+                              ? "bg-[#00c87e]/10 text-[#00c87e] border-[#00c87e] font-semibold"
+                              : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                      </div>
+                      {showErrors && hasScheduleError && (
+                        <p className="mt-2 text-xs font-medium text-red-600">{scheduleValidationError}</p>
+                      )}
+                    </div>
+
+                    {form.schedule.mode === "custom" && (
+                    <div className="animate-in fade-in slide-in-from-top-1 duration-100">
+                      <label className="mb-1.5 block text-sm font-medium text-slate-800">Select Days</label>
+                      <div className="flex flex-wrap gap-2">
+                        {WEEKDAYS.map((day) => {
+                          const isSelected = form.schedule.customDays.includes(day.value)
+                          return (
+                            <button
+                              key={day.value}
+                              type="button"
+                              onClick={() => toggleCustomDay(day.value)}
+                              className={`h-10 w-12 rounded-xl text-sm font-semibold border cursor-pointer transition-all ${
+                                isSelected
+                                  ? "bg-[#00c87e] text-white border-[#00c87e]"
+                                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
+                              }`}
+                            >
+                              {day.label}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="border-t border-slate-100 pt-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-sm font-medium text-slate-800">Happy Hours</label>
+                        <p className="text-xs text-slate-500">Limit this offer to specific hours of the day</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleHappyHoursToggle(!form.schedule.happyHoursEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
+                          form.schedule.happyHoursEnabled ? "bg-[#00c87e]" : "bg-slate-200"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            form.schedule.happyHoursEnabled ? "translate-x-6" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {form.schedule.happyHoursEnabled && (
+                      <div className="mt-3 space-y-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200/60 animate-in fade-in slide-in-from-top-1 duration-100">
+                        {form.schedule.happyHours.map((slot, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-slate-500 w-12">Slot {index + 1}</span>
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <input
+                                type="time"
+                                value={slot.start}
+                                onChange={(e) => updateHappyHourSlot(index, "start", e.target.value)}
+                                className="h-10 rounded-lg border border-slate-200 px-2 text-sm bg-white outline-none focus:border-[#00c87e] w-full"
+                              />
+                              <span className="text-slate-400">to</span>
+                              <input
+                                type="time"
+                                value={slot.end}
+                                onChange={(e) => updateHappyHourSlot(index, "end", e.target.value)}
+                                className="h-10 rounded-lg border border-slate-200 px-2 text-sm bg-white outline-none focus:border-[#00c87e] w-full"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeHappyHourSlot(index)}
+                              className="text-red-500 hover:text-red-600 p-1.5 cursor-pointer"
+                            >
+                              <Trash2 className="h-5 w-5" />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={addHappyHourSlot}
+                          className="text-xs font-semibold text-[#00c87e] hover:text-[#00b06f] flex items-center gap-1 cursor-pointer pt-1 animate-in"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Add Time Slot
+                        </button>
+                        {showErrors && hasHappyHoursError && (
+                          <p className="text-xs font-medium text-red-600">{scheduleValidationError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Terms and Conditions Section */}
+              <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                <label className="mb-1 block text-sm font-medium text-slate-800 font-semibold">Terms & Conditions</label>
+                <p className="mb-1.5 text-xs text-slate-500">Provide any specific conditions (e.g. valid for dine-in only, exclusions, etc.). Max 1000 characters.</p>
+                <div className="relative">
+                  <textarea
+                    value={form.termsAndConditions}
+                    onChange={(e) => setField("termsAndConditions", e.target.value)}
+                    placeholder="E.g. Valid for dine-in only. Cannot be combined with any other offer or discount. Not valid on blackout dates."
+                    className="min-h-[100px] w-full rounded-xl border border-slate-200 px-3 py-3 text-sm text-slate-800 outline-none focus:border-[#00c87e]"
+                    maxLength={1000}
+                  />
+                  <div className="text-right text-[10px] text-slate-400 mt-1">
+                    {form.termsAndConditions.length}/1000
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Start Date</label>
                 <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
+                      className={`flex h-12 w-full items-center justify-between rounded-xl border px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all ${
+                        showErrors && hasDateRangeError
+                          ? "border-red-500 ring-1 ring-red-500 bg-red-50/10"
+                          : "border-slate-200"
+                      }`}
                     >
                       <span className={form.startDate ? "text-slate-800" : "text-muted-foreground"}>
                         {form.startDate ? formatDisplayDate(form.startDate) : "Select start date"}
@@ -479,6 +742,9 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                       <Calendar
                         mode="single"
                         selected={parseLocalDate(form.startDate)}
+                        captionLayout="dropdown"
+                        fromYear={currentYear}
+                        toYear={currentYear + 5}
                         onSelect={(date) => {
                           if (!date) return
                           setField("startDate", toInputDate(date))
@@ -502,7 +768,11 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
+                      className={`flex h-12 w-full items-center justify-between rounded-xl border px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all ${
+                        showErrors && hasDateRangeError
+                          ? "border-red-500 ring-1 ring-red-500 bg-red-50/10"
+                          : "border-slate-200"
+                      }`}
                     >
                       <span className={form.endDate ? "text-slate-800" : "text-muted-foreground"}>
                         {form.endDate ? formatDisplayDate(form.endDate) : "Select end date"}
@@ -515,6 +785,9 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                       <Calendar
                         mode="single"
                         selected={parseLocalDate(form.endDate)}
+                        captionLayout="dropdown"
+                        fromYear={currentYear}
+                        toYear={currentYear + 5}
                         onSelect={(date) => {
                           if (!date) return
                           setField("endDate", toInputDate(date))
@@ -546,9 +819,6 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-3 py-3">
         <div className="mx-auto w-full max-w-md md:max-w-3xl">
-          {!!(error || (showErrors && validationError)) && (
-            <p className="mb-2 text-xs font-medium text-red-600">{error || validationError}</p>
-          )}
           <Button
             type="button"
             className="h-12 w-full bg-[#00c87e] text-white hover:bg-[#00b06f]"

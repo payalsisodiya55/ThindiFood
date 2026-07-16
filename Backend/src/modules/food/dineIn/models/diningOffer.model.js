@@ -1,5 +1,34 @@
 import mongoose from 'mongoose';
 
+const happyHourSlotSchema = new mongoose.Schema(
+    {
+        start: { type: String, trim: true, default: '' }, // 'HH:MM' 24-hour format
+        end:   { type: String, trim: true, default: '' }, // 'HH:MM' 24-hour format
+    },
+    { _id: false }
+);
+
+const scheduleSchema = new mongoose.Schema(
+    {
+        mode: {
+            type: String,
+            enum: ['all_days', 'weekdays', 'weekends', 'custom'],
+            default: 'all_days',
+        },
+        // Array of weekday indices (0=Sun, 1=Mon, … 6=Sat). Used only when mode='custom'.
+        customDays: {
+            type: [Number],
+            default: [],
+        },
+        // One or more happy-hour windows per day. Empty array = full day.
+        happyHours: {
+            type: [happyHourSlotSchema],
+            default: [],
+        },
+    },
+    { _id: false }
+);
+
 const diningOfferSchema = new mongoose.Schema(
     {
         restaurantId: {
@@ -106,6 +135,17 @@ const diningOfferSchema = new mongoose.Schema(
             type: Number,
             default: 0,
         },
+        // ─── NEW: Scheduling ─────────────────────────────────────────────────────
+        schedule: {
+            type: scheduleSchema,
+            default: () => ({ mode: 'all_days', customDays: [], happyHours: [] }),
+        },
+        // ─── NEW: Terms & Conditions ─────────────────────────────────────────────
+        termsAndConditions: {
+            type: String,
+            trim: true,
+            default: '',
+        },
     },
     {
         collection: 'food_dining_offers',
@@ -117,3 +157,4 @@ diningOfferSchema.index({ restaurantId: 1, approvalStatus: 1, status: 1 });
 diningOfferSchema.index({ createdByRole: 1, fundedBy: 1, createdAt: -1 });
 
 export const FoodDiningOffer = mongoose.model('FoodDiningOffer', diningOfferSchema);
+
