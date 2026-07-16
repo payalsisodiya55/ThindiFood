@@ -245,8 +245,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
     if (!isEditMode && form.endDate && form.endDate < todayStr) {
       return "End date cannot be in the past"
     }
-    if (form.startDate && form.endDate && new Date(form.endDate).getTime() <= new Date(form.startDate).getTime()) {
-      return "End date must be after start date"
+    if (form.startDate && form.endDate && new Date(form.startDate).getTime() > new Date(form.endDate).getTime()) {
+      return "Start date cannot be later than the end date. Please select a valid date range."
     }
     return ""
   }, [form, isPercentage, isEditMode])

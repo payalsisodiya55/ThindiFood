@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, CalendarDays, Sparkles } from "lucide-react"
+import { ArrowLeft, CalendarDays, Sparkles, Info } from "lucide-react"
 import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { Calendar } from "@food/components/ui/calendar"
+import { toast } from "sonner"
 
 const createInitialForm = () => ({
   couponCode: "",
@@ -87,8 +88,8 @@ const discountTypeOptions = [
 ]
 
 const customerScopeOptions = [
-  { value: "all", label: "All customers" },
-  { value: "first-time", label: "First time only" },
+  { value: "all", label: "All Customers" },
+  { value: "first-time", label: "First Time Only" },
 ]
 
 const CustomSelect = ({ value, onChange, options, className = "" }) => {
@@ -163,6 +164,8 @@ export default function AddCouponPage(props = {}) {
   const [showErrors, setShowErrors] = useState(false)
   const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false)
   const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false)
+  const [showUsageLimitTooltip, setShowUsageLimitTooltip] = useState(false)
+  const [showPerUserLimitTooltip, setShowPerUserLimitTooltip] = useState(false)
 
   const isPercentage = form.discountType === "percentage"
 
@@ -233,8 +236,8 @@ export default function AddCouponPage(props = {}) {
     if (!isEditMode && form.endDate && form.endDate < todayStr) {
       return "End date cannot be in the past"
     }
-    if (form.startDate && form.endDate && new Date(form.endDate).getTime() <= new Date(form.startDate).getTime()) {
-      return "End date must be after start date"
+    if (form.startDate && form.endDate && new Date(form.startDate).getTime() > new Date(form.endDate).getTime()) {
+      return "Start date cannot be later than the end date. Please select a valid date range."
     }
     return ""
   }, [form, isPercentage, isEditMode])
@@ -289,7 +292,11 @@ export default function AddCouponPage(props = {}) {
 
   const handleSubmit = async () => {
     setShowErrors(true)
-    if (validationError || submitting || loadingCoupon) return
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
+    if (submitting || loadingCoupon) return
     try {
       setSubmitting(true)
       setError("")
@@ -309,13 +316,17 @@ export default function AddCouponPage(props = {}) {
 
       if (isEditMode) {
         await restaurantAPI.updateCoupon(String(couponId), payload)
+        toast.success("Coupon updated successfully")
       } else {
         await restaurantAPI.createCoupon(payload)
+        toast.success("Coupon submitted for approval")
       }
 
       navigate("/restaurant/coupons")
     } catch (err) {
-      setError(err?.response?.data?.message || `Failed to ${isEditMode ? "update" : "submit"} coupon`)
+      const msg = err?.response?.data?.message || `Failed to ${isEditMode ? "update" : "submit"} coupon`
+      setError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -424,29 +435,34 @@ export default function AddCouponPage(props = {}) {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Min Order (optional)</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">Min Order (Optional)</label>
                 <Input
                   type="text"
                   value={form.minOrderValue}
-                  maxLength={10}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    const sanitized = val.replace(/[^0-9.]/g, "")
-                    const parts = sanitized.split(".")
-                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
-                    setField("minOrderValue", finalVal)
-                  }}
+                  maxLength={9}
+                  onChange={(e) => setField("minOrderValue", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 299"
                   className="h-12"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Usage Limit (optional)</label>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="block text-sm font-medium text-slate-800">Usage Limit (Optional)</label>
+                  <div 
+                    className="group relative cursor-pointer"
+                    onClick={() => setShowUsageLimitTooltip(!showUsageLimitTooltip)}
+                  >
+                    <Info className="h-4 w-4 text-slate-400 hover:text-slate-600 transition-colors" />
+                    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-[11px] p-2 rounded-lg shadow-lg z-50 text-center leading-normal ${showUsageLimitTooltip ? 'block' : 'hidden group-hover:block'}`}>
+                      Total number of times this coupon can be used across all customers.
+                    </div>
+                  </div>
+                </div>
                 <Input
                   type="text"
                   value={form.usageLimit}
-                  maxLength={8}
+                  maxLength={9}
                   onChange={(e) => setField("usageLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="e.g. 100"
                   className="h-12"
@@ -454,7 +470,18 @@ export default function AddCouponPage(props = {}) {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Per User Limit (optional)</label>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <label className="block text-sm font-medium text-slate-800">Per User Limit (Optional)</label>
+                  <div 
+                    className="group relative cursor-pointer"
+                    onClick={() => setShowPerUserLimitTooltip(!showPerUserLimitTooltip)}
+                  >
+                    <Info className="h-4 w-4 text-slate-400 hover:text-slate-600 transition-colors" />
+                    <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-[11px] p-2 rounded-lg shadow-lg z-50 text-center leading-normal ${showPerUserLimitTooltip ? 'block' : 'hidden group-hover:block'}`}>
+                      Maximum number of times a single customer can use this coupon.
+                    </div>
+                  </div>
+                </div>
                 <Input
                   type="text"
                   value={form.perUserLimit}
@@ -475,11 +502,11 @@ export default function AddCouponPage(props = {}) {
               </div>
 
               <div className="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-                This coupon will be treated as `restaurant-funded`. Its discount will reduce your payout in finance reports.
+                This coupon will be treated as "restaurant-funded". Its discount will reduce your payout in finance reports.
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Start Date (optional)</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">Start Date (Optional)</label>
                 <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
                   <PopoverTrigger asChild>
                     <button
@@ -487,7 +514,7 @@ export default function AddCouponPage(props = {}) {
                       className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
                     >
                       <span className={form.startDate ? "text-slate-800" : "text-muted-foreground"}>
-                        {form.startDate ? formatDisplayDate(form.startDate) : "Select start date"}
+                        {form.startDate ? formatDisplayDate(form.startDate) : "Select Start Date"}
                       </span>
                       <CalendarDays className="h-5 w-5 text-slate-400" />
                     </button>
@@ -496,6 +523,9 @@ export default function AddCouponPage(props = {}) {
                     <div className="bg-white rounded-md shadow-lg border border-gray-200">
                       <Calendar
                         mode="single"
+                        captionLayout="dropdown"
+                        startMonth={new Date()}
+                        endMonth={new Date(new Date().getFullYear() + 5, 11)}
                         selected={parseLocalDate(form.startDate)}
                         onSelect={(date) => {
                           if (!date) return
@@ -515,7 +545,7 @@ export default function AddCouponPage(props = {}) {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">End Date (optional)</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">End Date (Optional)</label>
                 <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
                   <PopoverTrigger asChild>
                     <button
@@ -523,7 +553,7 @@ export default function AddCouponPage(props = {}) {
                       className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
                     >
                       <span className={form.endDate ? "text-slate-800" : "text-muted-foreground"}>
-                        {form.endDate ? formatDisplayDate(form.endDate) : "Select end date"}
+                        {form.endDate ? formatDisplayDate(form.endDate) : "Select End Date"}
                       </span>
                       <CalendarDays className="h-5 w-5 text-slate-400" />
                     </button>
@@ -532,6 +562,9 @@ export default function AddCouponPage(props = {}) {
                     <div className="bg-white rounded-md shadow-lg border border-gray-200">
                       <Calendar
                         mode="single"
+                        captionLayout="dropdown"
+                        startMonth={parseLocalDate(form.startDate) || new Date()}
+                        endMonth={new Date(new Date().getFullYear() + 5, 11)}
                         selected={parseLocalDate(form.endDate)}
                         onSelect={(date) => {
                           if (!date) return
@@ -557,7 +590,7 @@ export default function AddCouponPage(props = {}) {
                   onChange={(e) => setField("isFirstOrderOnly", e.target.checked)}
                   className="h-4 w-4 rounded border-slate-300 text-[#00c87e] focus:ring-[#00c87e]"
                 />
-                Only for first order
+                Only For First Order
               </label>
             </div>
           )}
@@ -566,9 +599,6 @@ export default function AddCouponPage(props = {}) {
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-3 py-3">
         <div className="mx-auto w-full max-w-md md:max-w-3xl">
-          {!!(error || (showErrors && validationError)) && (
-            <p className="mb-2 text-xs font-medium text-red-600">{error || validationError}</p>
-          )}
           <Button
             type="button"
             className="h-12 w-full bg-[#00c87e] text-white hover:bg-[#00b06f]"

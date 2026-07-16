@@ -1,7 +1,7 @@
 import { confirmApp } from "@shared/lib/appDialog";import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock3, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Ticket, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
@@ -9,15 +9,15 @@ import MenuOverlay from "@food/components/restaurant/MenuOverlay";
 
 const STATUS_META = {
   pending: {
-    label: "Pending",
+    label: "PENDING",
     className: "bg-amber-100 text-amber-700 border border-amber-200"
   },
   approved: {
-    label: "Approved",
+    label: "APPROVED",
     className: ""
   },
   rejected: {
-    label: "Rejected",
+    label: "REJECTED",
     className: "bg-red-100 text-red-700 border border-red-200"
   }
 };
@@ -29,20 +29,25 @@ const formatDate = (value) => {
   return date.toLocaleDateString("en-GB");
 };
 
+const formatIndianNumber = (num) => {
+  if (num == null || isNaN(num)) return "0";
+  return Number(num).toLocaleString("en-IN");
+};
+
 const getDiscountLabel = (coupon) => {
   const type = String(coupon?.discountType || "percentage");
   const value = Number(coupon?.discountValue || 0);
-  if (type === "flat-price") return `Rs ${value} OFF`;
+  if (type === "flat-price") return `Rs ${formatIndianNumber(value)} OFF`;
   const maxDiscount = coupon?.maxDiscount != null ? Number(coupon.maxDiscount) : null;
-  if (Number.isFinite(maxDiscount)) return `${value}% OFF (up to Rs ${maxDiscount})`;
+  if (Number.isFinite(maxDiscount)) return `${value}% OFF (up to Rs ${formatIndianNumber(maxDiscount)})`;
   return `${value}% OFF`;
 };
 
 const getUsageText = (coupon) => {
   const used = Number(coupon?.usedCount || 0);
   const limit = Number(coupon?.usageLimit || 0);
-  if (limit > 0) return `${used} / ${limit}`;
-  return `${used} / unlimited`;
+  if (limit > 0) return `${formatIndianNumber(used)} / ${formatIndianNumber(limit)}`;
+  return `${formatIndianNumber(used)} / Unlimited`;
 };
 
 export default function CouponListPage() {
@@ -166,20 +171,20 @@ export default function CouponListPage() {
                         <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 break-all">{coupon.couponCode}</p>
                         <div className="mt-2 flex flex-col">
                           <span className="text-2xl font-black text-slate-900 leading-tight">
-                            {coupon?.discountType === "flat-price" ? `Rs ${coupon?.discountValue}` : `${coupon?.discountValue}%`}
+                            {coupon?.discountType === "flat-price" ? `Rs ${formatIndianNumber(coupon?.discountValue)}` : `${coupon?.discountValue}%`}
                           </span>
                           <span className="text-[10px] font-black uppercase tracking-wider text-slate-600 mt-0.5 leading-none">
                             OFF
                           </span>
                           {coupon?.discountType === "percentage" && coupon?.maxDiscount != null && Number(coupon.maxDiscount) > 0 && (
                             <span className="text-[9px] font-bold text-slate-500 mt-1 leading-normal break-words">
-                              Up to Rs {coupon.maxDiscount}
+                              Up to Rs {formatIndianNumber(coupon.maxDiscount)}
                             </span>
                           )}
                         </div>
                       </div>
                       <div className="mt-3">
-                        <p className="text-[10px] font-semibold text-slate-500 leading-tight">For your restaurant</p>
+                        <p className="text-[10px] font-semibold text-slate-500 leading-tight">For Your Restaurant</p>
                         <p className="mt-0.5 text-[10px] font-black uppercase tracking-wider text-emerald-700">
                           {coupon.fundedBy === "restaurant" ? "Restaurant-funded" : "Platform-funded"}
                         </p>
@@ -254,17 +259,34 @@ export default function CouponListPage() {
 
                         {/* Validity Dates */}
                         <div className="mt-2 space-y-1">
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Validity</p>
-                          <p className="text-xs font-semibold text-slate-700 leading-tight break-words">
-                            {formatDate(coupon.startDate)} to {formatDate(coupon.endDate)}
-                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 tracking-wider">Validity</p>
+                          <div className="text-xs font-semibold text-slate-700 leading-tight space-y-0.5">
+                            <p>From: {formatDate(coupon.startDate)}</p>
+                            <p>To: {formatDate(coupon.endDate)}</p>
+                            {(() => {
+                              if (!coupon.endDate) return null;
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              const end = new Date(coupon.endDate);
+                              end.setHours(0, 0, 0, 0);
+                              const diffTime = end.getTime() - today.getTime();
+                              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                              if (diffDays < 0) {
+                                return <p className="text-[10px] font-bold text-red-500 mt-1 uppercase">Expired</p>;
+                              } else if (diffDays === 0) {
+                                return <p className="text-[10px] font-bold text-amber-600 mt-1 uppercase">Expires Today</p>;
+                              } else {
+                                return <p className="text-[10px] font-bold text-emerald-600 mt-1 uppercase">{diffDays} {diffDays === 1 ? "Day" : "Days"} Left</p>;
+                              }
+                            })()}
+                          </div>
                         </div>
                       </div>
 
                       <div className="mt-3 pt-2 border-t border-slate-100 space-y-1">
-                        <p className="text-xs font-medium text-slate-700">Min order: <span className="font-bold text-slate-900">Rs {Number(coupon.minOrderValue || 0)}</span></p>
+                        <p className="text-xs font-medium text-slate-700">Min order: <span className="font-bold text-slate-900">Rs {formatIndianNumber(coupon.minOrderValue || 0)}</span></p>
                         <p className="flex items-center gap-1 text-xs text-slate-700">
-                          <Clock3 className="h-3.5 w-3.5 text-slate-400" />
+                          <Ticket className="h-3.5 w-3.5 text-slate-400" />
                           <span>Usage: <span className="font-bold text-slate-900">{getUsageText(coupon)}</span></span>
                         </p>
                       </div>
