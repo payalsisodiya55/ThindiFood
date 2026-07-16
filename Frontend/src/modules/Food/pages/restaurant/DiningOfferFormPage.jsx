@@ -186,25 +186,34 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
   const validationError = useMemo(() => {
     if (!String(form.title || "").trim()) return "Title is required"
+    if (String(form.title || "").trim().length < 3) return "Title must be at least 3 characters"
+    if (String(form.title || "").trim().length > 50) return "Title cannot exceed 50 characters"
     
+    if (form.description && String(form.description).trim().length > 250) {
+      return "Description cannot exceed 250 characters"
+    }
+
     const discVal = Number(form.discountValue || 0)
     if (!Number.isFinite(discVal) || discVal <= 0) {
       return "Discount value must be greater than 0"
     }
-    if (isPercentage && discVal > 1000) {
-      return "Percentage discount cannot exceed 1,000%"
+    if (isPercentage && discVal > 100) {
+      return "Percentage discount cannot exceed 100%"
     }
-    if (discVal > 100000000) {
-      return "Discount value cannot exceed 100,000,000"
+    if (!isPercentage && discVal > 100000) {
+      return "Discount amount cannot exceed ₹100,000"
     }
 
-    if (isPercentage && form.maxDiscount !== "") {
-      const maxD = Number(form.maxDiscount)
-      if (!Number.isFinite(maxD) || maxD < 0) {
-        return "Max discount must be 0 or more"
+    if (isPercentage) {
+      if (form.maxDiscount === "") {
+        return "Max discount is required for percentage offers"
       }
-      if (maxD > 100000000) {
-        return "Max discount cannot exceed 100,000,000"
+      const maxD = Number(form.maxDiscount)
+      if (!Number.isFinite(maxD) || maxD <= 0) {
+        return "Max discount must be greater than 0"
+      }
+      if (maxD > 100000) {
+        return "Max discount cannot exceed ₹100,000"
       }
     }
 
@@ -213,28 +222,31 @@ export default function DiningOfferFormPage({ mode = "create" }) {
       if (!Number.isFinite(minB) || minB < 0) {
         return "Minimum bill amount must be 0 or more"
       }
-      if (minB > 100000000) {
-        return "Minimum bill amount cannot exceed 100,000,000"
+      if (minB > 100000) {
+        return "Minimum bill amount cannot exceed ₹100,000"
       }
     }
 
     if (form.usageLimit !== "") {
       const usageL = Number(form.usageLimit)
       if (!Number.isInteger(usageL) || usageL < 1) {
-        return "Usage limit must be at least 1"
+        return "Total redemptions limit must be at least 1"
       }
-      if (usageL > 10000000) {
-        return "Usage limit cannot exceed 10,000,000"
+      if (usageL > 1000000) {
+        return "Total redemptions limit cannot exceed 1,000,000"
       }
     }
 
     if (form.perUserLimit !== "") {
       const perUserL = Number(form.perUserLimit)
       if (!Number.isInteger(perUserL) || perUserL < 1) {
-        return "Per user redeem limit must be at least 1"
+        return "Uses per customer limit must be at least 1"
       }
-      if (perUserL > 100000) {
-        return "Per user redeem limit cannot exceed 100,000"
+      if (perUserL > 1000) {
+        return "Uses per customer limit cannot exceed 1,000"
+      }
+      if (form.usageLimit !== "" && perUserL > Number(form.usageLimit)) {
+        return "Uses per customer cannot exceed total redemptions allowed"
       }
     }
 
@@ -307,15 +319,17 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                 <label className="mb-1 block text-sm font-medium text-slate-800">
                   Title <span className="text-red-500 font-bold">*</span>
                 </label>
+                <p className="mb-1.5 text-xs text-slate-500">Visible to customers. Keep it short and catchy</p>
                 <Input value={form.title} onChange={(e) => setField("title", e.target.value)} placeholder="E.g. Weekend Dining Special" className="h-12" />
               </div>
 
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Description</label>
+                <p className="mb-1.5 text-xs text-slate-500">Add a brief note about the offer details.</p>
                 <textarea
                   value={form.description}
                   onChange={(e) => setField("description", e.target.value)}
-                  placeholder="Optional short note for this dining offer"
+                  placeholder="E.g. Valid on all main courses during lunch hour"
                   className="min-h-[90px] w-full rounded-xl border border-slate-200 px-3 py-3 text-sm text-slate-800 outline-none focus:border-[#00c87e]"
                 />
               </div>
@@ -337,39 +351,50 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                     <>Discount Amount <span className="text-red-500 font-bold">*</span></>
                   )}
                 </label>
-                <Input
-                  type="text"
-                  value={form.discountValue}
-                  maxLength={isPercentage ? 6 : 10}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    const sanitized = val.replace(/[^0-9.]/g, "")
-                    const parts = sanitized.split(".")
-                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
-                    setField("discountValue", finalVal)
-                  }}
-                  placeholder={isPercentage ? "E.g. 10" : "E.g. 50"}
-                  className="h-12"
-                />
-              </div>
-
-              {isPercentage ? (
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-800">Max Discount</label>
+                <div className="relative flex items-center">
+                  {!isPercentage && (
+                    <span className="absolute left-3 text-sm font-medium text-slate-500">₹</span>
+                  )}
                   <Input
                     type="text"
-                    value={form.maxDiscount}
-                    maxLength={10}
+                    value={form.discountValue}
+                    maxLength={isPercentage ? 6 : 10}
                     onChange={(e) => {
                       const val = e.target.value
                       const sanitized = val.replace(/[^0-9.]/g, "")
                       const parts = sanitized.split(".")
                       const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
-                      setField("maxDiscount", finalVal)
+                      setField("discountValue", finalVal)
                     }}
-                    placeholder="E.g. 100"
-                    className="h-12"
+                    placeholder={isPercentage ? "E.g. 10" : "E.g. 50"}
+                    className={`h-12 w-full ${!isPercentage ? "pl-7" : ""} ${isPercentage ? "pr-7" : ""}`}
                   />
+                  {isPercentage && (
+                    <span className="absolute right-3 text-sm font-medium text-slate-500">%</span>
+                  )}
+                </div>
+              </div>
+
+              {isPercentage ? (
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-800">Max Discount</label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-3 text-sm font-medium text-slate-500">₹</span>
+                    <Input
+                      type="text"
+                      value={form.maxDiscount}
+                      maxLength={10}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        const sanitized = val.replace(/[^0-9.]/g, "")
+                        const parts = sanitized.split(".")
+                        const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                        setField("maxDiscount", finalVal)
+                      }}
+                      placeholder="E.g. 100"
+                      className="h-12 w-full pl-7"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="hidden md:block"></div>
@@ -377,50 +402,61 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Minimum Bill Amount</label>
-                <Input
-                  type="text"
-                  value={form.minBillAmount}
-                  maxLength={10}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    const sanitized = val.replace(/[^0-9.]/g, "")
-                    const parts = sanitized.split(".")
-                    const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
-                    setField("minBillAmount", finalVal)
-                  }}
-                  placeholder="E.g. 500"
-                  className="h-12"
-                />
+                <p className="mb-1.5 text-xs text-slate-500">Offer applies only when the bill exceeds this amount. Set 0 for no minimum.</p>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3 text-sm font-medium text-slate-500">₹</span>
+                  <Input
+                    type="text"
+                    value={form.minBillAmount}
+                    maxLength={10}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      const sanitized = val.replace(/[^0-9.]/g, "")
+                      const parts = sanitized.split(".")
+                      const finalVal = parts.length > 2 ? parts[0] + "." + parts.slice(1).join("") : sanitized
+                      setField("minBillAmount", finalVal)
+                    }}
+                    placeholder="E.g. 500"
+                    className="h-12 w-full pl-7"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Usage Limit (global)</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">Total Redemptions Allowed</label>
+                <p className="mb-1.5 text-xs text-slate-500">How many times can this offer be used in total across all customers? Leave blank for unlimited</p>
                 <Input
                   type="text"
                   value={form.usageLimit}
                   maxLength={8}
                   onChange={(e) => setField("usageLimit", e.target.value.replace(/\D/g, ""))}
-                  placeholder="Leave empty for unlimited"
+                  placeholder="E.g. 100"
                   className="h-12"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-800">Per User Redeem Limit</label>
+                <label className="mb-1 block text-sm font-medium text-slate-800">Uses Per Customer</label>
+                <p className="mb-1.5 text-xs text-slate-500">How many times can a single customer use this offer? E.g. 1 = one-time only</p>
                 <Input
                   type="text"
                   value={form.perUserLimit}
                   maxLength={6}
                   onChange={(e) => setField("perUserLimit", e.target.value.replace(/\D/g, ""))}
-                  placeholder="Leave empty for unlimited"
+                  placeholder="E.g. 1"
                   className="h-12"
                 />
               </div>
 
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-800">Funding</label>
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm font-medium text-slate-700">
-                  Restaurant-funded overall dining offer
+                <div className="rounded-2xl border border-[#e2e8f0]/40 bg-[#f8fafc]/50 p-4">
+                  <div className="font-bold text-[#1e293b] text-base mb-1">
+                    Funding - Restaurant funded
+                  </div>
+                  <div className="text-sm text-slate-500 font-normal">
+                    Restaurant bear the full discount cost for this offer.
+                  </div>
                 </div>
               </div>
 
