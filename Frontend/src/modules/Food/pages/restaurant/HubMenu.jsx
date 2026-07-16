@@ -1208,8 +1208,8 @@ export default function HubMenu() {
           addons.length === 0 ?
           <div className="flex flex-col items-center justify-center py-20 px-4">
                 <div className="text-center">
-                  <p className="text-lg font-medium text-gray-500">No add-ons available</p>
-                  <p className="text-sm text-gray-400 mt-2">Add-ons will appear here when you create them</p>
+                  <p className="text-lg font-medium text-gray-500">No Add-Ons Created</p>
+                  <p className="text-sm text-gray-400 mt-2">Create add-ons to customize your items and increase order value.</p>
                 </div>
               </div> :
 

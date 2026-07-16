@@ -42,11 +42,11 @@ const MAX_CUSTOM_SCHEDULE_DAYS = 7
 
 const MENU_FILTER_OPTIONS = [
   { value: "all", label: "All" },
-  { value: "in-stock", label: "In stock" },
-  { value: "out-of-stock", label: "Out of stock" },
+  { value: "in-stock", label: "In Stock" },
+  { value: "out-of-stock", label: "Out Of Stock" },
   { value: "recommended", label: "Recommended" },
   { value: "veg", label: "Veg" },
-  { value: "non-veg", label: "Non-veg" },
+  { value: "non-veg", label: "Non-Veg" },
 ]
 
 const ADDON_FILTER_OPTIONS = [
@@ -1883,7 +1883,7 @@ export default function Inventory() {
               />
             )}
             <span className="relative z-10 flex items-center justify-center gap-2">
-              <span>All items</span>
+              <span>All Items</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                 activeTab === "all-items" ? "bg-white text-slate-950" : "bg-slate-100 text-slate-600"
               }`}>
@@ -1919,7 +1919,7 @@ export default function Inventory() {
               />
             )}
             <span className="relative z-10 flex items-center justify-center gap-2">
-              <span>Add ons</span>
+              <span>Add Ons</span>
               <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
                 activeTab === "add-ons" ? "bg-white text-slate-950" : "bg-slate-100 text-slate-600"
               }`}>
@@ -2001,7 +2001,7 @@ export default function Inventory() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-950">
-                  {activeTab === "add-ons" ? "Search and review add-ons" : "Search and manage menu inventory"}
+                  {activeTab === "add-ons" ? "Search And Review Add-Ons" : "Search And Manage Menu Inventory"}
                 </p>
                 <p className="mt-1 text-xs text-slate-500">
                   {activeTab === "add-ons"
@@ -2030,7 +2030,7 @@ export default function Inventory() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={activeTab === "add-ons" ? "Search add-ons by name or status" : "Search categories or menu items"}
+                  placeholder={activeTab === "add-ons" ? "Search Add-Ons By Name Or Status" : "Search Categories Or Menu Items"}
                   className="h-12 w-full rounded-[20px] border border-slate-200 bg-slate-50 pl-11 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none"
                 />
                 {searchQuery ? (
@@ -2247,10 +2247,10 @@ export default function Inventory() {
                 <div className="rounded-[28px] border border-dashed border-slate-200 bg-white/70 px-4 py-20 text-center shadow-[0_18px_40px_-34px_rgba(15,23,42,0.35)]">
                   <div className="text-center">
                     <p className="text-lg font-semibold text-slate-700">
-                      {hasActiveTools ? "No matching add-ons found" : "No add-ons available"}
+                      {hasActiveTools ? "No Matching Add-Ons Found" : "No Add-Ons Created"}
                     </p>
                     <p className="mt-2 text-sm text-slate-500">
-                      {hasActiveTools ? "Try changing your search or filters" : "All add-ons will appear here"}
+                      {hasActiveTools ? "Try Changing Your Search Or Filters" : "Create add-ons to customize your items and increase order value."}
                     </p>
                   </div>
                 </div>
@@ -2405,7 +2405,7 @@ export default function Inventory() {
                             ? "bg-emerald-50 text-emerald-700"
                             : "bg-rose-50 text-rose-700"
                         }`}>
-                          {category.inStock ? "Healthy" : "Needs attention"}
+                          {category.inStock ? "Healthy" : "Needs Attention"}
                         </span>
                       </div>
                       {category.description ? (
@@ -2414,13 +2414,13 @@ export default function Inventory() {
                       <div className="mt-4 flex items-center gap-2 flex-wrap">
                         {category.inStock ? (
                           <p className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                            All visible items are in stock
+                            All Visible Items Are In Stock
                           </p>
                         ) : (
                           <p className="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">
                             {getOutOfStockCount(category) === (category.items?.length || category.itemCount || 0)
-                              ? `Out of Stock (${category.items?.length || category.itemCount || 0} Item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''})`
-                              : `${getOutOfStockCount(category)} out of ${(category.items?.length || category.itemCount || 0)} Item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''} out of stock`
+                              ? `Out Of Stock (${category.items?.length || category.itemCount || 0} Item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''})`
+                              : `${getOutOfStockCount(category)} Out Of ${(category.items?.length || category.itemCount || 0)} Item${(category.items?.length || category.itemCount || 0) !== 1 ? 's' : ''} Out Of Stock`
                             }
                           </p>
                         )}
@@ -2502,7 +2502,7 @@ export default function Inventory() {
                                           ? "bg-emerald-50 text-emerald-700"
                                           : "bg-rose-50 text-rose-700"
                                       }`}>
-                                        {item.isVeg ? "Veg" : "Non-veg"}
+                                        {item.isVeg ? "Veg" : "Non-Veg"}
                                       </span>
                                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${approvalMeta.className}`}>
                                         {approvalMeta.label}
@@ -2515,7 +2515,7 @@ export default function Inventory() {
                                     </div>
                                     {item.inStock && (
                                       <p className="mt-1 text-xs font-medium text-green-600">
-                                        In stock
+                                        In Stock
                                       </p>
                                     )}
                                     {item.approvalStatus === "rejected" && item.rejectionReason ? (
@@ -2533,7 +2533,7 @@ export default function Inventory() {
                                       }`}
                                     >
                                       <Pencil className="h-3 w-3" />
-                                      {isRejectedItem ? "Fix & resubmit" : "Edit"}
+                                      {isRejectedItem ? "Fix & Resubmit" : "Edit"}
                                     </button>
                                   </div>
                                 </div>
@@ -2700,7 +2700,7 @@ export default function Inventory() {
               <div className="p-6">
                 {/* Header */}
                 <h2 className="text-lg font-bold text-gray-900 text-center mb-6">
-                  {toggleTarget.type === "category" ? "Mark sub category out of stock" : "Mark item out of stock"}
+                  {toggleTarget.type === "category" ? "Mark Sub Category Out Of Stock" : "Mark Item Out Of Stock"}
                 </h2>
 
                 {/* Category Info - Only show for category toggles */}
@@ -2708,12 +2708,9 @@ export default function Inventory() {
                   const categoryData = getCategoryData()
                   if (!categoryData) return null
                   return (
-                    <div className="">
-                      <h3 className="text-base font-bold text-gray-900 mb-3">{categoryData.name}</h3>
-                      <ul className="space-y-1 text-sm text-gray-600">
-                        <li>• {categoryData.name}</li>
-                        <li>• Includes {categoryData.itemCount} item{categoryData.itemCount !== 1 ? 's' : ''}</li>
-                      </ul>
+                    <div className="mb-6">
+                      <h3 className="text-base font-bold text-gray-900">{categoryData.name} Category</h3>
+                      <p className="text-sm text-gray-600 mt-1">Contains {categoryData.itemCount} Item{categoryData.itemCount !== 1 ? 's' : ''}</p>
                       <div className="border-t border-gray-200 mt-4"></div>
                     </div>
                   )
@@ -2725,7 +2722,7 @@ export default function Inventory() {
                   <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
                     <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0">
                     
-                      <span className="text-xs sm:text-base text-gray-900 font-medium truncate shrink-0">For specific time</span>
+                      <span className="text-xs sm:text-base text-gray-900 font-medium truncate shrink-0">Pause For</span>
                       {selectedOption === "specific-time" && (
                         <div className="ml-auto flex items-center justify-center gap-1.5 sm:gap-3 shrink-0">
                           <button
@@ -2760,7 +2757,7 @@ export default function Inventory() {
                   <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
                     <div className="flex items-center gap-3 flex-1">
                    
-                      <span className="text-xs sm:text-base text-gray-900">Next business day - Opening time</span>
+                       <span className="text-xs sm:text-base text-gray-900">Until Next Opening Time</span>
                       <input
                         type="radio"
                         name="outOfStockOption"
@@ -2776,7 +2773,7 @@ export default function Inventory() {
                   <label className="flex items-center justify-between py-4 cursor-pointer border-b border-gray-200">
                     <div className="flex items-center gap-3 flex-1">
                     
-                      <span className="text-xs sm:text-base text-gray-900">Custom date & time</span>
+                       <span className="text-xs sm:text-base text-gray-900">Custom Date & Time</span>
                       <input
                         type="radio"
                         name="outOfStockOption"
@@ -2821,7 +2818,7 @@ export default function Inventory() {
                     <div className="flex flex-col gap-1 flex-1">
                       <div className="flex items-center gap-3">
                        
-                        <span className="text-xs sm:text-base text-gray-900">I will turn it on manually</span>
+                        <span className="text-xs sm:text-base text-gray-900">Indefinitely (Turn On Manually) / Manual Activation</span>
                         <input
                           type="radio"
                           name="outOfStockOption"
@@ -2831,8 +2828,8 @@ export default function Inventory() {
                           className="ml-auto w-5 h-5 !border-gray-300 !focus:ring-[var(--restaurant-brand)]"
                         />
                       </div>
-                      <p className="text-xs text-gray-500">
-                        Item won't be visible to customers on taamio app till you mark it back in stock
+                      <p className="text-[10px] sm:text-xs text-gray-500 italic">
+                        {toggleTarget.type === 'category' ? 'Category' : 'Item'} will remain hidden from customers on the Taamio app until you manually mark it back in stock.
                       </p>
                     </div>
                   </label>
@@ -2896,7 +2893,7 @@ export default function Inventory() {
             className="rounded-full px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(15,23,42,0.85)]"
             style={{ backgroundColor: RESTAURANT_THEME.brand }}
           >
-            + Add item
+            + Add Item
           </motion.button>
           <motion.button
             type="button"
@@ -2921,7 +2918,7 @@ export default function Inventory() {
             className="rounded-full px-5 py-3 text-sm font-semibold text-white shadow-[0_22px_40px_-24px_rgba(15,23,42,0.85)]"
             style={{ backgroundColor: RESTAURANT_THEME.brand }}
           >
-            {isAddAddonOpen ? "Close" : "+ Add Add-on"}
+            {isAddAddonOpen ? "Close" : "+ Add Add-On"}
           </motion.button>
         )}
 
@@ -2948,7 +2945,7 @@ export default function Inventory() {
                 >
                   <div className="h-full flex flex-col">
                     <div className="bg-[linear-gradient(135deg,#f8fbff_0%,#eef6ff_100%)] px-4 pt-4 pb-3">
-                      <p className="text-sm font-semibold text-slate-950">Jump to category</p>
+                      <p className="text-sm font-semibold text-slate-950">Jump To Category</p>
                     </div>
                     <div className="mx-4 h-px bg-slate-200" />
                     <div className="flex-1 overflow-y-auto px-4 py-2 space-y-1">
