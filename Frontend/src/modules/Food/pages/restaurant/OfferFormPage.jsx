@@ -251,9 +251,12 @@ export default function OfferFormPage({ mode = "create" }) {
   }
 
   const filteredMenuItems = useMemo(() => {
-    if (!productSearch.trim()) return menuItems.slice(0, 30)
+    if (!productSearch.trim()) return menuItems
     const q = productSearch.toLowerCase()
-    return menuItems.filter((i) => (i.name || "").toLowerCase().includes(q)).slice(0, 30)
+    return menuItems.filter((i) => 
+      (i.name || "").toLowerCase().includes(q) || 
+      (i.category || "").toLowerCase().includes(q)
+    )
   }, [menuItems, productSearch])
 
   const validationError = useMemo(() => {
@@ -472,7 +475,12 @@ export default function OfferFormPage({ mode = "create" }) {
                                         toggleProduct(item)
                                       }}
                                     >
-                                      <span className="font-medium text-slate-800">{item.name}</span>
+                                      <div className="flex flex-col">
+                                        <span className="font-medium text-slate-800">{item.name}</span>
+                                        {item.category && (
+                                          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">{item.category}</span>
+                                        )}
+                                      </div>
                                       <div
                                         className={`flex h-6 w-6 items-center justify-center rounded-md border-2 transition-all ${
                                           selected ? "bg-[#00c87e] border-[#00c87e]" : "border-slate-300 bg-white"
