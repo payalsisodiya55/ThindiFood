@@ -229,6 +229,14 @@ export default function AddCouponPage(props = {}) {
       }
     }
 
+    if (form.usageLimit !== "" && form.perUserLimit !== "") {
+      const usageL = Number(form.usageLimit)
+      const perUserL = Number(form.perUserLimit)
+      if (perUserL > usageL) {
+        return "Per User Limit cannot be greater than the total Usage Limit."
+      }
+    }
+
     const todayStr = getTodayDateString()
     if (!isEditMode && form.startDate && form.startDate < todayStr) {
       return "Start date cannot be in the past"
@@ -280,6 +288,19 @@ export default function AddCouponPage(props = {}) {
       isActive = false
     }
   }, [couponId, isEditMode, navigate])
+
+  useEffect(() => {
+    const handleGlobalClick = (event) => {
+      if (!event.target.closest(".info-tooltip-trigger")) {
+        setShowUsageLimitTooltip(false)
+        setShowPerUserLimitTooltip(false)
+      }
+    }
+    document.addEventListener("click", handleGlobalClick)
+    return () => {
+      document.removeEventListener("click", handleGlobalClick)
+    }
+  }, [])
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -450,8 +471,12 @@ export default function AddCouponPage(props = {}) {
                 <div className="flex items-center gap-1.5 mb-1">
                   <label className="block text-sm font-medium text-slate-800">Usage Limit (Optional)</label>
                   <div 
-                    className="group relative cursor-pointer"
-                    onClick={() => setShowUsageLimitTooltip(!showUsageLimitTooltip)}
+                    className="group relative cursor-pointer info-tooltip-trigger"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowUsageLimitTooltip(!showUsageLimitTooltip)
+                      setShowPerUserLimitTooltip(false)
+                    }}
                   >
                     <Info className="h-4 w-4 text-slate-400 hover:text-slate-600 transition-colors" />
                     <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-[11px] p-2 rounded-lg shadow-lg z-50 text-center leading-normal ${showUsageLimitTooltip ? 'block' : 'hidden group-hover:block'}`}>
@@ -473,8 +498,12 @@ export default function AddCouponPage(props = {}) {
                 <div className="flex items-center gap-1.5 mb-1">
                   <label className="block text-sm font-medium text-slate-800">Per User Limit (Optional)</label>
                   <div 
-                    className="group relative cursor-pointer"
-                    onClick={() => setShowPerUserLimitTooltip(!showPerUserLimitTooltip)}
+                    className="group relative cursor-pointer info-tooltip-trigger"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowPerUserLimitTooltip(!showPerUserLimitTooltip)
+                      setShowUsageLimitTooltip(false)
+                    }}
                   >
                     <Info className="h-4 w-4 text-slate-400 hover:text-slate-600 transition-colors" />
                     <div className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-[11px] p-2 rounded-lg shadow-lg z-50 text-center leading-normal ${showPerUserLimitTooltip ? 'block' : 'hidden group-hover:block'}`}>
