@@ -121,11 +121,16 @@ export default function CouponListPage() {
   return (
     <div className="min-h-screen bg-[#eef2f6] pb-24 md:pb-8">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 w-full">
-        <div className="mx-auto max-w-md md:max-w-6xl flex items-center gap-3">
-          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
+        <div className="mx-auto max-w-md md:max-w-6xl flex items-start gap-3">
+          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100 mt-1">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-3xl font-semibold text-slate-900">Coupon List</h1>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Manage Coupons</h1>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium leading-normal">
+              Create discount codes to attract new customers and boost order volumes.
+            </p>
+          </div>
         </div>
       </header>
 
@@ -142,8 +147,9 @@ export default function CouponListPage() {
           }
 
           {!loading && !error && normalizedCoupons.length === 0 &&
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-600 md:col-span-2 lg:col-span-3">
-              No coupons found
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600 md:col-span-2 lg:col-span-3">
+              <p className="text-sm font-semibold text-slate-800">No Active Coupons</p>
+              <p className="text-xs text-slate-500 mt-1 font-medium">Tap the + button to create a new discount.</p>
             </div>
           }
 

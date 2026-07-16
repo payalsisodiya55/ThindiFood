@@ -162,20 +162,46 @@ export default function OfferApproval() {
       setEditError("Discount value must be greater than 0")
       return
     }
-    if (editForm.discountType === "percentage" && (!Number.isFinite(maxDiscountValue) || maxDiscountValue < 0)) {
-      setEditError("Max discount is required for percentage offers")
+    if (editForm.discountType === "percentage" && (discountValue < 1 || discountValue > 99)) {
+      setEditError("Discount (%) must be between 1 and 99")
       return
     }
-    if (editForm.maxItemsPerOrder !== "" && (!Number.isFinite(maxItemsValue) || maxItemsValue < 1)) {
-      setEditError("Max items per order must be at least 1")
+    if (editForm.discountType !== "percentage" && discountValue > 999) {
+      setEditError("Discount Amount cannot exceed 999")
       return
     }
-    if (editForm.perUserRedeemLimit !== "" && (!Number.isFinite(perUserValue) || perUserValue < 1)) {
-      setEditError("Per user redeem limit must be at least 1")
-      return
+    if (editForm.discountType === "percentage") {
+      if (!Number.isFinite(maxDiscountValue) || maxDiscountValue < 0) {
+        setEditError("Max discount is required for percentage offers")
+        return
+      }
+      if (maxDiscountValue > 999) {
+        setEditError("Max Discount cannot exceed 999")
+        return
+      }
     }
-    if (editForm.startDate && editForm.endDate && new Date(editForm.endDate).getTime() <= new Date(editForm.startDate).getTime()) {
-      setEditError("End date must be after start date")
+    if (editForm.maxItemsPerOrder !== "") {
+      if (!Number.isFinite(maxItemsValue) || maxItemsValue < 1) {
+        setEditError("Max items per order must be at least 1")
+        return
+      }
+      if (maxItemsValue > 999) {
+        setEditError("Max Items Per Order cannot exceed 999")
+        return
+      }
+    }
+    if (editForm.perUserRedeemLimit !== "") {
+      if (!Number.isFinite(perUserValue) || perUserValue < 1) {
+        setEditError("Per user redeem limit must be at least 1")
+        return
+      }
+      if (perUserValue > 999) {
+        setEditError("Per User Redeem Limit cannot exceed 999")
+        return
+      }
+    }
+    if (editForm.startDate && editForm.endDate && new Date(editForm.startDate).getTime() > new Date(editForm.endDate).getTime()) {
+      setEditError("Start date cannot be later than the end date. Please select a valid date range.")
       return
     }
 
@@ -437,10 +463,13 @@ export default function OfferApproval() {
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Discount Value</label>
               <input
-                type="number"
-                min="0"
+                type="text"
+                maxLength={3}
                 value={editForm.discountValue}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, discountValue: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 3)
+                  setEditForm((prev) => ({ ...prev, discountValue: val }))
+                }}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
               />
             </div>
@@ -449,10 +478,13 @@ export default function OfferApproval() {
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Max Discount</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  maxLength={3}
                   value={editForm.maxDiscount}
-                  onChange={(e) => setEditForm((prev) => ({ ...prev, maxDiscount: e.target.value }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 3)
+                    setEditForm((prev) => ({ ...prev, maxDiscount: val }))
+                  }}
                   className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
                 />
               </div>
@@ -461,10 +493,13 @@ export default function OfferApproval() {
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Max Items Per Order</label>
               <input
-                type="number"
-                min="1"
+                type="text"
+                maxLength={3}
                 value={editForm.maxItemsPerOrder}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, maxItemsPerOrder: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 3)
+                  setEditForm((prev) => ({ ...prev, maxItemsPerOrder: val }))
+                }}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
                 placeholder="Leave empty for unlimited"
               />
@@ -473,10 +508,13 @@ export default function OfferApproval() {
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Per User Redeem Limit</label>
               <input
-                type="number"
-                min="1"
+                type="text"
+                maxLength={3}
                 value={editForm.perUserRedeemLimit}
-                onChange={(e) => setEditForm((prev) => ({ ...prev, perUserRedeemLimit: e.target.value }))}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "").slice(0, 3)
+                  setEditForm((prev) => ({ ...prev, perUserRedeemLimit: val }))
+                }}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
                 placeholder="Leave empty for unlimited"
               />

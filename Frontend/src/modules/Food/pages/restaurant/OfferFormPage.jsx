@@ -263,11 +263,11 @@ export default function OfferFormPage({ mode = "create" }) {
     if (!Number.isFinite(discVal) || discVal <= 0) {
       return "Discount value must be greater than 0"
     }
-    if (isPercentage && discVal > 1000) {
-      return "Percentage discount cannot exceed 1,000%"
+    if (isPercentage && (discVal < 1 || discVal > 99)) {
+      return "Discount (%) must be between 1 and 99"
     }
-    if (discVal > 100000000) {
-      return "Discount value cannot exceed 100,000,000"
+    if (!isPercentage && discVal > 999) {
+      return "Discount Amount cannot exceed 999"
     }
 
     if (isPercentage) {
@@ -275,8 +275,8 @@ export default function OfferFormPage({ mode = "create" }) {
       if (form.maxDiscount === "" || !Number.isFinite(maxD) || maxD < 0) {
         return "Max Discount is required for percentage offers"
       }
-      if (maxD > 100000000) {
-        return "Max Discount cannot exceed 100,000,000"
+      if (maxD > 999) {
+        return "Max Discount cannot exceed 999"
       }
     }
 
@@ -285,8 +285,8 @@ export default function OfferFormPage({ mode = "create" }) {
       if (!Number.isFinite(maxItems) || maxItems < 1) {
         return "Max Items Per Order must be at least 1"
       }
-      if (maxItems > 100000) {
-        return "Max Items Per Order cannot exceed 100,000"
+      if (maxItems > 999) {
+        return "Max Items Per Order cannot exceed 999"
       }
     }
 
@@ -295,8 +295,8 @@ export default function OfferFormPage({ mode = "create" }) {
       if (!Number.isFinite(perUserL) || perUserL < 1) {
         return "Per User Redeem Limit must be at least 1"
       }
-      if (perUserL > 100000) {
-        return "Per User Redeem Limit cannot exceed 100,000"
+      if (perUserL > 999) {
+        return "Per User Redeem Limit cannot exceed 999"
       }
     }
 
@@ -529,7 +529,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 <Input
                   type="text"
                   value={form.discountValue}
-                  maxLength={isPercentage ? 6 : 10}
+                  maxLength={3}
                   onChange={(e) => {
                     const val = e.target.value
                     const sanitized = val.replace(/[^0-9.]/g, "")
@@ -550,7 +550,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   <Input
                     type="text"
                     value={form.maxDiscount}
-                    maxLength={10}
+                    maxLength={3}
                     onChange={(e) => {
                       const val = e.target.value
                       const sanitized = val.replace(/[^0-9.]/g, "")
@@ -572,7 +572,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 <Input
                   type="text"
                   value={form.maxItemsPerOrder}
-                  maxLength={6}
+                  maxLength={3}
                   onChange={(e) => setField("maxItemsPerOrder", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 5"
                   className="h-12"
@@ -586,7 +586,7 @@ export default function OfferFormPage({ mode = "create" }) {
                 <Input
                   type="text"
                   value={form.perUserRedeemLimit}
-                  maxLength={6}
+                  maxLength={3}
                   onChange={(e) => setField("perUserRedeemLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 2"
                   className="h-12"
