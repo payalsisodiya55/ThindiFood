@@ -59,6 +59,7 @@ export default function HubFinance() {
     return tabParam === "invoices" ? "invoices" : "payouts"
   })
   const [selectedDateRange, setSelectedDateRange] = useState("Last 30 days")
+  const [selectedPresetLabel, setSelectedPresetLabel] = useState("Last 30 Days")
   const [showDownloadMenu, setShowDownloadMenu] = useState(false)
   const [showDateRangePicker, setShowDateRangePicker] = useState(false)
   const downloadMenuRef = useRef(null)
@@ -74,6 +75,44 @@ export default function HubFinance() {
   const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false)
   const [withdrawalRequests, setWithdrawalRequests] = useState([])
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
+
+  // Custom Date Range Pickers
+  const [customRangeActive, setCustomRangeActive] = useState(false)
+  const [customStartDate, setCustomStartDate] = useState(null)  // Date object or null
+  const [customEndDate, setCustomEndDate] = useState(null)        // Date object or null
+  // Calendar navigation state
+  const [calStartViewDate, setCalStartViewDate] = useState(new Date())
+  const [calEndViewDate, setCalEndViewDate] = useState(new Date())
+  const [calPickingEnd, setCalPickingEnd] = useState(false) // false = picking start, true = picking end
+
+  const applyCustomRange = () => {
+    if (!customStartDate || !customEndDate) {
+      toast.error("Please select both start and end dates")
+      return
+    }
+    const start = new Date(customStartDate)
+    const end = new Date(customEndDate)
+    start.setHours(0, 0, 0, 0)
+    end.setHours(23, 59, 59, 999)
+    if (start > end) {
+      toast.error("Start date must be before end date")
+      return
+    }
+
+    const formatDateForDisplay = (d) => {
+      const day = d.getDate()
+      const month = d.toLocaleString('en-US', { month: 'short' })
+      const year = d.getFullYear().toString().slice(-2)
+      return `${day} ${month}'${year}`
+    }
+
+    const displayStr = `${formatDateForDisplay(start)} - ${formatDateForDisplay(end)}`
+    setSelectedDateRange(displayStr)
+    setSelectedPresetLabel('Custom Range')
+    setShowDateRangePicker(false)
+    setCustomRangeActive(false)
+    fetchPastCyclesData(start, end)
+  }
 
   // Fetch finance data on mount
   useEffect(() => {
@@ -547,7 +586,7 @@ export default function HubFinance() {
         year: currentCycleDates.year,
         estimatedPayout: `₹${(currentCycle.estimatedPayout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
         orders: currentCycle.totalOrders || 0,
-        payoutDate: currentCycle.payoutDate ? new Date(currentCycle.payoutDate).toLocaleDateString('en-IN') : "-"
+        payoutDate: currentCycle.payoutDate ? new Date(currentCycle.payoutDate).toLocaleDateString('en-IN') : "Pending"
       },
       pastCycles: pastCyclesData,
       allOrders: allOrders
@@ -655,6 +694,7 @@ export default function HubFinance() {
           @media print {
             body { padding: 20px; width: auto; }
             .current-cycle { page-break-inside: avoid; }
+            .orders-table tr { page-break-inside: avoid; }
           }
         </style>
       </head>
@@ -688,7 +728,7 @@ export default function HubFinance() {
         </div>
 
         <div class="section">
-          <div class="section-title">Detailed Order Wise Report</div>
+          <div class="section-title">Detailed Order-wise Report</div>
           ${reportData.allOrders && reportData.allOrders.length > 0 ? `
             <table class="orders-table">
               <thead>
@@ -705,8 +745,12 @@ export default function HubFinance() {
               <tbody>
                 ${reportData.allOrders.map(order => {
                   const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : (order.deliveredAt ? new Date(order.deliveredAt).toLocaleDateString('en-IN') : 'N/A')
-                  const foodItems = order.foodNames || (order.items && order.items.map(item => item.name).join(', ')) || 'N/A'
-                  const itemQuantities = order.items ? order.items.map(item => (item.quantity || 1).toString()).join(', ') : 'N/A'
+                  const foodItems = order.items && order.items.length > 0
+                    ? order.items.map(item => `<div style="margin-bottom: 2px;">${item.name}</div>`).join('')
+                    : `<div style="margin-bottom: 2px;">${order.foodNames || 'N/A'}</div>`
+                  const itemQuantities = order.items && order.items.length > 0
+                    ? order.items.map(item => `<div style="margin-bottom: 2px; text-align: center;">${item.quantity || 1}</div>`).join('')
+                    : `<div style="margin-bottom: 2px; text-align: center;">1</div>`
                   const orderAmount = order.totalAmount || order.orderTotal || order.amount || 0
                   const earning = order.payout || order.restaurantEarning || 0
                   
@@ -716,9 +760,9 @@ export default function HubFinance() {
                       <td>${order.orderId || 'N/A'}</td>
                       <td>${orderDate}</td>
                       <td>${foodItems}</td>
-                      <td>${itemQuantities}</td>
+                      <td style="text-align: center; vertical-align: top;">${itemQuantities}</td>
                       <td>₹${orderAmount.toFixed(2)}</td>
-                      <td>₹${earning.toFixed(2)}</td>
+                      <td>${earning < 0 ? `-₹${Math.abs(earning).toFixed(2)}` : `₹${earning.toFixed(2)}`}</td>
                     </tr>
                   `
                 }).join('')}
@@ -726,7 +770,12 @@ export default function HubFinance() {
               <tfoot>
                 <tr style="background-color: #e8f5e9; font-weight: bold;">
                   <td colspan="5" style="text-align: right;">Total Earnings:</td>
-                  <td colspan="2">₹${reportData.allOrders.reduce((sum, order) => sum + (order.payout || order.restaurantEarning || 0), 0).toFixed(2)}</td>
+                  <td colspan="2">
+                    ${(() => {
+                      const totalEarnings = reportData.allOrders.reduce((sum, order) => sum + (order.payout || order.restaurantEarning || 0), 0)
+                      return totalEarnings < 0 ? `-₹${Math.abs(totalEarnings).toFixed(2)}` : `₹${totalEarnings.toFixed(2)}`
+                    })()}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -810,9 +859,11 @@ export default function HubFinance() {
       // Remove temporary iframe
       document.body.removeChild(iframe)
     
-      // Calculate PDF dimensions
-      const imgWidth = 210 // A4 width in mm
+      // Calculate PDF dimensions with margins
+      const margin = 10 // mm margin on each side
+      const imgWidth = 210 - margin * 2 // A4 width in mm minus side margins
       const pageHeight = 297 // A4 height in mm
+      const usableHeight = pageHeight - margin * 2 // usable height per page with top+bottom margins
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       
       debugLog('?? PDF dimensions:', imgWidth, 'x', imgHeight, 'mm')
@@ -822,16 +873,17 @@ export default function HubFinance() {
       let heightLeft = imgHeight
       let position = 0
       
-      // Add first page
-      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
-      heightLeft -= pageHeight
+      // Add first page with margins
+      pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, margin, imgWidth, imgHeight)
+      heightLeft -= usableHeight
       
       // Add additional pages if content is longer than one page
       while (heightLeft > 0) {
-        position = heightLeft - imgHeight
+        position -= usableHeight
         pdf.addPage()
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight)
-        heightLeft -= pageHeight
+        // Offset the image up so the next segment is shown, keeping margin at top
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', margin, position + margin, imgWidth, imgHeight)
+        heightLeft -= usableHeight
       }
       
       // Download PDF
@@ -866,60 +918,42 @@ export default function HubFinance() {
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0 flex flex-col">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={goBack}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-                aria-label="Go back"
-              >
-                <ArrowLeft className="w-6 h-6" />
-              </button>
+      <div className="sticky bg-white top-0 z-40 px-3 py-2 border-b border-gray-200">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0 flex items-start gap-2">
+            <button
+              onClick={goBack}
+              className="p-1 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0 mt-0.5"
+              aria-label="Go back"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div className="flex-1 min-w-0 flex flex-col">
               <div className="flex items-center gap-1 min-w-0">
-                <h1 className="text-lg font-bold text-gray-900 truncate">
+                <h1 className="text-sm font-bold text-gray-900 truncate">
                   {restaurantData?.name || financeData?.restaurant?.name || "Restaurant"}
                 </h1>
-                <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                <ChevronDown className="w-3.5 h-3.5 text-gray-600 flex-shrink-0" />
               </div>
+              <p className="text-[10px] font-bold text-gray-500 mt-0.5">
+                {(() => {
+                  const restaurantId = restaurantData?.restaurantId || financeData?.restaurant?.restaurantId
+                  return restaurantId ? `ID: ${formatRestaurantId(restaurantId)}` : 'Loading ID...'
+                })()}
+              </p>
+              <p className="text-[10px] text-gray-600 leading-normal mt-0.5 break-words">
+                {restaurantData?.address || financeData?.restaurant?.address || ''}
+              </p>
             </div>
-            <p className="text-xs text-gray-600 mt-0.5 pl-[48px] truncate">
-              {(() => {
-                const restaurantId = restaurantData?.restaurantId || financeData?.restaurant?.restaurantId
-                const address = restaurantData?.address || financeData?.restaurant?.address || ''
-                const parts = []
-                if (restaurantId) {
-                  const formattedId = formatRestaurantId(restaurantId)
-                  parts.push(`ID: ${formattedId}`)
-                }
-                if (address) {
-                  const shortAddress = address.length > 40 ? address.substring(0, 40) + '...' : address
-                  parts.push(shortAddress)
-                }
-                return parts.length > 0 ? parts.join(' • ') : 'Loading...'
-              })()}
-            </p>
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
+          <div className="flex items-center shrink-0">
             <button
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg transition-all duration-150 text-gray-800 cursor-pointer shadow-xs"
               onClick={() => navigate("/restaurant/withdrawal-history")}
               title="Withdrawal History"
             >
-              <Wallet className="w-5 h-5" />
-            </button>
-            <button
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-              onClick={() => navigate("/restaurant/notifications")}
-            >
-              <Bell className="w-5 h-5" />
-            </button>
-            <button
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-              onClick={() => navigate("/restaurant/explore")}
-            >
-              <Menu className="w-5 h-5" />
+              <Wallet className="w-3.5 h-3.5 text-gray-700" />
+              <span className="text-[10px] font-bold">Withdrawals</span>
             </button>
           </div>
         </div>
@@ -966,8 +1000,10 @@ export default function HubFinance() {
                     <p className="text-4xl font-bold text-gray-900 mb-2">
                       ₹{(financeData?.currentCycle?.estimatedPayout || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
-                    <p className="text-sm text-gray-600 mb-4">
-                      {financeData?.currentCycle?.totalOrders || 0} {financeData?.currentCycle?.totalOrders === 1 ? 'order' : 'orders'}
+                    <p className="text-xs text-gray-600 mb-4 flex items-center gap-1.5 flex-wrap">
+                      <span className="font-semibold text-gray-700">{financeData?.currentCycle?.totalOrders || 0} {financeData?.currentCycle?.totalOrders === 1 ? 'order' : 'orders'}</span>
+                      <span className="text-gray-300">•</span>
+                      <span>Period: {currentCycleDates.start} {currentCycleDates.month} - {currentCycleDates.end} {currentCycleDates.month} &apos;{currentCycleDates.year}</span>
                     </p>
                     <button
                       onClick={() => setShowWithdrawalModal(true)}
@@ -982,7 +1018,7 @@ export default function HubFinance() {
                       Withdraw
                     </button>
                     <div className="mt-4 rounded-lg border border-emerald-100 bg-emerald-50 p-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-800 mb-2">Takeaway breakdown</p>
+                      <p className="text-xs font-bold text-emerald-800 mb-2">Takeaway Breakdown</p>
                       <div className="space-y-1.5 text-sm">
                         <div className="flex items-center justify-between text-gray-700">
                           <span>Platform Coupons (platform-funded)</span>
@@ -1158,12 +1194,12 @@ export default function HubFinance() {
 
             {/* Withdrawal Requests */}
             <div>
-              <h2 className="text-base font-bold text-gray-900 mb-3">Withdrawal requests</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">Withdrawal Requests</h2>
               <div className="bg-white rounded-lg p-4">
                 {loadingWithdrawals ? (
                   <div className="py-6 text-center text-sm text-gray-500">Loading withdrawal requests...</div>
                 ) : withdrawalRequests.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-gray-500">No withdrawal requests found.</div>
+                  <div className="py-6 text-center text-sm text-gray-500">You haven&apos;t made any withdrawal requests yet.</div>
                 ) : (
                   <div className="space-y-3">
                     {withdrawalRequests.slice(0, 8).map((request, index) => {
@@ -1210,12 +1246,15 @@ export default function HubFinance() {
 
             {/* Past cycles */}
             <div>
-              <h2 className="text-base font-bold text-gray-900 mb-3">Past cycles</h2>
+              <h2 className="text-base font-bold text-gray-900 mb-3">Past Cycles</h2>
               <div className="space-y-3">
                 <div className="flex gap-2">
                   <div className="flex-1 relative" ref={dateRangePickerRef}>
                     <button 
-                      onClick={() => setShowDateRangePicker(!showDateRangePicker)}
+                      onClick={() => {
+                        setShowDateRangePicker(!showDateRangePicker)
+                        setShowDownloadMenu(false)
+                      }}
                       className="w-full bg-white rounded-lg px-4 py-3 flex items-center justify-between border border-gray-200 hover:border-gray-300 transition-colors cursor-pointer"
                     >
                     <div className="flex items-center gap-2">
@@ -1305,58 +1344,103 @@ export default function HubFinance() {
                                 const ranges = getDateRanges()
                                 const dateOptions = [
                                   { 
-                                    label: "Last 7 days", 
+                                    label: "Last 7 Days", 
                                     range: formatDateRange(ranges.last7DaysStart, ranges.today),
                                     startDate: ranges.last7DaysStart,
                                     endDate: ranges.today
                                   },
                                   { 
-                                    label: "Last 30 days", 
+                                    label: "Last 30 Days", 
                                     range: formatDateRange(ranges.last30DaysStart, ranges.today),
                                     startDate: ranges.last30DaysStart,
                                     endDate: ranges.today
                                   },
                                   { 
-                                    label: "This week", 
+                                    label: "This Week", 
                                     range: formatDateRange(ranges.thisWeekStart, ranges.thisWeekEnd),
                                     startDate: ranges.thisWeekStart,
                                     endDate: ranges.thisWeekEnd
                                   },
                                   { 
-                                    label: "Last week", 
+                                    label: "Last Week", 
                                     range: formatDateRange(ranges.lastWeekStart, ranges.lastWeekEnd),
                                     startDate: ranges.lastWeekStart,
                                     endDate: ranges.lastWeekEnd
                                   },
                                   { 
-                                    label: "This month", 
+                                    label: "This Month", 
                                     range: formatDateRange(ranges.thisMonthStart, ranges.thisMonthEnd),
                                     startDate: ranges.thisMonthStart,
                                     endDate: ranges.thisMonthEnd
                                   },
                                   { 
-                                    label: "Last month", 
+                                    label: "Last Month", 
                                     range: formatDateRange(ranges.lastMonthStart, ranges.lastMonthEnd),
                                     startDate: ranges.lastMonthStart,
                                     endDate: ranges.lastMonthEnd
                                   }
                                 ]
                                 
-                                return dateOptions.map((option, index) => (
-                                  <button
-                                    key={index}
-                                    onClick={() => {
-                                      setSelectedDateRange(option.range)
-                                      setShowDateRangePicker(false)
-                                      // Fetch data for selected range
-                                      fetchPastCyclesData(option.startDate, option.endDate)
-                                    }}
-                                    className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 transition-colors text-sm"
-                                  >
-                                    <div className="font-medium text-gray-900">{option.label}</div>
-                                    <div className="text-xs text-gray-500">{option.range}</div>
-                  </button>
-                                ))
+                                return (
+                                  <div className="space-y-1">
+                                    {dateOptions.map((option, index) => {
+                                      const isActive = selectedPresetLabel === option.label
+                                      return (
+                                        <button
+                                          key={index}
+                                          onClick={() => {
+                                            setSelectedDateRange(option.range)
+                                            setSelectedPresetLabel(option.label)
+                                            setShowDateRangePicker(false)
+                                            setCustomRangeActive(false)
+                                            fetchPastCyclesData(option.startDate, option.endDate)
+                                          }}
+                                          className={`w-full text-left px-3 py-2.5 rounded-xl transition-all text-sm flex items-center justify-between ${
+                                            isActive ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-gray-50'
+                                          }`}
+                                        >
+                                          <div>
+                                            <div className={`font-semibold ${isActive ? 'text-[#00c87e]' : 'text-gray-900'}`}>{option.label}</div>
+                                            <div className="text-xs text-gray-400 mt-0.5">{option.range}</div>
+                                          </div>
+                                          {isActive && (
+                                            <svg className="w-4 h-4 text-[#00c87e] shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                          )}
+                                        </button>
+                                      )
+                                    })}
+                                    <div className="border-t border-gray-100 pt-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setShowDateRangePicker(false)
+                                          setCalStartViewDate(new Date())
+                                          setCustomStartDate(null)
+                                          setCustomEndDate(null)
+                                          setCalPickingEnd(false)
+                                          setCustomRangeActive(true)
+                                        }}
+                                        className={`w-full text-left px-3 py-2.5 rounded-xl transition-all text-sm font-semibold flex items-center justify-between ${
+                                          selectedPresetLabel === 'Custom Range'
+                                            ? 'bg-emerald-50 border border-emerald-200 text-[#00c87e]'
+                                            : 'text-[#00c87e] hover:bg-emerald-50'
+                                        }`}
+                                      >
+                                        <span>Custom Range</span>
+                                        <div className="flex items-center gap-1">
+                                          {selectedPresetLabel === 'Custom Range' && (
+                                            <svg className="w-4 h-4 text-[#00c87e] shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            </svg>
+                                          )}
+                                          <Calendar className="w-4 h-4" />
+                                        </div>
+                                      </button>
+                                    </div>
+                                  </div>
+                                )
                               })()}
                             </div>
                           </div>
@@ -1364,39 +1448,21 @@ export default function HubFinance() {
                       )}
                     </AnimatePresence>
                   </div>
-                  <div className="relative" ref={downloadMenuRef}>
-                    <button 
-                      onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-                      className="bg-black text-white rounded-lg px-4 py-3 flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span className="text-sm font-medium">Get report</span>
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    
-                    <AnimatePresence>
-                      {showDownloadMenu && (
-                        <motion.div
-                          initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                          transition={{ duration: 0.2, ease: "easeOut" }}
-                          className="absolute top-full right-0 mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 py-2 z-50 min-w-[180px]"
-                        >
-                          <button
-                            onClick={downloadPDF}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="w-6 h-6 rounded-md bg-red-50 flex items-center justify-center">
-                              <FileText className="w-4 h-4 text-red-600" />
-                            </div>
-                            <span>Download PDF</span>
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </div>
+                  <button
+                    onClick={downloadPDF}
+                    className="bg-black text-white rounded-lg px-4 py-3 flex items-center justify-center gap-2 hover:bg-gray-800 active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="text-sm font-semibold">Get Report</span>
+                  </button>
                 </div>
+                {/* Fullscreen backdrop for date selector overlay */}
+                {showDateRangePicker && (
+                  <div 
+                    className="fixed inset-0 bg-black/35 z-40 transition-opacity duration-150"
+                    onClick={() => setShowDateRangePicker(false)}
+                  />
+                )}
                 {loadingPastCycles ? (
                   <div className="bg-white rounded-lg p-4">
                     <p className="text-sm text-gray-600 text-center">Loading past cycles...</p>
@@ -1438,7 +1504,11 @@ export default function HubFinance() {
                                   Admin recoverable: ₹{formatCurrencyByOrder(order, order?.adminChargesRecoverable || 0)} | Platform comp: ₹{formatCurrencyByOrder(order, order?.platformDiscountCompensation || 0)}
                                 </p>
                                 <p className="mt-0.5">
-                                  Wallet adjustment: ₹{formatCurrencyByOrder(order, order?.walletNetAdjustment || 0)} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
+                                  Wallet adjustment: ₹{formatCurrencyByOrder(order, order?.walletNetAdjustment || 0)} | Settlement: {order?.settlementApplied ? (
+                                    <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-800 font-bold text-[9px] ml-0.5">Applied</span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[9px] ml-0.5">Pending</span>
+                                  )}
                                 </p>
                                 {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
                                   <p className="mt-0.5">
@@ -1491,7 +1561,11 @@ export default function HubFinance() {
                                   Admin recoverable: ₹{formatCurrencyByOrder(order, order?.adminChargesRecoverable || 0)} | Platform comp: ₹{formatCurrencyByOrder(order, order?.platformDiscountCompensation || 0)}
                                 </p>
                                 <p className="mt-0.5">
-                                  Wallet adjustment: ₹{formatCurrencyByOrder(order, order?.walletNetAdjustment || 0)} | Settlement: {order?.settlementApplied ? 'Applied' : 'Pending'}
+                                  Wallet adjustment: ₹{formatCurrencyByOrder(order, order?.walletNetAdjustment || 0)} | Settlement: {order?.settlementApplied ? (
+                                    <span className="px-1.5 py-0.5 rounded bg-green-100 text-green-800 font-bold text-[9px] ml-0.5">Applied</span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[9px] ml-0.5">Pending</span>
+                                  )}
                                 </p>
                                 {order?.sourceModule === "dining" && Number(order?.diningBreakdown?.total || 0) > 0 && (
                                   <p className="mt-0.5">
@@ -1693,6 +1767,127 @@ export default function HubFinance() {
             </motion.div>
           </>
         )}
+      </AnimatePresence>
+
+      {/* Custom Range Calendar Popup Modal */}
+      <AnimatePresence>
+        {customRangeActive && (() => {
+          const DAYS3 = ['Su','Mo','Tu','We','Th','Fr','Sa']
+          const MONTHS3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+          const MONTHS3_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December']
+          const year3 = calStartViewDate.getFullYear()
+          const month3 = calStartViewDate.getMonth()
+          const firstDay3 = new Date(year3, month3, 1).getDay()
+          const daysInMonth3 = new Date(year3, month3 + 1, 0).getDate()
+          const today3 = new Date(); today3.setHours(0,0,0,0)
+          const cells3 = []
+          for (let i = 0; i < firstDay3; i++) cells3.push(null)
+          for (let d = 1; d <= daysInMonth3; d++) cells3.push(d)
+          const prevM3 = () => { const d = new Date(calStartViewDate); d.setDate(1); d.setMonth(d.getMonth() - 1); setCalStartViewDate(d) }
+          const nextM3 = () => { const d = new Date(calStartViewDate); d.setDate(1); d.setMonth(d.getMonth() + 1); setCalStartViewDate(d) }
+          const fmt3 = (d) => d ? `${d.getDate()} ${MONTHS3[d.getMonth()]} '${d.getFullYear().toString().slice(-2)}` : '—'
+          const handleDayClick3 = (cellDate) => {
+            if (!customStartDate || (customStartDate && customEndDate)) {
+              setCustomStartDate(cellDate); setCustomEndDate(null); setCalPickingEnd(true)
+            } else {
+              if (cellDate < customStartDate) { setCustomStartDate(cellDate); setCustomEndDate(null) }
+              else { setCustomEndDate(cellDate); setCalPickingEnd(false) }
+            }
+          }
+          return (
+            <>
+              {/* Dimmed backdrop */}
+              <motion.div
+                key="cal-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/50 z-50"
+                onClick={() => setCustomRangeActive(false)}
+              />
+              {/* Calendar card */}
+              <motion.div
+                key="cal-popup"
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-[60] bg-white rounded-2xl shadow-2xl p-5 select-none"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-base font-bold text-gray-900">Select Date Range</h3>
+                  <button type="button" onClick={() => setCustomRangeActive(false)} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                {/* Start → End pills */}
+                <div className="flex gap-3 mb-4">
+                  <div className={`flex-1 rounded-xl px-3 py-2 text-center border-2 transition-all ${
+                    !customStartDate || (!customEndDate && !calPickingEnd) ? 'border-[#00c87e] bg-emerald-50' : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Start</p>
+                    <p className={`text-sm font-bold mt-0.5 ${customStartDate ? 'text-[#00c87e]' : 'text-gray-400'}`}>{fmt3(customStartDate)}</p>
+                  </div>
+                  <div className="flex items-center text-gray-300 text-xl">→</div>
+                  <div className={`flex-1 rounded-xl px-3 py-2 text-center border-2 transition-all ${
+                    calPickingEnd ? 'border-[#00c87e] bg-emerald-50' : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">End</p>
+                    <p className={`text-sm font-bold mt-0.5 ${customEndDate ? 'text-[#00c87e]' : 'text-gray-400'}`}>{fmt3(customEndDate)}</p>
+                  </div>
+                </div>
+                {/* Month nav */}
+                <div className="flex items-center justify-between mb-3">
+                  <button type="button" onClick={prevM3} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 text-xl leading-none font-light">‹</button>
+                  <span className="text-base font-bold text-gray-900">{MONTHS3_FULL[month3]} {year3}</span>
+                  <button type="button" onClick={nextM3} className="p-2 rounded-xl hover:bg-gray-100 text-gray-500 text-xl leading-none font-light">›</button>
+                </div>
+                {/* Day headers */}
+                <div className="grid grid-cols-7 mb-1">
+                  {DAYS3.map(d => <div key={d} className="text-center text-xs font-bold text-gray-400 py-1">{d}</div>)}
+                </div>
+                {/* Day cells */}
+                <div className="grid grid-cols-7 gap-y-0.5">
+                  {cells3.map((day, idx) => {
+                    if (!day) return <div key={`e-${idx}`} />
+                    const cellDate = new Date(year3, month3, day); cellDate.setHours(0,0,0,0)
+                    const isStart = customStartDate && cellDate.getTime() === customStartDate.getTime()
+                    const isEnd = customEndDate && cellDate.getTime() === customEndDate.getTime()
+                    const inRange = customStartDate && customEndDate && cellDate > customStartDate && cellDate < customEndDate
+                    const isToday3 = cellDate.getTime() === today3.getTime()
+                    const isFuture = cellDate > today3
+                    return (
+                      <button key={day} type="button" disabled={isFuture} onClick={() => !isFuture && handleDayClick3(cellDate)}
+                        className={`text-center text-sm py-2 font-medium transition-all
+                          ${isStart || isEnd ? 'bg-[#00c87e] text-white rounded-full shadow-sm' : ''}
+                          ${inRange ? 'bg-emerald-100 text-emerald-800' : ''}
+                          ${!isStart && !isEnd && !inRange && isToday3 ? 'border-2 border-[#00c87e] text-[#00c87e] rounded-full' : ''}
+                          ${!isStart && !isEnd && !inRange && !isToday3 && !isFuture ? 'text-gray-800 hover:bg-emerald-50 rounded-full' : ''}
+                          ${isFuture ? 'text-gray-300 cursor-not-allowed rounded-full' : 'cursor-pointer'}
+                        `}
+                      >{day}</button>
+                    )
+                  })}
+                </div>
+                {/* Hint */}
+                <p className="text-center text-xs text-gray-400 mt-3">
+                  {!customStartDate ? 'Tap a date to set start' : calPickingEnd ? 'Now tap end date' : customEndDate ? 'Tap Apply to confirm' : ''}
+                </p>
+                {/* Action buttons */}
+                <div className="flex gap-3 mt-4">
+                  <button type="button"
+                    onClick={() => { setCustomStartDate(null); setCustomEndDate(null); setCalPickingEnd(false) }}
+                    className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                  >Clear</button>
+                  <button type="button" onClick={applyCustomRange} disabled={!customStartDate || !customEndDate}
+                    className="flex-1 py-3 bg-[#00c87e] hover:bg-[#00b06f] disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-xl text-sm font-bold transition-colors"
+                  >Apply</button>
+                </div>
+              </motion.div>
+            </>
+          )
+        })()}
       </AnimatePresence>
 
       <BottomNavOrders />
