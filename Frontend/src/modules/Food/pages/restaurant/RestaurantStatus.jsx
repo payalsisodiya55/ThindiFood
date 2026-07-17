@@ -43,6 +43,7 @@ export default function RestaurantStatus() {
   const [showOutsideTimingsDialog, setShowOutsideTimingsDialog] = useState(false)
   const [isDayClosed, setIsDayClosed] = useState(false)
   const [outletTimings, setOutletTimings] = useState(null)
+  const [showConfirmTurnOffDialog, setShowConfirmTurnOffDialog] = useState(false)
 
   // Update current date/time every minute
   useEffect(() => {
@@ -215,20 +216,7 @@ export default function RestaurantStatus() {
     loadDeliveryStatus()
   }, [])
 
-  // Handle delivery status change
-  const handleDeliveryStatusChange = async (checked) => {
-    // If day is closed in outlet timings, don't allow turning on
-    if (checked && isDayClosed) {
-      setShowOutletClosedDialog(true)
-      return
-    }
-    
-    // If outside scheduled delivery timings, show popup
-    if (checked && isWithinTimings === false && !isDayClosed) {
-      setShowOutsideTimingsDialog(true)
-      return
-    }
-    
+  const toggleStatus = async (checked) => {
     setDeliveryStatus(checked)
     try {
       // Update backend
@@ -255,6 +243,33 @@ export default function RestaurantStatus() {
     } catch (error) {
       debugError("Error saving delivery status:", error)
     }
+  }
+
+  // Handle delivery status change
+  const handleDeliveryStatusChange = async (checked) => {
+    // If day is closed in outlet timings, don't allow turning on
+    if (checked && isDayClosed) {
+      setShowOutletClosedDialog(true)
+      return
+    }
+    
+    // If outside scheduled delivery timings, show popup
+    if (checked && isWithinTimings === false && !isDayClosed) {
+      setShowOutsideTimingsDialog(true)
+      return
+    }
+    
+    if (!checked) {
+      setShowConfirmTurnOffDialog(true)
+      return
+    }
+
+    await toggleStatus(true)
+  }
+
+  const handleConfirmTurnOff = async () => {
+    setShowConfirmTurnOffDialog(false)
+    await toggleStatus(false)
   }
 
   // Handle dialog close and navigate to outlet timings
@@ -304,12 +319,53 @@ export default function RestaurantStatus() {
     return null
   }
 
-  // Format address
+  // Format complete address
   const formatAddress = (location) => {
     if (!location) return ""
+    
+    // Priority 1: Use formattedAddress if available
+    if (location.formattedAddress && location.formattedAddress.trim() !== "" && location.formattedAddress !== "Select location") {
+      const isCoordinates = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(location.formattedAddress.trim())
+      if (!isCoordinates) {
+        return location.formattedAddress.trim()
+      }
+    }
+    
+    // Priority 2: Use address field if available
+    if (location.address && location.address.trim() !== "") {
+      return location.address.trim()
+    }
+    
+    // Priority 3: Build from individual components
     const parts = []
+    if (location.addressLine1) parts.push(location.addressLine1.trim())
+    else if (location.street) parts.push(location.street.trim())
+    
+    if (location.addressLine2) parts.push(location.addressLine2.trim())
     if (location.area) parts.push(location.area.trim())
-    if (location.city) parts.push(location.city.trim())
+    if (location.landmark) parts.push(location.landmark.trim())
+    
+    if (location.city) {
+      const city = location.city.trim()
+      if (!parts.some(p => p.toLowerCase().includes(city.toLowerCase()))) {
+        parts.push(city)
+      }
+    }
+    
+    if (location.state) {
+      const state = location.state.trim()
+      if (!parts.some(p => p.toLowerCase().includes(state.toLowerCase()))) {
+        parts.push(state)
+      }
+    }
+    
+    if (location.zipCode || location.pincode) {
+      const pincode = String(location.zipCode || location.pincode).trim()
+      if (!parts.some(p => p.includes(pincode))) {
+        parts.push(pincode)
+      }
+    }
+    
     return parts.join(", ") || ""
   }
 
@@ -359,19 +415,17 @@ export default function RestaurantStatus() {
           <CardContent className="p-4 gap-6 flex flex-col">
             <div className="flex items-start justify-between">
               <div className="flex-1 min-w-0">
-                <h2 className="text-base font-bold text-gray-900 mb-1">
+                <h2 className="text-base font-bold text-gray-900 mb-1 break-words whitespace-normal">
                   {loading ? "Loading..." : (restaurantData?.name || "Restaurant")}
                 </h2>
-                <p className="text-sm text-gray-500">
-                  {loading ? "Loading..." : (
-                    <>
-                      {restaurantData?.id ? `ID: ${String(restaurantData.id).slice(-5)}` : ""}
-                      {restaurantData?.location && formatAddress(restaurantData.location) ? (
-                        <> | {formatAddress(restaurantData.location)}</>
-                      ) : ""}
-                    </>
-                  )}
+                <p className="text-xs text-gray-500 break-all">
+                  {loading ? "Loading..." : (restaurantData?.id ? `ID: ${String(restaurantData.id).slice(-5)}` : "")}
                 </p>
+                {restaurantData?.location && formatAddress(restaurantData.location) && (
+                  <p className="text-sm text-gray-500 break-all whitespace-normal mt-0.5">
+                    {formatAddress(restaurantData.location)}
+                  </p>
+                )}
               </div>
               <button
                 onClick={() => {
@@ -515,6 +569,38 @@ export default function RestaurantStatus() {
         </DialogContent>
       </Dialog>
       
+      {/* Confirm Turn Off Delivery Dialog */}
+      <Dialog open={showConfirmTurnOffDialog} onOpenChange={setShowConfirmTurnOffDialog}>
+        <DialogContent className="sm:max-w-md p-4 w-[90%] gap-2 flex flex-col" closeClassName="border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center h-8 w-8 !p-0">
+          <DialogHeader className="text-center">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600">
+              <span className="text-3xl font-bold">!</span>
+            </div>
+            <DialogTitle className="text-lg font-semibold text-gray-900 text-center">
+              Turn off delivery?
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-gray-600 text-center">
+              You will not receive any new orders until you turn it back on.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col gap-2 sm:flex-row mt-4">
+            <Button
+              onClick={() => setShowConfirmTurnOffDialog(false)}
+              variant="outline"
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmTurnOff}
+              className="w-full sm:w-auto text-white hover:opacity-90 bg-red-600 hover:bg-red-700"
+            >
+              Turn Off
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       </div>
     </div>
   )
