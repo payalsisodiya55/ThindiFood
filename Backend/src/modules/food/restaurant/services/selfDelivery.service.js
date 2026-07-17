@@ -154,14 +154,31 @@ export async function updateRestaurantSelfDeliveryConfigById(restaurantId, paylo
     nextApprovalStatus = "none";
   }
 
+  const radius = Number(payload?.radius);
+  if (payload?.radius === undefined || isNaN(radius) || radius < 1 || radius > 50) {
+    throw new ValidationError("Delivery radius must be a number between 1 and 50 km");
+  }
+
+  const fee = Number(payload?.fee);
+  if (payload?.fee === undefined || isNaN(fee) || fee < 0 || fee > 9999) {
+    throw new ValidationError("Delivery fee must be a number between ₹0 and ₹9,999");
+  }
+  const feeStr = String(payload?.fee || "");
+  const feeParts = feeStr.split(".");
+  if (feeParts[1] && feeParts[1].length > 2) {
+    throw new ValidationError("Delivery fee can have up to 2 decimal places");
+  }
+
+  const minAmount = Number(payload?.minOrderAmount ?? 0);
+  if (isNaN(minAmount) || minAmount < 0 || minAmount > 99999) {
+    throw new ValidationError("Minimum order value must be a number between ₹0 and ₹99,999");
+  }
+
   const update = {
     "selfDelivery.enabled": nextEnabled,
-    "selfDelivery.radius": Math.max(0, Number(payload?.radius ?? 3) || 0),
-    "selfDelivery.fee": Math.max(0, Number(payload?.fee ?? 0) || 0),
-    "selfDelivery.minOrderAmount": Math.max(
-      0,
-      Number(payload?.minOrderAmount ?? 0) || 0,
-    ),
+    "selfDelivery.radius": radius,
+    "selfDelivery.fee": fee,
+    "selfDelivery.minOrderAmount": minAmount,
     "selfDelivery.timings.start": String(
       payload?.timings?.start || payload?.start || "10:00",
     ).trim(),

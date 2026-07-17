@@ -55,6 +55,7 @@ export default function DeliverySettings() {
   const [savingSelfDelivery, setSavingSelfDelivery] = useState(false)
   const [timeError, setTimeError] = useState("")
   const [isEditingPendingSelfDelivery, setIsEditingPendingSelfDelivery] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState({ radius: "", fee: "", minOrderAmount: "" })
   const isSelfDeliveryApproved = selfDelivery.approvalStatus === "approved" && selfDelivery.enabled === true
   const isPendingApproval = selfDelivery.approvalStatus === "pending"
   const selfDeliveryFieldsDisabled =
@@ -280,8 +281,128 @@ export default function DeliverySettings() {
     return true
   }
 
+  const handleRadiusChange = (val) => {
+    const clean = val.replace(/\D/g, "")
+    if (clean === "") {
+      handleSelfDeliveryField("radius", clean)
+      setFieldErrors(prev => ({ ...prev, radius: "Delivery radius is required" }))
+      return
+    }
+    const num = Number(clean)
+    if (num <= 50) {
+      handleSelfDeliveryField("radius", clean)
+      if (num < 1) {
+        setFieldErrors(prev => ({ ...prev, radius: "Minimum delivery radius is 1 km" }))
+      } else {
+        setFieldErrors(prev => ({ ...prev, radius: "" }))
+      }
+    } else {
+      setFieldErrors(prev => ({ ...prev, radius: "Maximum delivery radius is 50 km" }))
+    }
+  }
+
+  const handleFeeChange = (val) => {
+    let clean = val.replace(/[^0-9.]/g, "")
+    const parts = clean.split(".")
+    if (parts.length > 2) {
+      clean = parts[0] + "." + parts.slice(1).join("")
+    }
+    if (parts[1] && parts[1].length > 2) {
+      clean = parts[0] + "." + parts[1].slice(0, 2)
+    }
+
+    if (clean === "") {
+      handleSelfDeliveryField("fee", clean)
+      setFieldErrors(prev => ({ ...prev, fee: "Delivery fee is required" }))
+      return
+    }
+
+    const num = Number(clean)
+    if (num <= 9999) {
+      handleSelfDeliveryField("fee", clean)
+      if (num < 0) {
+        setFieldErrors(prev => ({ ...prev, fee: "Delivery fee cannot be negative" }))
+      } else {
+        setFieldErrors(prev => ({ ...prev, fee: "" }))
+      }
+    } else {
+      setFieldErrors(prev => ({ ...prev, fee: "Maximum delivery fee is ₹9,999" }))
+    }
+  }
+
+  const handleMinOrderChange = (val) => {
+    const clean = val.replace(/\D/g, "")
+    if (clean === "") {
+      handleSelfDeliveryField("minOrderAmount", clean)
+      setFieldErrors(prev => ({ ...prev, minOrderAmount: "" }))
+      return
+    }
+
+    const num = Number(clean)
+    if (num <= 99999) {
+      handleSelfDeliveryField("minOrderAmount", clean)
+      if (num < 0) {
+        setFieldErrors(prev => ({ ...prev, minOrderAmount: "Minimum order cannot be negative" }))
+      } else {
+        setFieldErrors(prev => ({ ...prev, minOrderAmount: "" }))
+      }
+    } else {
+      setFieldErrors(prev => ({ ...prev, minOrderAmount: "Maximum order is ₹99,999" }))
+    }
+  }
+
+  const validateForm = () => {
+    const errors = { radius: "", fee: "", minOrderAmount: "" }
+    let isValid = true
+
+    const radiusStr = String(selfDelivery.radius ?? "").trim()
+    if (radiusStr === "") {
+      errors.radius = "Delivery radius is required"
+      isValid = false
+    } else {
+      const num = Number(radiusStr)
+      if (isNaN(num) || num < 1 || num > 50) {
+        errors.radius = "Delivery radius must be between 1 and 50 km"
+        isValid = false
+      }
+    }
+
+    const feeStr = String(selfDelivery.fee ?? "").trim()
+    if (feeStr === "") {
+      errors.fee = "Delivery fee is required"
+      isValid = false
+    } else {
+      const num = Number(feeStr)
+      if (isNaN(num) || num < 0 || num > 9999) {
+        errors.fee = "Delivery fee must be between ₹0 and ₹9,999"
+        isValid = false
+      }
+      const parts = feeStr.split(".")
+      if (parts[1] && parts[1].length > 2) {
+        errors.fee = "Delivery fee can have up to 2 decimal places"
+        isValid = false
+      }
+    }
+
+    const minStr = String(selfDelivery.minOrderAmount ?? "").trim()
+    if (minStr !== "") {
+      const num = Number(minStr)
+      if (isNaN(num) || num < 0 || num > 99999) {
+        errors.minOrderAmount = "Minimum order must be between ₹0 and ₹99,999"
+        isValid = false
+      }
+    }
+
+    setFieldErrors(errors)
+    return isValid
+  }
+
   const saveSelfDeliveryConfig = async () => {
     if (!validateTimings()) return
+    if (!validateForm()) {
+      showToast("Please resolve all validation errors first")
+      return
+    }
     try {
       setSavingSelfDelivery(true)
       const response = await restaurantAPI.updateSelfDeliveryConfig(selfDelivery)
@@ -505,17 +626,26 @@ export default function DeliverySettings() {
                   <span className="text-sm font-medium text-gray-700">Delivery Radius</span>
                   <div className="relative mt-1">
                     <input
-                      type="number"
-                      value={selfDelivery.radius}
-                      onChange={(e) => handleSelfDeliveryField("radius", Number(e.target.value))}
+                      type="text"
+                      inputMode="numeric"
+                      value={selfDelivery.radius ?? ""}
+                      onChange={(e) => handleRadiusChange(e.target.value)}
                       disabled={selfDeliveryFieldsDisabled}
-                      className="w-full rounded-xl border border-gray-300 pr-12 pl-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
+                      className={`w-full rounded-xl border pr-12 pl-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 ${
+                        fieldErrors.radius ? "border-red-500 focus:ring-red-500 focus:border-red-500" : "border-gray-300"
+                      }`}
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium select-none pointer-events-none">
                       km
                     </span>
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1">Recommended: 1–7 km for best delivery times</p>
+                  {fieldErrors.radius ? (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> {fieldErrors.radius}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 mt-1">Recommended: 1–7 km for best delivery times</p>
+                  )}
                 </label>
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Delivery Fee (₹)</span>
@@ -524,14 +654,22 @@ export default function DeliverySettings() {
                       ₹
                     </span>
                     <input
-                      type="number"
-                      value={selfDelivery.fee}
-                      onChange={(e) => handleSelfDeliveryField("fee", Number(e.target.value))}
+                      type="text"
+                      inputMode="decimal"
+                      value={selfDelivery.fee ?? ""}
+                      onChange={(e) => handleFeeChange(e.target.value)}
                       disabled={selfDeliveryFieldsDisabled}
                       placeholder="30"
-                      className="w-full rounded-xl border border-gray-300 pl-8 pr-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
+                      className={`w-full rounded-xl border pl-8 pr-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 ${
+                        fieldErrors.fee ? "border-red-500 focus:ring-red-500 focus:border-red-500" : "border-gray-300"
+                      }`}
                     />
                   </div>
+                  {fieldErrors.fee && (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> {fieldErrors.fee}
+                    </p>
+                  )}
                 </label>
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Minimum Order Value (₹)</span>
@@ -540,15 +678,24 @@ export default function DeliverySettings() {
                       ₹
                     </span>
                     <input
-                      type="number"
-                      value={selfDelivery.minOrderAmount}
-                      onChange={(e) => handleSelfDeliveryField("minOrderAmount", Number(e.target.value))}
+                      type="text"
+                      inputMode="numeric"
+                      value={selfDelivery.minOrderAmount ?? ""}
+                      onChange={(e) => handleMinOrderChange(e.target.value)}
                       disabled={selfDeliveryFieldsDisabled}
                       placeholder="30 for minimum order"
-                      className="w-full rounded-xl border border-gray-300 pl-8 pr-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
+                      className={`w-full rounded-xl border pl-8 pr-3 py-2 disabled:bg-gray-50 disabled:text-gray-500 ${
+                        fieldErrors.minOrderAmount ? "border-red-500 focus:ring-red-500 focus:border-red-500" : "border-gray-300"
+                      }`}
                     />
                   </div>
-                  <p className="text-[11px] text-gray-500 mt-1">Orders below this amount won't be eligible for delivery. Set 0 for no minimum.</p>
+                  {fieldErrors.minOrderAmount ? (
+                    <p className="text-xs text-red-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5" /> {fieldErrors.minOrderAmount}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-gray-500 mt-1">Orders below this amount won't be eligible for delivery. Set 0 for no minimum.</p>
+                  )}
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <ModernTimePicker
