@@ -89,6 +89,7 @@ export default function RestaurantSupport() {
   const [categoryOpen, setCategoryOpen] = useState(false)
   const [priorityOpen, setPriorityOpen] = useState(false)
   const [statusFilterOpen, setStatusFilterOpen] = useState(false)
+  const [showResolveModal, setShowResolveModal] = useState(false)
 
   // Polling for live chat updates
   useEffect(() => {
@@ -120,18 +121,28 @@ export default function RestaurantSupport() {
     }
   }, [selectedTicket])
 
-  const hasUnread = (ticket) => {
-    if (ticket.status === 'resolved') return false
+  const getUnreadCount = (ticket) => {
+    if (ticket.status === 'resolved') return 0
     const msgs = ticket.messages || []
-    if (msgs.length === 0) {
-      return !!ticket.adminResponse
+    const adminMsgs = msgs.filter(m => m.sender === 'admin')
+    if (adminMsgs.length === 0) {
+      return ticket.adminResponse ? 1 : 0
     }
-    const lastMsg = msgs[msgs.length - 1]
-    if (lastMsg.sender !== 'admin') return false
-    
     const lastViewed = localStorage.getItem(`ticket_viewed_${ticket._id}`)
-    if (!lastViewed) return true
-    return new Date(lastMsg.timestamp).getTime() > parseInt(lastViewed, 10)
+    if (!lastViewed) return adminMsgs.length
+    const lastViewedTime = parseInt(lastViewed, 10)
+    return adminMsgs.filter(m => new Date(m.timestamp).getTime() > lastViewedTime).length
+  }
+
+  const isMessageDelivered = (msg, ticket) => {
+    if (ticket.status === 'resolved') return true
+    const msgs = ticket.messages || []
+    const currentMsgTime = new Date(msg.timestamp).getTime()
+    return msgs.some(m => m.sender === 'admin' && new Date(m.timestamp).getTime() > currentMsgTime)
+  }
+
+  const hasUnread = (ticket) => {
+    return getUnreadCount(ticket) > 0
   }
 
   const stats = useMemo(() => {
@@ -262,6 +273,7 @@ export default function RestaurantSupport() {
           sender: "restaurant",
           message: ticket.description,
           timestamp: ticket.createdAt,
+          attachments: ticket.attachments || []
         })
       }
       if (ticket.adminResponse) {
@@ -269,6 +281,7 @@ export default function RestaurantSupport() {
           sender: "admin",
           message: ticket.adminResponse,
           timestamp: ticket.updatedAt || ticket.createdAt,
+          attachments: ticket.adminAttachments || []
         })
       }
     } else {
@@ -281,6 +294,7 @@ export default function RestaurantSupport() {
           sender: "restaurant",
           message: ticket.description,
           timestamp: ticket.createdAt,
+          attachments: ticket.attachments || []
         })
       }
       msgs.push(...ticket.messages)
@@ -320,9 +334,11 @@ export default function RestaurantSupport() {
   }
 
   const handleResolveTicket = async () => {
+    setShowResolveModal(true)
+  }
+
+  const triggerResolve = async () => {
     if (!selectedTicket) return
-    const confirmResolve = window.confirm("Mark this ticket as resolved?")
-    if (!confirmResolve) return
 
     try {
       setResolveSubmitting(true)
@@ -672,11 +688,6 @@ export default function RestaurantSupport() {
                         <p className="text-[10px] font-semibold text-slate-400">
                           #{String(ticket._id).slice(-6)} • {formatDate(ticket.createdAt)}
                         </p>
-                        {hasUnread(ticket) && (
-                          <span className="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
-                            New Response
-                          </span>
-                        )}
                       </div>
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full border font-bold capitalize ${getStatusStyle(
@@ -720,13 +731,20 @@ export default function RestaurantSupport() {
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
-                    <span className="flex items-center gap-1 text-[#00c87e]">
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      {(() => {
-                        const count = ticket.messages?.length || (ticket.adminResponse ? 2 : 1)
-                        return count === 1 ? "1 Message" : `${count} Messages`
-                      })()}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1 text-[#00c87e]">
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        {(() => {
+                          const count = ticket.messages?.length || (ticket.adminResponse ? 2 : 1)
+                          return count === 1 ? "1 Message" : `${count} Messages`
+                        })()}
+                      </span>
+                      {getUnreadCount(ticket) > 0 && (
+                        <span className="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse flex items-center justify-center gap-1 shrink-0">
+                          {getUnreadCount(ticket)} New
+                        </span>
+                      )}
+                    </div>
                     <span className="text-[#00c87e] hover:text-[#00b06f] font-bold transition-colors">
                       View thread →
                     </span>
@@ -806,7 +824,7 @@ export default function RestaurantSupport() {
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
               {getConversationMessages(selectedTicket).map((msg, index) => {
                 const isAdmin = msg.sender === "admin"
-                const isResolved = selectedTicket.status === 'resolved'
+                const isDelivered = isMessageDelivered(msg, selectedTicket)
                 return (
                   <div key={index} className={`flex flex-col ${isAdmin ? "items-start" : "items-end"}`}>
                     <div
@@ -824,6 +842,26 @@ export default function RestaurantSupport() {
                       <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
                         {msg.message}
                       </p>
+                      
+                      {/* Message level attachments sync */}
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="flex flex-col gap-1.5 mt-2 border-t border-slate-100 pt-2">
+                          {msg.attachments.map((url, idx) => (
+                            <a
+                              key={idx}
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center gap-1 text-xs font-semibold hover:underline ${
+                                isAdmin ? "text-[#00c87e]" : "text-white"
+                              }`}
+                            >
+                              <Paperclip className="w-3.5 h-3.5" />
+                              Attachment {idx + 1}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 px-1">
                       <span className="text-[9px] text-slate-400">
@@ -831,7 +869,7 @@ export default function RestaurantSupport() {
                       </span>
                       {!isAdmin && (
                         <div className="inline-flex items-center">
-                          {isResolved ? (
+                          {isDelivered ? (
                             <CheckCheck className="w-3.5 h-3.5 text-[#00c87e]" />
                           ) : (
                             <Check className="w-3.5 h-3.5 text-slate-400" />
@@ -901,6 +939,36 @@ export default function RestaurantSupport() {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showResolveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4 animate-in fade-in zoom-in duration-200">
+            <h3 className="text-base font-bold text-slate-900">Mark this ticket as resolved?</h3>
+            <p className="text-xs text-slate-500">
+              Are you sure you want to mark this support ticket as resolved? This will close the conversation thread.
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowResolveModal(false)}
+                className="flex-1 py-2.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowResolveModal(false)
+                  triggerResolve()
+                }}
+                className="flex-1 py-2.5 text-xs font-bold text-white bg-[#00c87e] hover:bg-[#00b06f] rounded-lg cursor-pointer"
+              >
+                Yes, Resolve
+              </button>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { adminAPI, supportAPI, uploadAPI } from "@food/api"
 import { setCachedSettings } from "@food/utils/businessSettings"
 import { toast } from "sonner"
+import { ArrowLeft, Loader2, Send, Paperclip, MessageSquare, Check, CheckCheck, X } from "lucide-react"
 
 export default function SupportTickets() {
   const [tickets, setTickets] = useState([])
@@ -12,6 +13,84 @@ export default function SupportTickets() {
   const [editing, setEditing] = useState({})
   const [editingAttachments, setEditingAttachments] = useState({})
   const [uploadingAttachment, setUploadingAttachment] = useState({})
+
+  // Admin Drawer Chat States
+  const [selectedTicket, setSelectedTicket] = useState(null)
+  const [replyText, setReplyText] = useState("")
+  const [replySubmitting, setReplySubmitting] = useState(false)
+  const [replyAttachments, setReplyAttachments] = useState([])
+  const [uploadingReplyAttachment, setUploadingReplyAttachment] = useState(false)
+
+  // Keep selectedTicket in sync with the tickets list
+  useEffect(() => {
+    if (selectedTicket) {
+      const updated = tickets.find(t => String(t._id) === String(selectedTicket._id))
+      if (updated) {
+        setSelectedTicket(updated)
+      }
+    }
+  }, [tickets, selectedTicket])
+
+  // Track ticket viewed timestamp to clear notification badges
+  useEffect(() => {
+    if (selectedTicket) {
+      localStorage.setItem(`admin_ticket_viewed_${selectedTicket._id}`, Date.now().toString())
+    }
+  }, [selectedTicket])
+
+  const getAdminUnreadCount = (ticket) => {
+    if (ticket.status === 'resolved') return 0
+    const msgs = ticket.messages || []
+    const partnerMsgs = msgs.filter(m => m.sender === 'restaurant' || m.sender === 'user')
+    if (partnerMsgs.length === 0) {
+      return 0
+    }
+    const lastViewed = localStorage.getItem(`admin_ticket_viewed_${ticket._id}`)
+    if (!lastViewed) return partnerMsgs.length
+    const lastViewedTime = parseInt(lastViewed, 10)
+    return partnerMsgs.filter(m => new Date(m.timestamp).getTime() > lastViewedTime).length
+  }
+
+  const handleSendAdminReply = async (e) => {
+    if (e) e.preventDefault()
+    if (!replyText.trim() || !selectedTicket) return
+
+    try {
+      setReplySubmitting(true)
+      await supportAPI.updateSupportTicketAdmin(selectedTicket._id, {
+        adminResponse: replyText.trim(),
+        adminAttachments: replyAttachments,
+        source: selectedTicket.source || "user"
+      })
+      toast.success("Reply sent successfully")
+      setReplyText("")
+      setReplyAttachments([])
+      await load()
+    } catch {
+      toast.error("Failed to send reply")
+    } finally {
+      setReplySubmitting(false)
+    }
+  }
+
+  const handleAdminReplyAttachmentUpload = async (file) => {
+    if (!file) return
+    try {
+      setUploadingReplyAttachment(true)
+      const res = await uploadAPI.uploadMedia(file, { folder: "food/admin/support-tickets" })
+      const url = res?.data?.data?.url || res?.data?.url
+      if (url) {
+        setReplyAttachments(p => [...p, url])
+        toast.success("Attachment uploaded")
+      } else {
+        toast.error("Upload failed")
+      }
+    } catch {
+      toast.error("Upload failed")
+    } finally {
+      setUploadingReplyAttachment(false)
+    }
+  }
 
   const handleAdminAttachmentUpload = async (ticketId, file) => {
     if (!file) return
@@ -128,9 +207,20 @@ export default function SupportTickets() {
     }
   }
 
+  const silentLoad = async () => {
+    try {
+      const res = await supportAPI.getSupportTicketsAdmin(filters)
+      const list = res?.data?.data?.tickets || res?.data?.tickets || []
+      setTickets(list)
+    } catch (error) {
+      console.error("Failed to silently refresh tickets", error)
+    }
+  }
+
   useEffect(() => {
-    const t = setTimeout(load, 200)
-    return () => clearTimeout(t)
+    load()
+    const interval = setInterval(silentLoad, 3000)
+    return () => clearInterval(interval)
   }, [filters.status, filters.type, filters.source])
 
   useEffect(() => {
@@ -319,15 +409,14 @@ export default function SupportTickets() {
                   <th className="px-4 py-3">Issue</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3">Response</th>
                   <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 {loading ? (
-                  <tr><td colSpan={10} className="px-4 py-6 text-center text-slate-500">Loading...</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-6 text-center text-slate-500">Loading...</td></tr>
                 ) : tickets.length === 0 ? (
-                  <tr><td colSpan={10} className="px-4 py-6 text-center text-slate-500">No tickets</td></tr>
+                  <tr><td colSpan={9} className="px-4 py-6 text-center text-slate-500">No tickets</td></tr>
                 ) : tickets.map((t) => (
                   <tr key={t._id}>
                     <td className="px-4 py-3">#{String(t._id).slice(-6)}</td>
@@ -379,55 +468,33 @@ export default function SupportTickets() {
                         </div>
                       ) : null}
                     </td>
-                    <td className="px-4 py-3">
-                      <select
-                        value={t.status}
-                        onChange={(e) => update(t._id, { status: e.target.value })}
-                        className="border rounded px-2 py-1 text-xs bg-white"
-                      >
-                        <option value="open">Open</option>
-                        <option value="in-progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                      </select>
+                    <td className="px-4 py-3 text-xs">
+                      <span className={`inline-flex px-2 py-0.5 rounded-full font-bold capitalize border ${
+                        t.status === 'resolved' 
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                          : t.status === 'in-progress' 
+                          ? 'bg-blue-50 border-blue-200 text-blue-700' 
+                          : 'bg-amber-50 border-amber-200 text-amber-700'
+                      }`}>
+                        {t.status}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm">{new Date(t.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-col gap-2">
-                        <input
-                          className="border rounded px-2 py-1 text-sm w-64"
-                          value={editing[t._id] ?? t.adminResponse ?? ""}
-                          onChange={(e) => setEditing((p) => ({ ...p, [t._id]: e.target.value }))}
-                          placeholder="Write response"
-                        />
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="file"
-                            id={`admin-att-${t._id}`}
-                            className="hidden"
-                            onChange={(e) => handleAdminAttachmentUpload(t._id, e.target.files?.[0])}
-                            disabled={uploadingAttachment[t._id]}
-                          />
-                          <label
-                            htmlFor={`admin-att-${t._id}`}
-                            className="px-2 py-1 border rounded text-[11px] bg-slate-50 hover:bg-slate-100 cursor-pointer font-semibold text-slate-700"
-                          >
-                            {uploadingAttachment[t._id] ? "Uploading..." : "Attach File"}
-                          </label>
-                          <div className="flex flex-wrap gap-1">
-                            {(editingAttachments[t._id] || []).map((url, idx) => (
-                              <span key={idx} className="inline-flex items-center gap-1 bg-slate-100 border text-[10px] px-1.5 py-0.5 rounded font-medium text-slate-600">
-                                Att {idx + 1}
-                                <button type="button" onClick={() => removeAdminAttachment(t._id, idx)} className="text-red-500 font-bold ml-1">×</button>
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setSelectedTicket(t)}
+                          className="px-3 py-1.5 rounded-lg bg-[#00c87e] hover:bg-[#00b06f] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors whitespace-nowrap"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          Chat ({t.messages ? t.messages.length : 0})
+                        </button>
+                        {getAdminUnreadCount(t) > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse whitespace-nowrap">
+                            {getAdminUnreadCount(t)} New
+                          </span>
+                        )}
                       </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <button className="px-3 py-1 rounded bg-blue-600 text-white text-sm cursor-pointer" onClick={() => handleSaveResponse(t._id)}>
-                        Save
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -436,6 +503,212 @@ export default function SupportTickets() {
           </div>
         </div>
       </div>
+
+      {/* Admin Slide-over Chat Panel */}
+      {selectedTicket && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-200"
+            onClick={() => setSelectedTicket(null)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-250">
+            {/* Header */}
+            <div className="p-4 border-b border-slate-200 flex flex-col bg-slate-50">
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setSelectedTicket(null)}
+                  className="p-1 hover:bg-slate-200 rounded-lg text-slate-700 transition-colors cursor-pointer shrink-0"
+                  aria-label="Close panel"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="text-xs font-bold text-slate-400">
+                  #{String(selectedTicket._id).toUpperCase()}
+                </span>
+                <select
+                  value={selectedTicket.status}
+                  onChange={(e) => update(selectedTicket._id, { status: e.target.value })}
+                  className="border rounded px-2 py-0.5 text-[11px] bg-white font-bold text-slate-700 cursor-pointer"
+                >
+                  <option value="open">Open</option>
+                  <option value="in-progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                </select>
+              </div>
+              <div className="pl-8">
+                <h3 className="text-base font-bold text-slate-900 break-words">
+                  {selectedTicket.issueType}
+                </h3>
+                <p className="text-[11px] text-slate-500 font-medium capitalize">
+                  Source: {selectedTicket.source || "user"} • Category: {selectedTicket.category || "other"}
+                </p>
+                <p className="text-[11px] text-slate-500 font-semibold mt-1">
+                  Client: {getUserLabel(selectedTicket)}
+                </p>
+                {selectedTicket.source === "restaurant" && (
+                  <p className="text-[11px] text-slate-500 font-semibold">
+                    Store: {getRestaurantLabel(selectedTicket)}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Attachments Section */}
+            {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+              <div className="px-4 py-2 bg-slate-100 border-b border-slate-200">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Attachments</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTicket.attachments.map((url, idx) => (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                      Attachment {idx + 1}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Messages Thread (Chronological Order) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
+              {(() => {
+                const msgs = []
+                // Initial description
+                if (selectedTicket.description) {
+                  msgs.push({
+                    sender: selectedTicket.source === "restaurant" ? "restaurant" : "user",
+                    message: selectedTicket.description,
+                    timestamp: selectedTicket.createdAt,
+                    attachments: selectedTicket.attachments || []
+                  })
+                }
+                // Push database message thread
+                if (selectedTicket.messages && selectedTicket.messages.length > 0) {
+                  const hasInitial = selectedTicket.messages.some(m => m.message === selectedTicket.description)
+                  if (hasInitial) {
+                    msgs.length = 0
+                  }
+                  msgs.push(...selectedTicket.messages)
+                }
+                const sorted = msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                return sorted.map((msg, index) => {
+                  const isUserSender = msg.sender === 'user' || msg.sender === 'restaurant'
+                  return (
+                    <div key={index} className={`flex flex-col ${isUserSender ? "items-start" : "items-end"}`}>
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-4 py-2.5 shadow-xs ${
+                          isUserSender
+                            ? "bg-white border border-slate-200 text-slate-800 rounded-tl-none"
+                            : "bg-[#00c87e] text-white rounded-tr-none"
+                        }`}
+                      >
+                        <p className={`text-[10px] font-black uppercase tracking-wider mb-1 ${
+                          isUserSender ? "text-blue-600" : "text-white"
+                        }`}>
+                          {isUserSender 
+                            ? (selectedTicket.source === "restaurant" ? "Restaurant Partner" : "User") 
+                            : "You (Admin Support)"
+                          }
+                        </p>
+                        <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                          {msg.message}
+                        </p>
+                        
+                        {/* Attachments rendering */}
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="flex flex-col gap-1.5 mt-2 border-t border-slate-100 pt-2">
+                            {msg.attachments.map((url, idx) => (
+                              <a
+                                key={idx}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`inline-flex items-center gap-1 text-xs font-semibold hover:underline ${
+                                  isUserSender ? "text-blue-600" : "text-white"
+                                }`}
+                              >
+                                <Paperclip className="w-3.5 h-3.5" />
+                                Attachment {idx + 1}
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1 px-1">
+                        <span className="text-[9px] text-slate-400">
+                          {new Date(msg.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
+              })()}
+            </div>
+
+            {/* Chat Action Input */}
+            <div className="p-4 border-t border-slate-200 bg-white space-y-3">
+              {selectedTicket.status !== "resolved" ? (
+                <>
+                  <form onSubmit={handleSendAdminReply} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Type your reply here..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e]"
+                    />
+                    <button
+                      type="submit"
+                      disabled={replySubmitting || !replyText.trim()}
+                      className="p-2 rounded-lg bg-[#00c87e] hover:bg-[#00b06f] text-white disabled:opacity-60 transition-colors cursor-pointer"
+                    >
+                      {replySubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    </button>
+                  </form>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="file"
+                      id="admin-reply-file"
+                      className="hidden"
+                      onChange={(e) => handleAdminReplyAttachmentUpload(e.target.files?.[0])}
+                      disabled={uploadingReplyAttachment}
+                    />
+                    <label
+                      htmlFor="admin-reply-file"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-semibold bg-slate-50 hover:bg-slate-100 text-slate-700 cursor-pointer"
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                      {uploadingReplyAttachment ? "Uploading..." : "Attach File"}
+                    </label>
+                    <div className="flex flex-wrap gap-1">
+                      {replyAttachments.map((url, idx) => (
+                        <span key={idx} className="inline-flex items-center gap-1 bg-slate-100 border text-[10px] px-1.5 py-0.5 rounded font-medium text-slate-600">
+                          Att {idx + 1}
+                          <button type="button" onClick={() => setReplyAttachments(p => p.filter((_, i) => i !== idx))} className="text-red-500 font-bold ml-1">×</button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
+                  <p className="text-xs text-emerald-800 font-semibold">
+                    This ticket has been marked resolved.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

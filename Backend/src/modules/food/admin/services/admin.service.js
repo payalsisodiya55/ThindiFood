@@ -2432,7 +2432,11 @@ export async function getSupportTickets(query = {}) {
             updatedAt: t.updatedAt,
             user,
             restaurant,
-            restaurantName
+            restaurantName,
+            attachments: t.attachments || [],
+            adminAttachments: t.adminAttachments || [],
+            statusChangedBy: t.statusChangedBy || 'user',
+            messages: t.messages || []
         };
     });
 
@@ -2467,7 +2471,11 @@ export async function getSupportTickets(query = {}) {
             updatedAt: t.updatedAt,
             user: null,
             restaurant,
-            restaurantName: restaurant ? restaurant.name : ''
+            restaurantName: restaurant ? restaurant.name : '',
+            attachments: t.attachments || [],
+            adminAttachments: t.adminAttachments || [],
+            statusChangedBy: t.statusChangedBy || 'restaurant',
+            messages: t.messages || []
         };
     });
 
