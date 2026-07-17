@@ -444,6 +444,27 @@ const getDineInSessionLatestRound = (session) => {
   return rounds.length ? rounds[rounds.length - 1] : null;
 };
 
+const DINE_IN_AWAITING_ACCEPTANCE_STATUSES = ["", "received", "created", "confirmed", "pending"];
+
+const getDineInRoundStatus = (roundLike) =>
+  String(roundLike?.status || roundLike?.orderStatus || "").trim().toLowerCase();
+
+const hasDineInRoundReceivedItems = (roundLike) =>
+  Array.isArray(roundLike?.items) &&
+  roundLike.items.some(
+    (item) => String(item?.status || "").trim().toLowerCase() === "received",
+  );
+
+const isDineInRoundAwaitingAcceptance = (roundLike) => {
+  const items = Array.isArray(roundLike?.items) ? roundLike.items : [];
+  if (items.length === 0) return false;
+
+  return (
+    DINE_IN_AWAITING_ACCEPTANCE_STATUSES.includes(getDineInRoundStatus(roundLike)) ||
+    hasDineInRoundReceivedItems(roundLike)
+  );
+};
+
 const getDineInItemsSummary = (session) => {
   const rounds = Array.isArray(session?.orders) ? session.orders : [];
   const items = rounds.flatMap((round) => (Array.isArray(round?.items) ? round.items : []));
@@ -481,14 +502,12 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     sessionStatus === "cancelled" ||
     sessionStatus === "expired" ||
     isEmptyCancelled;
-  const latestStatus = String(latestRound?.status || "").toLowerCase();
+  const latestStatus = getDineInRoundStatus(latestRound);
   const displayStatus =
     isEmptyCancelled || sessionStatus === "cancelled"
       ? "cancelled"
       : sessionStatus === "completed"
         ? "completed"
-      : latestStatus === "received"
-        ? "active"
         : latestStatus || sessionStatus || "active";
   const tableNumber = tableLike?.tableNumber || session?.tableNumber || "Table";
   const tableLabel = tableLike?.tableLabel || `Table ${tableNumber}`;
@@ -500,7 +519,10 @@ const transformDineInSessionForList = (session, tableLike = null) => {
   return {
     orderId: `Table ${tableNumber}`,
     mongoId: session._id,
+    orderMongoId: latestRound?._id || null,
+    sessionId: session._id,
     status: displayStatus,
+    orderStatus: displayStatus,
     isDineIn: true,
     customerName:
       session?.userId?.name ||
@@ -528,6 +550,56 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     paymentMethod: session?.paymentMethod || session?.paymentMode || null,
     closureType: session?.closureType || "",
     closeReason: session?.closeReason || "",
+    tableNumber,
+    tableLabel,
+    items: Array.isArray(latestRound?.items) ? latestRound.items : [],
+    createdAt: latestRound?.createdAt || session?.createdAt,
+    updatedAt: latestRound?.updatedAt || session?.updatedAt,
+  };
+};
+
+const buildDineInRoundPopupOrder = (session, tableLike = null) => {
+  const latestRound = getDineInSessionLatestRound(session);
+  const latestStatus = getDineInRoundStatus(latestRound);
+  const isAwaitingAcceptance = isDineInRoundAwaitingAcceptance(latestRound);
+  const hasItems = Array.isArray(latestRound?.items) && latestRound.items.length > 0;
+
+  if (!session?._id || !latestRound?._id || !hasItems || !isAwaitingAcceptance) {
+    return null;
+  }
+
+  const tableNumber = tableLike?.tableNumber || session?.tableNumber || "Table";
+  const tableLabel = tableLike?.tableLabel || session?.tableLabel || `Table ${tableNumber}`;
+
+  return {
+    orderId: `Table ${tableNumber}`,
+    orderMongoId: latestRound._id,
+    mongoId: session._id,
+    sessionId: session._id,
+    restaurantId: session.restaurantId,
+    restaurantName: session.restaurantName || "",
+    status: latestStatus || "received",
+    orderStatus: latestStatus || "received",
+    isDineIn: true,
+    customerName:
+      session?.userId?.name ||
+      `Table ${tableNumber} (${tableLabel || "Default"})`,
+    customerPhone: getOrderCustomerPhone(session),
+    type: "Dine-In",
+    order_type: "DINE_IN",
+    tableNumber,
+    tableLabel,
+    tableOrToken: tableLabel || `Table ${tableNumber}`,
+    items: latestRound.items,
+    total: Number(latestRound?.totalAmount || latestRound?.subtotal || session?.totalAmount || 0),
+    pricing: latestRound?.pricing || session?.pricing || null,
+    paymentMethod: session?.paymentMethod || session?.paymentMode || null,
+    payment: session?.payment || null,
+    createdAt: latestRound?.createdAt || session?.createdAt,
+    updatedAt: latestRound?.updatedAt || session?.updatedAt,
+    note: latestRound?.note || latestRound?.notes || latestRound?.specialInstructions || "",
+    notes: latestRound?.notes || latestRound?.note || latestRound?.specialInstructions || "",
+    specialInstructions: latestRound?.specialInstructions || latestRound?.notes || latestRound?.note || "",
   };
 };
 
@@ -614,12 +686,11 @@ const getSessionBookingLinkKey = (sessionLike) => {
 
 const hasAcceptedDineInRound = (sessionLike) => {
   const latestRound = getDineInSessionLatestRound(sessionLike);
-  const latestStatus = String(latestRound?.status || "").trim().toLowerCase();
   const itemCount = Array.isArray(latestRound?.items) ? latestRound.items.length : 0;
 
   return (
     itemCount > 0 &&
-    !["", "received", "created", "confirmed", "pending"].includes(latestStatus)
+    !isDineInRoundAwaitingAcceptance(latestRound)
   );
 };
 
@@ -1568,14 +1639,17 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
                   const rounds = Array.isArray(session.orders) ? session.orders : [];
                   const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                   const primaryItem = getDineInPrimaryItem(session, latestRound);
-                  const latestStatus = String(latestRound?.status || "").toLowerCase();
-                  const displayStatus =
-                    latestStatus === "received" ? "active" : latestStatus || "active";
+                  const latestStatus = getDineInRoundStatus(latestRound);
+                  if (isDineInRoundAwaitingAcceptance(latestRound)) return null;
+                  const displayStatus = latestStatus || "active";
 
                   return {
                     orderId: `Table ${table.tableNumber}`,
                     mongoId: session._id,
+                    orderMongoId: latestRound?._id || null,
+                    sessionId: session._id,
                     status: displayStatus,
+                    orderStatus: displayStatus,
                     isDineIn: true,
                     customerName: `Table ${table.tableNumber} (${table.tableLabel || "Default"})`,
                     type: "Dine-In",
@@ -1588,6 +1662,11 @@ function AllOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValue = ""
                     photoUrl: getDineInPrimaryItemImage(primaryItem) || null,
                     photoAlt: getDineInPrimaryItemName(primaryItem),
                     sortTimestamp: new Date(session.updatedAt || session.createdAt).getTime(),
+                    tableNumber: table.tableNumber,
+                    tableLabel: table.tableLabel,
+                    items: Array.isArray(latestRound?.items) ? latestRound.items : [],
+                    createdAt: latestRound?.createdAt || session.createdAt,
+                    updatedAt: latestRound?.updatedAt || session.updatedAt,
                   };
                 })
                 .filter(Boolean);
@@ -2201,7 +2280,10 @@ export default function OrdersMain() {
   const getOrderIdentityKey = (orderLike) =>
     String(
       orderLike?.orderMongoId ||
+        orderLike?.roundId ||
         orderLike?.orderId ||
+        orderLike?.mongoId ||
+        orderLike?.sessionId ||
         orderLike?._id ||
         orderLike?.id ||
         "",
@@ -2222,14 +2304,17 @@ export default function OrdersMain() {
   };
 
   const markOrderAsShown = (orderLike) => {
-        if (orderLike?.isDineIn && orderLike?.orderMongoId) { return shownOrdersRef.current.has(orderLike.orderMongoId); }
-
-    const keys = [
-      orderLike?.orderMongoId,
-      orderLike?.orderId,
-      orderLike?._id,
-      orderLike?.id,
-    ]
+    const keys = (orderLike?.isDineIn && orderLike?.orderMongoId
+      ? [orderLike.orderMongoId]
+      : [
+          orderLike?.orderMongoId,
+          orderLike?.roundId,
+          orderLike?.orderId,
+          orderLike?.mongoId,
+          orderLike?.sessionId,
+          orderLike?._id,
+          orderLike?.id,
+        ])
       .map((v) => (v == null ? "" : String(v).trim()))
       .filter(Boolean);
 
@@ -2237,14 +2322,17 @@ export default function OrdersMain() {
   };
 
   const hasOrderBeenShown = (orderLike) => {
-        if (orderLike?.isDineIn && orderLike?.orderMongoId) { return shownOrdersRef.current.has(orderLike.orderMongoId); }
-
-    const keys = [
-      orderLike?.orderMongoId,
-      orderLike?.orderId,
-      orderLike?._id,
-      orderLike?.id,
-    ]
+    const keys = (orderLike?.isDineIn && orderLike?.orderMongoId
+      ? [orderLike.orderMongoId]
+      : [
+          orderLike?.orderMongoId,
+          orderLike?.roundId,
+          orderLike?.orderId,
+          orderLike?.mongoId,
+          orderLike?.sessionId,
+          orderLike?._id,
+          orderLike?.id,
+        ])
       .map((v) => (v == null ? "" : String(v).trim()))
       .filter(Boolean);
 
@@ -2573,6 +2661,7 @@ export default function OrdersMain() {
       }
 
       const normalizedIncomingOrder = normalizeOrderForPopup(newOrder);
+      const isIncomingDineInOrder = isDineInOrderLike(normalizedIncomingOrder);
 
       // DEBUG: log note fields
       console.log("[NOTE DEBUG] Raw newOrder fields:", {
@@ -2586,7 +2675,13 @@ export default function OrdersMain() {
         specialInstructions: normalizedIncomingOrder?.specialInstructions,
       });
 
-      if (
+      if (isIncomingDineInOrder && !hasOrderBeenShown(newOrder)) {
+        markOrderAsShown(newOrder);
+        setPopupOrder(normalizedIncomingOrder);
+        setShowNewOrderPopup(true);
+        setCountdown(getRemainingPopupCountdown(normalizedIncomingOrder));
+        requestOrdersRefresh();
+      } else if (
         !hasOrderBeenShown(newOrder) &&
         (
           isScheduledAwaitingRestaurantAcceptance(newOrder) ||
@@ -2853,6 +2948,10 @@ export default function OrdersMain() {
 
           // If a popup is currently active, verify if it is still awaiting action
           if (showNewOrderPopup && activeOrder) {
+            if (isDineInOrderLike(activeOrder)) {
+              return;
+            }
+
             const freshActiveOrder = fetchedOrders.find((o) => doOrdersMatch(activeOrder, o));
 
             // If the order has been processed (no longer 'created' status or isAcceptedByRestaurant is true)
@@ -2922,6 +3021,44 @@ export default function OrdersMain() {
             setPopupOrder(orderForPopup);
             setShowNewOrderPopup(true);
             setCountdown(getRemainingPopupCountdown(orderForPopup));
+            return;
+          }
+        }
+
+        if (!showNewOrderPopup && !newOrderRef.current) {
+          const profileRes = await restaurantAPI.getCurrentRestaurant().catch(() => null);
+          const restaurantId =
+            profileRes?.data?.data?.restaurant?._id ||
+            profileRes?.data?.data?._id ||
+            null;
+
+          if (!restaurantId) return;
+
+          const tablesRes = await dineInAPI.listTables(restaurantId).catch(() => null);
+          const activeTables = Array.isArray(tablesRes?.data?.data)
+            ? tablesRes.data.data.filter((table) => table.currentSessionId)
+            : [];
+
+          for (const table of activeTables) {
+            const sessionIdentity =
+              table?.currentSessionId?._id ||
+              table?.currentSessionId?.id ||
+              table?.currentSessionId;
+
+            if (!sessionIdentity) continue;
+
+            const sessionRes = await dineInAPI.getSession(sessionIdentity).catch(() => null);
+            const session = sessionRes?.data?.data || null;
+            const dineInOrderForPopup = buildDineInRoundPopupOrder(session, table);
+
+            if (!dineInOrderForPopup || hasOrderBeenShown(dineInOrderForPopup)) continue;
+
+            markOrderAsShown(dineInOrderForPopup);
+            setPopupOrder(dineInOrderForPopup);
+            setShowNewOrderPopup(true);
+            setCountdown(getRemainingPopupCountdown(dineInOrderForPopup));
+            requestOrdersRefresh();
+            return;
           }
         }
       } catch (error) {
@@ -5458,7 +5595,29 @@ function OrderCard({
   const hasLiveDineInRound =
     isDineIn &&
     !["", "no items", "active session"].includes(String(itemsSummary || "").trim().toLowerCase()) &&
-    !["active", "received", "created", "confirmed", "pending", "completed", "cancelled", "canceled"].includes(normalizedStatus);
+    !["completed", "cancelled", "canceled"].includes(normalizedStatus);
+  const canOpenDetails = typeof onSelect === "function";
+  const openOrderDetails = () => {
+    if (!canOpenDetails) return;
+    onSelect({
+      orderId,
+      mongoId,
+      status,
+      isDineIn,
+      customerName,
+      type,
+      tableOrToken,
+      timePlaced,
+      eta,
+      itemsSummary,
+      paymentMethod,
+      customerPhone,
+      total,
+      pricing,
+      selfDelivery,
+      selfDeliveryBoy,
+    });
+  };
   const phoneForCall = normalizePhoneForCall(customerPhone);
   const shouldShowCustomerContact =
     Boolean(customerName || phoneForCall) &&
@@ -5477,7 +5636,19 @@ function OrderCard({
             .replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
-    <div className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${(isPreparing || normalizedStatus === "scheduled") && onCancel ? "pr-14" : ""}`}>
+    <div
+      className={`w-full bg-white rounded-2xl p-4 mb-3 border border-gray-200 hover:border-gray-400 transition-colors relative ${(isPreparing || normalizedStatus === "scheduled") && onCancel ? "pr-14" : ""} ${canOpenDetails ? "cursor-pointer" : ""}`}
+      onClick={openOrderDetails}
+      onKeyDown={(e) => {
+        if (!canOpenDetails) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          openOrderDetails();
+        }
+      }}
+      role={canOpenDetails ? "button" : undefined}
+      tabIndex={canOpenDetails ? 0 : undefined}
+    >
       {/* Cancel button - show for preparing and scheduled orders */}
       {(isPreparing || normalizedStatus === "scheduled") && onCancel && (
         <button
@@ -5491,28 +5662,7 @@ function OrderCard({
           <X className="w-4 h-4" />
         </button>
       )}
-      <div
-        onClick={() =>
-          onSelect?.({
-            orderId,
-            mongoId,
-            status,
-            isDineIn,
-            customerName,
-            type,
-            tableOrToken,
-            timePlaced,
-            eta,
-            itemsSummary,
-            paymentMethod,
-            customerPhone,
-            total,
-            pricing,
-            selfDelivery,
-            selfDeliveryBoy,
-          })
-        }
-        className="w-full text-left flex gap-3 items-stretch cursor-pointer">
+      <div className="w-full text-left flex gap-3 items-stretch">
         {/* Photo */}
         <div className="h-20 w-20 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center flex-shrink-0 my-auto">
           {photoUrl ? (
@@ -5599,29 +5749,12 @@ function OrderCard({
           Partner Rejected
         </span>
       )}
-              {hasLiveDineInRound && !isFinalizedDineInStatus && typeof onSelect === "function" && (
+              {hasLiveDineInRound && !isFinalizedDineInStatus && canOpenDetails && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onSelect({
-                      orderId,
-                      mongoId,
-                      status,
-                      isDineIn,
-                      customerName,
-                      type,
-                      tableOrToken,
-                      timePlaced,
-                      eta,
-                      itemsSummary,
-                      paymentMethod,
-                      customerPhone,
-                      total,
-                      pricing,
-                      selfDelivery,
-                      selfDeliveryBoy,
-                    });
+                    openOrderDetails();
                   }}
                   className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-700 shadow-sm hover:bg-slate-50"
                 >
@@ -5880,8 +6013,8 @@ function PreparingOrders({
                     const rounds = Array.isArray(session.orders) ? session.orders : [];
                     const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                     const primaryItem = getDineInPrimaryItem(session, latestRound);
-                    const latestStatus = String(latestRound?.status || "").toLowerCase();
-                    if (latestStatus !== "preparing") return null;
+                    const latestStatus = getDineInRoundStatus(latestRound);
+                    if (latestStatus !== "preparing" || isDineInRoundAwaitingAcceptance(latestRound)) return null;
 
                     return {
                       orderId: `Table ${table.tableNumber}`,
@@ -6289,8 +6422,8 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
                     const rounds = Array.isArray(session.orders) ? session.orders : [];
                     const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                     const primaryItem = getDineInPrimaryItem(session, latestRound);
-                    const latestStatus = String(latestRound?.status || "").toLowerCase();
-                    if (latestStatus !== "ready") return null;
+                    const latestStatus = getDineInRoundStatus(latestRound);
+                    if (latestStatus !== "ready" || isDineInRoundAwaitingAcceptance(latestRound)) return null;
 
                     return {
                       orderId: `Table ${table.tableNumber}`,

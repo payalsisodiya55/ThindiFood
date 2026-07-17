@@ -93,6 +93,21 @@ const isResolvedOrderStatus = (value) => {
   );
 };
 
+const DINE_IN_AWAITING_ACCEPTANCE_STATUSES = ["", "received", "created", "confirmed", "pending"];
+
+const getDineInRoundStatus = (roundLike = {}) =>
+  String(roundLike?.status || roundLike?.orderStatus || "").trim().toLowerCase();
+
+const isDineInRoundAwaitingAcceptance = (roundLike = {}) => {
+  const items = Array.isArray(roundLike?.items) ? roundLike.items : [];
+  if (items.length === 0) return false;
+
+  return (
+    DINE_IN_AWAITING_ACCEPTANCE_STATUSES.includes(getDineInRoundStatus(roundLike)) ||
+    items.some((item) => String(item?.status || "").trim().toLowerCase() === "received")
+  );
+};
+
 const getOrderAlertIdentifiers = (orderLike = {}) =>
   Array.from(
     new Set(
@@ -562,12 +577,7 @@ export const useRestaurantNotifications = () => {
                 const latestRound = rounds.length ? rounds[rounds.length - 1] : null;
                 if (!latestRound) continue;
 
-                // A "new" round is when any item is still in received state.
-                const hasReceivedItems = Array.isArray(latestRound.items)
-                  ? latestRound.items.some((item) => item?.status === 'received')
-                  : false;
-
-                  if (hasReceivedItems) {
+                  if (isDineInRoundAwaitingAcceptance(latestRound)) {
                       // Trigger alert for this table. Use the *round id* as the key so accept can update it.
                       handleIncomingOrderAlert({
                           orderId: `Table ${table.tableNumber}`,
@@ -576,9 +586,12 @@ export const useRestaurantNotifications = () => {
                           tableNumber: table.tableNumber,
                           tableLabel: table.tableLabel,
                           type: 'Dine-In',
+                          status: getDineInRoundStatus(latestRound) || 'received',
+                          orderStatus: getDineInRoundStatus(latestRound) || 'received',
                           total: session.totalAmount,
                           items: latestRound.items,
-                          isDineIn: true
+                          isDineIn: true,
+                          isAcceptedByRestaurant: false
                       });
                   }
                 } catch {
@@ -1002,10 +1015,17 @@ export const useRestaurantNotifications = () => {
         orderMongoId: payload.orderId,
         sessionId: payload.sessionId,
         tableNumber: payload.tableNumber,
+        tableLabel: payload.tableLabel || `Table ${payload.tableNumber}`,
+        restaurantId: payload.restaurantId || null,
         type: 'Dine-In',
+        status: 'received',
+        orderStatus: 'received',
         total: payload.subtotal,
         items: payload.items,
         isDineIn: true,
+        isAcceptedByRestaurant: false,
+        createdAt: payload.createdAt,
+        updatedAt: payload.createdAt,
       });
     });
 
@@ -1212,4 +1232,3 @@ export const useRestaurantNotifications = () => {
     setNotificationSoundMuted
   };
 };
-
