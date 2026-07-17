@@ -275,12 +275,63 @@ export async function createDeliveryBoy(restaurantId, payload = {}) {
 }
 
 export async function listDeliveryBoys(restaurantId) {
-  return FoodDeliveryBoy.find({
+  const boys = await FoodDeliveryBoy.find({
     restaurantId: toObjectId(restaurantId, "Restaurant id"),
   })
     .populate("currentOrderId", "orderId orderStatus")
     .sort({ createdAt: -1 })
     .lean();
+
+  if (!boys || boys.length === 0) return [];
+
+  const boyIds = boys.map((b) => b._id);
+
+  // Aggregate stats from FoodOrder collection for these delivery boys
+  const stats = await FoodOrder.aggregate([
+    {
+      $match: {
+        "selfDelivery.deliveryBoyId": { $in: boyIds },
+      },
+    },
+    {
+      $group: {
+        _id: "$selfDelivery.deliveryBoyId",
+        assigned: {
+          $sum: {
+            $cond: [{ $eq: ["$orderStatus", "assigned_to_boy"] }, 1, 0],
+          },
+        },
+        inProgress: {
+          $sum: {
+            $cond: [
+              { $in: ["$orderStatus", ["picked_up_by_boy", "out_for_delivery"]] },
+              1,
+              0
+            ],
+          },
+        },
+        delivered: {
+          $sum: {
+            $cond: [{ $eq: ["$orderStatus", "delivered_self"] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const statsMap = new Map(stats.map((s) => [String(s._id), s]));
+
+  return boys.map((boy) => {
+    const boyStats = statsMap.get(String(boy._id)) || { assigned: 0, inProgress: 0, delivered: 0 };
+    return {
+      ...boy,
+      orderStats: {
+        assigned: boyStats.assigned,
+        inProgress: boyStats.inProgress,
+        delivered: boyStats.delivered,
+      },
+    };
+  });
 }
 
 export async function updateDeliveryBoy(restaurantId, deliveryBoyId, payload = {}) {
