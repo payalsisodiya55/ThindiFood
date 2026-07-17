@@ -33,14 +33,14 @@ const helpTopics = [
   {
     id: 3,
     icon: Building2,
-    title: "Restaurant",
+    title: "Profile & Settings",
     subtitle: "Timings, contacts, FSSAI, bank details, location etc.",
     path: "/restaurant/outlet-info"
   },
   {
     id: 6,
     icon: Wallet,
-    title: "Payments",
+    title: "Payments & Payouts",
     subtitle: "Statement of account, invoices etc.",
     path: "/restaurant/hub-finance"
   },

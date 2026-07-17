@@ -2500,6 +2500,7 @@ export async function updateSupportTicket(id, body = {}) {
 
     if (body.status && ['open', 'in-progress', 'resolved'].includes(String(body.status))) {
         ticket.status = String(body.status);
+        ticket.statusChangedBy = 'admin';
     }
     if (typeof body.adminResponse === 'string') {
         const text = body.adminResponse.trim();
@@ -2509,7 +2510,8 @@ export async function updateSupportTicket(id, body = {}) {
             ticket.messages.push({
                 sender: 'admin',
                 message: text,
-                timestamp: new Date()
+                timestamp: new Date(),
+                attachments: body.adminAttachments && Array.isArray(body.adminAttachments) ? body.adminAttachments : []
             });
         }
     }

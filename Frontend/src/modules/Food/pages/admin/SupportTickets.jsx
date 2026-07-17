@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { adminAPI, supportAPI } from "@food/api"
+import { adminAPI, supportAPI, uploadAPI } from "@food/api"
 import { setCachedSettings } from "@food/utils/businessSettings"
 import { toast } from "sonner"
 
@@ -10,6 +10,43 @@ export default function SupportTickets() {
   const [contactSaving, setContactSaving] = useState(false)
   const [filters, setFilters] = useState({ status: "", type: "", source: "all" })
   const [editing, setEditing] = useState({})
+  const [editingAttachments, setEditingAttachments] = useState({})
+  const [uploadingAttachment, setUploadingAttachment] = useState({})
+
+  const handleAdminAttachmentUpload = async (ticketId, file) => {
+    if (!file) return
+    try {
+      setUploadingAttachment(p => ({ ...p, [ticketId]: true }))
+      const res = await uploadAPI.uploadMedia(file, { folder: "food/admin/support-tickets" })
+      const url = res?.data?.data?.url || res?.data?.url
+      if (url) {
+        setEditingAttachments(p => ({ ...p, [ticketId]: [...(p[ticketId] || []), url] }))
+        toast.success("Attachment uploaded")
+      } else {
+        toast.error("Upload failed")
+      }
+    } catch {
+      toast.error("Upload failed")
+    } finally {
+      setUploadingAttachment(p => ({ ...p, [ticketId]: false }))
+    }
+  }
+
+  const removeAdminAttachment = (ticketId, idx) => {
+    setEditingAttachments(p => ({ ...p, [ticketId]: (p[ticketId] || []).filter((_, i) => i !== idx) }))
+  }
+
+  const handleSaveResponse = async (id) => {
+    const text = editing[id] ?? tickets.find(t => String(t._id) === String(id))?.adminResponse ?? ""
+    const list = editingAttachments[id] || []
+    await update(id, { adminResponse: text, adminAttachments: list })
+    // Clear editing attachments
+    setEditingAttachments(p => {
+      const copy = { ...p }
+      delete copy[id]
+      return copy
+    })
+  }
   const [contactForm, setContactForm] = useState({
     companyName: "",
     email: "",
@@ -307,9 +344,40 @@ export default function SupportTickets() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <div className="text-sm">{t.issueType}</div>
+                      <div className="text-sm font-semibold">{t.issueType}</div>
                       {t.subject ? <div className="text-xs text-slate-500 mt-0.5">Subject: {t.subject}</div> : null}
                       {t.orderRef ? <div className="text-xs text-slate-500 mt-0.5">Order: {t.orderRef}</div> : null}
+                      {t.description ? <div className="text-xs text-slate-400 mt-1 max-w-xs break-words">{t.description}</div> : null}
+                      {t.attachments && t.attachments.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {t.attachments.map((url, idx) => (
+                            <a 
+                              key={idx} 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-0.5 rounded border border-blue-100"
+                            >
+                              Attachment {idx + 1}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
+                      {t.adminAttachments && t.adminAttachments.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          {t.adminAttachments.map((url, idx) => (
+                            <a 
+                              key={idx} 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 hover:text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100"
+                            >
+                              Admin Attachment {idx + 1}
+                            </a>
+                          ))}
+                        </div>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
                       <select
@@ -324,15 +392,40 @@ export default function SupportTickets() {
                     </td>
                     <td className="px-4 py-3 text-sm">{new Date(t.createdAt).toLocaleDateString()}</td>
                     <td className="px-4 py-3">
-                      <input
-                        className="border rounded px-2 py-1 text-sm w-64"
-                        value={editing[t._id] ?? t.adminResponse ?? ""}
-                        onChange={(e) => setEditing((p) => ({ ...p, [t._id]: e.target.value }))}
-                        placeholder="Write response"
-                      />
+                      <div className="flex flex-col gap-2">
+                        <input
+                          className="border rounded px-2 py-1 text-sm w-64"
+                          value={editing[t._id] ?? t.adminResponse ?? ""}
+                          onChange={(e) => setEditing((p) => ({ ...p, [t._id]: e.target.value }))}
+                          placeholder="Write response"
+                        />
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            id={`admin-att-${t._id}`}
+                            className="hidden"
+                            onChange={(e) => handleAdminAttachmentUpload(t._id, e.target.files?.[0])}
+                            disabled={uploadingAttachment[t._id]}
+                          />
+                          <label
+                            htmlFor={`admin-att-${t._id}`}
+                            className="px-2 py-1 border rounded text-[11px] bg-slate-50 hover:bg-slate-100 cursor-pointer font-semibold text-slate-700"
+                          >
+                            {uploadingAttachment[t._id] ? "Uploading..." : "Attach File"}
+                          </label>
+                          <div className="flex flex-wrap gap-1">
+                            {(editingAttachments[t._id] || []).map((url, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 bg-slate-100 border text-[10px] px-1.5 py-0.5 rounded font-medium text-slate-600">
+                                Att {idx + 1}
+                                <button type="button" onClick={() => removeAdminAttachment(t._id, idx)} className="text-red-500 font-bold ml-1">×</button>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
-                      <button className="px-3 py-1 rounded bg-blue-600 text-white text-sm" onClick={() => update(t._id, { adminResponse: editing[t._id] ?? t.adminResponse ?? "" })}>
+                      <button className="px-3 py-1 rounded bg-blue-600 text-white text-sm cursor-pointer" onClick={() => handleSaveResponse(t._id)}>
                         Save
                       </button>
                     </td>

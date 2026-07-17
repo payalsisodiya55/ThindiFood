@@ -31,6 +31,8 @@ export const createRestaurantSupportTicketController = async (req, res, next) =>
             return sendError(res, 400, 'Invalid priority');
         }
 
+        const attachments = body.attachments || [];
+
         const created = await FoodRestaurantSupportTicket.create({
             restaurantId: new mongoose.Types.ObjectId(restaurantId),
             category,
@@ -39,6 +41,7 @@ export const createRestaurantSupportTicketController = async (req, res, next) =>
             description,
             orderRef,
             priority,
+            attachments: Array.isArray(attachments) ? attachments : [attachments].filter(Boolean),
             messages: [
                 {
                     sender: 'restaurant',
@@ -178,6 +181,7 @@ export const resolveRestaurantSupportTicketController = async (req, res, next) =
         }
 
         ticket.status = 'resolved';
+        ticket.statusChangedBy = 'restaurant';
         await ticket.save();
 
         return sendResponse(res, 200, 'Ticket marked as resolved successfully', {

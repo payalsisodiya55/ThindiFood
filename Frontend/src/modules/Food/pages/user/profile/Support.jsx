@@ -8,7 +8,7 @@ import { Card, CardContent } from "@food/components/ui/card"
 import { orderAPI, restaurantAPI, supportAPI, authAPI } from "@food/api"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { toast } from "sonner"
-import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight, Mail, Phone, ChevronDown } from "lucide-react"
+import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight, Mail, Phone, ChevronDown, Headphones } from "lucide-react"
 
 
 export default function Support() {
@@ -251,16 +251,18 @@ export default function Support() {
         </Card>
 
         {(supportContact?.name || supportContact?.email || supportContact?.number) ? (
-          <Card className="bg-gradient-to-br from-white to-[#00c87e]/5 dark:from-[#1a1a1a] dark:to-[#00c87e]/10 rounded-xl shadow-sm border border-[#00c87e]/20 dark:border-[#00c87e]/30 mb-3 overflow-hidden">
+          <Card className="bg-white dark:bg-[#1a1a1a] rounded-xl shadow-sm border border-slate-200 dark:border-gray-800 mb-3 overflow-hidden">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-2 w-2 rounded-full bg-[#00c87e]" />
+              <div className="flex items-center gap-2 mb-4 text-[#00c87e]">
+                <Headphones className="w-4.5 h-4.5" />
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00c87e]">Support contact</p>
               </div>
               
               <div className="flex flex-col gap-4">
                 {supportContact?.name && (
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-none">{supportContact.name}</h3>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white leading-none">
+                    {supportContact.name === "Taamio Partner" ? "Taamio Support" : supportContact.name}
+                  </h3>
                 )}
                 
                 <div className="flex flex-wrap gap-3">

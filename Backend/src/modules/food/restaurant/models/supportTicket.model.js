@@ -24,9 +24,23 @@ const restaurantSupportTicketSchema = new mongoose.Schema(
             {
                 sender: { type: String, enum: ['restaurant', 'admin'], required: true },
                 message: { type: String, required: true },
-                timestamp: { type: Date, default: Date.now }
+                timestamp: { type: Date, default: Date.now },
+                attachments: { type: [String], default: [] }
             }
-        ]
+        ],
+        attachments: {
+            type: [String],
+            default: []
+        },
+        adminAttachments: {
+            type: [String],
+            default: []
+        },
+        statusChangedBy: {
+            type: String,
+            enum: ['restaurant', 'admin'],
+            default: 'restaurant'
+        }
     },
     { collection: 'food_restaurant_support_tickets', timestamps: true }
 );

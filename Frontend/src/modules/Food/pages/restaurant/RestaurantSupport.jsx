@@ -1,26 +1,26 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
-import { ArrowLeft, Loader2, Send, Mail, Phone, MessageSquare, CheckCircle2, X } from "lucide-react"
+import { ArrowLeft, Loader2, Send, Mail, Phone, MessageSquare, CheckCircle2, X, Headphones, MessageSquareOff, Paperclip, ChevronDown, Check, CheckCheck } from "lucide-react"
 
-import { restaurantAPI } from "@food/api"
+import { restaurantAPI, uploadAPI } from "@food/api"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { toast } from "sonner"
 
 const CATEGORY_OPTIONS = [
   { value: "orders", label: "Orders" },
-  { value: "payments", label: "Payments" },
-  { value: "menu", label: "Menu" },
-  { value: "restaurant", label: "Restaurant Profile" },
-  { value: "technical", label: "Technical" },
+  { value: "payments", label: "Payments & Payouts" },
+  { value: "menu", label: "Menu & Pricing" },
+  { value: "restaurant", label: "Profile & Settings" },
+  { value: "technical", label: "App & Technical" },
   { value: "other", label: "Other" },
 ]
 
 const PRIORITY_OPTIONS = [
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
+  { value: "low", label: "Low - General question, no rush" },
+  { value: "medium", label: "Medium - Affecting my work but I can continue" },
+  { value: "high", label: "High - Blocking me from operating right now" },
 ]
 
 const STATUS_OPTIONS = [
@@ -34,6 +34,30 @@ const getStatusStyle = (status) => {
   if (status === "resolved") return "bg-emerald-100 text-emerald-700 border-emerald-200"
   if (status === "in-progress") return "bg-blue-100 text-blue-700 border-blue-200"
   return "bg-amber-100 text-amber-700 border-amber-200"
+}
+
+const formatDate = (dateString) => {
+  if (!dateString) return ""
+  const date = new Date(dateString)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  return `${day}/${month}/${year}`
+}
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return ""
+  const date = new Date(dateString)
+  const day = String(date.getDate()).padStart(2, '0')
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  let hours = date.getHours()
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  hours = hours % 12
+  hours = hours ? hours : 12
+  const strTime = `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`
+  return `${day}/${month}/${year}, ${strTime}`
 }
 
 export default function RestaurantSupport() {
@@ -52,13 +76,63 @@ export default function RestaurantSupport() {
   const [resolveSubmitting, setResolveSubmitting] = useState(false)
 
   const [form, setForm] = useState({
-    category: "orders",
+    category: "",
     issueType: "",
     subject: "",
     orderRef: "",
     priority: "",
     description: "",
   })
+  
+  const [attachments, setAttachments] = useState([])
+  const [uploadingAttachment, setUploadingAttachment] = useState(false)
+  const [categoryOpen, setCategoryOpen] = useState(false)
+  const [priorityOpen, setPriorityOpen] = useState(false)
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false)
+
+  // Polling for live chat updates
+  useEffect(() => {
+    if (!selectedTicket?._id) return
+    const poll = async () => {
+      try {
+        const response = await restaurantAPI.getSupportTickets({
+          limit: 100,
+          page: 1,
+        })
+        const list = response?.data?.data?.tickets || []
+        setTickets(list)
+        const updated = list.find(t => t._id === selectedTicket._id)
+        if (updated) {
+          setSelectedTicket(updated)
+        }
+      } catch (error) {
+        console.error("Failed to poll ticket details", error)
+      }
+    }
+    const interval = setInterval(poll, 3000)
+    return () => clearInterval(interval)
+  }, [selectedTicket?._id])
+
+  // Track ticket viewed timestamp to clear unread badge
+  useEffect(() => {
+    if (selectedTicket) {
+      localStorage.setItem(`ticket_viewed_${selectedTicket._id}`, Date.now().toString())
+    }
+  }, [selectedTicket])
+
+  const hasUnread = (ticket) => {
+    if (ticket.status === 'resolved') return false
+    const msgs = ticket.messages || []
+    if (msgs.length === 0) {
+      return !!ticket.adminResponse
+    }
+    const lastMsg = msgs[msgs.length - 1]
+    if (lastMsg.sender !== 'admin') return false
+    
+    const lastViewed = localStorage.getItem(`ticket_viewed_${ticket._id}`)
+    if (!lastViewed) return true
+    return new Date(lastMsg.timestamp).getTime() > parseInt(lastViewed, 10)
+  }
 
   const stats = useMemo(() => {
     const total = tickets.length
@@ -111,14 +185,47 @@ export default function RestaurantSupport() {
     }
   }, [])
 
+  const handleAttachmentUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setUploadingAttachment(true)
+      const res = await uploadAPI.uploadMedia(file, { folder: "food/restaurants/support-tickets" })
+      const url = res?.data?.data?.url || res?.data?.url
+      if (url) {
+        setAttachments(prev => [...prev, url])
+        toast.success("Attachment uploaded successfully")
+      } else {
+        toast.error("Failed to get attachment URL")
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to upload attachment")
+    } finally {
+      setUploadingAttachment(false)
+    }
+  }
+
+  const removeAttachment = (idx) => {
+    setAttachments(prev => prev.filter((_, i) => i !== idx))
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!form.category) {
+      toast.error("Please select an issue category")
+      return
+    }
     if (!form.issueType.trim()) {
       toast.error("Issue type is required")
       return
     }
     if (!form.priority) {
       toast.error("Please select a priority level")
+      return
+    }
+    if (!form.description.trim()) {
+      toast.error("Description is required")
       return
     }
     try {
@@ -130,9 +237,11 @@ export default function RestaurantSupport() {
         orderRef: form.orderRef.trim(),
         priority: form.priority,
         description: form.description.trim(),
+        attachments: attachments,
       })
       toast.success("Support ticket submitted")
-      setForm((prev) => ({ ...prev, issueType: "", subject: "", orderRef: "", priority: "", description: "" }))
+      setForm((prev) => ({ ...prev, category: "", issueType: "", subject: "", orderRef: "", priority: "", description: "" }))
+      setAttachments([])
       await loadTickets()
     } catch (error) {
       toast.error(error?.response?.data?.message || "Failed to submit support ticket")
@@ -212,6 +321,8 @@ export default function RestaurantSupport() {
 
   const handleResolveTicket = async () => {
     if (!selectedTicket) return
+    const confirmResolve = window.confirm("Mark this ticket as resolved?")
+    if (!confirmResolve) return
 
     try {
       setResolveSubmitting(true)
@@ -244,24 +355,24 @@ export default function RestaurantSupport() {
             </button>
             <h1 className="text-lg font-bold text-slate-900">Support</h1>
           </div>
-          <p className="text-xs text-slate-500 mt-0.5 pl-[48px]">Raise issue and track admin response</p>
+          <p className="text-xs text-slate-500 mt-0.5 pl-[48px]">Raise an issue and track its status</p>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-28">
         {supportContact?.name || supportContact?.email || supportContact?.number ? (
-          <div className="rounded-2xl border border-[#00c87e]/20 bg-gradient-to-br from-white to-[#00c87e]/5 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="h-2 w-2 rounded-full bg-[#00c87e]" />
-              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#00c87e]">
-                Support contact
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4 text-slate-500">
+              <Headphones className="h-4.5 w-4.5 text-slate-400" />
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                Support Contact
               </p>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               {supportContact?.name && (
                 <h3 className="text-lg font-bold text-slate-900 leading-none">
-                  {supportContact.name}
+                  {supportContact.name === "Taamio Partner" ? "Taamio Support" : supportContact.name}
                 </h3>
               )}
 
@@ -294,13 +405,14 @@ export default function RestaurantSupport() {
                   </a>
                 )}
               </div>
+              <p className="text-[10.5px] text-slate-500 italic mt-1">Available Mon–Sat, 9 AM to 9 PM</p>
             </div>
           </div>
         ) : null}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <div className="rounded-xl border border-slate-200 bg-white p-3">
-            <p className="text-xs text-slate-500">Total</p>
+            <p className="text-xs text-slate-500">Total Tickets</p>
             <p className="text-lg font-bold text-slate-900">{stats.total}</p>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
@@ -308,7 +420,7 @@ export default function RestaurantSupport() {
             <p className="text-lg font-bold text-amber-800">{stats.open}</p>
           </div>
           <div className="rounded-xl border border-blue-200 bg-blue-50 p-3">
-            <p className="text-xs text-blue-700">In progress</p>
+            <p className="text-xs text-blue-700">In Progress</p>
             <p className="text-lg font-bold text-blue-800">{stats.inProgress}</p>
           </div>
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
@@ -321,62 +433,174 @@ export default function RestaurantSupport() {
           onSubmit={handleSubmit}
           className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3"
         >
-          <h2 className="text-sm font-bold text-slate-900">Raise support ticket</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <select
-              value={form.category}
-              onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-500"
-            >
-              {CATEGORY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <select
-              value={form.priority}
-              onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-500"
-            >
-              <option value="" disabled>
-                Priority
-              </option>
-              {PRIORITY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="space-y-1">
+            <h2 className="text-sm font-bold text-slate-900">Raise Support Ticket</h2>
+            <p className="text-xs text-slate-500">Tell us what went wrong and we'll get back to you.</p>
           </div>
-          <input
-            value={form.issueType}
-            onChange={(e) => setForm((prev) => ({ ...prev, issueType: e.target.value }))}
-            placeholder="Issue type (required)"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500"
-            maxLength={120}
-          />
-          <input
-            value={form.subject}
-            onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
-            placeholder="Short subject"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500"
-            maxLength={180}
-          />
-          <input
-            value={form.orderRef}
-            onChange={(e) => setForm((prev) => ({ ...prev, orderRef: e.target.value }))}
-            placeholder="Order ID (optional)"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500"
-            maxLength={80}
-          />
-          <textarea
-            value={form.description}
-            onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-            placeholder="Describe your issue"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-24 resize-none text-slate-700 placeholder:text-slate-500"
-            maxLength={1000}
-          />
+
+          {/* Persistent labels for all fields with custom selects */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1 relative">
+              <label className="block text-xs font-semibold text-slate-700">Category *</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setCategoryOpen(!categoryOpen)
+                  setPriorityOpen(false)
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-700 flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e] transition-all cursor-pointer"
+              >
+                <span>
+                  {CATEGORY_OPTIONS.find(o => o.value === form.category)?.label || "Select Issue Category"}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              </button>
+              {categoryOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1">
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setForm(p => ({ ...p, category: option.value }))
+                        setCategoryOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#00c87e]/10 text-slate-700 hover:text-slate-900 transition-colors font-medium"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="space-y-1 relative">
+              <label className="block text-xs font-semibold text-slate-700">Priority *</label>
+              <button
+                type="button"
+                onClick={() => {
+                  setPriorityOpen(!priorityOpen)
+                  setCategoryOpen(false)
+                }}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white text-slate-700 flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e] transition-all cursor-pointer"
+              >
+                <span className="truncate max-w-[200px]">
+                  {PRIORITY_OPTIONS.find(o => o.value === form.priority)?.label || "Select Priority"}
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              </button>
+              {priorityOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1 max-h-48 overflow-y-auto">
+                  {PRIORITY_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setForm(p => ({ ...p, priority: option.value }))
+                        setPriorityOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#00c87e]/10 text-slate-700 hover:text-slate-900 transition-colors font-medium"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">Issue Type *</label>
+            <input
+              value={form.issueType}
+              onChange={(e) => setForm((prev) => ({ ...prev, issueType: e.target.value }))}
+              placeholder="E.g. Delivery delay, payment issue etc."
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e]"
+              maxLength={120}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">Subject *</label>
+            <input
+              value={form.subject}
+              onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))}
+              placeholder="Brief summary of your issue"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e]"
+              maxLength={180}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">Order ID (Optional)</label>
+            <input
+              value={form.orderRef}
+              onChange={(e) => setForm((prev) => ({ ...prev, orderRef: e.target.value }))}
+              placeholder="Enter Order ID if applicable"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e]"
+              maxLength={80}
+            />
+            <p className="text-[10px] text-slate-400">Add the Order ID if this is about a specific order</p>
+          </div>
+
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">Description *</label>
+            <textarea
+              value={form.description}
+              onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="Describe your issue"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm min-h-24 resize-none text-slate-700 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e]"
+              maxLength={1000}
+            />
+            <p className="text-right text-[10px] text-slate-400 font-semibold">{form.description.length}/1000</p>
+          </div>
+
+          {/* Attachments Section */}
+          <div className="space-y-1">
+            <label className="block text-xs font-semibold text-slate-700">Attachments (Optional)</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="file"
+                id="ticket-attachment"
+                className="hidden"
+                accept="image/*,.pdf,.doc,.docx"
+                onChange={handleAttachmentUpload}
+                disabled={uploadingAttachment}
+              />
+              <label
+                htmlFor="ticket-attachment"
+                className="flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+              >
+                {uploadingAttachment ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-500" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Paperclip className="w-3.5 h-3.5 text-slate-500" />
+                    Attach File
+                  </>
+                )}
+              </label>
+            </div>
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {attachments.map((url, idx) => (
+                  <div key={idx} className="flex items-center gap-1 bg-slate-100 border border-slate-200 rounded-lg px-2 py-1 text-xs text-slate-600">
+                    <span className="truncate max-w-[150px]">Attachment {idx + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(idx)}
+                      className="text-red-500 hover:text-red-700 font-bold ml-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={submitting}
@@ -389,18 +613,36 @@ export default function RestaurantSupport() {
 
         <div className="bg-white rounded-2xl border border-slate-200 p-4 space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-bold text-slate-900">My tickets</h2>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs bg-white"
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value || "all"} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <h2 className="text-sm font-bold text-slate-900">My Tickets</h2>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setStatusFilterOpen(!statusFilterOpen)}
+                className="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold bg-white text-slate-700 flex items-center gap-1.5 outline-none focus:ring-2 focus:ring-[#00c87e]/20 focus:border-[#00c87e] transition-all cursor-pointer"
+              >
+                <span>
+                  {STATUS_OPTIONS.find(o => o.value === statusFilter)?.label || "All"}
+                </span>
+                <ChevronDown className="w-3 h-3 text-slate-500" />
+              </button>
+              {statusFilterOpen && (
+                <div className="absolute right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg z-50 py-1 min-w-[100px]">
+                  {STATUS_OPTIONS.map((option) => (
+                    <button
+                      key={option.value || "all"}
+                      type="button"
+                      onClick={() => {
+                        setStatusFilter(option.value)
+                        setStatusFilterOpen(false)
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-[#00c87e]/10 text-slate-700 hover:text-slate-900 transition-colors font-semibold"
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {loading ? (
@@ -409,7 +651,13 @@ export default function RestaurantSupport() {
               Loading tickets...
             </div>
           ) : tickets.length === 0 ? (
-            <div className="py-8 text-center text-slate-500 text-sm">No support tickets found.</div>
+            <div className="py-12 text-center flex flex-col items-center justify-center gap-3">
+              <MessageSquareOff className="w-12 h-12 text-slate-300" />
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-slate-800">You haven't raised any tickets yet</p>
+                <p className="text-xs text-slate-500 max-w-[280px]">Submit one above and track it here.</p>
+              </div>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {tickets.map((ticket) => (
@@ -420,9 +668,16 @@ export default function RestaurantSupport() {
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2">
-                      <p className="text-[10px] font-semibold text-slate-400">
-                        #{String(ticket._id).slice(-6)} • {new Date(ticket.createdAt).toLocaleDateString()}
-                      </p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-[10px] font-semibold text-slate-400">
+                          #{String(ticket._id).slice(-6)} • {formatDate(ticket.createdAt)}
+                        </p>
+                        {hasUnread(ticket) && (
+                          <span className="bg-red-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                            New Response
+                          </span>
+                        )}
+                      </div>
                       <span
                         className={`text-[10px] px-2 py-0.5 rounded-full border font-bold capitalize ${getStatusStyle(
                           ticket.status
@@ -431,32 +686,48 @@ export default function RestaurantSupport() {
                         {ticket.status}
                       </span>
                     </div>
-                    <p className="mt-2 text-sm font-bold text-slate-900 line-clamp-1 break-words">
+                    <p className="mt-2 text-sm font-bold text-slate-900 break-words">
                       {ticket.issueType}
                     </p>
                     {ticket.subject ? (
-                      <p className="text-xs text-slate-600 mt-1 line-clamp-1 break-words">
+                      <p className="text-xs text-slate-600 mt-1 break-words">
                         Subject: {ticket.subject}
                       </p>
                     ) : null}
                     {ticket.orderRef ? (
-                      <p className="text-xs text-slate-600 mt-0.5 line-clamp-1 break-words">
+                      <p className="text-xs text-slate-600 mt-0.5 break-words">
                         Order: {ticket.orderRef}
                       </p>
                     ) : null}
                     {ticket.description ? (
-                      <p className="text-xs text-slate-500 mt-2 line-clamp-2 break-words">
+                      <p className="text-xs text-slate-500 mt-2 break-words">
                         {ticket.description}
                       </p>
                     ) : null}
+
+                    {/* Timeline creation/resolution info */}
+                    <div className="mt-3 space-y-0.5 border-t border-slate-100 pt-2 text-[10px] text-slate-400 font-medium">
+                      <p>Opened: {formatDateTime(ticket.createdAt)}</p>
+                      {ticket.status === 'resolved' && (
+                        <>
+                          <p>Closed: {formatDateTime(ticket.updatedAt)}</p>
+                          <p className="text-[#00c87e] font-semibold">
+                            Resolved by: {ticket.statusChangedBy === 'admin' ? 'Taamio Support' : 'Restaurant Partner'}
+                          </p>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-semibold">
                     <span className="flex items-center gap-1 text-[#00c87e]">
                       <MessageSquare className="w-3.5 h-3.5" />
-                      {ticket.messages?.length || (ticket.adminResponse ? 2 : 1)} Messages
+                      {(() => {
+                        const count = ticket.messages?.length || (ticket.adminResponse ? 2 : 1)
+                        return count === 1 ? "1 Message" : `${count} Messages`
+                      })()}
                     </span>
-                    <span className="text-slate-400 hover:text-slate-600 transition-colors">
+                    <span className="text-[#00c87e] hover:text-[#00b06f] font-bold transition-colors">
                       View thread →
                     </span>
                   </div>
@@ -479,41 +750,63 @@ export default function RestaurantSupport() {
           {/* Drawer Panel */}
           <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-250">
             {/* Header */}
-            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-400">
-                    #{String(selectedTicket._id).toUpperCase()}
-                  </span>
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full border font-bold capitalize ${getStatusStyle(
-                      selectedTicket.status
-                    )}`}
-                  >
-                    {selectedTicket.status}
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900 mt-1 break-words">
+            <div className="p-4 border-b border-slate-200 flex flex-col bg-slate-50">
+              <div className="flex items-center gap-2 mb-2">
+                <button
+                  onClick={() => setSelectedTicket(null)}
+                  className="p-1 hover:bg-slate-200 rounded-lg text-slate-700 transition-colors cursor-pointer shrink-0"
+                  aria-label="Close panel"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <span className="text-xs font-bold text-slate-400">
+                  #{String(selectedTicket._id).toUpperCase()}
+                </span>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full border font-bold capitalize ${getStatusStyle(
+                    selectedTicket.status
+                  )}`}
+                >
+                  {selectedTicket.status}
+                </span>
+              </div>
+              <div className="pl-8">
+                <h3 className="text-base font-bold text-slate-900 break-words">
                   {selectedTicket.issueType}
                 </h3>
                 <p className="text-[11px] text-slate-500 font-medium">
-                  Category: <span className="capitalize">{selectedTicket.category}</span> • Priority:{" "}
+                  Category: <span className="capitalize">{selectedTicket.category === "payments" ? "Payments & Payouts" : selectedTicket.category}</span> • Priority:{" "}
                   <span className="capitalize">{selectedTicket.priority}</span>
                 </p>
               </div>
-              <button
-                onClick={() => setSelectedTicket(null)}
-                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors cursor-pointer"
-                aria-label="Close panel"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
+
+            {/* Attachments Section */}
+            {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+              <div className="px-4 py-2 bg-slate-100 border-b border-slate-200">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Attachments</p>
+                <div className="flex flex-wrap gap-2">
+                  {selectedTicket.attachments.map((url, idx) => (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-[#00c87e] hover:bg-[#00c87e]/5 transition-colors"
+                    >
+                      <Paperclip className="w-3.5 h-3.5" />
+                      Attachment {idx + 1}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Messages Thread (Chronological Order) */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
               {getConversationMessages(selectedTicket).map((msg, index) => {
                 const isAdmin = msg.sender === "admin"
+                const isResolved = selectedTicket.status === 'resolved'
                 return (
                   <div key={index} className={`flex flex-col ${isAdmin ? "items-start" : "items-end"}`}>
                     <div
@@ -523,8 +816,8 @@ export default function RestaurantSupport() {
                           : "bg-[#00c87e] text-white rounded-tr-none"
                       }`}
                     >
-                      <p className={`text-[10px] font-extrabold uppercase tracking-wider mb-1 ${
-                        isAdmin ? "text-blue-600" : "text-[#d1fae5]"
+                      <p className={`text-[10px] font-black uppercase tracking-wider mb-1 ${
+                        isAdmin ? "text-blue-600" : "text-white"
                       }`}>
                         {isAdmin ? "Admin Support" : "You"}
                       </p>
@@ -532,12 +825,20 @@ export default function RestaurantSupport() {
                         {msg.message}
                       </p>
                     </div>
-                    <span className="text-[9px] text-slate-400 mt-1 px-1">
-                      {new Date(msg.timestamp).toLocaleString(undefined, {
-                        dateStyle: "short",
-                        timeStyle: "short",
-                      })}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1 px-1">
+                      <span className="text-[9px] text-slate-400">
+                        {formatDateTime(msg.timestamp)}
+                      </span>
+                      {!isAdmin && (
+                        <div className="inline-flex items-center">
+                          {isResolved ? (
+                            <CheckCheck className="w-3.5 h-3.5 text-[#00c87e]" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5 text-slate-400" />
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })}
@@ -582,7 +883,7 @@ export default function RestaurantSupport() {
                       ) : (
                         <CheckCircle2 className="w-4 h-4" />
                       )}
-                      Mark Ticket as Resolved
+                      Confirm Resolution (as Restaurant Partner)
                     </button>
                   ) : (
                     <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-center">
@@ -596,7 +897,7 @@ export default function RestaurantSupport() {
                 <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-center">
                   <p className="text-xs text-emerald-800 font-semibold flex items-center justify-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    This ticket has been resolved and closed.
+                    This ticket has been resolved by {selectedTicket.statusChangedBy === 'admin' ? 'Taamio Support' : 'Restaurant Partner'}.
                   </p>
                 </div>
               )}
