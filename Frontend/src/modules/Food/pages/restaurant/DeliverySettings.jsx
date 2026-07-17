@@ -321,7 +321,7 @@ export default function DeliverySettings() {
             </button>
             <h1 className="text-lg font-bold text-gray-900">Delivery Settings</h1>
           </div>
-          <p className="text-sm text-gray-500 mt-0.5 pl-[48px]">Manage your delivery status</p>
+          <p className="text-sm text-gray-500 mt-0.5 pl-[48px]">Control how delivery works for your restaurant</p>
         </div>
       </div>
 
@@ -444,7 +444,7 @@ export default function DeliverySettings() {
           <Card className="bg-blue-50 border-blue-200 shadow-sm">
             <CardContent className="p-4">
               <p className="text-sm text-gray-700">
-                <strong>Note:</strong> When delivery is turned off, customers won't be able to place delivery orders from your restaurant. You can turn it back on anytime.
+                <strong>Note:</strong> When off, customers can't place delivery orders from your restaurant.
               </p>
             </CardContent>
           </Card>
@@ -469,11 +469,11 @@ export default function DeliverySettings() {
                     )}
                     {selfDelivery.approvalStatus === "approved" && (
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider border border-green-200">
-                        Approved
+                        Active
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-gray-500">Enable your own delivery partners for nearby orders</p>
+                  <p className="text-sm text-gray-500">Your delivery partners handle nearby orders</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {isPendingApproval && (
@@ -502,37 +502,53 @@ export default function DeliverySettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Delivery Radius (km)</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={selfDelivery.radius}
-                    onChange={(e) => handleSelfDeliveryField("radius", Number(e.target.value))}
-                    disabled={selfDeliveryFieldsDisabled}
-                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
-                  />
+                  <span className="text-sm font-medium text-gray-700">Delivery Radius</span>
+                  <div className="relative mt-1">
+                    <input
+                      type="number"
+                      value={selfDelivery.radius}
+                      onChange={(e) => handleSelfDeliveryField("radius", Number(e.target.value))}
+                      disabled={selfDeliveryFieldsDisabled}
+                      className="w-full rounded-xl border border-gray-300 pr-12 pl-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium select-none pointer-events-none">
+                      km
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">Recommended: 1–7 km for best delivery times</p>
                 </label>
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Delivery Fee</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={selfDelivery.fee}
-                    onChange={(e) => handleSelfDeliveryField("fee", Number(e.target.value))}
-                    disabled={selfDeliveryFieldsDisabled}
-                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
-                  />
+                  <span className="text-sm font-medium text-gray-700">Delivery Fee (₹)</span>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium select-none pointer-events-none">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      value={selfDelivery.fee}
+                      onChange={(e) => handleSelfDeliveryField("fee", Number(e.target.value))}
+                      disabled={selfDeliveryFieldsDisabled}
+                      placeholder="30"
+                      className="w-full rounded-xl border border-gray-300 pl-8 pr-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                  </div>
                 </label>
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Minimum Order</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={selfDelivery.minOrderAmount}
-                    onChange={(e) => handleSelfDeliveryField("minOrderAmount", Number(e.target.value))}
-                    disabled={selfDeliveryFieldsDisabled}
-                    className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
-                  />
+                  <span className="text-sm font-medium text-gray-700">Minimum Order Value (₹)</span>
+                  <div className="relative mt-1">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500 font-medium select-none pointer-events-none">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      value={selfDelivery.minOrderAmount}
+                      onChange={(e) => handleSelfDeliveryField("minOrderAmount", Number(e.target.value))}
+                      disabled={selfDeliveryFieldsDisabled}
+                      placeholder="30 for minimum order"
+                      className="w-full rounded-xl border border-gray-300 pl-8 pr-3 py-2 disabled:bg-gray-50 disabled:text-gray-500"
+                    />
+                  </div>
+                  <p className="text-[11px] text-gray-500 mt-1">Orders below this amount won't be eligible for delivery. Set 0 for no minimum.</p>
                 </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <ModernTimePicker
@@ -567,7 +583,7 @@ export default function DeliverySettings() {
                     ? "Saving..." 
                     : selfDelivery.approvalStatus === "pending" 
                       ? "Request Pending Approval" 
-                      : "Save Self Delivery"
+                      : "Save Changes"
                   }
                 </button>
                 <button
@@ -631,7 +647,7 @@ export default function DeliverySettings() {
                       <>You will start receiving delivery orders. Make sure you're ready to accept orders.</>
                     )
                   ) : (
-                    <>Customers won't be able to place delivery orders. You can turn it back on anytime.</>
+                    <>When off, customers can't place delivery orders from your restaurant.</>
                   )}
                 </p>
                 
