@@ -57,6 +57,7 @@ export default function EditOwner() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false)
+  const [emailError, setEmailError] = useState("")
 
   // Lenis smooth scrolling
   useEffect(() => {
@@ -119,12 +120,24 @@ export default function EditOwner() {
     fetchRestaurantData()
   }, [])
 
-  // Check for changes
+  // Check for changes & validity
   useEffect(() => {
     const changed = 
-      formData.name !== ownerData.name ||
-      formData.email !== ownerData.email ||
+      formData.name.trim() !== ownerData.name.trim() ||
+      formData.email.trim() !== ownerData.email.trim() ||
       profileImageFile !== null
+    
+    if (formData.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(formData.email.trim())) {
+        setEmailError("Please enter a valid email address")
+      } else {
+        setEmailError("")
+      }
+    } else {
+      setEmailError("Email is required")
+    }
+
     setHasChanges(changed)
   }, [formData.name, formData.email, ownerData.name, ownerData.email, profileImageFile])
 
@@ -298,7 +311,7 @@ export default function EditOwner() {
             >
               <ArrowLeft className="w-6 h-6 text-gray-900" />
             </button>
-            <h1 className="text-lg font-bold text-gray-900">Contact details</h1>
+            <h1 className="text-lg font-bold text-gray-900">Contact Details</h1>
           </div>
         </div>
 
@@ -383,6 +396,9 @@ export default function EditOwner() {
                 />
                 <Edit className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-600" />
               </div>
+              {emailError && (
+                <p className="text-xs text-red-600 mt-1">{emailError}</p>
+              )}
             </div>
           </div>
 
@@ -393,27 +409,27 @@ export default function EditOwner() {
               className="flex items-center gap-2 text-red-600 hover:text-red-700 transition-colors"
             >
               <Trash2 className="w-5 h-5" />
-              <span className="text-sm font-normal">Delete your Zomato account</span>
+              <span className="text-sm font-normal">Delete your Taamio account</span>
             </button>
           </div>
         </div>
 
         {/* Delete Account Confirmation Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-          <DialogContent className="sm:max-w-md p-4 w-[90%]">
+          <DialogContent className="sm:max-w-md p-4 w-[90%]" closeClassName="border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center h-8 w-8 !p-0">
             <DialogHeader className="text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
-                <span className="text-2xl leading-none text-red-600">!</span>
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <Trash2 className="w-5 h-5" />
               </div>
               <DialogTitle className="text-base font-semibold text-gray-900 text-center">
-                You are about to delete your Zomato account
+                You are about to delete your Taamio account
               </DialogTitle>
               <DialogHeader className="mt-2 text-sm text-gray-600">
                 All information associated with your account will be deleted, and you will lose access to your restaurant permanently.
                 This information cannot be recovered once the account is deleted. Are you sure you want to proceed?
               </DialogHeader>
             </DialogHeader>
-            <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+            <DialogFooter className="flex flex-col gap-2 sm:flex-col mt-5">
               <Button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
@@ -435,17 +451,17 @@ export default function EditOwner() {
 
         {/* Save Button - Fixed at bottom */}
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-4 z-40">
-          <Button
-            onClick={handleSave}
-            disabled={!hasChanges || loading || saving}
-            className={`w-full py-3 ${
-              hasChanges && !loading && !saving
-                ? "bg-black hover:bg-gray-900 text-white" 
-                : "bg-gray-200 text-gray-500 cursor-not-allowed"
-            } transition-colors`}
-          >
-            {saving ? "Saving..." : "Save"}
-          </Button>
+        <Button
+          onClick={handleSave}
+          disabled={!hasChanges || !!emailError || loading || saving}
+          className={`w-full py-3 ${
+            hasChanges && !emailError && !loading && !saving
+              ? "bg-black hover:bg-gray-900 text-white" 
+              : "bg-gray-200 text-gray-500 cursor-not-allowed"
+          } transition-colors`}
+        >
+          {saving ? "Saving..." : "Save"}
+        </Button>
         </div>
       </div>
 
@@ -453,10 +469,11 @@ export default function EditOwner() {
         isOpen={isPhotoPickerOpen}
         onClose={() => setIsPhotoPickerOpen(false)}
         onFileSelect={handlePhotoSelect}
-        title="Update owner photo"
-        description="Choose how to upload your owner profile photo"
+        title="Update Profile Picture"
+        description=""
         fileNamePrefix="owner-photo"
         galleryInputRef={fileInputRef}
+        closeClassName="border border-gray-200 bg-white hover:bg-gray-50 flex items-center justify-center h-8 w-8 !p-0"
       />
     </>
   )
