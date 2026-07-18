@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { Label } from "@food/components/ui/label"
-import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut, Eye, EyeOff } from "lucide-react"
+import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut, Eye, EyeOff, HelpCircle } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { Calendar } from "@food/components/ui/calendar"
 import {
@@ -553,7 +553,7 @@ function TimeSelector({ label, value, onChange }) {
   return (
     <div className="border border-gray-200 rounded-md px-3 py-2 bg-gray-50/60">
       <div className="flex items-center gap-2 mb-2">
-        <Clock className="w-4 h-4 text-gray-800" />
+        <Clock className="w-4 h-4 text-gray-800 shrink-0" />
         <span className="text-xs font-bold text-gray-700">
           {typeof label === "string" && label.endsWith("*") ? (
             <>
@@ -565,61 +565,64 @@ function TimeSelector({ label, value, onChange }) {
           )}
         </span>
       </div>
-      <MobileTimePicker
-        value={timeValue}
-        onChange={handleTimeChange}
-        onAccept={handleTimeChange}
-        slotProps={{
-          textField: {
-            variant: "outlined",
-            size: "small",
-            inputProps: {
-              placeholder: "Select time",
-            },
-            sx: {
-              "& .MuiOutlinedInput-root": {
-                height: "36px",
-                fontSize: "9.5px",
-                backgroundColor: "white",
-                paddingLeft: "4px",
-                paddingRight: "2px",
-                "& fieldset": {
-                  borderColor: "#e5e7eb",
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <MobileTimePicker
+          value={timeValue}
+          onChange={handleTimeChange}
+          onAccept={handleTimeChange}
+          slotProps={{
+            textField: {
+              variant: "outlined",
+              size: "small",
+              fullWidth: true,
+              inputProps: {
+                placeholder: "HH:MM AM",
+              },
+              sx: {
+                width: "100%",
+                "& .MuiOutlinedInput-root": {
+                  height: "40px",
+                  fontSize: "13px",
+                  backgroundColor: "white",
+                  cursor: "pointer",
+                  paddingRight: "8px",
+                  "& fieldset": {
+                    borderColor: "#e5e7eb",
+                  },
+                  "&:hover fieldset": {
+                    borderColor: "#d1d5db",
+                  },
+                  "&.Mui-focused fieldset": {
+                    borderColor: "#00c87e",
+                  },
                 },
-                "&:hover fieldset": {
-                  borderColor: "#d1d5db",
+                "& .MuiInputBase-input": {
+                  padding: "8px 4px 8px 8px",
+                  fontSize: "13px",
+                  cursor: "pointer",
                 },
-                "&.Mui-focused fieldset": {
-                  borderColor: "#00c87e",
+                "& .MuiInputAdornment-root": {
+                  marginLeft: "4px",
+                },
+                "& .MuiIconButton-root": {
+                  padding: "6px",
+                },
+                "& .MuiSvgIcon-root": {
+                  fontSize: "18px",
+                  color: "#6b7280",
                 },
               },
-              "& .MuiInputBase-input": {
-                padding: "8px 0px 8px 2px",
-                fontSize: "9.5px",
-                letterSpacing: "-0.03em",
-                cursor: "pointer",
-              },
-              "& .MuiInputAdornment-root": {
-                marginLeft: "0px",
-                marginRight: "0px",
-              },
-              "& .MuiIconButton-root": {
-                padding: "1px",
-              },
-              "& .MuiSvgIcon-root": {
-                fontSize: "14px",
+              onBlur: (event) => {
+                const normalized = normalizeTimeValue(event?.target?.value)
+                if (normalized) {
+                  onChange(normalized)
+                }
               },
             },
-            onBlur: (event) => {
-              const normalized = normalizeTimeValue(event?.target?.value)
-              if (normalized) {
-                onChange(normalized)
-              }
-            },
-          },
-        }}
-        format="hh:mm a"
-      />
+          }}
+          format="hh:mm a"
+        />
+      </LocalizationProvider>
     </div>
   )
 }
@@ -676,7 +679,7 @@ export default function RestaurantOnboarding() {
 
   const [step1, setStep1] = useState({
     restaurantName: "",
-    pureVegRestaurant: null,
+    pureVegRestaurant: false,
     ownerName: "",
     ownerEmail: "",
     ownerPhone: "",
@@ -749,6 +752,7 @@ export default function RestaurantOnboarding() {
   const panImageInputRef = useRef(null)
   const gstImageInputRef = useRef(null)
   const fssaiImageInputRef = useRef(null)
+  const scrollContainerRef = useRef(null)
   const [sourcePicker, setSourcePicker] = useState({
     isOpen: false,
     title: "",
@@ -1645,6 +1649,31 @@ export default function RestaurantOnboarding() {
       if (start && end) {
         if (start === end) {
           errors.push("Self delivery start and end time cannot be the same")
+        } else {
+          // Validate start time is before end time
+          const [startH, startM] = start.split(":").map(Number)
+          const [endH, endM] = end.split(":").map(Number)
+          const startMins = startH * 60 + startM
+          const endMins = endH * 60 + endM
+          if (startMins >= endMins) {
+            errors.push("Self delivery start time must be before end time")
+          } else {
+            // Validate delivery window is within restaurant operational hours
+            const openingNorm = normalizeTimeValue(step2.openingTime)
+            const closingNorm = normalizeTimeValue(step2.closingTime)
+            if (openingNorm && closingNorm) {
+              const [openH, openM] = openingNorm.split(":").map(Number)
+              const [closeH, closeM] = closingNorm.split(":").map(Number)
+              const openMins = openH * 60 + openM
+              const closeMins = closeH * 60 + closeM
+              if (startMins < openMins) {
+                errors.push("Self delivery start time cannot be before restaurant opening time")
+              }
+              if (endMins > closeMins) {
+                errors.push("Self delivery end time cannot be after restaurant closing time")
+              }
+            }
+          }
         }
       }
     }
@@ -1811,13 +1840,13 @@ export default function RestaurantOnboarding() {
     try {
       if (step === 1) {
         setStep(2)
-        window.scrollTo({ top: 0, behavior: "instant" })
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" })
       } else if (step === 2) {
         setStep(3)
-        window.scrollTo({ top: 0, behavior: "instant" })
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" })
       } else if (step === 3) {
         setStep(4)
-        window.scrollTo({ top: 0, behavior: "instant" })
+        scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" })
       } else if (step === 4) {
         // Final submit: create restaurant in DB using backend multipart endpoint.
         const formData = new FormData()
@@ -1992,20 +2021,20 @@ export default function RestaurantOnboarding() {
         <div className="space-y-3">
           <div>
             <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Name<span className="text-rose-500 ml-0.5">*</span></Label>
-            <Input
-              value={step1.restaurantName || ""}
-              onChange={(e) => {
-                const nextStep1 = { ...step1, restaurantName: e.target.value }
-                setStep1(nextStep1)
-                revalidateTouchedField("restaurantName", { step1: nextStep1 })
-              }}
-              onBlur={() => handleFieldBlur("restaurantName")}
-              className={getFieldClassName("restaurantName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-              placeholder="Customers will see this name"
-              maxLength={100}
-              disabled={!isEditing}
-            />
-            {renderFieldMessage("restaurantName")}
+             <Input
+               value={step1.restaurantName || ""}
+               onChange={(e) => {
+                 const nextStep1 = { ...step1, restaurantName: e.target.value }
+                 setStep1(nextStep1)
+                 revalidateTouchedField("restaurantName", { step1: nextStep1 })
+               }}
+               onBlur={() => handleFieldBlur("restaurantName")}
+               className={getFieldClassName("restaurantName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
+               placeholder="e.g., Minnus's Kitchen"
+               maxLength={100}
+               disabled={!isEditing}
+             />
+             {renderFieldMessage("restaurantName")}
           </div>
           <div>
             <Label className="text-xs font-bold text-gray-700 block mb-1">Pure Veg Restaurant?<span className="text-rose-500 ml-0.5">*</span></Label>
@@ -2013,10 +2042,10 @@ export default function RestaurantOnboarding() {
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: true })}
-                className={`px-3 py-1.5 text-xs rounded-full border cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-full border transition-all cursor-pointer ${
                   step1.pureVegRestaurant === true
-                    ? "bg-[#00c87e] text-white border-[#00c87e]"
-                    : "bg-white text-gray-700 border-gray-200"
+                    ? "bg-[#00c87e] text-white border-[#00c87e] shadow-sm"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                 } ${!isEditing ? "opacity-70 !cursor-not-allowed" : ""}`}
               >
                 Yes, Pure Veg
@@ -2024,10 +2053,10 @@ export default function RestaurantOnboarding() {
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: false })}
-                className={`px-3 py-1.5 text-xs rounded-full border cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-full border transition-all cursor-pointer ${
                   step1.pureVegRestaurant === false
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-700 border-gray-200"
+                    ? "bg-red-500 text-white border-red-500 shadow-sm"
+                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
                 } ${!isEditing ? "opacity-70 !cursor-not-allowed" : ""}`}
               >
                 No, Mixed Menu
@@ -2048,20 +2077,20 @@ export default function RestaurantOnboarding() {
         <div className="space-y-4">
           <div>
             <Label className="text-xs font-bold text-gray-700 block mb-1">Full Name<span className="text-rose-500 ml-0.5">*</span></Label>
-            <Input
-              value={step1.ownerName || ""}
-              onChange={(e) => {
-                const nextStep1 = { ...step1, ownerName: e.target.value }
-                setStep1(nextStep1)
-                revalidateTouchedField("ownerName", { step1: nextStep1 })
-              }}
-              onBlur={() => handleFieldBlur("ownerName")}
-              className={getFieldClassName("ownerName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-              placeholder="Owner full name"
-              maxLength={50}
-              disabled={!isEditing}
-            />
-            {renderFieldMessage("ownerName")}
+             <Input
+               value={step1.ownerName || ""}
+               onChange={(e) => {
+                 const nextStep1 = { ...step1, ownerName: e.target.value }
+                 setStep1(nextStep1)
+                 revalidateTouchedField("ownerName", { step1: nextStep1 })
+               }}
+               onBlur={() => handleFieldBlur("ownerName")}
+               className={getFieldClassName("ownerName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
+               placeholder="e.g., Ismail Basha"
+               maxLength={50}
+               disabled={!isEditing}
+             />
+             {renderFieldMessage("ownerName")}
           </div>
           <div>
             <Label className="text-xs font-bold text-gray-700 block mb-1">Email Address<span className="text-rose-500 ml-0.5">*</span></Label>
@@ -2101,36 +2130,41 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Contact & Location</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Contact & Location</h2>
         <div>
           <Label className="text-xs font-bold text-gray-700 block mb-1">Primary Contact Number<span className="text-rose-500 ml-0.5">*</span></Label>
-          <Input
-            value={step1.primaryContactNumber || ""}
-            onChange={(e) => {
-              const val = normalizePrimaryContactNumber(e.target.value)
-              const nextStep1 = { ...step1, primaryContactNumber: val }
-              setStep1(nextStep1)
-              revalidateTouchedField("primaryContactNumber", { step1: nextStep1 })
-            }}
-            onKeyDown={(e) => {
-              const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"]
-              if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault()
-              if (/^\d$/.test(e.key) && (step1.primaryContactNumber || "").length >= 11) e.preventDefault()
-            }}
-            onPaste={(e) => {
-              e.preventDefault()
-              const pasted = normalizePrimaryContactNumber(e.clipboardData.getData("text"))
-              const nextStep1 = { ...step1, primaryContactNumber: pasted }
-              setStep1(nextStep1)
-              revalidateTouchedField("primaryContactNumber", { step1: nextStep1 })
-            }}
-            onBlur={() => handleFieldBlur("primaryContactNumber")}
-            inputMode="numeric"
-            className={getFieldClassName("primaryContactNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-            placeholder="Restaurant's primary contact number"
-            disabled={!isEditing}
-          />
-          {renderFieldMessage("primaryContactNumber")}
+           <div className="relative mt-1">
+             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500 select-none z-10">
+               +91
+             </span>
+             <Input
+               value={step1.primaryContactNumber || ""}
+               onChange={(e) => {
+                 const val = normalizePrimaryContactNumber(e.target.value)
+                 const nextStep1 = { ...step1, primaryContactNumber: val }
+                 setStep1(nextStep1)
+                 revalidateTouchedField("primaryContactNumber", { step1: nextStep1 })
+               }}
+               onKeyDown={(e) => {
+                 const allowed = ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab", "Enter"]
+                 if (!allowed.includes(e.key) && !/^\d$/.test(e.key)) e.preventDefault()
+                 if (/^\d$/.test(e.key) && (step1.primaryContactNumber || "").length >= 10) e.preventDefault()
+               }}
+               onPaste={(e) => {
+                 e.preventDefault()
+                 const pasted = normalizePrimaryContactNumber(e.clipboardData.getData("text"))
+                 const nextStep1 = { ...step1, primaryContactNumber: pasted }
+                 setStep1(nextStep1)
+                 revalidateTouchedField("primaryContactNumber", { step1: nextStep1 })
+               }}
+               onBlur={() => handleFieldBlur("primaryContactNumber")}
+               inputMode="numeric"
+               className={getFieldClassName("primaryContactNumber", "bg-white text-sm text-gray-900 placeholder:text-gray-400 w-full pl-11")}
+               placeholder="e.g., 9876543210"
+               disabled={!isEditing}
+             />
+           </div>
+           {renderFieldMessage("primaryContactNumber")}
           <p className="text-[11px] text-gray-500 mt-1">
             Customers, delivery partners and {companyName} may call on this number for order
             support.
@@ -2141,7 +2175,18 @@ export default function RestaurantOnboarding() {
             Add your restaurant's location for order pick-up.
           </p>
           <div>
-            <Label className="text-xs font-bold text-gray-700 block mb-1">Service Zone<span className="text-rose-500 ml-0.5">*</span></Label>
+             <Label className="text-xs font-bold text-gray-700 flex items-center gap-1 mb-1">
+               Service Zone<span className="text-rose-500 ml-0.5">*</span>
+               <span className="relative group ml-1">
+                 <HelpCircle 
+                   className="w-3.5 h-3.5 text-gray-400 cursor-help active:scale-95 transition-transform" 
+                   onClick={() => toast.info("A service zone is the delivery area your restaurant covers. Choose the zone where you want to receive orders.")}
+                 />
+                 <span className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 z-50 hidden group-hover:flex w-56 text-[11px] text-white bg-gray-800 rounded-md px-3 py-2 shadow-lg leading-relaxed">
+                   A service zone is the delivery area your restaurant covers. Choose the zone where you want to receive orders.
+                 </span>
+               </span>
+             </Label>
             <select
               value={step1.zoneId || ""}
               onChange={(e) => {
@@ -2184,7 +2229,7 @@ export default function RestaurantOnboarding() {
             </p>
           </div>
           <div>
-            <Label className="text-xs font-bold text-gray-700 block mb-1">Search Location</Label>
+             <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Address</Label>
             <Input
               ref={locationSearchInputRef}
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
@@ -2823,8 +2868,8 @@ export default function RestaurantOnboarding() {
       {/* Operational details */}
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-5">
         {/* Timings with popover time selectors */}
+        <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Timings</h2>
         <div className="space-y-3">
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Timings<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <TimeSelector
               label="Opening Time*"
@@ -3598,50 +3643,60 @@ export default function RestaurantOnboarding() {
       }}
     >
       <div className="flex flex-col bg-gray-100 overflow-hidden" style={{ height: "100dvh" }}>
-        <header className="px-3 py-3 sm:px-6 sm:py-5 bg-white flex items-center justify-between border-b">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={handleCloseOnboarding}
-              className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors cursor-pointer text-gray-600 hover:text-gray-700"
-              aria-label="Close onboarding"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="text-base sm:text-lg font-extrabold text-black h-9 flex items-center whitespace-nowrap">Restaurant Onboarding</div>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3">
-            {!loading && !isEditing && (
-              <Button
-                onClick={() => setIsEditing(true)}
-                variant="outline"
-                size="sm"
-                className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5 cursor-pointer h-9 px-3"
-                title="Edit Details"
-              >
-                <Sparkles className="w-3 h-3" />
-                Edit Details
-              </Button>
-            )}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider text-right h-9 flex items-center justify-end whitespace-nowrap">
-                Step {step} of 4
-              </div>
-              <Button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer flex items-center justify-center"
-                title="Logout"
-              >
-                <LogOut className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
+         <header className="px-3 py-3 sm:px-6 bg-white flex items-center justify-between border-b">
+           <div className="flex items-center gap-2 sm:gap-3">
+             <button
+               onClick={handleCloseOnboarding}
+               className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors cursor-pointer text-gray-600 hover:text-gray-700"
+               aria-label="Close onboarding"
+             >
+               <X className="w-5 h-5" />
+             </button>
+             <div className="flex flex-col py-1">
+               <div className="text-base sm:text-lg font-extrabold text-black leading-tight">Restaurant Onboarding</div>
+               <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+                 Step {step} of 4
+               </div>
+             </div>
+           </div>
+           <div className="flex items-center gap-2 sm:gap-3">
+             {!loading && !isEditing && (
+               <Button
+                 onClick={() => setIsEditing(true)}
+                 variant="outline"
+                 size="sm"
+                 className="text-xs bg-[#00c87e]/10 border-[#00c87e]/20 text-[#00c87e] hover:bg-[#00c87e]/20 flex items-center gap-1.5 cursor-pointer h-9 px-3"
+                 title="Edit Details"
+               >
+                 <Sparkles className="w-3 h-3" />
+                 Edit Details
+               </Button>
+             )}
+             <div className="flex items-center gap-2 sm:gap-3">
+               <Button
+                 onClick={handleLogout}
+                 disabled={isLoggingOut}
+                 variant="ghost"
+                 size="icon"
+                 className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer flex items-center justify-center"
+                 title="Logout"
+               >
+                 <LogOut className="w-4 h-4" />
+               </Button>
+             </div>
+           </div>
 
-        </header>
+         </header>
+         {/* Progress Bar Indicator */}
+         <div className="w-full bg-gray-200 h-1">
+           <div 
+             className="bg-[#00c87e] h-1 transition-all duration-300" 
+             style={{ width: `${(step / 4) * 100}%` }}
+           />
+         </div>
 
         <main
+          ref={scrollContainerRef}
           className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4"
           style={{ paddingBottom: keyboardInset ? `${keyboardInset + 20}px` : undefined }}
           onFocusCapture={(e) => {
@@ -3697,7 +3752,31 @@ export default function RestaurantOnboarding() {
             <Button
               variant="outline"
               disabled={step === 1 || saving}
-              onClick={() => { setStep((s) => Math.max(1, s - 1)); window.scrollTo({ top: 0, behavior: "instant" }) }}
+              onClick={() => {
+                const prevStep = Math.max(1, step - 1)
+                // Clear touched/errors for current step's fields so going back doesn't show stale errors
+                const stepFieldMap = {
+                  1: ["restaurantName","ownerName","ownerEmail","ownerPhone","primaryContactNumber","zoneId","location.area","location.city","location.state","location.pincode"],
+                  2: [],
+                  3: ["panNumber","nameOnPan","fssaiNumber","fssaiExpiry","accountNumber","confirmAccountNumber","ifscCode","accountHolderName","accountType","gstNumber","gstLegalName","gstAddress"],
+                  4: ["estimatedDeliveryTime","featuredDish","selfDeliveryRadius","selfDeliveryFee","selfDeliveryMinOrderAmount","selfDeliveryStart","selfDeliveryEnd"],
+                }
+                const currentFields = stepFieldMap[step] || []
+                if (currentFields.length > 0) {
+                  setFieldTouched((prev) => {
+                    const next = { ...prev }
+                    currentFields.forEach((f) => delete next[f])
+                    return next
+                  })
+                  setFieldErrors((prev) => {
+                    const next = { ...prev }
+                    currentFields.forEach((f) => delete next[f])
+                    return next
+                  })
+                }
+                setStep(prevStep)
+                scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" })
+              }}
               className="text-sm border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Back
