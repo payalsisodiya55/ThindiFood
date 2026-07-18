@@ -23,11 +23,11 @@ const dateRangeLabels = {
   all: "All Time",
   today: "Today",
   yesterday: "Yesterday",
+  last5days: "Last 5 Days",
   thisWeek: "This Week",
   lastWeek: "Last Week",
   thisMonth: "This Month",
   lastMonth: "Last Month",
-  last5days: "Last 5 Days",
   custom: "Custom Range"
 }
 
@@ -477,53 +477,15 @@ export default function Feedback() {
               >
                 <ArrowLeft className="w-6 h-6" />
               </button>
-              <h1 className="text-lg font-bold text-gray-900">
+              <h1 className="text-lg font-bold text-gray-900 break-words overflow-hidden" style={{wordBreak: 'break-word'}}>
                 {restaurantData?.name || "Restaurant"}
               </h1>
             </div>
             <p className="text-[10px] tracking-wider text-gray-500 uppercase mt-0.5 pl-[48px]">
-              Showing data for
+              Showing Data For {dateRangeLabels[selectedDateRange] || selectedDateRange}
             </p>
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <button
-              type="button"
-              onClick={() => {
-                setRefreshTrigger(prev => prev + 1);
-                toast.success("Refreshing feedback data...");
-              }}
-              className={`p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0 ${
-                (isComplaintsLoading || isLoadingReviews) ? "animate-spin" : ""
-              }`}
-              aria-label="Refresh feedback"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/food/restaurant/notifications")}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-              aria-label="Open notifications"
-            >
-              <Bell className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/food/restaurant/help-centre/support")}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-              aria-label="Open support"
-            >
-              <HelpCircle className="w-5 h-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate("/food/restaurant/explore")}
-              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
-              aria-label="Open explore"
-            >
-              <Menu className="w-5 h-5" />
-            </button>
-          </div>
+
         </div>
         
         <div className="flex gap-2 mt-4">
@@ -553,7 +515,7 @@ export default function Feedback() {
                   type="text" 
                   value={complaintsSearchQuery}
                   onChange={(e) => setComplaintsSearchQuery(e.target.value)}
-                  placeholder="Search complaints..." 
+                  placeholder="Search Complaints..." 
                   className="flex-1 text-lg sm:text-xs bg-transparent focus:outline-none placeholder:text-gray-400 min-w-0 font-medium sm:font-normal" 
                 />
               </div>
@@ -566,7 +528,7 @@ export default function Feedback() {
                 >
                   <div className="flex items-center gap-2 overflow-hidden">
                     <Calendar className="w-4 h-4 text-gray-500 shrink-0" />
-                    <span className="text-[10px] font-black text-gray-900 truncate uppercase tracking-tight">
+                    <span className="text-[10px] font-black text-gray-900 truncate tracking-tight">
                       {dateRangeLabels[selectedDateRange] || selectedDateRange}
                     </span>
                   </div>
@@ -588,7 +550,7 @@ export default function Feedback() {
                 <div className="flex justify-center p-10"><Loader2 className="animate-spin text-gray-400" /></div>
               ) : complaints.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <p className="text-sm text-gray-500 font-medium">No recent complaints</p>
+                  <p className="text-sm text-gray-500 font-medium">No Recent Complaints</p>
                 </div>
               ) : (
                 <div className="space-y-4 pb-20">
@@ -638,7 +600,7 @@ export default function Feedback() {
                   type="text" 
                   value={reviewsSearchQuery}
                   onChange={(e) => setReviewsSearchQuery(e.target.value)}
-                  placeholder="Search reviews..." 
+                  placeholder="Search Reviews..." 
                   className="flex-1 text-lg sm:text-xs bg-transparent focus:outline-none placeholder:text-gray-400 min-w-0 font-medium sm:font-normal" 
                 />
               </div>
@@ -651,7 +613,7 @@ export default function Feedback() {
                 >
                   <div className="flex items-center gap-2 overflow-hidden">
                     <Calendar className="w-4 h-4 text-gray-500 shrink-0" />
-                    <span className="text-[10px] font-black text-gray-900 truncate uppercase tracking-tight">
+                    <span className="text-[10px] font-black text-gray-900 truncate tracking-tight">
                       {dateRangeLabels[selectedDateRange] || selectedDateRange}
                     </span>
                   </div>
@@ -673,7 +635,7 @@ export default function Feedback() {
                 <div className="flex justify-center p-10"><Loader2 className="animate-spin text-gray-400" /></div>
               ) : displayedReviews.length === 0 ? (
                 <div className="text-center py-20 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                  <p className="text-sm text-gray-500 font-medium">No recent reviews</p>
+                  <p className="text-sm text-gray-500 font-medium">No Recent Reviews</p>
                 </div>
               ) : (
                 <div className="space-y-4 pb-20">
@@ -713,11 +675,16 @@ export default function Feedback() {
             <button
               key={key}
               onClick={() => handleDateRangeSelect(key)}
-              className={`w-full text-left p-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
-                selectedDateRange === key ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"
+              className={`w-full text-left p-3 rounded-xl text-sm font-semibold transition-all cursor-pointer flex items-center justify-between ${
+                selectedDateRange === key ? "bg-[#e6f9f2] text-[#00a165] font-bold" : "text-gray-600 hover:bg-gray-50"
               }`}
             >
-              {label}
+              <span>{label}</span>
+              {selectedDateRange === key && (
+                <span className="w-4 h-4 rounded-full bg-[#00c87e] flex items-center justify-center">
+                  <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </span>
+              )}
             </button>
           ))}
         </div>
