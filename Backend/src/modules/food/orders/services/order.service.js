@@ -1548,9 +1548,9 @@ async function resolveRestaurantOfferBreakdown({
 
     items.forEach((item) => {
         const itemOffer = restaurantOffers.find((o) =>
-          o.products?.some(
+          (!o.products || o.products.length === 0) || o.products.some(
             (p) => String(p.productId) === String(item.itemId || item.id),
-          ),
+          )
         ) || item.offer || null;
 
         if (!itemOffer) return;

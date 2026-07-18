@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { RestaurantOffer } from '../models/restaurantOffer.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { FoodItem } from '../../admin/models/food.model.js';
 
 const ensureObjectId = (value, message) => {
     if (!value || !mongoose.Types.ObjectId.isValid(String(value))) {
@@ -36,6 +37,80 @@ const normalizeOffer = (doc) => {
 
 export const createRestaurantOffer = async (restaurantId, payload) => {
     const rid = ensureObjectId(restaurantId, 'Invalid restaurant id');
+    
+    const title = String(payload.title || '').trim();
+    if (!title) {
+        throw new ValidationError('Title is required');
+    }
+    if (title.length > 30) {
+        throw new ValidationError('Title cannot exceed 30 characters');
+    }
+
+    const discountType = payload.discountType || 'percentage';
+    if (!['percentage', 'flat'].includes(discountType)) {
+        throw new ValidationError('Invalid discount type');
+    }
+
+    const discountValue = Number(payload.discountValue) || 0;
+    if (discountValue <= 0) {
+        throw new ValidationError('Discount value must be greater than 0');
+    }
+    if (discountType === 'percentage' && (discountValue < 1 || discountValue > 99)) {
+        throw new ValidationError('Discount percentage must be between 1 and 99');
+    }
+    if (discountType === 'flat') {
+        if (discountValue > 999) {
+            throw new ValidationError('Discount amount cannot exceed 999');
+        }
+        const products = Array.isArray(payload.products) ? payload.products : [];
+        let maxItemPrice = 0;
+        if (products.length > 0) {
+            const productIds = products.map(p => new mongoose.Types.ObjectId(String(p.productId)));
+            const items = await FoodItem.find({ _id: { $in: productIds } }).lean();
+            maxItemPrice = items.reduce((max, item) => Math.max(max, Number(item.price || 0)), 0);
+        } else {
+            const items = await FoodItem.find({ restaurantId: rid }).lean();
+            maxItemPrice = items.reduce((max, item) => Math.max(max, Number(item.price || 0)), 0);
+        }
+        if (maxItemPrice > 0 && discountValue > maxItemPrice) {
+            throw new ValidationError(`Limit flat discount to the maximum item price (₹${maxItemPrice})`);
+        }
+    }
+
+    let maxDiscount = payload.discountType === 'percentage' ? (payload.maxDiscount ?? null) : null;
+    if (discountType === 'percentage') {
+        if (maxDiscount === null || maxDiscount === undefined || Number.isNaN(Number(maxDiscount))) {
+            throw new ValidationError('Max discount is required for percentage offers');
+        }
+        const maxDVal = Number(maxDiscount);
+        if (maxDVal < 0 || maxDVal > 9999) {
+            throw new ValidationError('Max discount cannot exceed 9,999');
+        }
+        maxDiscount = maxDVal;
+    }
+
+    if (payload.maxItemsPerOrder !== null && payload.maxItemsPerOrder !== undefined && payload.maxItemsPerOrder !== '') {
+        const val = Number(payload.maxItemsPerOrder);
+        if (Number.isNaN(val) || val < 1 || val > 999) {
+            throw new ValidationError('Max items per order must be between 1 and 999');
+        }
+    }
+
+    if (payload.perUserRedeemLimit !== null && payload.perUserRedeemLimit !== undefined && payload.perUserRedeemLimit !== '') {
+        const val = Number(payload.perUserRedeemLimit);
+        if (Number.isNaN(val) || val < 1 || val > 999) {
+            throw new ValidationError('Uses per customer must be between 1 and 999');
+        }
+    }
+
+    if (payload.startDate && payload.endDate) {
+        const start = new Date(payload.startDate);
+        const end = new Date(payload.endDate);
+        if (start.getTime() > end.getTime()) {
+            throw new ValidationError('Start date cannot be later than end date');
+        }
+    }
+
     const products = Array.isArray(payload.products)
         ? payload.products.map((p) => ({
               productId: new mongoose.Types.ObjectId(String(p.productId)),
@@ -45,13 +120,13 @@ export const createRestaurantOffer = async (restaurantId, payload) => {
 
     const created = await RestaurantOffer.create({
         restaurantId: rid,
-        title: String(payload.title || '').trim(),
+        title,
         products,
-        discountType: payload.discountType || 'percentage',
-        discountValue: Number(payload.discountValue) || 0,
-        maxDiscount: payload.discountType === 'percentage' ? (payload.maxDiscount ?? null) : null,
-        maxItemsPerOrder: payload.maxItemsPerOrder ?? null,
-        perUserRedeemLimit: payload.perUserRedeemLimit ?? null,
+        discountType,
+        discountValue,
+        maxDiscount,
+        maxItemsPerOrder: payload.maxItemsPerOrder ? Number(payload.maxItemsPerOrder) : null,
+        perUserRedeemLimit: payload.perUserRedeemLimit ? Number(payload.perUserRedeemLimit) : null,
         startDate: payload.startDate || null,
         endDate: payload.endDate || null,
         status: 'inactive',
@@ -77,6 +152,87 @@ export const updateMyRestaurantOffer = async (restaurantId, offerId, payload) =>
     const existing = await RestaurantOffer.findOne({ _id: oid, restaurantId: rid });
     if (!existing) return null;
 
+    const title = payload.title !== undefined ? String(payload.title || '').trim() : existing.title;
+    if (payload.title !== undefined) {
+        if (!title) {
+            throw new ValidationError('Title is required');
+        }
+        if (title.length > 30) {
+            throw new ValidationError('Title cannot exceed 30 characters');
+        }
+    }
+
+    const discountType = payload.discountType || existing.discountType;
+    if (payload.discountType !== undefined && !['percentage', 'flat'].includes(discountType)) {
+        throw new ValidationError('Invalid discount type');
+    }
+
+    const discountValue = payload.discountValue !== undefined ? Number(payload.discountValue) : existing.discountValue;
+    if (payload.discountValue !== undefined) {
+        if (discountValue <= 0) {
+            throw new ValidationError('Discount value must be greater than 0');
+        }
+        if (discountType === 'percentage' && (discountValue < 1 || discountValue > 99)) {
+            throw new ValidationError('Discount percentage must be between 1 and 99');
+        }
+        if (discountType === 'flat') {
+            if (discountValue > 999) {
+                throw new ValidationError('Discount amount cannot exceed 999');
+            }
+            let maxItemPrice = 0;
+            if (products.length > 0) {
+                const productIds = products.map(p => new mongoose.Types.ObjectId(String(p.productId)));
+                const items = await FoodItem.find({ _id: { $in: productIds } }).lean();
+                maxItemPrice = items.reduce((max, item) => Math.max(max, Number(item.price || 0)), 0);
+            } else {
+                const items = await FoodItem.find({ restaurantId: rid }).lean();
+                maxItemPrice = items.reduce((max, item) => Math.max(max, Number(item.price || 0)), 0);
+            }
+            if (maxItemPrice > 0 && discountValue > maxItemPrice) {
+                throw new ValidationError(`Limit flat discount to the maximum item price (₹${maxItemPrice})`);
+            }
+        }
+    }
+
+    let maxDiscount = existing.maxDiscount;
+    if (discountType === 'percentage') {
+        const mDiscount = payload.maxDiscount !== undefined ? payload.maxDiscount : existing.maxDiscount;
+        if (mDiscount === null || mDiscount === undefined || Number.isNaN(Number(mDiscount))) {
+            throw new ValidationError('Max discount is required for percentage offers');
+        }
+        const maxDVal = Number(mDiscount);
+        if (maxDVal < 0 || maxDVal > 9999) {
+            throw new ValidationError('Max discount cannot exceed 9,999');
+        }
+        maxDiscount = maxDVal;
+    } else {
+        maxDiscount = null;
+    }
+
+    if (payload.maxItemsPerOrder !== undefined && payload.maxItemsPerOrder !== null && payload.maxItemsPerOrder !== '') {
+        const val = Number(payload.maxItemsPerOrder);
+        if (Number.isNaN(val) || val < 1 || val > 999) {
+            throw new ValidationError('Max items per order must be between 1 and 999');
+        }
+    }
+
+    if (payload.perUserRedeemLimit !== undefined && payload.perUserRedeemLimit !== null && payload.perUserRedeemLimit !== '') {
+        const val = Number(payload.perUserRedeemLimit);
+        if (Number.isNaN(val) || val < 1 || val > 999) {
+            throw new ValidationError('Uses per customer must be between 1 and 999');
+        }
+    }
+
+    const startStr = payload.startDate !== undefined ? payload.startDate : existing.startDate;
+    const endStr = payload.endDate !== undefined ? payload.endDate : existing.endDate;
+    if (startStr && endStr) {
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        if (start.getTime() > end.getTime()) {
+            throw new ValidationError('Start date cannot be later than end date');
+        }
+    }
+
     const products = Array.isArray(payload.products)
         ? payload.products.map((p) => ({
               productId: new mongoose.Types.ObjectId(String(p.productId)),
@@ -84,26 +240,31 @@ export const updateMyRestaurantOffer = async (restaurantId, offerId, payload) =>
           }))
         : existing.products;
 
+    const payloadKeys = Object.keys(payload);
+    const isOnlyStatusToggle = payloadKeys.length === 1 && payloadKeys[0] === 'status';
+
     const set = {
-        title: String(payload.title || existing.title || '').trim(),
+        title,
         products,
-        discountType: payload.discountType || existing.discountType,
-        discountValue: payload.discountValue !== undefined ? Number(payload.discountValue) : existing.discountValue,
-        maxItemsPerOrder: payload.maxItemsPerOrder !== undefined ? payload.maxItemsPerOrder : existing.maxItemsPerOrder,
-        perUserRedeemLimit: payload.perUserRedeemLimit !== undefined ? payload.perUserRedeemLimit : existing.perUserRedeemLimit,
-        startDate: payload.startDate !== undefined ? payload.startDate : existing.startDate,
-        endDate: payload.endDate !== undefined ? payload.endDate : existing.endDate,
-        // If was approved, reset to pending (re-approval required)
-        approvalStatus: 'pending',
-        rejectionReason: '',
-        status: 'inactive',
+        discountType,
+        discountValue,
+        maxDiscount,
+        maxItemsPerOrder: (payload.maxItemsPerOrder !== undefined) 
+            ? (payload.maxItemsPerOrder ? Number(payload.maxItemsPerOrder) : null) 
+            : existing.maxItemsPerOrder,
+        perUserRedeemLimit: (payload.perUserRedeemLimit !== undefined) 
+            ? (payload.perUserRedeemLimit ? Number(payload.perUserRedeemLimit) : null) 
+            : existing.perUserRedeemLimit,
+        startDate: payload.startDate !== undefined ? (payload.startDate || null) : existing.startDate,
+        endDate: payload.endDate !== undefined ? (payload.endDate || null) : existing.endDate,
     };
 
-    const nextDiscountType = set.discountType;
-    if (nextDiscountType === 'percentage') {
-        set.maxDiscount = payload.maxDiscount !== undefined ? payload.maxDiscount : existing.maxDiscount;
+    if (isOnlyStatusToggle) {
+        set.status = payload.status;
     } else {
-        set.maxDiscount = null;
+        set.approvalStatus = 'pending';
+        set.rejectionReason = '';
+        set.status = 'inactive';
     }
 
     const updated = await RestaurantOffer.findOneAndUpdate(

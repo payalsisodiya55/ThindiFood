@@ -2151,9 +2151,12 @@ export default function Cart() {
     if (!offer) return ""
     const discountType = String(offer.discountType || "").toLowerCase()
     const value = Number(offer.discountValue || 0)
-    if (discountType === "percentage") return `${value}% OFF`
-    if (value > 0) return `${RUPEE_SYMBOL}${value} OFF`
-    return String(offer.title || "").trim()
+    const title = String(offer.title || "").trim()
+    const discountText = discountType === "percentage" ? `${value}% OFF` : (value > 0 ? `${RUPEE_SYMBOL}${value} OFF` : "")
+    if (title) {
+      return discountText ? `${title} (${discountText})` : title
+    }
+    return discountText
   }
 
   const restaurantOfferInfo = useMemo(() => {

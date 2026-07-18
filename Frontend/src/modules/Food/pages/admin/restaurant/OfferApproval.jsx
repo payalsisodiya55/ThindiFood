@@ -361,7 +361,7 @@ export default function OfferApproval() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase">Title</label>
-                  <p className="font-semibold text-gray-900">{selectedOffer.title}</p>
+                  <p className="font-semibold text-gray-900 break-words">{selectedOffer.title}</p>
                 </div>
                 <div>
                   <label className="text-[10px] font-bold text-gray-400 uppercase">Discount</label>

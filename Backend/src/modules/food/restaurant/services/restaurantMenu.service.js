@@ -44,7 +44,7 @@ const buildMenuFromFoods = async (foods = [], offers = []) => {
         }
 
         // Find relevant offer for this food
-        const foodOffer = offers?.find(o => o.products?.some(p => String(p.productId) === String(food._id)));
+        const foodOffer = offers?.find(o => !o.products || o.products.length === 0 || o.products?.some(p => String(p.productId) === String(food._id)));
 
         byCategory.get(groupKey).items.push({
             id: String(food._id),
