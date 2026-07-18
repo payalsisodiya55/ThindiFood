@@ -3445,14 +3445,45 @@ export default function RestaurantOnboarding() {
 
   const renderStep4 = () => (
     <div className="space-y-6">
+      {/* Review Summary Card */}
+      <section className="bg-[#f0fdf8] border border-[#00c87e]/20 p-4 rounded-md">
+        <h3 className="text-sm font-extrabold text-[#00a065] mb-3">Review Your Details</h3>
+        <div className="space-y-2 text-xs text-gray-700">
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">Restaurant</span>
+            <span className="font-semibold text-gray-900 text-right max-w-[60%] truncate">{step1.restaurantName || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">Owner</span>
+            <span className="font-semibold text-gray-900">{step1.ownerName || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">Contact</span>
+            <span className="font-semibold text-gray-900">{step1.primaryContactNumber || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">Open Days</span>
+            <span className="font-semibold text-gray-900 text-right">{step2.openDays?.join(", ") || "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">Timings</span>
+            <span className="font-semibold text-gray-900">{step2.openingTime && step2.closingTime ? `${step2.openingTime} – ${step2.closingTime}` : "—"}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-gray-500 font-medium">PAN</span>
+            <span className="font-semibold text-gray-900">{step3.panNumber || "—"}</span>
+          </div>
+        </div>
+        <p className="text-[11px] text-[#00a065] mt-3">Step 4 of 4 — Almost done! Fill in display settings below to finish.</p>
+      </section>
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Display Information</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="text-xl font-extrabold text-black mb-4">Display Settings</h2>
+        <p className="text-xs text-gray-500 mb-3">
           Add information that will be displayed to customers on the home page
         </p>
 
         <div>
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Estimated Preparation Time<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Estimated Food Preparation Time (Minutes)<span className="text-rose-500 ml-0.5">*</span></Label>
           <Select
             value={step4.estimatedDeliveryTime || ""}
             onValueChange={(value) => {
@@ -3480,6 +3511,7 @@ export default function RestaurantOnboarding() {
             </SelectContent>
           </Select>
           {renderFieldMessage("estimatedDeliveryTime")}
+          <p className="text-[11px] text-gray-500 mt-1">Average time to prepare an order</p>
         </div>
 
         <div>
@@ -3496,7 +3528,7 @@ export default function RestaurantOnboarding() {
             }}
             onBlur={() => handleFieldBlur("featuredDish")}
             className={getFieldClassName("featuredDish", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-            placeholder="E.g. Butter Chicken Special"
+            placeholder="e.g., Butter Chicken Special"
             maxLength={30}
           />
           {renderFieldMessage("featuredDish")}
@@ -3509,11 +3541,11 @@ export default function RestaurantOnboarding() {
             value={step4.offer || ""}
             onChange={(e) => setStep4({ ...step4, offer: e.target.value.slice(0, 80) })}
             className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
-            placeholder="E.g. Flat 50 Rs. OFF on Order Above Rs.199"
+            placeholder="e.g., Flat 50 Rs. OFF on Order Above Rs.199"
             maxLength={80}
           />
           <p className="text-[11px] text-gray-500 mt-1">
-            Max 80 characters. Optional. Leave this blank if you do not want to highlight an offer.
+            Max 80 characters. Optional. Leave blank if you do not want to highlight an offer.
           </p>
         </div>
 
@@ -3571,7 +3603,7 @@ export default function RestaurantOnboarding() {
                 onBlur={() => handleFieldBlur("selfDeliveryRadius")}
                 disabled={!step4.selfDeliveryEnabled}
                 className={getFieldClassName("selfDeliveryRadius", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed")}
-                placeholder="Enter delivery radius (e.g. 5)"
+                placeholder="e.g., 5"
               />
               {renderFieldMessage("selfDeliveryRadius")}
               <p className="text-[11px] text-gray-500 mt-1">Maximum 2 digits allowed</p>
@@ -3579,7 +3611,7 @@ export default function RestaurantOnboarding() {
 
             <div>
               <Label className="text-xs font-bold text-gray-700 block mb-1">
-                Delivery Fee
+                Delivery Fee (Rs)
                 {step4.selfDeliveryEnabled && <span className="text-rose-500 ml-0.5">*</span>}
               </Label>
               <Input
@@ -3602,7 +3634,7 @@ export default function RestaurantOnboarding() {
                 onBlur={() => handleFieldBlur("selfDeliveryFee")}
                 disabled={!step4.selfDeliveryEnabled}
                 className={getFieldClassName("selfDeliveryFee", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed")}
-                placeholder="Enter delivery fee (e.g. 10)"
+                placeholder="e.g., 10"
               />
               {renderFieldMessage("selfDeliveryFee")}
               <p className="text-[11px] text-gray-500 mt-1">Maximum 4 digits allowed</p>
@@ -3610,7 +3642,7 @@ export default function RestaurantOnboarding() {
 
             <div>
               <Label className="text-xs font-bold text-gray-700 block mb-1">
-                Minimum Order Amount
+                Minimum Order Amount (Rs)
                 {step4.selfDeliveryEnabled && <span className="text-rose-500 ml-0.5">*</span>}
               </Label>
               <Input
@@ -3633,31 +3665,34 @@ export default function RestaurantOnboarding() {
                 onBlur={() => handleFieldBlur("selfDeliveryMinOrderAmount")}
                 disabled={!step4.selfDeliveryEnabled}
                 className={getFieldClassName("selfDeliveryMinOrderAmount", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed")}
-                placeholder="Enter minimum order amount (e.g. 100)"
+                placeholder="e.g., 100"
               />
               {renderFieldMessage("selfDeliveryMinOrderAmount")}
               <p className="text-[11px] text-gray-500 mt-1">Maximum 5 digits allowed</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <TimeSelector
-                label="Start Time*"
-                value={step4.selfDeliveryStart || ""}
-                onChange={(val) => {
-                  const nextStep4 = { ...step4, selfDeliveryStart: normalizeTimeValue(val) || "" }
-                  setStep4(nextStep4)
-                  revalidateTouchedField("selfDeliveryStart", { step4: nextStep4 })
-                }}
-              />
-              <TimeSelector
-                label="End Time*"
-                value={step4.selfDeliveryEnd || ""}
-                onChange={(val) => {
-                  const nextStep4 = { ...step4, selfDeliveryEnd: normalizeTimeValue(val) || "" }
-                  setStep4(nextStep4)
-                  revalidateTouchedField("selfDeliveryEnd", { step4: nextStep4 })
-                }}
-              />
+            <div className="col-span-2">
+              <Label className="text-xs font-bold text-gray-700 block mb-2">Self Delivery Hours</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <TimeSelector
+                  label="Start Time*"
+                  value={step4.selfDeliveryStart || ""}
+                  onChange={(val) => {
+                    const nextStep4 = { ...step4, selfDeliveryStart: normalizeTimeValue(val) || "" }
+                    setStep4(nextStep4)
+                    revalidateTouchedField("selfDeliveryStart", { step4: nextStep4 })
+                  }}
+                />
+                <TimeSelector
+                  label="End Time*"
+                  value={step4.selfDeliveryEnd || ""}
+                  onChange={(val) => {
+                    const nextStep4 = { ...step4, selfDeliveryEnd: normalizeTimeValue(val) || "" }
+                    setStep4(nextStep4)
+                    revalidateTouchedField("selfDeliveryEnd", { step4: nextStep4 })
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -3758,10 +3793,10 @@ export default function RestaurantOnboarding() {
           }}
         >
           {isReverificationFlow && (
-            <section className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <section className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 break-words overflow-wrap-anywhere">
               <p className="font-semibold text-rose-900">Your restaurant was rejected</p>
               {currentRestaurantRejectionReason ? (
-                <p className="mt-1">Reason: {currentRestaurantRejectionReason}</p>
+                <p className="mt-1 break-all">Reason: {currentRestaurantRejectionReason}</p>
               ) : null}
               <p className="mt-1">
                 Please update your details and submit again for re-verification.
@@ -3798,38 +3833,55 @@ export default function RestaurantOnboarding() {
 
         <footer className={`px-4 sm:px-6 py-3 bg-white ${keyboardInset ? "hidden" : ""}`}>
           <div className="flex justify-between items-center">
-            <Button
-              variant="outline"
-              disabled={step === 1 || saving}
-              onClick={() => {
-                const prevStep = Math.max(1, step - 1)
-                // Clear touched/errors for current step's fields so going back doesn't show stale errors
-                const stepFieldMap = {
-                  1: ["restaurantName","ownerName","ownerEmail","ownerPhone","primaryContactNumber","zoneId","location.area","location.city","location.state","location.pincode"],
-                  2: [],
-                  3: ["panNumber","nameOnPan","fssaiNumber","fssaiExpiry","accountNumber","confirmAccountNumber","ifscCode","accountHolderName","accountType","gstNumber","gstLegalName","gstAddress"],
-                  4: ["estimatedDeliveryTime","featuredDish","selfDeliveryRadius","selfDeliveryFee","selfDeliveryMinOrderAmount","selfDeliveryStart","selfDeliveryEnd"],
-                }
-                const currentFields = stepFieldMap[step] || []
-                if (currentFields.length > 0) {
-                  setFieldTouched((prev) => {
-                    const next = { ...prev }
-                    currentFields.forEach((f) => delete next[f])
-                    return next
-                  })
-                  setFieldErrors((prev) => {
-                    const next = { ...prev }
-                    currentFields.forEach((f) => delete next[f])
-                    return next
-                  })
-                }
-                setStep(prevStep)
-                scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" })
-              }}
-              className="text-sm border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Back
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                disabled={step === 1 || saving}
+                onClick={() => {
+                  const prevStep = Math.max(1, step - 1)
+                  // Clear touched/errors for current step's fields so going back doesn't show stale errors
+                  const stepFieldMap = {
+                    1: ["restaurantName","ownerName","ownerEmail","ownerPhone","primaryContactNumber","zoneId","location.area","location.city","location.state","location.pincode"],
+                    2: [],
+                    3: ["panNumber","nameOnPan","fssaiNumber","fssaiExpiry","accountNumber","confirmAccountNumber","ifscCode","accountHolderName","accountType","gstNumber","gstLegalName","gstAddress"],
+                    4: ["estimatedDeliveryTime","featuredDish","selfDeliveryRadius","selfDeliveryFee","selfDeliveryMinOrderAmount","selfDeliveryStart","selfDeliveryEnd"],
+                  }
+                  const currentFields = stepFieldMap[step] || []
+                  if (currentFields.length > 0) {
+                    setFieldTouched((prev) => {
+                      const next = { ...prev }
+                      currentFields.forEach((f) => delete next[f])
+                      return next
+                    })
+                    setFieldErrors((prev) => {
+                      const next = { ...prev }
+                      currentFields.forEach((f) => delete next[f])
+                      return next
+                    })
+                  }
+                  setStep(prevStep)
+                  scrollContainerRef.current?.scrollTo({ top: 0, behavior: "instant" })
+                }}
+                className="text-sm border-[#00c87e] text-[#00c87e] hover:bg-[#00c87e] hover:text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Back
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  try {
+                    const draft = { step1, step2: { ...step2, menuImages: [], profileImage: null }, step3: { ...step3, panImage: null, gstImage: null, fssaiImage: null }, step4 }
+                    localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(draft))
+                    toast.success("Draft saved! You can resume later.")
+                  } catch {
+                    toast.error("Could not save draft.")
+                  }
+                }}
+                className="text-xs border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer px-3"
+              >
+                Save Draft
+              </Button>
+            </div>
             <Button
               onClick={handleNext}
               disabled={saving || (step === 4 && !isEditing)}
