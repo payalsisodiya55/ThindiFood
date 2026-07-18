@@ -75,11 +75,12 @@ const discountTypeOptions = [
   { value: "flat", label: "Flat Amount" },
 ]
 
-const CustomSelect = ({ value, onChange, options, className = "" }) => {
+const CustomSelect = ({ value, onChange, options, className = "", disabled }) => {
   const [isOpen, setIsOpen] = useState(false)
   const selectedOption = options.find((opt) => opt.value === value) || options[0]
 
   useEffect(() => {
+    if (disabled) return
     const handleClickOutside = (event) => {
       if (!event.target.closest(".custom-select-container")) {
         setIsOpen(false)
@@ -89,16 +90,17 @@ const CustomSelect = ({ value, onChange, options, className = "" }) => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside)
     }
-  }, [])
+  }, [disabled])
 
   return (
     <div className="relative custom-select-container w-full">
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] focus:ring-1 focus:ring-[#00c87e] transition-all ${
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 transition-all ${
           isOpen ? "border-[#00c87e] ring-1 ring-[#00c87e]" : ""
-        } ${className}`}
+        } ${disabled ? "opacity-60 cursor-not-allowed bg-slate-50 pointer-events-none" : "cursor-pointer"} ${className}`}
       >
         <span className="text-slate-800">{selectedOption?.label}</span>
         <svg
@@ -111,7 +113,7 @@ const CustomSelect = ({ value, onChange, options, className = "" }) => {
         </svg>
       </button>
 
-      {isOpen && (
+      {isOpen && !disabled && (
         <div className="absolute left-0 right-0 top-[52px] z-50 rounded-xl border border-slate-200 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-top-1 duration-100">
           {options.map((opt) => (
             <button
@@ -352,12 +354,19 @@ export default function OfferFormPage({ mode = "create" }) {
     <div className="min-h-screen bg-[#f3f6f8] pb-36">
       <header className="sticky top-0 z-40 border-b border-slate-200 bg-white px-4 py-3">
         <div className="mx-auto flex w-full max-w-md md:max-w-3xl items-center gap-3">
-          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
-            <ArrowLeft className="h-5 w-5" />
+          <button
+            onClick={goBack}
+            disabled={submitting}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-slate-900 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {isEditMode ? "Edit Offer" : "Create Offer"}
-          </h1>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-slate-900">
+              {isEditMode ? "Edit Offer" : "Create Offer"}
+            </h1>
+          </div>
         </div>
       </header>
 
@@ -377,6 +386,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   onChange={(e) => setField("title", e.target.value)}
                   placeholder="E.g. Combo Saver"
                   className="h-12"
+                  disabled={submitting}
                 />
               </div>
 
@@ -385,8 +395,10 @@ export default function OfferFormPage({ mode = "create" }) {
                 <label className="mb-1 block text-sm font-medium text-slate-800">Select Food/Dishes</label>
                 <div className="relative">
                   <div
-                    className="min-h-12 w-full rounded-xl border border-slate-200 px-3 py-2 cursor-pointer flex flex-wrap gap-1.5 items-center bg-white"
-                    onClick={() => setShowProductDropdown(true)}
+                    className={`min-h-12 w-full rounded-xl border border-slate-200 px-3 py-2 flex flex-wrap gap-1.5 items-center bg-white ${
+                      submitting ? "opacity-60 cursor-not-allowed bg-slate-50" : "cursor-pointer"
+                    }`}
+                    onClick={() => !submitting && setShowProductDropdown(true)}
                   >
                     {form.products.length === 0 ? (
                       <span className="text-sm text-slate-400">Select food items</span>
@@ -399,9 +411,11 @@ export default function OfferFormPage({ mode = "create" }) {
                           {p.name}
                           <button
                             type="button"
-                            className="text-[#00c87e] hover:text-red-500"
+                            disabled={submitting}
+                            className="text-[#00c87e] hover:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                             onClick={(e) => {
                               e.stopPropagation()
+                              if (submitting) return
                               setForm((prev) => ({
                                 ...prev,
                                 products: prev.products.filter((pp) => String(pp.productId) !== String(p.productId)),
@@ -522,6 +536,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   value={form.discountType}
                   onChange={(val) => setField("discountType", val)}
                   options={discountTypeOptions}
+                  disabled={submitting}
                 />
               </div>
 
@@ -538,6 +553,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   type="text"
                   value={form.discountValue}
                   maxLength={3}
+                  disabled={submitting}
                   onChange={(e) => {
                     const val = e.target.value
                     const sanitized = val.replace(/[^0-9.]/g, "")
@@ -559,6 +575,7 @@ export default function OfferFormPage({ mode = "create" }) {
                     type="text"
                     value={form.maxDiscount}
                     maxLength={3}
+                    disabled={submitting}
                     onChange={(e) => {
                       const val = e.target.value
                       const sanitized = val.replace(/[^0-9.]/g, "")
@@ -581,6 +598,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   type="text"
                   value={form.maxItemsPerOrder}
                   maxLength={3}
+                  disabled={submitting}
                   onChange={(e) => setField("maxItemsPerOrder", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 5"
                   className="h-12"
@@ -595,6 +613,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   type="text"
                   value={form.perUserRedeemLimit}
                   maxLength={3}
+                  disabled={submitting}
                   onChange={(e) => setField("perUserRedeemLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 2"
                   className="h-12"
@@ -605,11 +624,12 @@ export default function OfferFormPage({ mode = "create" }) {
               {/* Start Date */}
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">Start Date (optional)</label>
-                <Popover open={isStartCalendarOpen} onOpenChange={setIsStartCalendarOpen}>
+                <Popover open={!submitting && isStartCalendarOpen} onOpenChange={(open) => !submitting && setIsStartCalendarOpen(open)}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
+                      disabled={submitting}
+                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50 cursor-pointer"
                     >
                       <span className={form.startDate ? "text-slate-800" : "text-muted-foreground"}>
                         {form.startDate ? formatDisplayDate(form.startDate) : "Select start date"}
@@ -642,11 +662,12 @@ export default function OfferFormPage({ mode = "create" }) {
               {/* End Date */}
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-800">End Date (optional)</label>
-                <Popover open={isEndCalendarOpen} onOpenChange={setIsEndCalendarOpen}>
+                <Popover open={!submitting && isEndCalendarOpen} onOpenChange={(open) => !submitting && setIsEndCalendarOpen(open)}>
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 cursor-pointer focus:border-[#00c87e] transition-all"
+                      disabled={submitting}
+                      className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-800 outline-none hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50 cursor-pointer"
                     >
                       <span className={form.endDate ? "text-slate-800" : "text-muted-foreground"}>
                         {form.endDate ? formatDisplayDate(form.endDate) : "Select end date"}

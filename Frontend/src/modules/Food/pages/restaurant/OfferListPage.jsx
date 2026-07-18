@@ -1,7 +1,7 @@
 import { confirmApp } from "@shared/lib/appDialog";import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Edit2, MoreVertical, Package, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Edit2, MoreVertical, Plus, Trash2, Ticket, Percent, Tag, Truck } from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
@@ -107,12 +107,18 @@ export default function OfferListPage() {
 
   return (
     <div className="min-h-screen bg-[#eef2f6] pb-24 md:pb-8">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 w-full">
+      <header className="sticky top-0 z-40 border-b border-slate-200 bg-white px-4 py-3 w-full">
         <div className="mx-auto max-w-md md:max-w-6xl flex items-center gap-3">
-          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
-            <ArrowLeft className="h-5 w-5" />
+          <button
+            onClick={goBack}
+            className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-slate-900 shrink-0"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-6 h-6 text-gray-900" />
           </button>
-          <h1 className="text-3xl font-semibold text-slate-900">Offers</h1>
+          <div className="flex-1">
+            <h1 className="text-lg font-bold text-slate-900">Offers</h1>
+          </div>
         </div>
       </header>
 
@@ -128,15 +134,52 @@ export default function OfferListPage() {
           <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 md:col-span-2 lg:col-span-3">{error}</div>
           }
 
-          {!loading && !error && normalizedOffers.length === 0 &&
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center md:col-span-2 lg:col-span-3">
-              <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-                <Package className="h-7 w-7 text-slate-400" />
+          {!loading && !error && normalizedOffers.length === 0 && (
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center md:col-span-2 lg:col-span-3 max-w-lg mx-auto w-full shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100">
+                <Ticket className="h-8 w-8 text-[#00c87e]" />
               </div>
-              <p className="text-sm font-medium text-slate-700">No offers yet</p>
-              <p className="mt-1 text-xs text-slate-500">Create your first offer using the + button below</p>
+              <h3 className="text-lg font-bold text-slate-800">No offers yet</h3>
+              <p className="mt-1 text-sm text-slate-500">Tap the + button to create your first offer.</p>
+              
+              <div className="mt-6 border-t border-slate-100 pt-6 text-left">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  What types of offers can you create?
+                </p>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-xl p-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-[#00c87e]">
+                      <Percent className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Percentage discounts</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Offer percentage-based discounts with custom maximum cap limits.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-xl p-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                      <Tag className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Flat-off deals</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Apply fixed flat-amount discounts directly on customer purchases.</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 rounded-xl p-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                      <Truck className="h-4.5 w-4.5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800">Free delivery offers</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Provide free shipping to incentivize larger order values.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          }
+          )}
 
           {!loading &&
           !error &&
