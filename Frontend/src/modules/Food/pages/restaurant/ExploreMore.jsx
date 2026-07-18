@@ -35,6 +35,8 @@ import {
   TicketPercent,
   Gift,
   Shield,
+  Tag,
+  BadgePercent,
 } from "lucide-react"
 import { Card, CardContent } from "@food/components/ui/card"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
@@ -729,8 +731,8 @@ export default function ExploreMore() {
     { id: "dine-in-orders", label: "Live Kitchen", icon: Utensils, route: "/food/restaurant/dine-in/orders" },
     { id: 6, label: "Menu Categories", icon: Settings, route: "/food/restaurant/menu-categories" },
     { id: 10, label: "Coupons", icon: TicketPercent, route: "/food/restaurant/coupons" },
-    { id: 11, label: "Offers", icon: Gift, route: "/food/restaurant/offers" },
-    { id: 12, label: "Dining Offers", icon: Gift, route: "/food/restaurant/dining-offers" },
+    { id: 11, label: "Offers", icon: Tag, route: "/food/restaurant/offers" },
+    { id: 12, label: "Dining Offers", icon: BadgePercent, route: "/food/restaurant/dining-offers" },
   ]
 
   const settingsItems = [

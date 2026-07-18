@@ -1425,7 +1425,7 @@ function TableBookings({ onSelectOrder, searchValue = "" }) {
     <div className="pt-4 pb-6 px-1">
       <div className="flex items-baseline justify-between mb-4 px-1">
         <h2 className="text-base font-semibold text-black">Table Bookings</h2>
-        <span className="text-xs text-gray-500">{filteredBookings.length} total</span>
+        <span className="text-xs text-gray-500">{filteredBookings.length} Total Bookings</span>
       </div>
 
       {filteredBookings.length === 0 ? (
@@ -1450,6 +1450,7 @@ function TableBookings({ onSelectOrder, searchValue = "" }) {
                   ["CHECKED_IN"].includes(String(booking?.status || "").toUpperCase()) &&
                   linkedSession &&
                   hasAcceptedDineInRound(linkedSession);
+                const isPastOrder = ["COMPLETED", "CANCELLED", "DECLINED", "NO_SHOW", "NO-SHOW"].includes(String(booking?.status || "").toUpperCase());
                 return (
                   <>
               <div className="flex justify-between items-start mb-3">
@@ -1457,13 +1458,32 @@ function TableBookings({ onSelectOrder, searchValue = "" }) {
                   <h3 className="text-sm font-bold text-gray-900">
                     {getBookingGuestName(booking)}
                   </h3>
-                  <p className="text-[11px] text-gray-500">
-                    {getBookingGuestPhone(booking) || "No phone"}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-[11px] text-gray-500">
+                      {getBookingGuestPhone(booking) || "No phone"}
+                    </p>
+                    {getBookingGuestPhone(booking) && !isPastOrder && (
+                      <a 
+                        href={`tel:${normalizePhoneForCall(getBookingGuestPhone(booking))}`}
+                        className="inline-flex items-center justify-center p-1 bg-emerald-50 rounded-full text-emerald-600 hover:bg-emerald-100 transition-colors"
+                        title="Call Customer"
+                      >
+                        <Phone className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
                   <span
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${statusMeta.className}`}>
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                      String(booking?.status || "").toUpperCase() === "CONFIRMED" || String(booking?.status || "").toUpperCase() === "ACCEPTED"
+                        ? "bg-green-100 text-green-700 border border-green-200"
+                        : String(booking?.status || "").toUpperCase() === "CHECKED_IN"
+                        ? "bg-orange-100 text-orange-700 border border-orange-200"
+                        : String(booking?.status || "").toUpperCase() === "COMPLETED"
+                        ? "bg-blue-100 text-blue-700 border border-blue-200"
+                        : "bg-red-100 text-red-700 border border-red-200"
+                    }`}>
                     {statusMeta.label}
                   </span>
                   {canManageBooking && (
@@ -1479,6 +1499,20 @@ function TableBookings({ onSelectOrder, searchValue = "" }) {
                 </div>
               </div>
 
+              {/* Booking ID and Special Request Info */}
+              <div className="mb-3 text-[10px] bg-slate-50/50 p-2.5 rounded-xl border border-slate-100 space-y-1">
+                <div>
+                  <span className="text-gray-400 font-medium">Booking ID:</span>{" "}
+                  <span className="font-bold text-gray-700">{booking.bookingId || booking._id || "—"}</span>
+                </div>
+                {booking.specialRequest && (
+                  <div className="mt-1">
+                    <span className="text-gray-400 font-medium block">Special Request:</span>
+                    <span className="text-gray-700 italic font-medium">{booking.specialRequest}</span>
+                  </div>
+                )}
+              </div>
+
               <div className="flex items-center gap-4 text-[11px] text-gray-600 bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                 <div className="flex items-center gap-1">
                   <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -1486,6 +1520,7 @@ function TableBookings({ onSelectOrder, searchValue = "" }) {
                     {new Date(booking.date).toLocaleDateString("en-GB", {
                       day: "2-digit",
                       month: "short",
+                      year: "numeric",
                     })}
                   </span>
                 </div>
@@ -1498,17 +1533,6 @@ function TableBookings({ onSelectOrder, searchValue = "" }) {
                   <span>{booking.guests} Guests</span>
                 </div>
               </div>
-
-              {booking.specialRequest && (
-                <div className="mt-3 p-2 bg-blue-50/50 rounded-lg border border-blue-100/50">
-                  <p className="text-[10px] text-blue-700 italic flex items-start gap-1">
-                    <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" />
-                    <span className="line-clamp-2">
-                      {booking.specialRequest}
-                    </span>
-                  </p>
-                </div>
-              )}
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {["PENDING"].includes(String(booking?.status || "").toUpperCase()) && (
