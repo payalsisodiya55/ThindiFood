@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { CheckCircle2, X, ArrowLeft } from "lucide-react"
+import { CheckCircle2, X, ArrowLeft, AlertCircle } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { API_ENDPOINTS } from "@food/api/config"
 import api from "@food/api"
@@ -18,6 +18,7 @@ export default function ShareFeedback() {
   const navigate = useNavigate()
   const goBack = useRestaurantBackNavigation()
   const [rating, setRating] = useState(null)
+  const [comment, setComment] = useState("")
   const [showThanks, setShowThanks] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -36,7 +37,7 @@ export default function ShareFeedback() {
       const response = await api.post(API_ENDPOINTS.ADMIN.FEEDBACK_EXPERIENCE_CREATE, {
         rating: Math.ceil(rating / 2) || 1, // Convert 0-10 to 1-5 for backend
         module: 'restaurant',
-        comment: `User rated ${rating}/10 overall experience`
+        comment: comment ? `[User rated ${rating}/10] ${comment}` : `User rated ${rating}/10 overall experience`
       })
       
       if (response.data?.success) {
@@ -52,6 +53,17 @@ export default function ShareFeedback() {
     }
   }
 
+  const getRatingEmoji = (r) => {
+    if (r === null) return { emoji: "🤔", label: "Select your rating", color: "text-slate-400" }
+    if (r <= 2) return { emoji: "😡", label: "Very Bad", color: "text-red-500" }
+    if (r <= 4) return { emoji: "🙁", label: "Bad", color: "text-orange-500" }
+    if (r <= 6) return { emoji: "😐", label: "Okay", color: "text-amber-500" }
+    if (r <= 8) return { emoji: "🙂", label: "Good", color: "text-lime-600" }
+    return { emoji: "😍", label: "Excellent", color: "text-emerald-500" }
+  }
+
+  const ratingDetails = getRatingEmoji(rating)
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
@@ -64,16 +76,16 @@ export default function ShareFeedback() {
           <ArrowLeft className="w-6 h-6 text-gray-900" />
         </button>
         <h1 className="text-xl font-semibold text-gray-900 flex-1">
-          Share your feedback
+          Share Your Feedback
         </h1>
       </div>
 
       <div className="flex-1 px-4">
         {/* Question */}
         <div className="mt-6 mb-6">
-          <p className="text-sm text-gray-700 mb-1">Tell us about your</p>
+          <p className="text-sm text-gray-700 mb-1">How was your overall experience with Taamio?</p>
           <p className="text-lg font-semibold text-gray-900">
-            Overall experience with {companyName.toLowerCase()}
+            Overall Experience with Taamio
           </p>
         </div>
 
@@ -125,17 +137,53 @@ export default function ShareFeedback() {
           )}
         </div>
 
-        {/* Illustration placeholder */}
-        <div className="mt-10 flex items-center justify-center">
-          <div className="w-full max-w-xs h-48 rounded-3xl bg-gradient-to-r from-indigo-100 via-pink-100 to-yellow-100 flex items-end justify-center px-6 pb-6">
-            <div className="flex items-end gap-2 w-full justify-between">
-              <div className="w-10 h-20 rounded-full bg-indigo-300" />
-              <div className="w-10 h-32 rounded-full bg-pink-300" />
-              <div className="w-10 h-24 rounded-full bg-purple-300" />
-              <div className="w-10 h-28 rounded-full bg-green-300" />
-              <div className="w-10 h-22 rounded-full bg-yellow-300" />
-            </div>
+        {/* Animated Emoji display instead of static bar chart */}
+        <div className="mt-8 flex flex-col items-center justify-center">
+          <div className="w-full max-w-xs h-36 rounded-3xl bg-slate-50 border border-slate-100 flex flex-col items-center justify-center p-4 shadow-sm">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={rating !== null ? rating : "none"}
+                initial={{ scale: 0.3, rotate: -20, opacity: 0 }}
+                animate={{ 
+                  scale: [0.3, 1.2, 1], 
+                  rotate: [0, -10, 10, 0], 
+                  opacity: 1 
+                }}
+                exit={{ scale: 0.5, opacity: 0 }}
+                transition={{ 
+                  duration: 0.5,
+                  type: "spring",
+                  stiffness: 200,
+                  damping: 12
+                }}
+                className="text-5xl mb-1 select-none"
+              >
+                {ratingDetails.emoji}
+              </motion.div>
+            </AnimatePresence>
+            <motion.span 
+              key={ratingDetails.label}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`text-xs font-bold ${ratingDetails.color}`}
+            >
+              {ratingDetails.label}
+            </motion.span>
           </div>
+        </div>
+
+        {/* Tell us more (optional) text area */}
+        <div className="mt-6">
+          <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Tell us more (optional)
+          </label>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Please share details about your experience..."
+            rows={3}
+            className="w-full rounded-2xl border border-gray-200 p-3.5 text-sm outline-none focus:border-[#00c87e] focus:ring-1 focus:ring-[#00c87e] transition-all resize-none placeholder-gray-400"
+          />
         </div>
       </div>
 
@@ -152,7 +200,7 @@ export default function ShareFeedback() {
           }`}
           whileTap={rating !== null ? { scale: 0.98 } : undefined}
         >
-          {isSubmitting ? "Submitting..." : "Continue"}
+          {isSubmitting ? "Submitting..." : "Submit"}
         </motion.button>
       </div>
 
@@ -185,7 +233,7 @@ export default function ShareFeedback() {
                   Thanks for your feedback
                 </h2>
                 <p className="text-xs text-gray-600 mb-4">
-                  It helps us improve your experience with {companyName.toLowerCase()}.
+                  This helps us make Taamio better for you.
                 </p>
                 <button
                   type="button"
