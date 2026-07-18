@@ -645,6 +645,7 @@ export default function RestaurantOnboarding() {
   const [fieldTouched, setFieldTouched] = useState({})
   const [showConfirmAccountNumber, setShowConfirmAccountNumber] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false)
 
   const handleLogout = async () => {
     if (isLoggingOut) return
@@ -705,7 +706,7 @@ export default function RestaurantOnboarding() {
     cuisines: [],
     openingTime: "",
     closingTime: "",
-    openDays: [],
+    openDays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
   })
 
   const [step3, setStep3] = useState({
@@ -2187,42 +2188,77 @@ export default function RestaurantOnboarding() {
                  </span>
                </span>
              </Label>
-            <select
-              value={step1.zoneId || ""}
-              onChange={(e) => {
-                const newZoneId = e.target.value
-                setStep1((prev) => {
-                  const newState = { ...prev, zoneId: newZoneId }
-                  if (newZoneId && prev.location?.latitude && prev.location?.longitude) {
-                    const selectedZone = zones.find((z) => String(z?._id || z?.id || "") === String(newZoneId))
-                    if (selectedZone) {
-                      const polygon = normalizeZoneCoordinates(selectedZone)
-                      if (!isPointInPolygon(Number(prev.location.latitude), Number(prev.location.longitude), polygon)) {
-                        toast.warning("The current address is outside the newly selected zone. Please search for an address within this zone.")
-                      }
-                    }
-                  }
-                  return newState
-                })
-                revalidateTouchedField("zoneId", { step1: { ...step1, zoneId: newZoneId } })
-              }}
-              onBlur={() => handleFieldBlur("zoneId")}
-              className={getFieldClassName("zoneId", `mt-1 w-full h-9 rounded-md border border-input bg-white px-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#00c87e] cursor-pointer ${
-                step1.zoneId ? "text-gray-900" : "text-muted-foreground"
-              }`)}
-              disabled={zonesLoading || !isEditing}
-            >
-              <option value="" className="text-muted-foreground">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
-              {zones.map((z) => {
-                const id = String(z?._id || z?.id || "")
-                const label = z?.name || z?.zoneName || z?.serviceLocation || id
-                return (
-                  <option key={id} value={id} className="text-gray-900">
-                    {label}
-                  </option>
-                )
-              })}
-            </select>
+             <div className="relative mt-1">
+               <button
+                 type="button"
+                 onClick={() => isEditing && setIsZoneDropdownOpen(!isZoneDropdownOpen)}
+                 className={getFieldClassName("zoneId", `w-full h-9 rounded-md border border-input bg-white px-3 text-sm focus:outline-none flex items-center justify-between cursor-pointer ${
+                   step1.zoneId ? "text-gray-900" : "text-muted-foreground"
+                 }`)}
+                 disabled={zonesLoading || !isEditing}
+               >
+                 <span>
+                   {step1.zoneId 
+                     ? (zones.find(z => String(z?._id || z?.id || "") === String(step1.zoneId))?.name || "Select a zone")
+                     : (zonesLoading ? "Loading zones..." : "Select a zone")
+                   }
+                 </span>
+                 <svg className="h-4 w-4 text-gray-400" viewBox="0 0 20 20" fill="none" stroke="currentColor">
+                   <path d="M7 9l3 3 3-3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                 </svg>
+               </button>
+               
+               {isZoneDropdownOpen && (
+                 <>
+                   <div className="fixed inset-0 z-40" onClick={() => setIsZoneDropdownOpen(false)} />
+                   <div className="absolute left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1">
+                     <button
+                       type="button"
+                       onClick={() => {
+                         setStep1({ ...step1, zoneId: "" });
+                         revalidateTouchedField("zoneId", { step1: { ...step1, zoneId: "" } });
+                         setIsZoneDropdownOpen(false);
+                       }}
+                       className="w-full text-left px-3 py-2 text-sm text-[#b45309] hover:bg-gray-50 font-medium"
+                     >
+                       Select a zone
+                     </button>
+                     {zones.map((z) => {
+                       const id = String(z?._id || z?.id || "");
+                       const label = z?.name || z?.zoneName || z?.serviceLocation || id;
+                       const isSelected = String(step1.zoneId) === id;
+                       return (
+                         <button
+                           key={id}
+                           type="button"
+                           onClick={() => {
+                             setStep1((prev) => {
+                               const newState = { ...prev, zoneId: id };
+                               if (id && prev.location?.latitude && prev.location?.longitude) {
+                                 const polygon = normalizeZoneCoordinates(z);
+                                 if (!isPointInPolygon(Number(prev.location.latitude), Number(prev.location.longitude), polygon)) {
+                                   toast.warning("The current address is outside the newly selected zone. Please search for an address within this zone.");
+                                 }
+                               }
+                               return newState;
+                             });
+                             revalidateTouchedField("zoneId", { step1: { ...step1, zoneId: id } });
+                             setIsZoneDropdownOpen(false);
+                           }}
+                           className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                             isSelected 
+                               ? "bg-[#00c87e] text-white font-medium" 
+                               : "text-gray-900 hover:bg-gray-100"
+                           }`}
+                         >
+                           {label}
+                         </button>
+                       );
+                     })}
+                   </div>
+                 </>
+               )}
+             </div>
             {renderFieldMessage("zoneId")}
             <p className="text-[11px] text-gray-500 mt-1">
               Choose the service zone where your restaurant will be available.
@@ -2655,17 +2691,16 @@ export default function RestaurantOnboarding() {
 
         {/* Menu images */}
         <div className="space-y-2">
-          <Label className="text-base font-extrabold text-gray-900 block mb-1">Menu Images<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Menu Images<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
                 <ImageIcon className="w-6 h-6 text-gray-600" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900">Upload Menu Images</span>
-                <span className="text-[11px] text-gray-500">
-                  JPG, PNG, WebP (Max size 5MB). You can select multiple files (Max {MAX_MENU_IMAGES_COUNT})
-                </span>
+                <span className="text-sm font-semibold text-gray-900 mb-1">Menu Images</span>
+                <span className="text-[11px] text-gray-500">JPG, PNG, WebP (Max 5MB each)</span>
+                <span className="text-[11px] text-gray-500">Upload up to {MAX_MENU_IMAGES_COUNT} images</span>
               </div>
             </div>
             <Button
@@ -2756,7 +2791,7 @@ export default function RestaurantOnboarding() {
                             menuImages: prev.menuImages.filter((_, i) => i !== idx),
                           }));
                         }}
-                        className="bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors cursor-pointer"
+                        className="bg-red-500 text-white rounded-full p-1 border border-white shadow-md hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -2786,7 +2821,7 @@ export default function RestaurantOnboarding() {
 
         {/* Profile image */}
         <div className="space-y-2">
-          <Label className="text-base font-extrabold text-gray-900 block mb-1">Restaurant Profile Image<span className="text-rose-500 ml-0.5">*</span></Label>
+          <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Profile Image<span className="text-rose-500 ml-0.5">*</span></Label>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
@@ -2820,17 +2855,16 @@ export default function RestaurantOnboarding() {
                         profileImage: null,
                       }));
                     }}
-                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors z-10 cursor-pointer"
+                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full p-1 border border-white shadow-md hover:bg-red-600 transition-colors z-10 cursor-pointer flex items-center justify-center"
                   >
                     <X className="w-2.5 h-2.5" />
                   </button>
                 )}
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-gray-900">Upload Profile Image</span>
-                <span className="text-[11px] text-gray-500">
-                  JPG, PNG, WebP (Max size 5MB). This will be shown on your listing card and restaurant page.
-                </span>
+                <span className="text-sm font-semibold text-gray-900 mb-1">Profile Image</span>
+                <span className="text-[11px] text-gray-500">JPG, PNG, WebP (Max 5MB each)</span>
+                <span className="text-[11px] text-gray-500">Shown on your listing card and restaurant page</span>
               </div>
             </div>
             <Button
@@ -2870,7 +2904,7 @@ export default function RestaurantOnboarding() {
         {/* Timings with popover time selectors */}
         <h2 className="text-xl font-extrabold text-black mb-4">Restaurant Timings</h2>
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <TimeSelector
               label="Opening Time*"
               value={step2.openingTime || ""}
@@ -2957,7 +2991,7 @@ export default function RestaurantOnboarding() {
               }}
               onBlur={() => handleFieldBlur("nameOnPan")}
               className={getFieldClassName("nameOnPan", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-              placeholder="Name on PAN card"
+              placeholder="e.g., Rajesh Kumar"
               maxLength={50}
             />
             {renderFieldMessage("nameOnPan")}
@@ -3024,22 +3058,27 @@ export default function RestaurantOnboarding() {
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: true })}
-            className={`px-3 py-1.5 text-xs rounded-full cursor-pointer ${step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
-              }`}
+            className={`px-3 py-1.5 text-xs rounded-full font-medium cursor-pointer transition-colors ${
+              step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
           >
-
             Yes
           </button>
           <button
             type="button"
             onClick={() => setStep3({ ...step3, gstRegistered: false })}
-            className={`px-3 py-1.5 text-xs rounded-full cursor-pointer ${!step3.gstRegistered ? "bg-[#00c87e] text-white" : "bg-gray-100 text-gray-800"
-              }`}
+            className={`px-3 py-1.5 text-xs rounded-full font-medium cursor-pointer transition-colors ${
+              !step3.gstRegistered ? "bg-gray-700 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
           >
-
             No
           </button>
         </div>
+        {!step3.gstRegistered && (
+          <p className="text-[11px] text-gray-500 mt-1">
+            You can add GST details later from your restaurant settings.
+          </p>
+        )}
         {step3.gstRegistered && (
           <div className="space-y-3">
             <div>
@@ -3056,7 +3095,7 @@ export default function RestaurantOnboarding() {
                 }}
                 onBlur={() => handleFieldBlur("gstNumber")}
               className={getFieldClassName("gstNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-                placeholder="GST number (15 characters)"
+                placeholder="e.g., 22AAAAA0000A1Z5"
               />
               {renderFieldMessage("gstNumber")}
             </div>
@@ -3074,7 +3113,7 @@ export default function RestaurantOnboarding() {
                 }}
                 onBlur={() => handleFieldBlur("gstLegalName")}
               className={getFieldClassName("gstLegalName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-                placeholder="GST legal name"
+                placeholder="e.g., ABC Foods Pvt. Ltd."
               />
               {renderFieldMessage("gstLegalName")}
             </div>
@@ -3089,7 +3128,7 @@ export default function RestaurantOnboarding() {
                 }}
                 onBlur={() => handleFieldBlur("gstAddress")}
               className={getFieldClassName("gstAddress", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-                placeholder="GST registered address"
+                placeholder="e.g., 123, MG Road, Bengaluru"
               />
               {renderFieldMessage("gstAddress")}
             </div>
@@ -3153,7 +3192,7 @@ export default function RestaurantOnboarding() {
         <h2 className="text-xl font-extrabold text-black mb-4">FSSAI Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <Label className="text-xs font-bold text-gray-700 block mb-1">FSSAI Number<span className="text-rose-500 ml-0.5">*</span></Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">FSSAI Number (14 digits)<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               value={step3.fssaiNumber || ""}
               onChange={(e) => {
@@ -3163,7 +3202,7 @@ export default function RestaurantOnboarding() {
               }}
               onBlur={() => handleFieldBlur("fssaiNumber")}
               className={getFieldClassName("fssaiNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-              placeholder="FSSAI number (14 digits)"
+              placeholder="e.g., 12345678901234"
             />
             {renderFieldMessage("fssaiNumber")}
           </div>
@@ -3289,7 +3328,7 @@ export default function RestaurantOnboarding() {
       </section>
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
-        <h2 className="text-xl font-extrabold text-black mb-4">Bank Account Details</h2>
+        <h2 className="text-xl font-extrabold text-black mb-4">Bank Details</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <Label className="text-xs font-bold text-gray-700 block mb-1">Account Number<span className="text-rose-500 ml-0.5">*</span></Label>
@@ -3304,7 +3343,7 @@ export default function RestaurantOnboarding() {
               }}
               onBlur={() => handleFieldBlur("accountNumber")}
               className={getFieldClassName("accountNumber", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-              placeholder="Account number"
+              placeholder="e.g., 1234567890"
             />
             {renderFieldMessage("accountNumber")}
           </div>
@@ -3396,7 +3435,7 @@ export default function RestaurantOnboarding() {
             }}
             onBlur={() => handleFieldBlur("accountHolderName")}
             className={getFieldClassName("accountHolderName", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-            placeholder="Account holder name"
+            placeholder="e.g., Rajesh Kumar"
           />
           {renderFieldMessage("accountHolderName")}
         </div>
@@ -3641,17 +3680,27 @@ export default function RestaurantOnboarding() {
         fieldHoursPlaceholder: () => "HH",
         fieldMinutesPlaceholder: () => "MM",
       }}
+      slotProps={{
+        popper: {
+          sx: {
+            "& .MuiMenuItem-root.Mui-selected": {
+              backgroundColor: "#00c87e !important",
+              color: "white",
+            },
+          },
+        },
+      }}
     >
       <div className="flex flex-col bg-gray-100 overflow-hidden" style={{ height: "100dvh" }}>
          <header className="px-3 py-3 sm:px-6 bg-white flex items-center justify-between border-b">
            <div className="flex items-center gap-2 sm:gap-3">
              <button
-               onClick={handleCloseOnboarding}
-               className="w-9 h-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors cursor-pointer text-gray-600 hover:text-gray-700"
-               aria-label="Close onboarding"
-             >
-               <X className="w-5 h-5" />
-             </button>
+                onClick={handleCloseOnboarding}
+                className="w-8 h-8 flex items-center justify-center border border-gray-200 rounded-full transition-colors cursor-pointer text-gray-500 hover:bg-gray-50 hover:text-gray-700"
+                aria-label="Close onboarding"
+              >
+                <X className="w-4 h-4" />
+              </button>
              <div className="flex flex-col py-1">
                <div className="text-base sm:text-lg font-extrabold text-black leading-tight">Restaurant Onboarding</div>
                <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">
