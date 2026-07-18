@@ -469,7 +469,7 @@ export default function Feedback() {
       <div className="sticky bg-white top-0 z-40 px-4 py-3 border-b border-gray-200">
         <div className="flex items-start justify-between gap-4">
           <div className="flex flex-col">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <button
                 onClick={() => navigate("/food/restaurant/explore")}
                 className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer text-gray-900 shrink-0"
