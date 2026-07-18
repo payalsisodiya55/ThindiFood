@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { ArrowLeft, CalendarDays, X, ChevronDown, AlertCircle } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
@@ -160,6 +160,14 @@ export default function OfferFormPage({ mode = "create" }) {
   const [productSearch, setProductSearch] = useState("")
   const [showProductDropdown, setShowProductDropdown] = useState(false)
 
+  const titleRef = useRef(null)
+  const discountValueRef = useRef(null)
+  const maxDiscountRef = useRef(null)
+  const maxItemsPerOrderRef = useRef(null)
+  const perUserRedeemLimitRef = useRef(null)
+  const startDateRef = useRef(null)
+  const endDateRef = useRef(null)
+
   const isPercentage = form.discountType === "percentage"
 
   const isFieldModified = (fieldName) => {
@@ -314,53 +322,52 @@ export default function OfferFormPage({ mode = "create" }) {
     return { sortedCategories, groups }
   }, [filteredMenuItems])
 
-  const validationError = useMemo(() => {
+  const validationErrors = useMemo(() => {
+    const errors = {}
     const titleVal = String(form.title || "").trim()
-    if (!titleVal) return "Enter a title for this offer"
-    if (titleVal.length < 5) return "Enter a title with at least 5 characters"
-    if (titleVal.length > 30) return "Enter a title under 30 characters"
+    if (!titleVal) {
+      errors.title = "Enter a title for this offer"
+    } else if (titleVal.length < 5) {
+      errors.title = "Enter a title with at least 5 characters"
+    } else if (titleVal.length > 30) {
+      errors.title = "Enter a title under 30 characters"
+    }
     
     const discVal = Number(form.discountValue || 0)
-    if (!Number.isFinite(discVal) || discVal <= 0) {
-      return "Enter a discount value greater than 0"
-    }
-    if (isPercentage && (discVal < 1 || discVal > 99)) {
-      return "Enter a discount percentage between 1 and 99"
-    }
-    if (!isPercentage && discVal > 999) {
-      return "Limit the discount amount to ₹999"
-    }
-    if (!isPercentage && maxSelectedPrice > 0 && discVal > maxSelectedPrice) {
-      return `Limit flat discount to the maximum item price (₹${maxSelectedPrice})`
+    if (form.discountValue === "" || !Number.isFinite(discVal) || discVal <= 0) {
+      errors.discountValue = "Enter a discount value greater than 0"
+    } else if (isPercentage && (discVal < 1 || discVal > 99)) {
+      errors.discountValue = "Enter a discount percentage between 1 and 99"
+    } else if (!isPercentage && discVal > 999) {
+      errors.discountValue = "Limit the discount amount to ₹999"
+    } else if (!isPercentage && maxSelectedPrice > 0 && discVal > maxSelectedPrice) {
+      errors.discountValue = `Limit flat discount to the maximum item price (₹${maxSelectedPrice})`
     }
 
     if (isPercentage) {
       const maxD = Number(form.maxDiscount || 0)
       if (form.maxDiscount === "" || !Number.isFinite(maxD) || maxD < 0) {
-        return "Enter a maximum discount value for percentage offers"
-      }
-      if (maxD > 9999) {
-        return "Limit the max discount to ₹9,999"
+        errors.maxDiscount = "Enter a maximum discount value for percentage offers"
+      } else if (maxD > 9999) {
+        errors.maxDiscount = "Limit the max discount to ₹9,999"
       }
     }
 
     if (form.maxItemsPerOrder !== "") {
       const maxItems = Number(form.maxItemsPerOrder)
       if (!Number.isFinite(maxItems) || maxItems < 1) {
-        return "Enter a max items per order of at least 1"
-      }
-      if (maxItems > 999) {
-        return "Limit max items per order to 999"
+        errors.maxItemsPerOrder = "Enter a max items per order of at least 1"
+      } else if (maxItems > 999) {
+        errors.maxItemsPerOrder = "Limit max items per order to 999"
       }
     }
 
     if (form.perUserRedeemLimit !== "") {
       const perUserL = Number(form.perUserRedeemLimit)
       if (!Number.isFinite(perUserL) || perUserL < 1) {
-        return "Enter uses per customer of at least 1"
-      }
-      if (perUserL > 999) {
-        return "Limit uses per customer to 999"
+        errors.perUserRedeemLimit = "Enter uses per customer of at least 1"
+      } else if (perUserL > 999) {
+        errors.perUserRedeemLimit = "Limit uses per customer to 999"
       }
     }
 
@@ -369,37 +376,50 @@ export default function OfferFormPage({ mode = "create" }) {
     if (form.startDate) {
       const parsedStart = new Date(form.startDate)
       if (Number.isNaN(parsedStart.getTime())) {
-        return "Enter a valid start date"
-      }
-      if (!isEditMode && form.startDate < todayStr) {
-        return "Select a start date in the present or future"
+        errors.startDate = "Enter a valid start date"
+      } else if (!isEditMode && form.startDate < todayStr) {
+        errors.startDate = "Select a start date in the present or future"
       }
     }
     
     if (form.endDate) {
       const parsedEnd = new Date(form.endDate)
       if (Number.isNaN(parsedEnd.getTime())) {
-        return "Enter a valid end date"
-      }
-      if (!isEditMode && form.endDate < todayStr) {
-        return "Select an end date in the present or future"
+        errors.endDate = "Enter a valid end date"
+      } else if (!isEditMode && form.endDate < todayStr) {
+        errors.endDate = "Select an end date in the present or future"
       }
     }
 
-    if (form.startDate && form.endDate) {
+    if (form.startDate && form.endDate && !errors.startDate && !errors.endDate) {
       const startT = new Date(form.startDate).getTime()
       const endT = new Date(form.endDate).getTime()
       if (startT > endT) {
-        return "Select a start date that is before or equal to the end date"
+        errors.endDate = "Select a start date that is before or equal to the end date"
       }
     }
-    return ""
+    return errors
   }, [form, isPercentage, isEditMode, maxSelectedPrice])
 
   const handleSubmit = async () => {
     setShowErrors(true)
-    if (validationError) {
-      toast.error(validationError)
+    const errKeys = Object.keys(validationErrors)
+    if (errKeys.length > 0) {
+      const firstErrField = errKeys[0]
+      let refToFocus = null
+      if (firstErrField === "title") refToFocus = titleRef
+      else if (firstErrField === "discountValue") refToFocus = discountValueRef
+      else if (firstErrField === "maxDiscount") refToFocus = maxDiscountRef
+      else if (firstErrField === "maxItemsPerOrder") refToFocus = maxItemsPerOrderRef
+      else if (firstErrField === "perUserRedeemLimit") refToFocus = perUserRedeemLimitRef
+      else if (firstErrField === "startDate") refToFocus = startDateRef
+      else if (firstErrField === "endDate") refToFocus = endDateRef
+
+      if (refToFocus && refToFocus.current) {
+        refToFocus.current.scrollIntoView({ behavior: "smooth", block: "center" })
+        refToFocus.current.focus()
+      }
+      toast.error(validationErrors[firstErrField])
       return
     }
     if (submitting || loadingOffer) return
@@ -502,14 +522,22 @@ export default function OfferFormPage({ mode = "create" }) {
                   {isFieldModified("title") && <span className="ml-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">(Modified)</span>}
                 </label>
                 <Input
+                  ref={titleRef}
                   value={form.title}
                   onChange={(e) => setField("title", e.target.value)}
                   placeholder="E.g., Combo Saver"
-                  className={`h-12 ${isFieldModified("title") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                  className={`h-12 ${showErrors && validationErrors.title ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("title") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                   disabled={submitting}
                   maxLength={30}
                 />
-                <p className="mt-1 text-xs text-slate-500">Give your offer a catchy name customers will see, E.g., 'Summer Combo Deal'.</p>
+                {showErrors && validationErrors.title ? (
+                  <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {validationErrors.title}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Give your offer a catchy name customers will see, E.g., 'Summer Combo Deal'.</p>
+                )}
               </div>
 
               {/* Food/Dishes Selection */}
@@ -728,6 +756,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   {isFieldModified("discountValue") && <span className="ml-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">(Modified)</span>}
                 </label>
                 <Input
+                  ref={discountValueRef}
                   type="text"
                   value={form.discountValue}
                   maxLength={3}
@@ -745,17 +774,24 @@ export default function OfferFormPage({ mode = "create" }) {
                     setField("discountValue", finalVal)
                   }}
                   placeholder={isPercentage ? "Enter a value between 1–99" : "E.g., 50"}
-                  className={`h-12 ${isFieldModified("discountValue") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                  className={`h-12 ${showErrors && validationErrors.discountValue ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("discountValue") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                 />
+                {showErrors && validationErrors.discountValue && (
+                  <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {validationErrors.discountValue}
+                  </p>
+                )}
               </div>
-
-              {isPercentage ? (
+ 
+               {isPercentage ? (
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-800">
                     Max Discount <span className="text-red-500 font-bold">*</span>
                     {isFieldModified("maxDiscount") && <span className="ml-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">(Modified)</span>}
                   </label>
                   <Input
+                    ref={maxDiscountRef}
                     type="text"
                     value={form.maxDiscount}
                     maxLength={6}
@@ -771,9 +807,16 @@ export default function OfferFormPage({ mode = "create" }) {
                       setField("maxDiscount", finalVal)
                     }}
                     placeholder="E.g., 100"
-                    className={`h-12 ${isFieldModified("maxDiscount") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                    className={`h-12 ${showErrors && validationErrors.maxDiscount ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("maxDiscount") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                   />
-                  <p className="mt-1 text-xs text-slate-500">Maximum discount amount in ₹ (caps the percentage savings).</p>
+                  {showErrors && validationErrors.maxDiscount ? (
+                    <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      {validationErrors.maxDiscount}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-slate-500">Maximum discount amount in ₹ (caps the percentage savings).</p>
+                  )}
                 </div>
               ) : (
                 <div className="hidden md:block"></div>
@@ -786,6 +829,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   {isFieldModified("maxItemsPerOrder") && <span className="ml-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">(Modified)</span>}
                 </label>
                 <Input
+                  ref={maxItemsPerOrderRef}
                   type="text"
                   value={form.maxItemsPerOrder}
                   maxLength={3}
@@ -798,9 +842,16 @@ export default function OfferFormPage({ mode = "create" }) {
                     setField("maxItemsPerOrder", val)
                   }}
                   placeholder="E.g., 5"
-                  className={`h-12 ${isFieldModified("maxItemsPerOrder") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                  className={`h-12 ${showErrors && validationErrors.maxItemsPerOrder ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("maxItemsPerOrder") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                 />
-                <p className="mt-1 text-xs text-slate-500">Leave blank for no limit. Must be at least 1 if specified.</p>
+                {showErrors && validationErrors.maxItemsPerOrder ? (
+                  <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {validationErrors.maxItemsPerOrder}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Leave blank for no limit. Must be at least 1 if specified.</p>
+                )}
               </div>
 
               {/* Uses Per Customer */}
@@ -810,6 +861,7 @@ export default function OfferFormPage({ mode = "create" }) {
                   {isFieldModified("perUserRedeemLimit") && <span className="ml-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">(Modified)</span>}
                 </label>
                 <Input
+                  ref={perUserRedeemLimitRef}
                   type="text"
                   value={form.perUserRedeemLimit}
                   maxLength={3}
@@ -822,9 +874,16 @@ export default function OfferFormPage({ mode = "create" }) {
                     setField("perUserRedeemLimit", val)
                   }}
                   placeholder="E.g., 2"
-                  className={`h-12 ${isFieldModified("perUserRedeemLimit") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                  className={`h-12 ${showErrors && validationErrors.perUserRedeemLimit ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("perUserRedeemLimit") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                 />
-                <p className="mt-1 text-xs text-slate-500">Leave blank for no limit. Must be at least 1 if specified.</p>
+                {showErrors && validationErrors.perUserRedeemLimit ? (
+                  <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {validationErrors.perUserRedeemLimit}
+                  </p>
+                ) : (
+                  <p className="mt-1 text-xs text-slate-500">Leave blank for no limit. Must be at least 1 if specified.</p>
+                )}
               </div>
 
               {/* Start Date */}
@@ -836,10 +895,11 @@ export default function OfferFormPage({ mode = "create" }) {
                 <Popover open={!submitting && isStartCalendarOpen} onOpenChange={(open) => !submitting && setIsStartCalendarOpen(open)}>
                   <PopoverTrigger asChild>
                     <button
+                      ref={startDateRef}
                       type="button"
                       disabled={submitting}
                       className={`flex h-12 w-full items-center justify-between rounded-xl border px-3 text-sm outline-none hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50 cursor-pointer ${
-                        isFieldModified("startDate") ? "border-amber-400" : "border-slate-200"
+                        showErrors && validationErrors.startDate ? "border-red-500 focus:border-red-500 focus-visible:ring-red-500" : isFieldModified("startDate") ? "border-amber-400" : "border-slate-200"
                       }`}
                     >
                       <span className={form.startDate ? "text-slate-800" : "text-muted-foreground"}>
@@ -868,6 +928,12 @@ export default function OfferFormPage({ mode = "create" }) {
                     </div>
                   </PopoverContent>
                 </Popover>
+                {showErrors && validationErrors.startDate && (
+                  <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {validationErrors.startDate}
+                  </p>
+                )}
               </div>
 
               {/* End Date */}
@@ -879,10 +945,11 @@ export default function OfferFormPage({ mode = "create" }) {
                 <Popover open={!submitting && isEndCalendarOpen} onOpenChange={(open) => !submitting && setIsEndCalendarOpen(open)}>
                   <PopoverTrigger asChild>
                     <button
+                      ref={endDateRef}
                       type="button"
                       disabled={submitting}
                       className={`flex h-12 w-full items-center justify-between rounded-xl border px-3 text-sm outline-none hover:bg-slate-50 transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:bg-slate-50 cursor-pointer ${
-                        isFieldModified("endDate") ? "border-amber-400" : "border-slate-200"
+                        showErrors && validationErrors.endDate ? "border-red-500 focus:border-red-500 focus-visible:ring-red-500" : isFieldModified("endDate") ? "border-amber-400" : "border-slate-200"
                       }`}
                     >
                       <span className={form.endDate ? "text-slate-800" : "text-muted-foreground"}>
@@ -911,6 +978,12 @@ export default function OfferFormPage({ mode = "create" }) {
                     </div>
                   </PopoverContent>
                 </Popover>
+                {showErrors && validationErrors.endDate && (
+                  <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    {validationErrors.endDate}
+                  </p>
+                )}
               </div>
 
               <p className="mt-2 text-xs text-slate-500 md:col-span-2">
@@ -975,37 +1048,45 @@ export default function OfferFormPage({ mode = "create" }) {
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white px-3 py-3">
-        <div className="mx-auto w-full max-w-md md:max-w-3xl flex gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-12 flex-1 border-slate-200 text-slate-700 hover:bg-slate-50"
-            disabled={submitting}
-            onClick={async () => {
-              const msg = isEditMode 
-                ? "Discard changes? Your offer will remain unchanged." 
-                : "Discard changes? Your new offer progress will be lost."
-              if (await confirmApp(msg)) {
-                goBack()
-              }
-            }}
-          >
-            Discard Changes
-          </Button>
-          <Button
-            type="button"
-            className="h-12 flex-1 bg-[#00c87e] text-white hover:bg-[#00b06f]"
-            disabled={submitting || loadingOffer || !!validationError}
-            onClick={handleSubmit}
-          >
-            {submitting
-              ? isEditMode
-                ? "Updating..."
-                : "Submitting..."
-              : isEditMode
-              ? "Update & Submit for Approval"
-              : "Create Offer"}
-          </Button>
+        <div className="mx-auto w-full max-w-md md:max-w-3xl flex flex-col gap-2">
+          {showErrors && Object.keys(validationErrors).length > 0 && (
+            <p className="text-center text-xs font-semibold text-red-500 flex items-center justify-center gap-1 animate-pulse">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              Please fix the highlighted errors to continue.
+            </p>
+          )}
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 flex-1 border-slate-200 text-slate-700 hover:bg-slate-50"
+              disabled={submitting}
+              onClick={async () => {
+                const msg = isEditMode 
+                  ? "Discard changes? Your offer will remain unchanged." 
+                  : "Discard changes? Your new offer progress will be lost."
+                if (await confirmApp(msg)) {
+                  goBack()
+                }
+              }}
+            >
+              Discard Changes
+            </Button>
+            <Button
+              type="button"
+              className="h-12 flex-1 bg-[#00c87e] text-white hover:bg-[#00b06f]"
+              disabled={submitting || loadingOffer || (showErrors && Object.keys(validationErrors).length > 0)}
+              onClick={handleSubmit}
+            >
+              {submitting
+                ? isEditMode
+                  ? "Updating..."
+                  : "Submitting..."
+                : isEditMode
+                ? "Update & Submit for Approval"
+                : "Create Offer"}
+            </Button>
+          </div>
         </div>
       </div>
 
