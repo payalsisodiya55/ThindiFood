@@ -375,10 +375,10 @@ const DineInTableManagement = () => {
                 <Card className="bg-white border-none shadow-sm rounded-3xl overflow-hidden">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center">
-                            <Utensils className="w-6 h-6 text-[#00c87e]" />
+                            <QrCode className="w-6 h-6 text-[#00c87e]" />
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Total Tables</p>
+                            <p className="text-xs text-gray-400 font-bold capitalize">Total Tables</p>
                             <h4 className="text-2xl font-black text-gray-900">{tables.length}</h4>
                         </div>
                     </CardContent>
@@ -389,7 +389,7 @@ const DineInTableManagement = () => {
                             <Users className="w-6 h-6 text-blue-500" />
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Active Sessions</p>
+                            <p className="text-xs text-gray-400 font-bold capitalize">Active Sessions</p>
                             <h4 className="text-2xl font-black text-gray-900">
                                 {tables.filter(t => t.currentSessionId).length}
                             </h4>
@@ -399,10 +399,10 @@ const DineInTableManagement = () => {
                 <Card className="bg-white border-none shadow-sm rounded-3xl overflow-hidden">
                     <CardContent className="p-6 flex items-center gap-4">
                         <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center">
-                            <QrCode className="w-6 h-6 text-purple-500" />
+                            <CheckCircle2 className="w-6 h-6 text-purple-500" />
                         </div>
                         <div>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">QR System</p>
+                            <p className="text-xs text-gray-400 font-bold capitalize">QR System</p>
                             <h4 className="text-2xl font-black text-gray-900">Active</h4>
                         </div>
                     </CardContent>
@@ -422,7 +422,7 @@ const DineInTableManagement = () => {
                         <div className="p-6">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <h3 className="text-2xl font-black text-gray-900">#{table.tableNumber}</h3>
+                                    <h3 className="text-2xl font-black text-gray-900">{table.tableNumber}</h3>
                                     <p className="text-sm text-gray-400 font-bold">{table.tableLabel}</p>
                                 </div>
                                 {table.currentSessionId ? (
@@ -462,7 +462,7 @@ const DineInTableManagement = () => {
 
                             <div className="flex items-center justify-between text-xs font-bold text-gray-400 uppercase tracking-widest pt-4 border-t border-gray-100">
                                 <div className="flex items-center gap-1.5">
-                                    <Users className="w-3.5 h-3.5" />
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                                     <span>QR Ready</span>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -528,7 +528,10 @@ const DineInTableManagement = () => {
                         >
                             <form onSubmit={handleAddTable} className="p-10">
                                 <div className="flex items-start justify-between mb-8">
-                                    <h2 className="text-2xl font-black text-gray-900">New Table</h2>
+                                    <div>
+                                        <h2 className="text-2xl font-black text-gray-900">New Table</h2>
+                                        <p className="text-sm text-gray-500 font-medium mt-1">Create a unique QR code for a new dining table.</p>
+                                    </div>
                                     <button 
                                         type="button"
                                         onClick={() => setShowAddModal(false)}
@@ -540,24 +543,24 @@ const DineInTableManagement = () => {
 
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Table Number</label>
+                                        <label className="text-[10px] font-black text-gray-400 capitalize tracking-widest ml-2 mb-2 block">Table Name Or Number</label>
                                         <input 
                                             required
                                             type="text" 
                                             value={newTable.tableNumber}
                                             onChange={(e) => setNewTable({...newTable, tableNumber: e.target.value})}
-                                            placeholder="E.g. 1, A1, VIP-2"
+                                            placeholder="E.g., 1, A1, VIP-2"
                                             maxLength={10}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Label (Optional)</label>
+                                        <label className="text-[10px] font-black text-gray-400 capitalize tracking-widest ml-2 mb-2 block">Location Label (Optional)</label>
                                         <input 
                                             type="text" 
                                             value={newTable.tableLabel}
                                             onChange={(e) => setNewTable({...newTable, tableLabel: e.target.value})}
-                                            placeholder="E.g. Window Side, Rooftop"
+                                            placeholder="E.g., Window Side, Rooftop"
                                             maxLength={25}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
@@ -597,7 +600,7 @@ const DineInTableManagement = () => {
                                 <div className="flex items-start justify-between mb-8">
                                     <div className="pr-4">
                                         <h2 className="text-2xl font-black text-gray-900">Edit Table</h2>
-                                        <p className="text-sm text-gray-500 font-medium mt-1">The QR link will refresh automatically when you save these changes.</p>
+                                        <p className="text-sm text-gray-500 font-medium mt-1">Create a unique QR code for a new dining table.</p>
                                     </div>
                                     <button
                                         type="button"
@@ -610,24 +613,24 @@ const DineInTableManagement = () => {
 
                                 <div className="space-y-6">
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Table Number</label>
+                                        <label className="text-[10px] font-black text-gray-400 capitalize tracking-widest ml-2 mb-2 block">Table Name Or Number</label>
                                         <input
                                             required
                                             type="text"
                                             value={editTableForm.tableNumber}
                                             onChange={(e) => setEditTableForm({ ...editTableForm, tableNumber: e.target.value })}
-                                            placeholder="E.g. 1, A1, VIP-2"
+                                            placeholder="E.g., 1, A1, VIP-2"
                                             maxLength={10}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
                                     </div>
                                     <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 mb-2 block">Label (Optional)</label>
+                                        <label className="text-[10px] font-black text-gray-400 capitalize tracking-widest ml-2 mb-2 block">Location Label (Optional)</label>
                                         <input
                                             type="text"
                                             value={editTableForm.tableLabel}
                                             onChange={(e) => setEditTableForm({ ...editTableForm, tableLabel: e.target.value })}
-                                            placeholder="E.g. Window Side, Rooftop"
+                                            placeholder="E.g., Window Side, Rooftop"
                                             maxLength={25}
                                             className="w-full bg-gray-100 border-none rounded-2xl py-4 px-6 text-lg font-bold placeholder-gray-400 placeholder:text-gray-400 focus:ring-2 focus:ring-[#00c87e]/20"
                                         />
@@ -639,7 +642,7 @@ const DineInTableManagement = () => {
                                     type="submit"
                                     className="w-full mt-10 py-8 rounded-3xl bg-[#00c87e] hover:bg-[#00b06f] text-white text-xl font-black shadow-xl shadow-green-100 flex items-center justify-center gap-3 transition-all active:scale-95"
                                 >
-                                    {savingEdit ? <Loader2 className="w-6 h-6 animate-spin" /> : "Save Changes"}
+                                    {savingEdit ? <Loader2 className="w-6 h-6 animate-spin" /> : "Update Details"}
                                 </Button>
                             </form>
                         </motion.div>
