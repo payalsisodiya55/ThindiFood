@@ -531,7 +531,7 @@ export default function AddCouponPage(props = {}) {
               </div>
 
               <div className="md:col-span-2 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3 text-sm text-emerald-800">
-                This coupon will be treated as "restaurant-funded". Its discount will reduce your payout in finance reports.
+                This coupon is restaurant-funded. The discount amount will be deducted from your order payout.
               </div>
 
               <div>
