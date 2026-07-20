@@ -687,6 +687,9 @@ export default function AllOrdersPage() {
     if (normalized === "CANCELLED BY CUSTOMER") {
       return "Cancelled By Customer"
     }
+    if (normalized === "ASSIGNED TO BOY") {
+      return "Assigned To Partner"
+    }
     return normalized.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
   }
 
@@ -1023,18 +1026,14 @@ export default function AllOrdersPage() {
                     </div>
                   )}
                   {order.isDelivery && !order.status.includes('CANCEL') && !order.status.includes('REJECT') && (
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-gray-500 text-sm shrink-0">Delivery:</span>
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                        order.hasDeliveryPartner
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-amber-50 text-amber-700'
-                      }`}>
-                        {order.hasDeliveryPartner ? (order.deliveryPartnerName || 'Partner assigned') : 'Unassigned'}
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-gray-900 mt-1">
+                      <span className="text-gray-500 font-normal shrink-0">Delivery:</span>
+                      <span>
+                        {order.hasDeliveryPartner ? (order.deliveryPartnerName || 'Partner Assigned') : 'Unassigned'}
                       </span>
-                      {order.deliveryAssignmentStatus && (
-                        <span className="text-xs text-gray-400 capitalize">
-                          · {order.deliveryAssignmentStatus.replace(/_/g, ' ')}
+                      {order.status && (
+                        <span className="text-xs text-gray-500 font-normal">
+                          · {formatStatusText(order.status)}
                         </span>
                       )}
                     </div>

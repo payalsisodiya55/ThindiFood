@@ -254,6 +254,8 @@ export default function OrderDetails() {
 
           const formatStatus = (statusStr) => {
             if (!statusStr) return '';
+            const normalized = statusStr.toUpperCase().replace(/_/g, ' ');
+            if (normalized === 'ASSIGNED TO BOY') return 'Assigned To Partner';
             return statusStr.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
           };
 
@@ -986,25 +988,23 @@ export default function OrderDetails() {
           
           {orderData.items.map((item, index) => (
             <div key={index} className="bg-white rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center shrink-0">
-                  <div className={`w-3 h-3 rounded-full border ${String(item.type).toLowerCase().includes("non") ? "border-red-600" : "border-green-600"} flex items-center justify-center`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${String(item.type).toLowerCase().includes("non") ? "bg-red-600" : "bg-green-600"}`}></div>
-                  </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 border ${String(item.type).toLowerCase().includes("non") ? "border-red-600" : "border-green-600"} flex items-center justify-center shrink-0 rounded-[3px] p-[2px]`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${String(item.type).toLowerCase().includes("non") ? "bg-red-600" : "bg-green-600"}`}></div>
+                    </div>
                     <p className="text-sm font-semibold text-gray-900">
                       {formatOrderItemQuantityLabel(item)}
                     </p>
-                    <p className="text-sm font-semibold text-gray-900">{formatMoney(item.price)}</p>
                   </div>
-                  {(getOrderItemVariantLabel(item)) && (
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>{getOrderItemVariantLabel(item)}</span>
-                    </div>
-                  )}
+                  <p className="text-sm font-semibold text-gray-900">{formatMoney(item.price)}</p>
                 </div>
+                {(getOrderItemVariantLabel(item)) && (
+                  <div className="flex items-center gap-2 text-xs text-gray-500 pl-6">
+                    <span>{getOrderItemVariantLabel(item)}</span>
+                  </div>
+                )}
               </div>
             </div>
           ))}
