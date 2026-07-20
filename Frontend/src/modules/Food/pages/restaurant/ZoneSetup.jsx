@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
 import { MapPin, Search, Save, Loader2, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
@@ -112,12 +113,11 @@ const getVerificationBannerMeta = (restaurant) => {
 
   if (String(restaurant?.status || "").toLowerCase() === "approved") {
     return {
-      title: "Location verified",
-      message:
-        "Your restaurant location has been verified by the admin. Your restaurant is now visible to customers and you can receive new orders.",
-      className: "border-emerald-200 bg-emerald-50",
-      titleClassName: "text-emerald-900",
-      messageClassName: "text-emerald-800",
+      title: "✓ Location verified — Your restaurant is live and visible to customers.",
+      message: "",
+      className: "border-emerald-200 bg-emerald-50 text-emerald-800",
+      titleClassName: "text-emerald-900 font-bold",
+      messageClassName: "hidden",
     }
   }
 
@@ -135,6 +135,8 @@ export default function ZoneSetup() {
   const zoneMarkersRef = useRef([])
   const autocompleteInputRef = useRef(null)
   const autocompleteRef = useRef(null)
+  
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
   
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
@@ -735,15 +737,15 @@ export default function ZoneSetup() {
               <MapPin className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Zone Setup</h1>
-              <p className="text-sm text-gray-600">Set your restaurant location on the map</p>
+              <h1 className="text-2xl font-bold text-gray-900">Restaurant Location</h1>
+              <p className="text-sm text-gray-600">Pin your restaurant on the map so customers can find you</p>
             </div>
           </div>
         </div>
 
         {verificationBanner && (
           <div className={`mb-6 rounded-xl border px-4 py-3 ${verificationBanner.className}`}>
-            <p className={`text-sm font-semibold mb-1 ${verificationBanner.titleClassName}`}>
+            <p className={`text-sm font-semibold ${verificationBanner.titleClassName}`}>
               {verificationBanner.title}
             </p>
             <p className={`text-sm leading-6 ${verificationBanner.messageClassName}`}>
@@ -752,90 +754,49 @@ export default function ZoneSetup() {
           </div>
         )}
 
-        {/* Search Bar */}
+        {/* Warning Banner */}
+        <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3 text-amber-800 flex items-start gap-2">
+          <span className="font-semibold text-amber-900">Warning:</span>
+          <p className="text-sm">Changing your location may require re-approval.</p>
+        </div>
+
+        {/* 1. Search Bar (Above Map) */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                ref={autocompleteInputRef}
-                type="text"
-                value={locationSearch}
-                onChange={(e) => setLocationSearch(e.target.value)}
-                placeholder="Search for your restaurant location..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-            <button
-              onClick={handleSaveLocation}
-              disabled={!selectedLocation || saving}
-              className="flex items-center justify-center gap-2 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed w-full sm:w-auto"
-            >
-              {saving ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="w-5 h-5" />
-                  <span>Save Location</span>
-                </>
-              )}
-            </button>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              ref={autocompleteInputRef}
+              type="text"
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+              placeholder="Search for your restaurant location..."
+              className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm text-ellipsis overflow-hidden whitespace-nowrap"
+              title={locationSearch}
+            />
+            {locationSearch && (
+              <button
+                type="button"
+                onClick={() => {
+                  setLocationSearch("")
+                  setSelectedAddress("")
+                  setSelectedLocation(null)
+                  setSelectedZoneLabel("")
+                  if (markerRef.current) markerRef.current.setMap(null)
+                  markerRef.current = null
+                }}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Clear search"
+              >
+                <span className="text-xs font-bold font-sans">✕</span>
+              </button>
+            )}
           </div>
-          {selectedLocation && (
-            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-gray-700">
-                <strong>Selected Location:</strong> {selectedAddress}
-              </p>
-              {selectedZoneLabel ? (
-                <p className="text-xs text-emerald-700 mt-1">
-                  Zone: {selectedZoneLabel}
-                </p>
-              ) : null}
-              <p className="text-xs text-gray-500 mt-1">
-                Coordinates: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Instructions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="text-sm font-semibold text-blue-900 mb-2">How to set your location:</h3>
-          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-            <li>Search for your location using the search bar above, or</li>
-            <li>Click anywhere inside the highlighted admin service zones to place a pin</li>
-            <li>You can drag the pin, but only within the highlighted zones</li>
-            <li>Click "Save Location" to save your restaurant location</li>
-          </ul>
-        </div>
-
-        {zones.length > 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">Admin Service Zones</h3>
-            <div className="flex flex-wrap gap-2">
-              {zones.map((zone, index) => (
-                <span
-                  key={zone?._id || zone?.id || `${getZoneLabel(zone)}-${index}`}
-                  className="inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium text-gray-700"
-                >
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ backgroundColor: index % 2 === 0 ? "#15803d" : "#0369a1" }}
-                  />
-                  {getZoneLabel(zone) || `Zone ${index + 1}`}
-                </span>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {/* Map Container */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative">
+        {/* 2. Map Container */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden relative mb-6">
           {/* Always render the map div, show loading overlay on top */}
-          <div ref={mapRef} className="w-full h-[600px]" style={{ minHeight: '600px' }} />
+          <div ref={mapRef} className="w-full h-[450px]" style={{ minHeight: '450px' }} />
           {mapLoading && (
             <div className="absolute inset-0 bg-white flex items-center justify-center z-10">
               <div className="text-center">
@@ -846,7 +807,110 @@ export default function ZoneSetup() {
             </div>
           )}
         </div>
+
+        {/* 3. Location Details & Save Action (Below Map) */}
+        {selectedLocation && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-5 mb-6 space-y-4">
+            <div className="p-3.5 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-gray-700">
+                <strong>Selected Location:</strong> {selectedAddress}
+              </p>
+              {selectedZoneLabel ? (
+                <p className="text-xs text-emerald-700 mt-1.5 font-semibold">
+                  Service Zone: {selectedZoneLabel}
+                </p>
+              ) : null}
+              <p className="text-xs text-gray-500 mt-1">
+                Coordinates: {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+              </p>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  const hasSavedLocation = restaurantData?.location?.latitude && restaurantData?.location?.longitude
+                  if (hasSavedLocation) {
+                    setShowConfirmModal(true)
+                  } else {
+                    handleSaveLocation()
+                  }
+                }}
+                disabled={saving}
+                className="flex items-center justify-center gap-2 px-8 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-semibold w-full sm:w-auto text-sm"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Saving...</span>
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-5 h-5" />
+                    <span>{restaurantData?.location?.latitude ? "Update Location" : "Save Location"}</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Instructions */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="text-sm font-semibold text-blue-900 mb-2">How to set your location:</h3>
+          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+            <li>Search for your location using the search bar above, or</li>
+            <li>Click anywhere inside the highlighted Service Zones on the map to place a pin</li>
+            <li>You can drag the pin, but only within the highlighted Service Zones</li>
+            <li>Click "Save Location" or "Update Location" to submit your restaurant location</li>
+          </ul>
+        </div>
       </div>
+
+      {/* Re-verification Confirmation Modal */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 30, scale: 0.95 }}
+              className="bg-white w-full max-w-sm rounded-2xl shadow-2xl relative z-10 p-6 text-center"
+            >
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Update Location?</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Updating your location may require re-approval. Continue?
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="px-4 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirmModal(false)
+                    handleSaveLocation()
+                  }}
+                  className="px-4 py-2.5 rounded-lg bg-red-600 hover:bg-red-700 text-sm font-semibold text-white transition-colors"
+                >
+                  Continue
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
