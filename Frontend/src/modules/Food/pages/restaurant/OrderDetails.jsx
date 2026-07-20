@@ -960,8 +960,8 @@ export default function OrderDetails() {
           {/* Customer Card */}
           <div className="bg-white rounded-lg p-4 flex flex-col gap-3 mb-3">
             {/* Name + Phone Row */}
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center shrink-0 pt-0">
                 <User className="w-5 h-5 text-gray-600" />
               </div>
               <div className="flex-1">
@@ -975,8 +975,10 @@ export default function OrderDetails() {
 
             {/* Address Row */}
             <div className="flex items-start gap-3">
-              <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-              <p className="text-sm text-gray-700 flex-1 leading-relaxed">{orderData.customer.location}</p>
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center shrink-0">
+                <MapPin className="w-5 h-5 text-gray-600" />
+              </div>
+              <p className="text-sm text-gray-700 flex-1 leading-relaxed pt-1">{orderData.customer.location}</p>
             </div>
           </div>
 
