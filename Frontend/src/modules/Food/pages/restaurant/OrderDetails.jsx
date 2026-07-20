@@ -51,6 +51,17 @@ const formatDiscount = (value) => `-₹${Math.abs(Number(value || 0)).toFixed(2)
 const formatMoneyPDF = (value) => `Rs. ${Number(value || 0).toFixed(2)}`
 const formatDiscountPDF = (value) => `-Rs. ${Math.abs(Number(value || 0)).toFixed(2)}`
 
+const formatReasonText = (text) => {
+  if (!text) return "";
+  let formatted = text.trim();
+  formatted = formatted.replace(/cancelled by restaurant/i, "Cancelled By Restaurant");
+  formatted = formatted.replace(/cancelled by customer/i, "Cancelled By Customer");
+  formatted = formatted.replace(/cancelled by user/i, "Cancelled By Customer");
+  formatted = formatted.replace(/rejected by restaurant/i, "Rejected By Restaurant");
+  formatted = formatted.replace(/cancelled by/i, "Cancelled By");
+  formatted = formatted.replace(/rejected by/i, "Rejected By");
+  return formatted;
+};
 
 export default function OrderDetails() {
   const navigate = useNavigate()
@@ -295,7 +306,7 @@ export default function OrderDetails() {
             },
             deliveryPartnerId: order.deliveryPartnerId || order.dispatch?.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
-            reason: (
+            reason: formatReasonText(
               order.cancellationReason ||
               order.cancelReason ||
               order.cancellation?.reason ||
@@ -918,7 +929,7 @@ export default function OrderDetails() {
           </div>
 
           {/* Restaurant Info */}
-          <p className="text-sm font-bold text-gray-900 mb-3">
+          <p className="text-sm font-bold text-gray-900 mb-3 break-all break-words [word-break:break-word]">
             {orderData.restaurant}
           </p>
 
@@ -975,8 +986,8 @@ export default function OrderDetails() {
           
           {orderData.items.map((item, index) => (
             <div key={index} className="bg-white rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center mt-0.5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-green-100 rounded flex items-center justify-center shrink-0">
                   <div className={`w-3 h-3 rounded-full border ${String(item.type).toLowerCase().includes("non") ? "border-red-600" : "border-green-600"} flex items-center justify-center`}>
                     <div className={`w-1.5 h-1.5 rounded-full ${String(item.type).toLowerCase().includes("non") ? "bg-red-600" : "bg-green-600"}`}></div>
                   </div>

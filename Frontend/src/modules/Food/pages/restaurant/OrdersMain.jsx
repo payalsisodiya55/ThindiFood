@@ -927,18 +927,19 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
                       </div>
                     </div>
 
+                    {showDeliveryBoyName && (
+                      <p className="mt-2 text-[11px] text-blue-600 font-medium break-words">
+                        Delivery Partner: {order.selfDeliveryBoy.name}
+                      </p>
+                    )}
+
                     <div className="mt-2 flex items-end justify-between gap-2">
-                      <div className="flex flex-col gap-1">
-                        <p className="text-[11px] text-gray-500">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-gray-500 truncate">
                           {order.type}
                         </p>
-                        {showDeliveryBoyName && (
-                          <p className="text-[11px] text-blue-600 font-medium break-all break-words">
-                            Delivery Partner: {order.selfDeliveryBoy.name}
-                          </p>
-                        )}
                       </div>
-                      <div className="flex items-baseline gap-1">
+                      <div className="flex items-baseline gap-1 shrink-0">
                         <span className="text-[11px] text-gray-500">
                           Amount
                         </span>
@@ -1142,9 +1143,9 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
 
             const cancelledByText =
               order.cancelledBy === "user"
-                ? "Cancelled by User"
+                ? "Cancelled By User"
                 : order.cancelledBy === "restaurant"
-                  ? "Cancelled by Restaurant"
+                  ? "Cancelled By Restaurant"
                   : "Cancelled";
 
             return (

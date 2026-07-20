@@ -24,6 +24,18 @@ const debugError = (...args) => { }
 
 const formatMoney = (value) => `₹${Number(value || 0).toFixed(2)}`
 
+const formatReasonText = (text) => {
+  if (!text) return "";
+  let formatted = text.trim();
+  formatted = formatted.replace(/cancelled by restaurant/i, "Cancelled By Restaurant");
+  formatted = formatted.replace(/cancelled by customer/i, "Cancelled By Customer");
+  formatted = formatted.replace(/cancelled by user/i, "Cancelled By Customer");
+  formatted = formatted.replace(/rejected by restaurant/i, "Rejected By Restaurant");
+  formatted = formatted.replace(/cancelled by/i, "Cancelled By");
+  formatted = formatted.replace(/rejected by/i, "Rejected By");
+  return formatted;
+};
+
 const getOrderCustomerPhone = (orderLike) =>
   String(
     orderLike?.customerPhone ||
@@ -110,7 +122,7 @@ const filterCategories = [
   { id: "Delivery timing", label: "Delivery Timing", key: "deliveryTiming" },
   { id: "Payment", label: "Payment", key: "payment" },
   { id: "Ratings", label: "Ratings", key: "ratings" },
-  { id: "KPT delay", label: "Prep time delay", key: "kptDelay" },
+  { id: "KPT delay", label: "Prep Time Delay", key: "kptDelay" },
   { id: "Complaints", label: "Complaints", key: "complaints" },
   { id: "Order type", label: "Order Type", key: "orderType" }
 ]
@@ -119,55 +131,55 @@ const filterOptions = {
   "Order status": [
     { id: "preparing", label: "Preparing", key: "orderStatus" },
     { id: "ready", label: "Ready", key: "orderStatus" },
-    { id: "out-for-delivery", label: "Out for delivery", key: "orderStatus" },
+    { id: "out-for-delivery", label: "Out for Delivery", key: "orderStatus" },
     { id: "delivered", label: "Delivered", key: "orderStatus" },
-    { id: "rejected-by-restaurant", label: "Rejected by restaurant", key: "orderStatus" },
-    { id: "cancelled-by-restaurant", label: "Cancelled by Restaurant", key: "orderStatus" },
-    { id: "cancelled-by-customer", label: "Cancelled by customer", key: "orderStatus" }
+    { id: "rejected-by-restaurant", label: "Rejected By Restaurant", key: "orderStatus" },
+    { id: "cancelled-by-restaurant", label: "Cancelled By Restaurant", key: "orderStatus" },
+    { id: "cancelled-by-customer", label: "Cancelled By Customer", key: "orderStatus" }
   ],
   "Delivery timing": [
     { id: "immediate", label: "Immediate / ASAP", key: "deliveryTiming" },
     { id: "scheduled", label: "Scheduled", key: "deliveryTiming" }
   ],
   "Payment": [
-    { id: "cash", label: "Cash on Delivery", key: "payment" },
+    { id: "cash", label: "Paid At Counter/Captain", key: "payment" },
     { id: "online", label: "Online Payment", key: "payment" }
   ],
   "Ratings": [
-    { id: "5-star", label: "5★ or less", key: "ratings", value: 5 },
-    { id: "4-star", label: "4★ or less", key: "ratings", value: 4 },
-    { id: "3-star", label: "3★ or less", key: "ratings", value: 3 },
-    { id: "2-star", label: "2★ or less", key: "ratings", value: 2 },
+    { id: "5-star", label: "5★ Or Less", key: "ratings", value: 5 },
+    { id: "4-star", label: "4★ Or Less", key: "ratings", value: 4 },
+    { id: "3-star", label: "3★ Or Less", key: "ratings", value: 3 },
+    { id: "2-star", label: "2★ Or Less", key: "ratings", value: 2 },
     { id: "1-star", label: "1★", key: "ratings", value: 1 }
   ],
   "KPT delay": [
-    { id: "under-10", label: "Under 10 min", key: "kptDelay" },
-    { id: "10-20", label: "10–20 min", key: "kptDelay" },
-    { id: "20-30", label: "20–30 min", key: "kptDelay" },
-    { id: "over-30", label: "Over 30 min", key: "kptDelay" }
+    { id: "under-10", label: "Under 10 Min", key: "kptDelay" },
+    { id: "10-20", label: "10–20 Min", key: "kptDelay" },
+    { id: "20-30", key: "kptDelay", label: "20–30 Min" },
+    { id: "over-30", label: "Over 30 Min", key: "kptDelay" }
   ],
   "Complaints": [
     { type: "header", label: "Food Issues" },
-    { id: "poor-taste", label: "Poor taste or quality", key: "complaints" },
-    { id: "wrong-items", label: "Wrong items delivered", key: "complaints" },
+    { id: "poor-taste", label: "Poor Taste or Quality", key: "complaints" },
+    { id: "wrong-items", label: "Wrong Items Delivered", key: "complaints" },
     { type: "header", label: "Packaging and Delivery" },
-    { id: "poor-packaging", label: "Poor packaging or spillage", key: "complaints" },
-    { id: "order-delayed", label: "Order delayed", key: "complaints" },
-    { id: "not-delivered", label: "Order not delivered", key: "complaints" },
+    { id: "poor-packaging", label: "Poor Packaging or Spillage", key: "complaints" },
+    { id: "order-delayed", label: "Order Delayed", key: "complaints" },
+    { id: "not-delivered", label: "Order Not Delivered", key: "complaints" },
     { type: "header", label: "Service Issues" },
-    { id: "missing-items", label: "Item missing or not delivered", key: "complaints" },
-    { id: "out-of-stock", label: "Item out of stock", key: "complaints" },
+    { id: "missing-items", label: "Item Missing or Not Delivered", key: "complaints" },
+    { id: "out-of-stock", label: "Item Out of Stock", key: "complaints" },
     { type: "header", label: "Billing" },
-    { id: "billing-issue", label: "Billing issue", key: "complaints" },
+    { id: "billing-issue", label: "Billing Issue", key: "complaints" },
     { type: "header", label: "Other" },
     { id: "no-complaints", label: "No Complaints", key: "complaints" }
   ],
   "Order type": [
     { id: "self-delivery", label: "Self Delivered", key: "orderType" },
     { id: "large-order", label: "Large Order (10+ Items)", key: "orderType" },
-    { id: "veg-only", label: "Veg only", key: "orderType" },
+    { id: "veg-only", label: "Veg Only", key: "orderType" },
     { id: "replacement", label: "Replacement", key: "orderType" },
-    { id: "dine-in", label: "Dine-in", key: "orderType" },
+    { id: "dine-in", label: "Dine-In", key: "orderType" },
     { id: "takeaway", label: "Takeaway", key: "orderType" }
   ]
 }
@@ -178,9 +190,32 @@ export default function AllOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showCalendar, setShowCalendar] = useState(false)
   const [showDateRangePopup, setShowDateRangePopup] = useState(false)
-  const [selectedDateRange, setSelectedDateRange] = useState(dateRangeOptions[1]) // Default to "this week"
-  const [startDate, setStartDate] = useState(currentWeekDates.start)
-  const [endDate, setEndDate] = useState(currentWeekDates.end)
+  const [selectedDateRange, setSelectedDateRange] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("all_orders_selected_date_range")
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        const found = dateRangeOptions.find(o => o.label === parsed.label)
+        if (found) return found
+        return parsed
+      }
+    } catch (e) {}
+    return dateRangeOptions[1]
+  })
+  const [startDate, setStartDate] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("all_orders_start_date")
+      if (saved) return new Date(saved)
+    } catch (e) {}
+    return currentWeekDates.start
+  })
+  const [endDate, setEndDate] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("all_orders_end_date")
+      if (saved) return new Date(saved)
+    } catch (e) {}
+    return currentWeekDates.end
+  })
   const calendarRef = useRef(null)
 
   // Filter states
@@ -188,15 +223,37 @@ export default function AllOrdersPage() {
   const [activeFilterCategory, setActiveFilterCategory] = useState("Order status")
   const [filterSearch, setFilterSearch] = useState("")
   const [isApplyingFilters, setIsApplyingFilters] = useState(false)
-  const [filters, setFilters] = useState({
-    orderStatus: [],
-    deliveryTiming: [],
-    payment: [],
-    ratings: [1, 5],
-    kptDelay: [],
-    complaints: [],
-    orderType: []
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem("all_orders_filters")
+      if (saved) return JSON.parse(saved)
+    } catch (e) {}
+    return {
+      orderStatus: [],
+      deliveryTiming: [],
+      payment: [],
+      ratings: [1, 5],
+      kptDelay: [],
+      complaints: [],
+      orderType: []
+    }
   })
+
+  useEffect(() => {
+    sessionStorage.setItem("all_orders_selected_date_range", JSON.stringify(selectedDateRange))
+  }, [selectedDateRange])
+
+  useEffect(() => {
+    sessionStorage.setItem("all_orders_start_date", startDate ? startDate.toISOString() : "")
+  }, [startDate])
+
+  useEffect(() => {
+    sessionStorage.setItem("all_orders_end_date", endDate ? endDate.toISOString() : "")
+  }, [endDate])
+
+  useEffect(() => {
+    sessionStorage.setItem("all_orders_filters", JSON.stringify(filters))
+  }, [filters])
 
   // Toast state
   const [showToast, setShowToast] = useState(false)
@@ -287,17 +344,18 @@ export default function AllOrdersPage() {
       // Fallback to explicit fields
       if (!reason) {
         if (isRejected && order.rejectionReason) {
-          reason = `Rejected by Restaurant: ${order.rejectionReason}`
+          reason = `Rejected By Restaurant: ${order.rejectionReason}`
         } else if (isCancelled && order.cancellationReason) {
-          const who = statusUpper.includes('CUSTOMER') ? 'customer' : 'restaurant'
-          reason = `Cancelled by ${who}: ${order.cancellationReason}`
+          const who = statusUpper.includes('CUSTOMER') ? 'Customer' : 'Restaurant'
+          reason = `Cancelled By ${who}: ${order.cancellationReason}`
         } else if (isRejected) {
-          reason = 'Rejected by Restaurant'
+          reason = 'Rejected By Restaurant'
         } else if (isCancelled) {
-          const who = statusUpper.includes('CUSTOMER') ? 'customer' : 'restaurant'
-          reason = `Cancelled by ${who}`
+          const who = statusUpper.includes('CUSTOMER') ? 'Customer' : 'Restaurant'
+          reason = `Cancelled By ${who}`
         }
       }
+      reason = formatReasonText(reason)
     }
 
     const fulfillmentType = String(order.fulfillmentType || "").trim().toLowerCase()
@@ -560,6 +618,20 @@ export default function AllOrdersPage() {
     })
   }
 
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    Object.entries(filters).forEach(([key, val]) => {
+      if (key === "ratings") {
+        if (val && (val[0] > 1 || val[1] < 5)) {
+          count += 1;
+        }
+      } else {
+        count += (val ? val.length : 0);
+      }
+    });
+    return count;
+  };
+
   const getOptionCount = useCallback((option) => {
     const key = option.key
     const value = option.id
@@ -610,10 +682,10 @@ export default function AllOrdersPage() {
     if (!status) return ""
     const normalized = status.toUpperCase().replace(/_/g, " ")
     if (normalized === "CANCELLED BY RESTAURANT") {
-      return "Cancelled by Restaurant"
+      return "Cancelled By Restaurant"
     }
     if (normalized === "CANCELLED BY CUSTOMER") {
-      return "Cancelled by Customer"
+      return "Cancelled By Customer"
     }
     return normalized.toLowerCase().replace(/\b\w/g, c => c.toUpperCase())
   }
@@ -787,7 +859,7 @@ export default function AllOrdersPage() {
             <Filter className="w-5 h-5 text-gray-900" />
             {hasActiveFilters() && (
               <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-xs flex items-center justify-center font-bold" style={{ backgroundColor: RESTAURANT_THEME.brand }}>
-                {Object.values(filters).flat().length}
+                {getActiveFiltersCount()}
               </span>
             )}
           </button>
