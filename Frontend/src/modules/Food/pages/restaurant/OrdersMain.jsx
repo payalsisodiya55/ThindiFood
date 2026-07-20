@@ -383,20 +383,49 @@ const getBookingStatusMeta = (statusLike) => {
   };
 };
 
-const transformOrderForList = (order) => ({
-  orderId: order.orderId || order._id,
-  mongoId: order._id,
-  status: order.status || "pending",
-  customerName: order.userId?.name || order.customerName || "Customer",
-  customerPhone: getOrderCustomerPhone(order),
-  type: getRestaurantOrderTypeLabel(order),
-  note: order.note || order.notes || order.specialInstructions || "",
-  notes: order.notes || order.note || order.specialInstructions || "",
-  specialInstructions: order.specialInstructions || order.notes || order.note || "",
-  fulfillmentType: order.fulfillmentType || "delivery",
-  deliveryType: order.deliveryType || null,
-  customerAddress:
-    order.customerAddress || order.address || order.deliveryAddress || null,
+const transformOrderForList = (order) => {
+  const cookingNote =
+    order.note ||
+    order.notes ||
+    order.specialInstructions ||
+    order.cookingInstruction ||
+    order.cookingInstructions ||
+    order.restaurantNote ||
+    order.instructions ||
+    "";
+
+  const deliveryNote =
+    order.deliveryNotes ||
+    order.deliveryNote ||
+    order.deliveryInstruction ||
+    order.deliveryInstructions ||
+    order.customerAddress?.deliveryInstructions ||
+    order.address?.deliveryInstructions ||
+    order.deliveryAddress?.deliveryInstructions ||
+    order.customerAddress?.instructions ||
+    order.address?.instructions ||
+    order.deliveryAddress?.instructions ||
+    order.address?.deliveryNote ||
+    order.address?.note ||
+    order.deliveryAddress?.note ||
+    "";
+
+  return {
+    orderId: order.orderId || order._id,
+    mongoId: order._id,
+    status: order.status || "pending",
+    customerName: order.userId?.name || order.customerName || "Customer",
+    customerPhone: getOrderCustomerPhone(order),
+    type: getRestaurantOrderTypeLabel(order),
+    note: cookingNote,
+    notes: cookingNote,
+    specialInstructions: cookingNote,
+    cookingNote,
+    deliveryNote,
+    fulfillmentType: order.fulfillmentType || "delivery",
+    deliveryType: order.deliveryType || null,
+    customerAddress:
+      order.customerAddress || order.address || order.deliveryAddress || null,
   selfDelivery: order.selfDelivery || null,
   selfDeliveryBoy:
     order.selfDelivery?.deliveryBoyId &&
@@ -435,9 +464,9 @@ const transformOrderForList = (order) => ({
   preparingTimestamp: order.tracking?.preparing?.timestamp
     ? new Date(order.tracking.preparing.timestamp)
     : new Date(order.createdAt || Date.now()),
-  initialETA: order.estimatedDeliveryTime || 30,
   sortTimestamp: new Date(getAllOrdersTimestamp(order)).getTime(),
-});
+  };
+};
 
 const getDineInSessionLatestRound = (session) => {
   const rounds = Array.isArray(session?.orders) ? session.orders : [];
@@ -555,6 +584,11 @@ const transformDineInSessionForList = (session, tableLike = null) => {
     items: Array.isArray(latestRound?.items) ? latestRound.items : [],
     createdAt: latestRound?.createdAt || session?.createdAt,
     updatedAt: latestRound?.updatedAt || session?.updatedAt,
+    note: latestRound?.note || latestRound?.notes || latestRound?.specialInstructions || session?.note || session?.notes || "",
+    notes: latestRound?.note || latestRound?.notes || latestRound?.specialInstructions || session?.note || session?.notes || "",
+    specialInstructions: latestRound?.note || latestRound?.notes || latestRound?.specialInstructions || session?.note || session?.notes || "",
+    cookingNote: latestRound?.note || latestRound?.notes || latestRound?.specialInstructions || session?.note || session?.notes || "",
+    deliveryNote: latestRound?.deliveryInstructions || session?.deliveryInstructions || "",
   };
 };
 
@@ -909,6 +943,32 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
                           </p>
                         ))}
                       </div>
+                      {(order.note || order.notes || order.specialInstructions || order.cookingNote) && (
+                        <div className="mt-2 rounded-xl p-2.5 bg-blue-50/70 border border-blue-100">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                              Note for Restaurant
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-blue-900 ml-5 break-words whitespace-pre-wrap leading-tight">
+                            {order.note || order.notes || order.specialInstructions || order.cookingNote}
+                          </p>
+                        </div>
+                      )}
+                      {(order.deliveryNote || order.customerAddress?.deliveryInstructions || order.address?.deliveryInstructions || order.deliveryAddress?.deliveryInstructions) && (
+                        <div className="mt-2 rounded-xl p-2.5 bg-amber-50/70 border border-amber-100">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                              Delivery Note
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-amber-900 ml-5 break-words whitespace-pre-wrap leading-tight">
+                            {order.deliveryNote || order.customerAddress?.deliveryInstructions || order.address?.deliveryInstructions || order.deliveryAddress?.deliveryInstructions}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {showDeliveryBoyName && (
@@ -1192,6 +1252,32 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
                           </p>
                         ))}
                       </div>
+                      {(order.note || order.notes || order.specialInstructions || order.cookingNote) && (
+                        <div className="mt-2 rounded-xl p-2.5 bg-blue-50/70 border border-blue-100">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                            <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                              Note for Restaurant
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-blue-900 ml-5 break-words whitespace-pre-wrap leading-tight">
+                            {order.note || order.notes || order.specialInstructions || order.cookingNote}
+                          </p>
+                        </div>
+                      )}
+                      {(order.deliveryNote || order.customerAddress?.deliveryInstructions || order.address?.deliveryInstructions || order.deliveryAddress?.deliveryInstructions) && (
+                        <div className="mt-2 rounded-xl p-2.5 bg-amber-50/70 border border-amber-100">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <MessageSquare className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                            <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                              Delivery Note
+                            </span>
+                          </div>
+                          <p className="text-xs font-semibold text-amber-900 ml-5 break-words whitespace-pre-wrap leading-tight">
+                            {order.deliveryNote || order.customerAddress?.deliveryInstructions || order.address?.deliveryInstructions || order.deliveryAddress?.deliveryInstructions}
+                          </p>
+                        </div>
+                      )}
                       <p className="text-xs text-rose-600 font-medium mt-1.5">
                         <span className="font-bold">Reason:</span> {order.cancellationReason || "No reason provided"}
                       </p>
@@ -5140,20 +5226,20 @@ export default function OrdersMain() {
                         onClick={() => setRejectReason(reason)}
                         className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
                           rejectReason === reason
-                            ? "border-black bg-black/5"
+                            ? "border-emerald-500 bg-emerald-50/50"
                             : "border-gray-200 bg-white hover:border-gray-300"
                         }`}>
                         <div className="flex items-center justify-between">
                           <span
-                            className={`text-sm font-medium ${
+                            className={`text-sm font-semibold ${
                               rejectReason === reason
-                                ? "text-black"
+                                ? "text-emerald-900"
                                 : "text-gray-900"
                             }`}>
                             {reason}
                           </span>
                           {rejectReason === reason && (
-                            <div className="w-5 h-5 rounded-full bg-black flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
                               <svg
                                 className="w-3 h-3 text-white"
                                 fill="none"
@@ -5186,7 +5272,7 @@ export default function OrdersMain() {
                     disabled={!rejectReason}
                     className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
                       rejectReason
-                        ? "!bg-black !text-white"
+                        ? "!bg-red-600 !text-white hover:bg-red-700 active:scale-95 shadow-sm"
                         : "bg-gray-200 text-gray-400 cursor-not-allowed"
                     }`}>
                     Confirm Rejection
@@ -5391,6 +5477,32 @@ export default function OrdersMain() {
                 </div>
               </div>
 
+              {/* Note for Restaurant */}
+              {(selectedOrder.cookingNote || selectedOrder.note || selectedOrder.notes || selectedOrder.specialInstructions) && (
+                <div className="mb-3 rounded-xl p-3 bg-blue-50/70 border border-blue-100">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <MessageSquare className="h-4 w-4 text-blue-600 shrink-0" />
+                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider">Note for Restaurant</span>
+                  </div>
+                  <p className="text-xs font-semibold text-blue-900 ml-5 break-words whitespace-pre-wrap leading-snug">
+                    {selectedOrder.cookingNote || selectedOrder.note || selectedOrder.notes || selectedOrder.specialInstructions}
+                  </p>
+                </div>
+              )}
+
+              {/* Delivery Note */}
+              {(selectedOrder.deliveryNote || selectedOrder.customerAddress?.deliveryInstructions || selectedOrder.address?.deliveryInstructions || selectedOrder.deliveryAddress?.deliveryInstructions) && (
+                <div className="mb-3 rounded-xl p-3 bg-amber-50/70 border border-amber-100">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <MessageSquare className="h-4 w-4 text-amber-600 shrink-0" />
+                    <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">Delivery Note</span>
+                  </div>
+                  <p className="text-xs font-semibold text-amber-900 ml-5 break-words whitespace-pre-wrap leading-snug">
+                    {selectedOrder.deliveryNote || selectedOrder.customerAddress?.deliveryInstructions || selectedOrder.address?.deliveryInstructions || selectedOrder.deliveryAddress?.deliveryInstructions}
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between text-[11px] text-gray-500 mb-4">
                 {/* Hide ETA for ready orders */}
                 {String(selectedOrder.status || "").toLowerCase() !== "ready" && selectedOrder.eta && (
@@ -5555,8 +5667,23 @@ function OrderCard({
   pricing,
   cancellationReason,
   cancellation,
+  cookingNote,
+  deliveryNote,
+  note,
+  notes,
+  specialInstructions,
+  customerAddress,
+  address,
+  deliveryAddress,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
+  const activeCookingNote = cookingNote || note || notes || specialInstructions || "";
+  const activeDeliveryNote =
+    deliveryNote ||
+    customerAddress?.deliveryInstructions ||
+    address?.deliveryInstructions ||
+    deliveryAddress?.deliveryInstructions ||
+    "";
   const normalizedPaymentMethod = String(paymentMethod || "").toLowerCase().trim();
   const isPoc = ["cash", "cod", "counter"].includes(normalizedPaymentMethod);
   const showPocAmount = isPoc && [
@@ -5772,6 +5899,32 @@ function OrderCard({
                 </p>
               ))}
             </div>
+            {activeCookingNote && (
+              <div className="mt-2 rounded-xl p-2.5 bg-blue-50/70 border border-blue-100">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+                    Note for Restaurant
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-blue-900 ml-5 break-words whitespace-pre-wrap leading-tight">
+                  {activeCookingNote}
+                </p>
+              </div>
+            )}
+            {activeDeliveryNote && (
+              <div className="mt-2 rounded-xl p-2.5 bg-amber-50/70 border border-amber-100">
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                  <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+                    Delivery Note
+                  </span>
+                </div>
+                <p className="text-xs font-semibold text-amber-900 ml-5 break-words whitespace-pre-wrap leading-tight">
+                  {activeDeliveryNote}
+                </p>
+              </div>
+            )}
             {isCancelled && (
               <p className="text-xs text-rose-600 font-medium mt-1.5">
                 <span className="font-bold">Reason:</span> {reasonText}
@@ -5945,11 +6098,37 @@ function PreparingOrders({
               ? new Date(order.tracking.preparing.timestamp)
               : new Date(order.createdAt); // Fallback to createdAt if preparing timestamp not available
 
+            const cookingNote =
+              order.note ||
+              order.notes ||
+              order.specialInstructions ||
+              order.cookingInstruction ||
+              order.cookingInstructions ||
+              order.restaurantNote ||
+              order.instructions ||
+              "";
+
+            const deliveryNote =
+              order.deliveryNotes ||
+              order.deliveryNote ||
+              order.deliveryInstruction ||
+              order.deliveryInstructions ||
+              order.customerAddress?.deliveryInstructions ||
+              order.address?.deliveryInstructions ||
+              order.deliveryAddress?.deliveryInstructions ||
+              order.customerAddress?.instructions ||
+              order.address?.instructions ||
+              order.deliveryAddress?.instructions ||
+              order.address?.deliveryNote ||
+              order.address?.note ||
+              order.deliveryAddress?.note ||
+              "";
+
             return {
               orderId: order.orderId || order._id,
               mongoId: order._id,
               status: getNormalizedRestaurantOrderStatus(order) || "preparing",
-              customerName: order.userId?.name || "Customer",
+              customerName: order.userId?.name || order.customerName || "Customer",
               type: getRestaurantOrderTypeLabel(order),
               tableOrToken: null,
               timePlaced: new Date(order.createdAt).toLocaleTimeString(
@@ -5982,6 +6161,14 @@ function PreparingOrders({
                       phone: order.selfDelivery.deliveryBoyId.phone || "",
                     }
                   : null,
+              note: cookingNote,
+              notes: cookingNote,
+              specialInstructions: cookingNote,
+              cookingNote,
+              deliveryNote,
+              customerAddress: order.customerAddress || order.address || order.deliveryAddress || null,
+              address: order.address || order.deliveryAddress || order.customerAddress || null,
+              deliveryAddress: order.deliveryAddress || order.address || order.customerAddress || null,
             };
           });
 
@@ -6353,40 +6540,76 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, onStatusChanged, searchV
             );
           });
 
-          const transformedOrders = readyOrders.map((order) => ({
-            orderId: order.orderId || order._id,
-            mongoId: order._id,
-            status: getNormalizedRestaurantOrderStatus(order) || "ready",
-            customerName: order.userId?.name || "Customer",
-            type: getRestaurantOrderTypeLabel(order),
-            tableOrToken: null,
-            timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            sortTimestamp: new Date(order.createdAt).getTime(),
-            eta: null, // Don't show ETA for ready orders
-            itemsSummary: formatOrderItemsSummary(order.items),
-            photoUrl: order.items?.[0]?.image || null,
-            photoAlt: order.items?.[0]?.name || "Order",
-            customerPhone: getOrderCustomerPhone(order),
-            paymentMethod: order.paymentMethod || order.payment?.method || null,
-            deliveryPartnerId: order.deliveryPartnerId || null,
-            dispatchStatus: order.dispatch?.status || null,
-            total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
-            pricing: order.pricing || null,
-            fulfillmentType: order.fulfillmentType || "delivery",
-            deliveryType: order.deliveryType || null,
-            selfDelivery: order.selfDelivery || null,
-            selfDeliveryBoy:
-              order.selfDelivery?.deliveryBoyId && typeof order.selfDelivery.deliveryBoyId === "object"
-                ? {
-                    id: order.selfDelivery.deliveryBoyId._id || order.selfDelivery.deliveryBoyId.id || null,
-                    name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
-                    phone: order.selfDelivery.deliveryBoyId.phone || "",
-                  }
-                : null,
-          }));
+          const transformedOrders = readyOrders.map((order) => {
+            const cookingNote =
+              order.note ||
+              order.notes ||
+              order.specialInstructions ||
+              order.cookingInstruction ||
+              order.cookingInstructions ||
+              order.restaurantNote ||
+              order.instructions ||
+              "";
+
+            const deliveryNote =
+              order.deliveryNotes ||
+              order.deliveryNote ||
+              order.deliveryInstruction ||
+              order.deliveryInstructions ||
+              order.customerAddress?.deliveryInstructions ||
+              order.address?.deliveryInstructions ||
+              order.deliveryAddress?.deliveryInstructions ||
+              order.customerAddress?.instructions ||
+              order.address?.instructions ||
+              order.deliveryAddress?.instructions ||
+              order.address?.deliveryNote ||
+              order.address?.note ||
+              order.deliveryAddress?.note ||
+              "";
+
+            return {
+              orderId: order.orderId || order._id,
+              mongoId: order._id,
+              status: getNormalizedRestaurantOrderStatus(order) || "ready",
+              customerName: order.userId?.name || order.customerName || "Customer",
+              type: getRestaurantOrderTypeLabel(order),
+              tableOrToken: null,
+              timePlaced: new Date(order.createdAt).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              sortTimestamp: new Date(order.createdAt).getTime(),
+              eta: null, // Don't show ETA for ready orders
+              itemsSummary: formatOrderItemsSummary(order.items),
+              photoUrl: order.items?.[0]?.image || null,
+              photoAlt: order.items?.[0]?.name || "Order",
+              customerPhone: getOrderCustomerPhone(order),
+              paymentMethod: order.paymentMethod || order.payment?.method || null,
+              deliveryPartnerId: order.deliveryPartnerId || null,
+              dispatchStatus: order.dispatch?.status || null,
+              total: order.pricing?.total || order.total || order.payment?.amountDue || 0,
+              pricing: order.pricing || null,
+              fulfillmentType: order.fulfillmentType || "delivery",
+              deliveryType: order.deliveryType || null,
+              selfDelivery: order.selfDelivery || null,
+              selfDeliveryBoy:
+                order.selfDelivery?.deliveryBoyId && typeof order.selfDelivery.deliveryBoyId === "object"
+                  ? {
+                      id: order.selfDelivery.deliveryBoyId._id || order.selfDelivery.deliveryBoyId.id || null,
+                      name: order.selfDelivery.deliveryBoyId.name || "Delivery Partner",
+                      phone: order.selfDelivery.deliveryBoyId.phone || "",
+                    }
+                  : null,
+              note: cookingNote,
+              notes: cookingNote,
+              specialInstructions: cookingNote,
+              cookingNote,
+              deliveryNote,
+              customerAddress: order.customerAddress || order.address || order.deliveryAddress || null,
+              address: order.address || order.deliveryAddress || order.customerAddress || null,
+              deliveryAddress: order.deliveryAddress || order.address || order.customerAddress || null,
+            };
+          });
 
           const fetchedDeliveryBoys = Array.isArray(boysResponse?.data?.data?.deliveryBoys)
             ? boysResponse.data.data.deliveryBoys
@@ -6937,6 +7160,14 @@ function ScheduledOrders({ onSelectOrder, onCancel, refreshToken = 0, searchValu
               pickupAt: order.pickupAt || null,
               scheduledAt: order.scheduledAt || null,
               prep_start_time: order.prep_start_time || null,
+              note: order.note || order.notes || order.specialInstructions || order.cookingInstruction || order.cookingInstructions || order.restaurantNote || order.instructions || "",
+              notes: order.note || order.notes || order.specialInstructions || order.cookingInstruction || order.cookingInstructions || order.restaurantNote || order.instructions || "",
+              specialInstructions: order.note || order.notes || order.specialInstructions || order.cookingInstruction || order.cookingInstructions || order.restaurantNote || order.instructions || "",
+              cookingNote: order.note || order.notes || order.specialInstructions || order.cookingInstruction || order.cookingInstructions || order.restaurantNote || order.instructions || "",
+              deliveryNote: order.deliveryNotes || order.deliveryNote || order.deliveryInstruction || order.deliveryInstructions || order.customerAddress?.deliveryInstructions || order.address?.deliveryInstructions || order.deliveryAddress?.deliveryInstructions || order.customerAddress?.instructions || order.address?.instructions || order.deliveryAddress?.instructions || order.address?.deliveryNote || order.address?.note || order.deliveryAddress?.note || "",
+              customerAddress: order.customerAddress || order.address || order.deliveryAddress || null,
+              address: order.address || order.deliveryAddress || order.customerAddress || null,
+              deliveryAddress: order.deliveryAddress || order.address || order.customerAddress || null,
             }))
             .sort((a, b) => a.sortTimestamp - b.sortTimestamp);
 
