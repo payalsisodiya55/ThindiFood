@@ -3380,15 +3380,17 @@ export default function Cart() {
 
               {/* Restaurant Note */}
               <div className="bg-white dark:bg-[#1a1a1a] px-4 md:px-6 py-4 rounded-2xl shadow-sm border border-slate-100 dark:border-gray-800 flex flex-col gap-3">
-                <div className="flex items-center gap-2 md:gap-3 mb-1">
+                <div className="flex items-center justify-between gap-2 md:gap-3 mb-1">
                   <span className="text-sm md:text-base font-semibold text-gray-800 dark:text-gray-200">Note for Restaurant</span>
+                  <span className="text-xs text-gray-400 font-medium">{orderNote.length}/150</span>
                 </div>
                 <div className="flex items-start gap-3 bg-gray-50 dark:bg-gray-800/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
                   <MessageCircle className="h-5 w-5 text-gray-400 mt-0.5 flex-shrink-0" />
                   <textarea
                     value={orderNote}
-                    onChange={(e) => setOrderNote(e.target.value)}
-                    placeholder="Any specific instructions for the chef?"
+                    onChange={(e) => setOrderNote(e.target.value.slice(0, 150))}
+                    maxLength={150}
+                    placeholder="Any specific instructions for the chef? (max 150 chars)"
                     className="w-full text-sm bg-transparent border-none focus:ring-0 p-0 text-gray-800 dark:text-gray-200 resize-none outline-none min-h-[40px]"
                     rows={2}
                     onInput={(e) => {

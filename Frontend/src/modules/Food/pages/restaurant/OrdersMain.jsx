@@ -383,6 +383,32 @@ const getBookingStatusMeta = (statusLike) => {
   };
 };
 
+const getResolvedCancellationReason = (order) => {
+  if (!order) return "";
+  const historyReason = Array.isArray(order.statusHistory)
+    ? [...order.statusHistory].reverse().find((e) => {
+        const s = String(e?.to || e?.status || e?.action || "").toLowerCase();
+        return s.includes("cancel") || s.includes("reject");
+      })?.note || ""
+    : "";
+
+  return (
+    order.cancellationReason ||
+    order.cancelReason ||
+    order.rejectionReason ||
+    order.rejectedReason ||
+    order.cancellation?.reason ||
+    order.cancellation?.note ||
+    order.cancellation?.byRestaurant?.reason ||
+    order.cancellation?.byUser?.reason ||
+    order.cancelledByRestaurantReason ||
+    order.restaurantCancelReason ||
+    order.reason ||
+    historyReason ||
+    ""
+  );
+};
+
 const transformOrderForList = (order) => {
   const cookingNote =
     order.note ||
@@ -410,6 +436,8 @@ const transformOrderForList = (order) => {
     order.deliveryAddress?.note ||
     "";
 
+  const resolvedCancellationReason = getResolvedCancellationReason(order);
+
   return {
     orderId: order.orderId || order._id,
     mongoId: order._id,
@@ -422,6 +450,9 @@ const transformOrderForList = (order) => {
     specialInstructions: cookingNote,
     cookingNote,
     deliveryNote,
+    cancellationReason: resolvedCancellationReason,
+    cancellation: order.cancellation || null,
+    statusHistory: order.statusHistory || [],
     fulfillmentType: order.fulfillmentType || "delivery",
     deliveryType: order.deliveryType || null,
     customerAddress:
@@ -1101,7 +1132,7 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchValue = "" }) 
               order.cancelledAt || order.updatedAt || order.createdAt,
             cancelledBy: order.cancelledBy || "unknown",
             cancellationReason:
-              order.cancellationReason || "No reason provided",
+              getResolvedCancellationReason(order) || "No reason provided",
             itemsSummary: formatOrderItemsSummary(order.items),
             photoUrl: order.items?.[0]?.image || null,
             photoAlt: order.items?.[0]?.name || "Order",
@@ -3435,12 +3466,7 @@ export default function OrdersMain() {
 
   const handleRejectCancel = () => {
     setShowRejectPopup(false);
-    setShowNewOrderPopup(false);
-    setPopupOrder(null);
-    clearStoredPopupTimerAnchor(popupOrder || newOrder);
-    clearNewOrder();
     setRejectReason("");
-    setCountdown(ORDER_ACCEPT_WINDOW_SECONDS);
   };
 
   // Handle cancel order (for preparing orders)
@@ -5675,6 +5701,7 @@ function OrderCard({
   customerAddress,
   address,
   deliveryAddress,
+  statusHistory,
 }) {
   const normalizedStatus = String(status || "").toLowerCase();
   const activeCookingNote = cookingNote || note || notes || specialInstructions || "";
@@ -5759,7 +5786,10 @@ function OrderCard({
             .replace(/_/g, " ")
             .replace(/\b\w/g, (c) => c.toUpperCase());
 
-  const reasonText = cancellationReason || cancellation?.reason || cancellation?.byRestaurant?.reason || cancellation?.byUser?.reason || "No reason provided";
+  const reasonText =
+    cancellationReason ||
+    getResolvedCancellationReason({ cancellationReason, cancellation, statusHistory }) ||
+    "No reason provided";
 
   return (
     <div
