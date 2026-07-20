@@ -6593,7 +6593,8 @@ export async function getSidebarBadges() {
             pendingSafetyReports,
             pendingEmergencyHelp,
             pendingRestaurantComplaints,
-            pendingRestaurantOffers
+            pendingRestaurantOffers,
+            pendingDiningRequests
         ] = await Promise.all([
             FoodRestaurant.countDocuments({ status: 'pending' }),
             FoodDeliveryPartner.countDocuments({ status: 'pending' }),
@@ -6609,7 +6610,8 @@ export async function getSidebarBadges() {
             FoodSafetyEmergencyReport.countDocuments({ status: 'pending' }),
             FoodDeliveryEmergencyHelp.countDocuments({ status: 'pending' }),
             FoodSupportTicket.countDocuments({ status: 'open', restaurantId: { $exists: true } }),
-            RestaurantOffer.countDocuments({ approvalStatus: 'pending' })
+            RestaurantOffer.countDocuments({ approvalStatus: 'pending' }),
+            FoodRestaurant.countDocuments({ 'pendingDiningRequest.requestedAt': { $ne: null } })
         ]);
 
         return {
@@ -6627,7 +6629,8 @@ export async function getSidebarBadges() {
             safetyReports: pendingSafetyReports,
             emergencyHelp: pendingEmergencyHelp,
             restaurantComplaints: pendingRestaurantComplaints,
-            productOffers: pendingRestaurantOffers
+            productOffers: pendingRestaurantOffers,
+            diningApprovals: pendingDiningRequests
         };
     } catch (error) {
         console.error('Error fetching sidebar badges:', error);

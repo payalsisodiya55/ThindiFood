@@ -136,6 +136,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
     if (l.includes("offer approvals")) return badges.productOffers
     if (l.includes("food approval")) return badges.foodApprovals
+    if (l.includes("dining list")) return badges.diningApprovals
     if (l === "foods") return 0
     if (l === "restaurants" || l.includes("new joining request")) return badges.restaurants
     if (l.includes("restaurant complaints")) return badges.restaurantComplaints
