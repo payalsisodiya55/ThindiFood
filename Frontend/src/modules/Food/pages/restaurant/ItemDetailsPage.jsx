@@ -1294,7 +1294,7 @@ export default function ItemDetailsPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-gray-900">Variants</p>
-                    <p className="text-xs text-gray-500">Base price applies unless variants (E.g. Half/Full) are added</p>
+                    <p className="text-xs text-gray-500">Allow menu items to be configured with multiple size variants (e.g., Half, Full, Small, Large), each with its own price.</p>
                   </div>
                   <button
                     type="button"
@@ -1512,17 +1512,9 @@ export default function ItemDetailsPage() {
             className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[85vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}>
             
-              {/* Absolute Close Button in Top-Right Corner */}
-              <button
-                onClick={() => setIsCategoryPopupOpen(false)}
-                className="absolute right-4 top-4 rounded-full p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors focus:outline-none flex items-center justify-center z-10"
-              >
-                <CloseIcon className="w-5 h-5" />
-              </button>
-
               <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
                 <h2 className="text-lg font-bold text-gray-900">Select Category</h2>
-                <div className="mr-8">
+                <div>
                   <button
                   onClick={() => {
                     setIsCategoryPopupOpen(false);
@@ -1553,10 +1545,10 @@ export default function ItemDetailsPage() {
                   className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg font-semibold transition-colors hover:opacity-90"
                   style={{ backgroundColor: RESTAURANT_THEME.brand }}>
                   
-                      <Plus className="w-5 h-5" />
-                      Add Category
-                    </button>
-                  </div> :
+                    <Plus className="w-5 h-5" />
+                    Add Category
+                  </button>
+                </div> :
 
               <div className="space-y-2">
                     {categories.map((cat) =>
@@ -1584,6 +1576,16 @@ export default function ItemDetailsPage() {
                 )}
                   </div>
               }
+              </div>
+              
+              {/* Fixed Close Button at the Bottom */}
+              <div className="p-4 border-t border-gray-200 bg-white">
+                <button
+                  onClick={() => setIsCategoryPopupOpen(false)}
+                  className="w-full py-3 bg-gray-100 text-gray-800 font-bold rounded-xl text-center hover:bg-gray-200 transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
               </div>
             </motion.div>
           </>
