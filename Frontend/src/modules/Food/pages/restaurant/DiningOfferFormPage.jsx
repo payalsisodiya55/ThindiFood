@@ -306,12 +306,12 @@ export default function DiningOfferFormPage({ mode = "create" }) {
 
   const validationError = useMemo(() => {
     if (!String(form.title || "").trim()) return "Title is required"
-    if (String(form.title || "").trim().length > 15) {
-      return "Title cannot exceed 15 characters"
+    if (String(form.title || "").trim().length > 50) {
+      return "Title cannot exceed 50 characters"
     }
     
-    if (form.description && String(form.description).trim().length > 50) {
-      return "Description cannot exceed 50 characters"
+    if (form.description && String(form.description).trim().length > 80) {
+      return "Description cannot exceed 80 characters"
     }
 
     const discVal = Number(form.discountValue || 0)
@@ -321,8 +321,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
     if (isPercentage && (discVal < 1 || discVal > 99)) {
       return "Percentage discount must be between 1% and 99%"
     }
-    if (!isPercentage && discVal > 999) {
-      return "Discount amount cannot exceed ₹999"
+    if (!isPercentage && discVal > 9999) {
+      return "Discount amount cannot exceed ₹9,999"
     }
 
     if (isPercentage) {
@@ -333,8 +333,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
       if (!Number.isFinite(maxD) || maxD <= 0) {
         return "Max discount must be greater than 0"
       }
-      if (maxD > 999) {
-        return "Max discount cannot exceed ₹999"
+      if (maxD > 9999) {
+        return "Max discount cannot exceed ₹9,999"
       }
     }
 
@@ -353,8 +353,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
       if (!Number.isInteger(usageL) || usageL < 1) {
         return "Total redemptions limit must be at least 1"
       }
-      if (usageL > 1000000) {
-        return "Total redemptions limit cannot exceed 1,000,000"
+      if (usageL > 9999) {
+        return "Total redemptions limit cannot exceed 9,999"
       }
     }
 
@@ -363,8 +363,8 @@ export default function DiningOfferFormPage({ mode = "create" }) {
       if (!Number.isInteger(perUserL) || perUserL < 1) {
         return "Uses per customer limit must be at least 1"
       }
-      if (perUserL > 1000) {
-        return "Uses per customer limit cannot exceed 1,000"
+      if (perUserL > 99) {
+        return "Uses per customer limit cannot exceed 99"
       }
       if (form.usageLimit !== "" && perUserL > Number(form.usageLimit)) {
         return "Uses per customer cannot exceed total redemptions allowed"
@@ -451,7 +451,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                 </label>
                 <p className="mb-1.5 text-xs text-slate-500">Visible to customers. Keep it short and catchy</p>
                 <div className="flex gap-2">
-                  <Input value={form.title} maxLength={15} onChange={(e) => setField("title", e.target.value)} placeholder="E.g. Weekend Dining Special" className="h-12 flex-1" />
+                  <Input value={form.title} maxLength={50} onChange={(e) => setField("title", e.target.value)} placeholder="E.g. Weekend Dining Special" className="h-12 flex-1" />
                   <button
                     type="button"
                     onClick={() => setField("title", randomDiningOfferCode())}
@@ -472,10 +472,10 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                     onChange={(e) => setField("description", e.target.value)}
                     placeholder="E.g. Valid on all main courses during lunch hour"
                     className="min-h-[90px] w-full rounded-xl border border-slate-200 px-3 py-3 text-sm text-slate-800 outline-none focus:border-[#00c87e]"
-                    maxLength={50}
+                    maxLength={80}
                   />
                   <div className="text-right text-[10px] text-slate-400 mt-1">
-                    {form.description.length}/50
+                    {form.description.length}/80
                   </div>
                 </div>
               </div>
@@ -504,7 +504,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                   <Input
                     type="text"
                     value={form.discountValue}
-                    maxLength={isPercentage ? 2 : 3}
+                    maxLength={isPercentage ? 2 : 4}
                     onChange={(e) => {
                       const val = e.target.value
                       const sanitized = val.replace(/[^0-9]/g, "")
@@ -527,7 +527,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                     <Input
                       type="text"
                       value={form.maxDiscount}
-                      maxLength={3}
+                      maxLength={4}
                       onChange={(e) => {
                         const val = e.target.value
                         const sanitized = val.replace(/[^0-9]/g, "")
@@ -570,7 +570,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                 <Input
                   type="text"
                   value={form.usageLimit}
-                  maxLength={8}
+                  maxLength={4}
                   onChange={(e) => setField("usageLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 100"
                   className="h-12"
@@ -583,7 +583,7 @@ export default function DiningOfferFormPage({ mode = "create" }) {
                 <Input
                   type="text"
                   value={form.perUserLimit}
-                  maxLength={6}
+                  maxLength={2}
                   onChange={(e) => setField("perUserLimit", e.target.value.replace(/\D/g, ""))}
                   placeholder="E.g. 1"
                   className="h-12"
