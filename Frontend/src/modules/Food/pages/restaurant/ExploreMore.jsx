@@ -1289,7 +1289,7 @@ export default function ExploreMore() {
                 <h2 className="text-lg font-bold text-gray-900">My profile</h2>
                 <button
                   onClick={() => setProfileOpen(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-gray-100 rounded-full border border-gray-200 transition-colors"
                   aria-label="Close"
                 >
                   <X className="w-5 h-5 text-gray-900" />
