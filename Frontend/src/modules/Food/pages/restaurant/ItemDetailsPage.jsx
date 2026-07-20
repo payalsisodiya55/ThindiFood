@@ -1299,7 +1299,7 @@ export default function ItemDetailsPage() {
                   <button
                     type="button"
                     onClick={handleAddVariant}
-                    className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold border border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100">
+                    className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold border border-green-200 bg-green-50 text-green-700 hover:bg-green-100">
                     
                     <Plus className="w-3.5 h-3.5" />
                     Add Variant
@@ -1426,7 +1426,7 @@ export default function ItemDetailsPage() {
 
               {/* Preparation Time */}
               <div className="relative">
-                <label className="block text-xs text-gray-600 mb-1">
+                <label className="block text-xs font-semibold text-gray-600 mb-1">
                   Preparation Time<span className="text-rose-500 ml-1">*</span>
                 </label>
                 <div className="relative">
