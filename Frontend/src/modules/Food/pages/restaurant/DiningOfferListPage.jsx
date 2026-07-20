@@ -1,7 +1,7 @@
 import { confirmApp } from "@shared/lib/appDialog";import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarDays, Edit2, Gift, MoreVertical, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarDays, Edit2, Gift, MoreVertical, Plus, Trash2, UtensilsCrossed, Percent, Clock } from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation";
 import { RESTAURANT_THEME } from "@food/constants/restaurantTheme";
@@ -97,11 +97,16 @@ export default function DiningOfferListPage() {
   return (
     <div className="min-h-screen bg-[#eef2f6] pb-8">
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 w-full">
-        <div className="mx-auto max-w-md md:max-w-6xl flex items-center gap-3">
-          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100">
+        <div className="mx-auto max-w-md md:max-w-6xl flex items-start gap-3">
+          <button onClick={goBack} className="rounded-md p-1 text-slate-600 hover:bg-slate-100 mt-1">
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-2xl font-semibold text-slate-900">Dining Offers</h1>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Dining Offers</h1>
+            <p className="text-xs text-slate-500 mt-0.5 font-medium leading-normal">
+              Attract more dine-in customers with discounts on their bill
+            </p>
+          </div>
         </div>
       </header>
 
@@ -118,13 +123,47 @@ export default function DiningOfferListPage() {
           }
 
           {!loading && !error && normalizedOffers.length === 0 &&
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center md:col-span-2 lg:col-span-3">
+          <div className="flex flex-col gap-4 md:col-span-2 lg:col-span-3 w-full">
+            <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
               <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-                <Gift className="h-7 w-7 text-slate-400" />
+                <UtensilsCrossed className="h-7 w-7 text-slate-400" />
               </div>
               <p className="text-sm font-medium text-slate-700">No dining offers yet</p>
               <p className="mt-1 text-xs text-slate-500">Create a bill-level dining offer using the + button below</p>
             </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-center font-semibold text-slate-800 text-sm md:text-base">
+                Restaurants with dining offers get <span className="text-[#00c87e] font-bold">3x more walk-in traffic</span>.
+              </p>
+              
+              <div className="mt-6 mx-auto max-w-sm">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 text-center">
+                  Customer App Preview (Mockup)
+                </p>
+                <div className="overflow-hidden rounded-2xl px-4 py-5 shadow-md border border-red-100 bg-gradient-to-b from-red-50/40 to-red-50/10">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="rounded-full bg-red-100 p-2 text-[#e2281b]">
+                      <Percent className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 text-center">
+                      <p className="text-xl font-extrabold leading-none tracking-tight text-red-950">15% OFF (up to ₹150)</p>
+                      <p className="mt-1 text-xs font-medium text-red-800">
+                        on bills above ₹500
+                      </p>
+                      <div className="mt-2 flex items-center justify-center gap-1 text-[9px] text-red-700 font-semibold uppercase tracking-wider">
+                        <Clock className="h-3 w-3" />
+                        <span>All Days • Happy Hours</span>
+                      </div>
+                    </div>
+                    <div className="rounded-full bg-red-100 p-2 text-[#e2281b]">
+                      <Percent className="h-4 w-4" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
           }
 
           {!loading && !error && normalizedOffers.map((offer) => {
@@ -142,10 +181,10 @@ export default function DiningOfferListPage() {
                 
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <p className="text-base font-semibold text-slate-900 truncate">{offer.title}</p>
+                    <p className="text-base font-semibold text-slate-900 break-words [word-break:break-word] break-all">{offer.title}</p>
                     <p className="mt-0.5 text-sm font-medium text-[#00c87e]">{getDiscountLabel(offer)}</p>
                     {offer.description &&
-                    <p className="mt-1 text-xs text-slate-500">{offer.description}</p>
+                    <p className="mt-1 text-xs text-slate-500 break-words [word-break:break-word] break-all">{offer.description}</p>
                     }
                     <p className="mt-1 text-xs text-slate-500">
                       Min bill: Rs {Number(offer.minBillAmount || 0)}
@@ -160,15 +199,18 @@ export default function DiningOfferListPage() {
                       `Until ${endDate}`}
                       </p>
                     }
+                    <div className="mt-2 text-[10px] font-semibold text-slate-500 capitalize">
+                      {offer.fundedBy || "restaurant"} funded
+                    </div>
+                    {offer.approvalStatus === "pending" && (
+                      <div className="mt-2 text-xs font-semibold text-amber-600">Awaiting approval</div>
+                    )}
                   </div>
 
                   <div className="flex flex-col items-end gap-2 flex-shrink-0">
                     <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.className}`}>
                       {status.label}
                     </span>
-                    <div className="text-[10px] font-semibold text-slate-500 capitalize">
-                      {offer.fundedBy} funded
-                    </div>
 
                     <div className="relative" data-menu-id={offer.id}>
                       <button
@@ -218,9 +260,6 @@ export default function DiningOfferListPage() {
                 <div className="mt-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
                     Rejected: {offer.rejectionReason}
                   </div>
-                }
-                {offer.approvalStatus === "pending" &&
-                <div className="mt-2 text-xs text-amber-600">Awaiting admin approval</div>
                 }
               </motion.article>);
 
