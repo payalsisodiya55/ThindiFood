@@ -28,6 +28,32 @@ const createOrdersFingerprint = (orders) => {
     .join("|")
 }
 
+const extractCancellationReason = (order) => {
+  if (!order) return "";
+  const historyReason = Array.isArray(order.statusHistory)
+    ? [...order.statusHistory].reverse().find((e) => {
+        const s = String(e?.to || e?.status || e?.action || "").toLowerCase();
+        return s.includes("cancel") || s.includes("reject");
+      })?.note || ""
+    : "";
+
+  return (
+    order.cancellationReason ||
+    order.cancelReason ||
+    order.rejectionReason ||
+    order.rejectedReason ||
+    order.cancellation?.reason ||
+    order.cancellation?.note ||
+    order.cancellation?.byRestaurant?.reason ||
+    order.cancellation?.byUser?.reason ||
+    order.cancelledByRestaurantReason ||
+    order.restaurantCancelReason ||
+    order.reason ||
+    historyReason ||
+    ""
+  );
+};
+
 const isUnpaidRazorpayOrder = (order) => {
   const method = String(order?.payment?.method || order?.paymentMethod || "").toLowerCase()
   const paymentStatus = String(order?.payment?.status || "").toLowerCase()
@@ -279,11 +305,11 @@ export default function Orders() {
               backendStatus === 'cancelled_by_user' ||
               backendStatus === 'cancelled_by_restaurant' ||
               backendStatus === 'cancelled_by_admin'
-            const cancellationReason = order.cancellationReason || ''
+            const cancellationReason = extractCancellationReason(order)
             // Check cancelledBy field first, then fallback to cancellation reason pattern
             const isRestaurantCancelled = isCancelled && (
               order.cancelledBy === 'restaurant' ||
-              /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|outside delivery area|kitchen closing|technical issue|order not accepted within time limit|restaurant did not respond/i.test(cancellationReason)
+              /rejected by restaurant|restaurant rejected|restaurant cancelled|restaurant is too busy|item not available|equipment malfunction|power outage|staff unavailable|kitchen issue|outside delivery area|kitchen closing|technical issue|other|order not accepted within time limit|restaurant did not respond/i.test(cancellationReason)
             )
             const isUserCancelled = isCancelled && order.cancelledBy === 'user'
 
@@ -1027,13 +1053,34 @@ Order again from this restaurant in the ${companyName} app.`
                       </p>
                     )}
                     {isRestaurantCancelled && (
-                      <p className="text-xs font-medium text-red-500 mt-1">Restaurant Cancelled</p>
+                      <div className="mt-1">
+                        <p className="text-xs font-semibold text-red-500">Restaurant Cancelled</p>
+                        {order.cancellationReason && (
+                          <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1 bg-red-50 dark:bg-red-950/30 p-2 rounded-lg border border-red-100 dark:border-red-900/50">
+                            <span className="font-bold text-red-800 dark:text-red-300">Reason:</span> {order.cancellationReason}
+                          </p>
+                        )}
+                      </div>
                     )}
                     {isUserCancelled && (
-                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-1">Cancelled by you</p>
+                      <div className="mt-1">
+                        <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Cancelled by you</p>
+                        {order.cancellationReason && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1 bg-gray-50 dark:bg-gray-800/40 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <span className="font-bold">Reason:</span> {order.cancellationReason}
+                          </p>
+                        )}
+                      </div>
                     )}
                     {isCancelled && !isRestaurantCancelled && !isUserCancelled && (
-                      <p className="text-xs font-medium text-gray-500 mt-1">Cancelled</p>
+                      <div className="mt-1">
+                        <p className="text-xs font-medium text-gray-500">Cancelled</p>
+                        {order.cancellationReason && (
+                          <p className="text-xs text-gray-600 dark:text-gray-400 font-medium mt-1 bg-gray-50 dark:bg-gray-800/40 p-2 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <span className="font-bold">Reason:</span> {order.cancellationReason}
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center ml-4">
@@ -1053,15 +1100,22 @@ Order again from this restaurant in the ${companyName} app.`
                 <div className="px-4 py-3 flex items-center justify-between">
                   {/* Left Side: Rating or Error */}
                   {isRestaurantCancelled ? (
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <div className="bg-red-100 p-1 rounded-full">
+                    <div className="flex flex-col gap-1 w-full">
+                      <div className="flex items-start gap-2">
+                        <div className="bg-red-100 dark:bg-red-950/40 p-1 rounded-full shrink-0 mt-0.5">
                           <AlertCircle className="w-4 h-4 text-red-500" />
                         </div>
-                        <span className="text-xs font-semibold text-red-500">Restaurant Cancelled</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-xs font-semibold text-red-500 block">Restaurant Cancelled</span>
+                          {order.cancellationReason && (
+                            <p className="text-xs font-medium text-red-600 dark:text-red-400 mt-0.5 break-words">
+                              <span className="font-bold text-red-700 dark:text-red-300">Reason:</span> {order.cancellationReason}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       {showRefundForCancellation && (
-                        <p className="text-xs text-gray-600 ml-7">Refund will be processed in 24-48 hours</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400 ml-7">Refund will be processed in 24-48 hours</p>
                       )}
                     </div>
                   ) : paymentFailed ? (

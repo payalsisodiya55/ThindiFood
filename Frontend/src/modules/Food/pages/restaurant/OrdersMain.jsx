@@ -2345,9 +2345,31 @@ export default function OrdersMain() {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(true);
   const [showRejectPopup, setShowRejectPopup] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [selectedUnavailableItems, setSelectedUnavailableItems] = useState([]);
+  const [otherReasonDescription, setOtherReasonDescription] = useState("");
+
   const [showCancelPopup, setShowCancelPopup] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const [cancelSelectedUnavailableItems, setCancelSelectedUnavailableItems] = useState([]);
+  const [cancelOtherReasonDescription, setCancelOtherReasonDescription] = useState("");
   const [orderToCancel, setOrderToCancel] = useState(null);
+
+  const getOrderItemsList = (order) => {
+    if (!order) return [];
+    if (Array.isArray(order.items) && order.items.length > 0) {
+      return order.items.map((item) => {
+        if (typeof item === "string") return item;
+        const name = item.name || item.title || item.itemName || "Item";
+        const quantity = item.quantity || item.qty ? ` x${item.quantity || item.qty}` : "";
+        const variant = item.variantName || item.variant?.name ? ` (${item.variantName || item.variant?.name})` : "";
+        return `${name}${variant}${quantity}`;
+      });
+    }
+    if (typeof order.itemsSummary === "string" && order.itemsSummary.trim()) {
+      return getOrderSummaryLines(order.itemsSummary);
+    }
+    return [];
+  };
   const [acceptSwipeProgress, setAcceptSwipeProgress] = useState(0);
   const [isAcceptingOrder, setIsAcceptingOrder] = useState(false);
   const audioRef = useRef(null);
@@ -2606,9 +2628,11 @@ export default function OrdersMain() {
   const rejectReasons = [
     "Restaurant is too busy",
     "Item not available",
-    "Outside delivery area",
     "Kitchen closing soon",
-    "Technical issue",
+    "Equipment malfunction",
+    "Power outage",
+    "Staff unavailable",
+    "Kitchen issue",
     "Other reason",
   ];
 
@@ -3419,8 +3443,39 @@ export default function OrdersMain() {
     setShowRejectPopup(true);
   };
 
+  const getFinalRejectReason = () => {
+    if (rejectReason === "Item not available") {
+      if (selectedUnavailableItems.length > 0) {
+        return `Item not available: ${selectedUnavailableItems.join(", ")}`;
+      }
+      return "Item not available";
+    }
+    if (rejectReason === "Other reason") {
+      return otherReasonDescription.trim()
+        ? `Other: ${otherReasonDescription.trim()}`
+        : "Other reason";
+    }
+    return rejectReason;
+  };
+
+  const getFinalCancelReason = () => {
+    if (cancelReason === "Item not available") {
+      if (cancelSelectedUnavailableItems.length > 0) {
+        return `Item not available: ${cancelSelectedUnavailableItems.join(", ")}`;
+      }
+      return "Item not available";
+    }
+    if (cancelReason === "Other reason") {
+      return cancelOtherReasonDescription.trim()
+        ? `Other: ${cancelOtherReasonDescription.trim()}`
+        : "Other reason";
+    }
+    return cancelReason;
+  };
+
   const handleRejectConfirm = async () => {
-    if (!rejectReason) return;
+    const finalReason = getFinalRejectReason();
+    if (!finalReason) return;
 
     // Use popupOrder (from Socket.IO or API fallback) or newOrder (from hook)
     const orderToReject = popupOrder || newOrder;
@@ -3435,19 +3490,19 @@ export default function OrdersMain() {
         if (isDineInOrderLike(orderToReject)) {
             // Dine-In order rejection handling
             if (!orderId) throw new Error("Dine-In round not found");
-            await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: rejectReason });
+            await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: finalReason });
             toast.success("Dine-In order rejected");
         } else {
             // Standard order rejection
             await runRestaurantOrderAction(orderToReject, (resolvedOrderId) =>
-              restaurantAPI.rejectOrder(resolvedOrderId, rejectReason),
+              restaurantAPI.rejectOrder(resolvedOrderId, finalReason),
             );
             toast.success("Order rejected successfully");
         }
 
-        debugLog("? Order rejected:", orderId);
+        debugLog("Order rejected:", orderId);
       } catch (error) {
-        debugError("? Error rejecting order:", error);
+        debugError("Error rejecting order:", error);
         alert("Failed to reject order. Please try again.");
         return;
       }
@@ -3460,6 +3515,8 @@ export default function OrdersMain() {
     clearStoredPopupTimerAnchor(orderToReject);
     clearNewOrder();
     setRejectReason("");
+    setSelectedUnavailableItems([]);
+    setOtherReasonDescription("");
     setCountdown(ORDER_ACCEPT_WINDOW_SECONDS);
     requestOrdersRefresh();
   };
@@ -3467,6 +3524,8 @@ export default function OrdersMain() {
   const handleRejectCancel = () => {
     setShowRejectPopup(false);
     setRejectReason("");
+    setSelectedUnavailableItems([]);
+    setOtherReasonDescription("");
   };
 
   // Handle cancel order (for preparing orders)
@@ -3476,7 +3535,8 @@ export default function OrdersMain() {
   };
 
   const handleCancelConfirm = async () => {
-    if (!cancelReason.trim() || !orderToCancel) return;
+    const finalReason = getFinalCancelReason();
+    if (!finalReason || !orderToCancel) return;
 
     try {
       const orderId = isDineInOrderLike(orderToCancel)
@@ -3486,11 +3546,11 @@ export default function OrdersMain() {
       if (isDineInOrderLike(orderToCancel)) {
         // Dine-In specific cancellation
         if (!orderId) throw new Error("Dine-In round not found");
-        await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: cancelReason.trim() });
+        await dineInAPI.updateOrderStatus(orderId, { status: "cancelled", reason: finalReason });
       } else {
         // Standard order cancellation
         await runRestaurantOrderAction(orderToCancel, (resolvedOrderId) =>
-          restaurantAPI.rejectOrder(resolvedOrderId, cancelReason.trim()),
+          restaurantAPI.rejectOrder(resolvedOrderId, finalReason),
         );
       }
       
@@ -3499,8 +3559,10 @@ export default function OrdersMain() {
       setShowCancelPopup(false);
       setOrderToCancel(null);
       setCancelReason("");
+      setCancelSelectedUnavailableItems([]);
+      setCancelOtherReasonDescription("");
     } catch (error) {
-      debugError("? Error cancelling order:", error);
+      debugError("Error cancelling order:", error);
       toast.error(error.response?.data?.message || "Failed to cancel order");
     }
   };
@@ -3509,6 +3571,8 @@ export default function OrdersMain() {
     setShowCancelPopup(false);
     setOrderToCancel(null);
     setCancelReason("");
+    setCancelSelectedUnavailableItems([]);
+    setCancelOtherReasonDescription("");
   };
 
   const handleCloseBookingPopup = () => {
@@ -5227,14 +5291,14 @@ export default function OrdersMain() {
               exit={{ opacity: 0 }}
               onClick={handleRejectCancel}>
               <motion.div
-                className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                className="w-[95%] max-w-md max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="px-4 py-4 border-b border-gray-200">
+                <div className="px-4 py-4 border-b border-gray-200 shrink-0">
                   <h3 className="text-lg font-bold text-gray-900">
                     Reject Order {(popupOrder || newOrder)?.orderId || "#Order"}
                   </h3>
@@ -5244,65 +5308,168 @@ export default function OrdersMain() {
                 </div>
 
                 {/* Content */}
-                <div className="px-4 py-4 max-h-[60vh] overflow-y-auto">
+                <div
+                  className="px-4 py-4 flex-1 overflow-y-auto min-h-0"
+                  style={{
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
+                    overscrollBehavior: "contain",
+                  }}
+                  data-lenis-prevent="true">
                   <div className="space-y-2">
-                    {rejectReasons.map((reason) => (
-                      <button
-                        key={reason}
-                        onClick={() => setRejectReason(reason)}
-                        className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                          rejectReason === reason
-                            ? "border-emerald-500 bg-emerald-50/50"
-                            : "border-gray-200 bg-white hover:border-gray-300"
-                        }`}>
-                        <div className="flex items-center justify-between">
-                          <span
-                            className={`text-sm font-semibold ${
-                              rejectReason === reason
-                                ? "text-emerald-900"
-                                : "text-gray-900"
+                    {rejectReasons.map((reason) => {
+                      const isSelected = rejectReason === reason;
+                      const currentOrder = popupOrder || newOrder;
+                      const orderItems = getOrderItemsList(currentOrder);
+
+                      return (
+                        <div key={reason} className="flex flex-col">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setRejectReason(reason);
+                              if (reason !== "Item not available") setSelectedUnavailableItems([]);
+                              if (reason !== "Other reason") setOtherReasonDescription("");
+                            }}
+                            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                              isSelected
+                                ? "border-emerald-500 bg-emerald-50/50"
+                                : "border-gray-200 bg-white hover:border-gray-300"
                             }`}>
-                            {reason}
-                          </span>
-                          {rejectReason === reason && (
-                            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
-                              <svg
-                                className="w-3 h-3 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`text-sm font-semibold ${
+                                  isSelected
+                                    ? "text-emerald-900"
+                                    : "text-gray-900"
+                                }`}>
+                                {reason}
+                              </span>
+                              {isSelected && (
+                                <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={3}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Sub-flow for "Item not available" */}
+                          {isSelected && reason === "Item not available" && (
+                            <div className="mt-2 ml-2 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                              <p className="text-xs font-bold text-slate-700">
+                                Select unavailable item(s) <span className="text-red-500">*</span>
+                              </p>
+                              {orderItems.length > 0 ? (
+                                <div
+                                  className="space-y-1.5 max-h-40 overflow-y-auto pr-1"
+                                  style={{
+                                    WebkitOverflowScrolling: "touch",
+                                    touchAction: "pan-y",
+                                    overscrollBehavior: "contain",
+                                  }}
+                                  data-lenis-prevent="true">
+                                  {orderItems.map((itemName, idx) => {
+                                    const isChecked = selectedUnavailableItems.includes(itemName);
+                                    return (
+                                      <label
+                                        key={idx}
+                                        className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                          isChecked
+                                            ? "bg-emerald-50 border-emerald-300 font-semibold text-emerald-900"
+                                            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                                        }`}>
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => {
+                                            setSelectedUnavailableItems((prev) =>
+                                              isChecked
+                                                ? prev.filter((i) => i !== itemName)
+                                                : [...prev, itemName],
+                                            );
+                                          }}
+                                          className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                                        />
+                                        <span className="flex-1 break-words">{itemName}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-500 italic">No specific items listed for this order.</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Sub-flow for "Other reason" */}
+                          {isSelected && reason === "Other reason" && (
+                            <div className="mt-2 ml-2 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                              <label className="block text-xs font-bold text-slate-700">
+                                Please describe <span className="text-red-500">*</span>
+                              </label>
+                              <textarea
+                                value={otherReasonDescription}
+                                onChange={(e) => setOtherReasonDescription(e.target.value.slice(0, 200))}
+                                placeholder="Type specific reason for rejection..."
+                                rows={3}
+                                className="w-full text-xs p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none resize-none"
+                              />
+                              <div className="flex justify-between items-center text-[10px] text-gray-400">
+                                <span>Required for submission</span>
+                                <span>{otherReasonDescription.length}/200</span>
+                              </div>
                             </div>
                           )}
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3 shrink-0">
                   <button
                     onClick={handleRejectCancel}
                     className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
                     Cancel
                   </button>
-                  <button
-                    onClick={handleRejectConfirm}
-                    disabled={!rejectReason}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                      rejectReason
-                        ? "!bg-red-600 !text-white hover:bg-red-700 active:scale-95 shadow-sm"
-                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}>
-                    Confirm Rejection
-                  </button>
+                  {(() => {
+                    const currentOrder = popupOrder || newOrder;
+                    const orderItems = getOrderItemsList(currentOrder);
+                    const isItemNotAvailableInvalid =
+                      rejectReason === "Item not available" &&
+                      orderItems.length > 0 &&
+                      selectedUnavailableItems.length === 0;
+                    const isOtherReasonInvalid =
+                      rejectReason === "Other reason" && !otherReasonDescription.trim();
+
+                    const isDisabled =
+                      !rejectReason || isItemNotAvailableInvalid || isOtherReasonInvalid;
+
+                    return (
+                      <button
+                        onClick={handleRejectConfirm}
+                        disabled={isDisabled}
+                        className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                          !isDisabled
+                            ? "!bg-red-600 !text-white hover:bg-red-700 active:scale-95 shadow-sm"
+                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        }`}>
+                        Confirm Rejection
+                      </button>
+                    );
+                  })()}
                 </div>
               </motion.div>
             </motion.div>
@@ -5321,14 +5488,14 @@ export default function OrdersMain() {
               exit={{ opacity: 0 }}
               onClick={handleCancelPopupClose}>
               <motion.div
-                className="w-[95%] max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
+                className="w-[95%] max-w-md max-h-[85vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}>
                 {/* Header */}
-                <div className="px-4 py-4 border-b border-gray-200">
+                <div className="px-4 py-4 border-b border-gray-200 shrink-0">
                   <h3 className="text-lg font-bold text-gray-900">
                     Cancel Order {orderToCancel.orderId || "#Order"}
                   </h3>
@@ -5338,71 +5505,164 @@ export default function OrdersMain() {
                 </div>
 
                 {/* Content */}
-                <div className="px-4 py-4">
-                  <div className="space-y-3">
-                    {rejectReasons.map((reason) => (
-                      <button
-                        key={reason}
-                        type="button"
-                        onClick={() => setCancelReason(reason)}
-                        className={`w-full text-left px-4 py-3 rounded-lg border-2 transition-colors ${
-                          cancelReason === reason
-                            ? "border-red-500 bg-red-50"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}>
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              cancelReason === reason
-                                ? "border-red-500 bg-red-500"
-                                : "border-gray-300"
+                <div
+                  className="px-4 py-4 flex-1 overflow-y-auto min-h-0"
+                  style={{
+                    WebkitOverflowScrolling: "touch",
+                    touchAction: "pan-y",
+                    overscrollBehavior: "contain",
+                  }}
+                  data-lenis-prevent="true">
+                  <div className="space-y-2">
+                    {rejectReasons.map((reason) => {
+                      const isSelected = cancelReason === reason;
+                      const orderItems = getOrderItemsList(orderToCancel);
+
+                      return (
+                        <div key={reason} className="flex flex-col">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCancelReason(reason);
+                              if (reason !== "Item not available") setCancelSelectedUnavailableItems([]);
+                              if (reason !== "Other reason") setCancelOtherReasonDescription("");
+                            }}
+                            className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
+                              isSelected
+                                ? "border-rose-500 bg-rose-50/50"
+                                : "border-gray-200 bg-white hover:border-gray-300"
                             }`}>
-                            {cancelReason === reason && (
-                              <svg
-                                className="w-3 h-3 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={3}
-                                  d="M5 13l4 4L19 7"
-                                />
-                              </svg>
-                            )}
-                          </div>
-                          <span
-                            className={`text-sm font-medium ${
-                              cancelReason === reason
-                                ? "text-red-700"
-                                : "text-gray-700"
-                            }`}>
-                            {reason}
-                          </span>
+                            <div className="flex items-center justify-between">
+                              <span
+                                className={`text-sm font-semibold ${
+                                  isSelected ? "text-rose-900" : "text-gray-900"
+                                }`}>
+                                {reason}
+                              </span>
+                              {isSelected && (
+                                <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+                                  <svg
+                                    className="w-3 h-3 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={3}
+                                      d="M5 13l4 4L19 7"
+                                    />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </button>
+
+                          {/* Sub-flow for "Item not available" */}
+                          {isSelected && reason === "Item not available" && (
+                            <div className="mt-2 ml-2 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                              <p className="text-xs font-bold text-slate-700">
+                                Select unavailable item(s) <span className="text-red-500">*</span>
+                              </p>
+                              {orderItems.length > 0 ? (
+                                <div
+                                  className="space-y-1.5 max-h-40 overflow-y-auto pr-1"
+                                  style={{
+                                    WebkitOverflowScrolling: "touch",
+                                    touchAction: "pan-y",
+                                    overscrollBehavior: "contain",
+                                  }}
+                                  data-lenis-prevent="true">
+                                  {orderItems.map((itemName, idx) => {
+                                    const isChecked = cancelSelectedUnavailableItems.includes(itemName);
+                                    return (
+                                      <label
+                                        key={idx}
+                                        className={`flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors ${
+                                          isChecked
+                                            ? "bg-rose-50 border-rose-300 font-semibold text-rose-900"
+                                            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                                        }`}>
+                                        <input
+                                          type="checkbox"
+                                          checked={isChecked}
+                                          onChange={() => {
+                                            setCancelSelectedUnavailableItems((prev) =>
+                                              isChecked
+                                                ? prev.filter((i) => i !== itemName)
+                                                : [...prev, itemName],
+                                            );
+                                          }}
+                                          className="w-4 h-4 accent-rose-600 rounded cursor-pointer"
+                                        />
+                                        <span className="flex-1 break-words">{itemName}</span>
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-500 italic">No specific items listed for this order.</p>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Sub-flow for "Other reason" */}
+                          {isSelected && reason === "Other reason" && (
+                            <div className="mt-2 ml-2 p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1.5">
+                              <label className="block text-xs font-bold text-slate-700">
+                                Please describe <span className="text-red-500">*</span>
+                              </label>
+                              <textarea
+                                value={cancelOtherReasonDescription}
+                                onChange={(e) => setCancelOtherReasonDescription(e.target.value.slice(0, 200))}
+                                placeholder="Type specific reason for cancellation..."
+                                rows={3}
+                                className="w-full text-xs p-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:outline-none resize-none"
+                              />
+                              <div className="flex justify-between items-center text-[10px] text-gray-400">
+                                <span>Required for submission</span>
+                                <span>{cancelOtherReasonDescription.length}/200</span>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
                 {/* Footer */}
-                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3">
+                <div className="px-4 py-4 bg-gray-50 border-t border-gray-200 flex gap-3 shrink-0">
                   <button
                     onClick={handleCancelPopupClose}
                     className="flex-1 bg-white border-2 border-gray-300 text-gray-700 py-3 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
                     Cancel
                   </button>
-                  <button
-                    onClick={handleCancelConfirm}
-                    disabled={!cancelReason}
-                    className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                      cancelReason
-                        ? "!bg-red-600 !text-white hover:bg-red-700"
-                        : "bg-gray-200 text-gray-400 cursor-not-allowed"
-                    }`}>
-                    Confirm Cancellation
-                  </button>
+                  {(() => {
+                    const orderItems = getOrderItemsList(orderToCancel);
+                    const isItemNotAvailableInvalid =
+                      cancelReason === "Item not available" &&
+                      orderItems.length > 0 &&
+                      cancelSelectedUnavailableItems.length === 0;
+                    const isOtherReasonInvalid =
+                      cancelReason === "Other reason" && !cancelOtherReasonDescription.trim();
+
+                    const isDisabled =
+                      !cancelReason || isItemNotAvailableInvalid || isOtherReasonInvalid;
+
+                    return (
+                      <button
+                        onClick={handleCancelConfirm}
+                        disabled={isDisabled}
+                        className={`flex-1 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                          !isDisabled
+                            ? "!bg-red-600 !text-white hover:bg-red-700 active:scale-95 shadow-sm"
+                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        }`}>
+                        Confirm Cancellation
+                      </button>
+                    );
+                  })()}
                 </div>
               </motion.div>
             </motion.div>

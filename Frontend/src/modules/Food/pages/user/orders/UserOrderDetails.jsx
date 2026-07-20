@@ -287,6 +287,28 @@ export default function UserOrderDetails() {
   const isCancelledOrder =
     normalizedOrderStatus.includes("cancel") ||
     normalizedOrderWorkflowStatus.includes("cancel")
+
+  const historyReason = Array.isArray(order.statusHistory)
+    ? [...order.statusHistory].reverse().find((e) => {
+        const s = String(e?.to || e?.status || e?.action || "").toLowerCase();
+        return s.includes("cancel") || s.includes("reject");
+      })?.note || ""
+    : "";
+
+  const cancellationReason =
+    order.cancellationReason ||
+    order.cancelReason ||
+    order.rejectionReason ||
+    order.rejectedReason ||
+    order.cancellation?.reason ||
+    order.cancellation?.note ||
+    order.cancellation?.byRestaurant?.reason ||
+    order.cancellation?.byUser?.reason ||
+    order.cancelledByRestaurantReason ||
+    order.restaurantCancelReason ||
+    order.reason ||
+    historyReason ||
+    "";
   const completedOrderStatuses = new Set([
     "delivered",
     "completed",
@@ -668,6 +690,11 @@ export default function UserOrderDetails() {
                   : "Order was delivered"
                 : "Order status: " + orderStatusLabel}
             </h2>
+            {isCancelledOrder && (
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium mt-1">
+                <span className="font-bold text-red-800 dark:text-red-300">Reason:</span> {cancellationReason || "No reason provided"}
+              </p>
+            )}
           </div>
           {showTrackOrder && (
             <button
