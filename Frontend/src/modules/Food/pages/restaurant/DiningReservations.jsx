@@ -443,12 +443,7 @@ export default function DiningReservations() {
         <section className="bg-white p-5 sm:p-6 rounded-[28px] shadow-sm border border-slate-100">
             <div className="mb-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">Dining Controls</p>
-                <h2 className="mt-1.5 max-w-xl text-lg sm:text-[23px] font-black text-slate-900 tracking-tight leading-snug sm:leading-7">Manage dining availability and Booking limit</h2>
-                <p className="mt-1.5 max-w-2xl text-xs sm:text-sm font-medium leading-relaxed sm:leading-6 text-slate-500">
-                    {restaurant?.isDiningApproved
-                        ? "Save your dining changes. They will go live for customers immediately."
-                        : "Save your dining changes as an approval request. They will go live for customers only after admin approval."}
-                </p>
+                <h2 className="mt-1.5 max-w-xl text-lg sm:text-[23px] font-black text-slate-900 tracking-tight leading-snug sm:leading-7">Manage Dining Availability & Booking Limit</h2>
             </div>
 
             {(diningSettingsMessage || diningSettingsError || restaurant?.pendingDiningRequest?.requestedAt) && (
@@ -891,7 +886,6 @@ export default function DiningReservations() {
                             <div className="flex items-end justify-between px-2">
                                 <div>
                                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">Restaurant Visuals</h2>
-                                    <p className="text-slate-500 font-medium mt-1">Showcase your ambiance and menu to potential guests</p>
                                 </div>
                             </div>
 
@@ -903,7 +897,7 @@ export default function DiningReservations() {
                                         </h3>
                                         <label 
                                             className="px-4 py-2 text-xs font-black rounded-xl hover:opacity-90 transition-all cursor-pointer uppercase tracking-wider"
-                                            style={{ backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand }}
+                                            style={{ backgroundColor: RESTAURANT_THEME.brand, color: '#ffffff' }}
                                         >
                                             Upload <input type="file" multiple accept="image/*" className="hidden" onChange={handleRestaurantPhotoUpload} disabled={uploadingRestaurantPhoto} />
                                         </label>
@@ -912,7 +906,7 @@ export default function DiningReservations() {
                                         {restaurantPhotos.map((photo, i) => (
                                             <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                                                 <img src={photo.url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                <button onClick={() => handleRemoveRestaurantPhoto(photo.url)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur text-rose-600 rounded-lg md:opacity-0 md:group-hover:opacity-100 transition-all cursor-pointer shadow-sm"><X className="w-3.5 h-3.5" /></button>
+                                                <button onClick={() => handleRemoveRestaurantPhoto(photo.url)} className="absolute top-1.5 right-1.5 p-1 bg-white text-rose-600 rounded-full cursor-pointer shadow-md hover:bg-slate-50 transition-colors z-10"><X className="w-3 h-3 stroke-[2.5]" /></button>
                                             </div>
                                         ))}
                                         {uploadingRestaurantPhoto && <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center"><Loader2 className="w-6 h-6 text-slate-400 animate-spin" /></div>}
@@ -927,7 +921,7 @@ export default function DiningReservations() {
                                         </h3>
                                         <label 
                                             className="px-4 py-2 text-xs font-black rounded-xl hover:opacity-90 transition-all cursor-pointer uppercase tracking-wider"
-                                            style={{ backgroundColor: RESTAURANT_THEME.softBackground, color: RESTAURANT_THEME.brand }}
+                                            style={{ backgroundColor: RESTAURANT_THEME.brand, color: '#ffffff' }}
                                         >
                                             Upload <input type="file" multiple accept="image/*" className="hidden" onChange={handleMenuPhotosUpload} disabled={uploadingMenuPhotos} />
                                         </label>
@@ -936,7 +930,7 @@ export default function DiningReservations() {
                                         {menuPhotos.map((photo, i) => (
                                             <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
                                                 <img src={photo.url} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                                <button onClick={() => handleRemoveMenuPhoto(photo.url)} className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur text-rose-600 rounded-lg md:opacity-0 md:group-hover:opacity-100 transition-all cursor-pointer shadow-sm"><X className="w-3.5 h-3.5" /></button>
+                                                <button onClick={() => handleRemoveMenuPhoto(photo.url)} className="absolute top-1.5 right-1.5 p-1 bg-white text-rose-600 rounded-full cursor-pointer shadow-md hover:bg-slate-50 transition-colors z-10"><X className="w-3 h-3 stroke-[2.5]" /></button>
                                             </div>
                                         ))}
                                         {uploadingMenuPhotos && <div className="aspect-square rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center"><Loader2 className="w-6 h-6 text-slate-400 animate-spin" /></div>}
