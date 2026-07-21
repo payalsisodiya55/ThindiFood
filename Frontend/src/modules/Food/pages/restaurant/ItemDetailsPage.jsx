@@ -508,12 +508,6 @@ export default function ItemDetailsPage() {
 
   const handleImageAdd = (file) => {
     if (!file) return;
-    if (!validateMandatoryFieldsForUpload()) {
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      return;
-    }
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
       toast.error("Image size should be less than 5MB");
       return;
@@ -541,9 +535,6 @@ export default function ItemDetailsPage() {
   };
 
   const handleCameraClick = () => {
-    if (!validateMandatoryFieldsForUpload()) {
-      return;
-    }
     if (isFlutterBridgeAvailable()) {
       setIsPhotoPickerOpen(true);
     } else {
@@ -638,7 +629,7 @@ export default function ItemDetailsPage() {
   };
 
   const handleCategorySelect = (catId, subCat) => {
-    const selectedCategory = categories.find((c) => c.id === catId);
+    const selectedCategory = categories.find((c) => String(c.id) === String(catId));
     setSelectedCategoryId(selectedCategory?.id || "");
     setCategory(selectedCategory?.name || "");
     setSubCategory(subCat);
@@ -676,19 +667,95 @@ export default function ItemDetailsPage() {
       itemDescription: true,
       category: true,
       image: true,
-      basePrice: true
+      basePrice: true,
+      preparationTime: true,
     }));
 
+    // Top-to-bottom field order validation check:
+    // 1. Category
+    const matchedCategory = Array.isArray(categories) ?
+      categories.find((c) => String(c?.id || "") === String(selectedCategoryId || "")) :
+      null;
+    const categoryId = matchedCategory?.id || matchedCategory?._id || null;
+    const categoryName = matchedCategory?.name || category || "";
+
+    if (!selectedCategoryId || !categoryId) {
+      toast.error("Please select a category");
+      setIsCategoryPopupOpen(true);
+      return;
+    }
+
+    // 2. Image
+    if (!hasAttachedImage) {
+      toast.error("Please upload a menu item image");
+      return;
+    }
+
+    // 3. Item Name
     if (!itemName.trim()) {
       toast.error("Item name is required");
       return;
     }
+
+    // 4. Item Description
     if (itemDescription.trim() && itemDescription.trim().length < minDescriptionLength) {
       toast.error("Item description must be at least 5 characters");
       return;
     }
-    if (!hasAttachedImage) {
-      toast.error("Please upload a menu item image");
+
+    // 5. Category Food Type Scope
+    if (
+      matchedCategory?.foodTypeScope &&
+      matchedCategory.foodTypeScope !== "Both" &&
+      matchedCategory.foodTypeScope !== foodType
+    ) {
+      toast.error(`This ${matchedCategory.foodTypeScope} category cannot accept ${foodType} food`);
+      return;
+    }
+
+    // 6. Base Price / Variants
+    const normalizedVariants = variants.
+      map((variant) => ({
+        persistedId: String(variant.persistedId || "").trim(),
+        name: String(variant.name || "").trim(),
+        price: Number(variant.price)
+      })).
+      filter((variant) => variant.name || variant.persistedId || variant.price);
+
+    const hasVariants = normalizedVariants.length > 0;
+    if (!hasVariants) {
+      if (!basePrice.trim()) {
+        toast.error("Base price is required");
+        return;
+      }
+      if (!Number.isFinite(parsedBasePrice) || parsedBasePrice <= 0) {
+        toast.error("Please enter a base price greater than 0");
+        return;
+      }
+    } else {
+      if (normalizedVariants.some((variant) => !variant.name)) {
+        toast.error("Each variant must have a name");
+        return;
+      }
+      if (normalizedVariants.some((variant) => !Number.isFinite(variant.price) || variant.price <= 0)) {
+        toast.error("Each variant price must be greater than 0");
+        return;
+      }
+      const normalizedVariantNames = normalizedVariants.map((v) => v.name.trim().toLowerCase());
+      if (new Set(normalizedVariantNames).size !== normalizedVariantNames.length) {
+        toast.error("Duplicate variant names are not allowed");
+        return;
+      }
+      const normalizedVariantPrices = normalizedVariants.map((v) => Number(v.price));
+      if (new Set(normalizedVariantPrices).size !== normalizedVariantPrices.length) {
+        toast.error("Duplicate prices are not allowed in the variant list");
+        return;
+      }
+    }
+
+    // 7. Preparation Time
+    if (!preparationTime) {
+      toast.error("Please select a preparation time");
       return;
     }
 
@@ -1293,7 +1360,7 @@ export default function ItemDetailsPage() {
               <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-bold text-gray-900">Variants</p>
+                    <p className="text-sm font-bold text-gray-900">Variants <span className="text-xs font-normal text-gray-500 ml-1">(Optional)</span></p>
                     <p className="text-xs text-gray-500">Allow menu items to be configured with multiple size variants (e.g., Half, Full, Small, Large), each with its own price.</p>
                   </div>
                   <button
@@ -1660,12 +1727,12 @@ export default function ItemDetailsPage() {
           }
           <button
             onClick={handleSave}
-            disabled={uploadingImages || hasValidationErrors}
-            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!(uploadingImages || hasValidationErrors) ?
+            disabled={uploadingImages || loadingItem}
+            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!(uploadingImages || loadingItem) ?
             "text-white hover:opacity-90 cursor-pointer" :
             "bg-gray-300 text-gray-500 cursor-not-allowed"}`
             }
-            style={!(uploadingImages || hasValidationErrors) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
+            style={!(uploadingImages || loadingItem) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
             
             {uploadingImages ?
             <>
