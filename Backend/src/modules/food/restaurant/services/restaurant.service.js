@@ -366,6 +366,7 @@ const toRestaurantProfile = (doc) => {
         lastSubmittedAt: doc.lastSubmittedAt || null,
         lastSubmissionType: doc.lastSubmissionType || 'new_registration',
         locationChangeRequest: normalizeLocationChangeRequest(doc.locationChangeRequest),
+        diningRejectionNote: doc.diningRejectionNote || '',
         createdAt: doc.createdAt,
         updatedAt: doc.updatedAt,
         rating: normalizeRatingValue(doc.rating),
@@ -1280,76 +1281,7 @@ export const updateCurrentRestaurantDiningSettings = async (restaurantId, body =
         throw new ValidationError('Select at least one dining session');
     }
 
-    const existingDining = await FoodDiningRestaurant.findOne({ restaurantId });
 
-    if (existingDining) {
-        existingDining.isEnabled = isEnabled;
-        if (isEnabled) {
-            existingDining.maxGuests = maxGuests;
-            existingDining.mealTypes = mealTypes;
-            existingDining.categoryIds = validCategoryIds;
-            existingDining.primaryCategoryId = primaryCategoryId;
-        }
-
-        await existingDining.save();
-
-        const { syncCategoryRestaurantLinks, syncRestaurantDiningSettings } = await import('../../dining/services/dining.service.js');
-        await syncCategoryRestaurantLinks(restaurantId, validCategoryIds);
-        await syncRestaurantDiningSettings(restaurantId, existingDining);
-
-        const doc = await FoodRestaurant.findByIdAndUpdate(
-            restaurantId,
-            {
-                $set: {
-                    pendingDiningRequest: null
-                }
-            },
-            {
-                new: true,
-                runValidators: true,
-                projection: [
-                    'restaurantName',
-                    'cuisines',
-                    'location',
-                    'addressLine1',
-                    'addressLine2',
-                    'area',
-                    'city',
-                    'state',
-                    'pincode',
-                    'landmark',
-                    'ownerName',
-                    'ownerEmail',
-                    'ownerPhone',
-                    'primaryContactNumber',
-                    'accountNumber',
-                    'ifscCode',
-                    'accountHolderName',
-                    'accountType',
-                    'upiId',
-                    'upiQrImage',
-                    'pureVegRestaurant',
-                    'profileImage',
-                    'coverImages',
-                    'menuImages',
-                    'openingTime',
-                    'closingTime',
-                    'openDays',
-                    'estimatedDeliveryTime',
-                    'estimatedDeliveryTimeMinutes',
-                    'diningSettings',
-                    'pendingDiningRequest',
-                    'selfDelivery',
-                    'isAcceptingOrders',
-                    'status',
-                    'createdAt',
-                    'updatedAt'
-                ].join(' ')
-            }
-        ).lean();
-
-        return enrichRestaurantProfileWithDining(toRestaurantProfile(doc), doc);
-    }
 
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,

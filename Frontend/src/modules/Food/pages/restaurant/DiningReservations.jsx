@@ -446,6 +446,13 @@ export default function DiningReservations() {
                 <h2 className="mt-1.5 max-w-xl text-lg sm:text-[23px] font-black text-slate-900 tracking-tight leading-snug sm:leading-7">Manage Dining Availability & Booking Limit</h2>
             </div>
 
+            {restaurant?.diningRejectionNote && (
+                <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-600">
+                    <p className="font-black text-rose-800 uppercase tracking-wider mb-1">Request Rejected Note</p>
+                    <p className="text-rose-700">{restaurant.diningRejectionNote}</p>
+                </div>
+            )}
+
             {(diningSettingsMessage || diningSettingsError || restaurant?.pendingDiningRequest?.requestedAt) && (
                 <div className={`mb-4 rounded-xl border px-3.5 py-2.5 text-xs font-semibold ${
                     diningSettingsError

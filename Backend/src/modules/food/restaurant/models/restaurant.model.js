@@ -268,6 +268,7 @@ const restaurantSchema = new mongoose.Schema(
         default: ["lunch", "dinner"],
       },
     },
+    diningRejectionNote: { type: String, default: "" },
     pendingDiningRequest: {
       isEnabled: { type: Boolean, default: undefined },
       maxGuests: { type: Number, default: undefined },

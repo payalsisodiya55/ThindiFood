@@ -62,6 +62,9 @@ export default function DiningList() {
     const [actionLoadingId, setActionLoadingId] = useState("")
     const [isViewOpen, setIsViewOpen] = useState(false)
     const [selectedRestaurant, setSelectedRestaurant] = useState(null)
+    const [rejectModalOpen, setRejectModalOpen] = useState(false)
+    const [rejectNoteValue, setRejectNoteValue] = useState("")
+    const [rejectingRestaurant, setRejectingRestaurant] = useState(null)
 
     const refreshRestaurants = async () => {
         try {
@@ -201,15 +204,42 @@ export default function DiningList() {
     const handlePendingRequestAction = async (restaurant, approvalAction) => {
         if (!restaurant?._id) return
 
+        if (approvalAction === "reject") {
+            setRejectingRestaurant(restaurant)
+            setRejectNoteValue("")
+            setRejectModalOpen(true)
+            return
+        }
+
         try {
-            setActionLoadingId(`${restaurant._id}:${approvalAction}`)
-            await adminAPI.updateRestaurantDiningSettings(restaurant._id, { approvalAction })
+            setActionLoadingId(`${restaurant._id}:approve`)
+            await adminAPI.updateRestaurantDiningSettings(restaurant._id, { approvalAction: "approve" })
             await refreshRestaurants()
-            toast.success(`Dining request ${approvalAction === "approve" ? "approved" : "rejected"} successfully`)
+            toast.success("Dining request approved successfully")
         } catch (error) {
-            toast.error(error?.response?.data?.message || `Failed to ${approvalAction} dining request`)
+            toast.error(error?.response?.data?.message || "Failed to approve dining request")
         } finally {
             setActionLoadingId("")
+        }
+    }
+
+    const handleConfirmReject = async () => {
+        if (!rejectingRestaurant?._id) return
+        try {
+            setActionLoadingId(`${rejectingRestaurant._id}:reject`)
+            await adminAPI.updateRestaurantDiningSettings(rejectingRestaurant._id, {
+                approvalAction: "reject",
+                rejectionNote: rejectNoteValue.trim()
+            })
+            await refreshRestaurants()
+            toast.success("Dining request rejected")
+        } catch (error) {
+            toast.error(error?.response?.data?.message || "Failed to reject dining request")
+        } finally {
+            setActionLoadingId("")
+            setRejectModalOpen(false)
+            setRejectingRestaurant(null)
+            setRejectNoteValue("")
         }
     }
 
@@ -639,28 +669,44 @@ export default function DiningList() {
 
                             {/* Category */}
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-900">Dining Category</label>
-                                <select
-                                    value={editingRestaurant.primaryCategoryId || editingRestaurant.categoryIds?.[0] || ""}
-                                    onChange={(e) => setEditingRestaurant(prev => ({
-                                        ...prev,
-                                        primaryCategoryId: e.target.value || null,
-                                        categoryIds: e.target.value ? [e.target.value] : [],
-                                        categories: e.target.value
-                                            ? categories.filter(cat => cat._id === e.target.value)
-                                            : [],
-                                        diningSettings: {
-                                            ...prev.diningSettings,
-                                            diningType: categories.find(cat => cat._id === e.target.value)?.slug || "",
-                                        }
-                                    }))}
-                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                                >
-                                    <option value="">Select a category</option>
-                                    {categories.map(cat => (
-                                        <option key={cat._id} value={cat._id}>{cat.name}</option>
-                                    ))}
-                                </select>
+                                <label className="text-sm font-semibold text-slate-900">Dining Categories</label>
+                                <div className="grid grid-cols-2 gap-2 border border-slate-200 rounded-lg p-3 max-h-40 overflow-y-auto bg-white">
+                                    {categories.map(cat => {
+                                        const catId = String(cat._id)
+                                        const currentIds = Array.isArray(editingRestaurant.categoryIds) ? editingRestaurant.categoryIds.map(String) : []
+                                        const isChecked = currentIds.includes(catId)
+                                        return (
+                                            <label key={catId} className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer hover:bg-slate-50 p-1 rounded">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isChecked}
+                                                    onChange={(e) => {
+                                                        const isCheckedNow = e.target.checked
+                                                        const currentStringIds = Array.isArray(editingRestaurant.categoryIds) ? editingRestaurant.categoryIds.map(String) : []
+                                                        const nextIds = isCheckedNow
+                                                            ? [...currentStringIds, catId]
+                                                            : currentStringIds.filter(id => id !== catId)
+                                                        setEditingRestaurant(prev => {
+                                                            const primaryId = nextIds[0] || null
+                                                            return {
+                                                                ...prev,
+                                                                categoryIds: nextIds,
+                                                                primaryCategoryId: primaryId,
+                                                                categories: categories.filter(c => nextIds.includes(String(c._id))),
+                                                                diningSettings: {
+                                                                    ...prev.diningSettings,
+                                                                    diningType: categories.find(c => String(c._id) === primaryId)?.slug || "",
+                                                                }
+                                                            }
+                                                        })
+                                                    }}
+                                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                                />
+                                                {cat.name}
+                                            </label>
+                                        )
+                                    })}
+                                </div>
                             </div>
                         </div>
 
@@ -703,7 +749,46 @@ export default function DiningList() {
                     </div>
                 </div>
             )}
+
+            {/* Reject Dining Request Modal */}
+            {rejectModalOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm">
+                        <div className="px-6 pt-5 pb-3 border-b border-slate-100">
+                            <h3 className="text-base font-bold text-slate-900">Reject Dining Request</h3>
+                            <p className="text-xs text-slate-500 mt-1">
+                                <strong>{rejectingRestaurant?.name}</strong> &mdash; provide a reason so the restaurant understands why.
+                            </p>
+                        </div>
+                        <div className="px-6 py-4">
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Rejection Note / Reason</label>
+                            <textarea
+                                rows={3}
+                                autoFocus
+                                value={rejectNoteValue}
+                                onChange={e => setRejectNoteValue(e.target.value)}
+                                placeholder="e.g. Missing required dining setup, incomplete information..."
+                                className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-red-400 resize-none"
+                            />
+                        </div>
+                        <div className="px-6 pb-5 flex items-center justify-end gap-3">
+                            <button
+                                onClick={() => { setRejectModalOpen(false); setRejectingRestaurant(null); setRejectNoteValue("") }}
+                                className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmReject}
+                                disabled={actionLoadingId === `${rejectingRestaurant?._id}:reject`}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+                            >
+                                {actionLoadingId === `${rejectingRestaurant?._id}:reject` ? "Rejecting..." : "Confirm Reject"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
-

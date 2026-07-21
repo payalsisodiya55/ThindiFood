@@ -91,6 +91,9 @@ function mapCategory(doc) {
 }
 
 function getRestaurantZone(restaurant) {
+    if (restaurant?.zoneId) {
+        return restaurant.zoneId.zoneName || restaurant.zoneId.name || 'N/A';
+    }
     return (
         restaurant?.location?.area ||
         restaurant?.location?.city ||
@@ -208,6 +211,7 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
         categoryIds,
         primaryCategoryId: primaryCategory?._id || null,
         pendingDiningRequest,
+        diningRejectionNote: restaurant.diningRejectionNote || "",
         diningSettings: {
             isEnabled: Boolean(diningDoc?.isEnabled),
             maxGuests: Math.max(1, Number(diningDoc?.maxGuests) || 6),
@@ -328,7 +332,8 @@ export async function listDiningRestaurantsAdmin() {
     const [restaurants, diningDocs, categories, paidSessionAgg, activeSessionAgg] = await Promise.all([
         FoodRestaurant.find({})
             .sort({ createdAt: -1 })
-            .select('restaurantName ownerName ownerPhone profileImage coverImages menuImages location area city status rating pureVegRestaurant diningSettings pendingDiningRequest')
+            .select('restaurantName ownerName ownerPhone profileImage coverImages menuImages location area city status rating pureVegRestaurant diningSettings pendingDiningRequest zoneId diningRejectionNote')
+            .populate('zoneId', 'name zoneName')
             .lean(),
         FoodDiningRestaurant.find({})
             .select('restaurantId categoryIds primaryCategoryId isEnabled maxGuests mealTypes pureVegRestaurant')
@@ -438,6 +443,10 @@ export async function updateDiningRestaurant(restaurantId, body = {}) {
             await diningDoc.save();
             await syncCategoryRestaurantLinks(restaurant._id, categoryIds);
             await syncRestaurantDiningSettings(restaurant._id, diningDoc);
+            
+            restaurant.diningRejectionNote = "";
+        } else if (approvalAction === 'reject') {
+            restaurant.diningRejectionNote = String(body.rejectionNote || '').trim() || 'Your request was rejected by the admin.';
         }
 
         restaurant.pendingDiningRequest = null;
