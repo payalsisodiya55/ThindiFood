@@ -56,8 +56,79 @@ export const getPublicUnder250BannersController = async (req, res, next) => {
 
 export const getPublicDiningBannersController = async (req, res, next) => {
     try {
-        const docs = await FoodDiningBanner.find({ isActive: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
-        return sendResponse(res, 200, 'Dining banners fetched', { banners: docs });
+        const zoneIdRaw = String(req.query?.zoneId || '').trim();
+        const city = String(req.query?.city || '').trim().toLowerCase();
+        const state = String(req.query?.state || '').trim().toLowerCase();
+
+        const andConditions = [{ isActive: true }];
+
+        if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
+            andConditions.push({
+                $or: [
+                    { zoneId: { $exists: false } },
+                    { zoneId: null },
+                    { zoneId: new mongoose.Types.ObjectId(zoneIdRaw) }
+                ]
+            });
+        } else {
+            andConditions.push({
+                $or: [
+                    { zoneId: { $exists: false } },
+                    { zoneId: null }
+                ]
+            });
+        }
+
+        const escapeRegex = (string) => string.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+
+        if (city) {
+            andConditions.push({
+                $or: [
+                    { city: { $exists: false } },
+                    { city: '' },
+                    { city: { $regex: new RegExp(`^${escapeRegex(city)}$`, 'i') } }
+                ]
+            });
+        } else {
+            andConditions.push({
+                $or: [
+                    { city: { $exists: false } },
+                    { city: '' }
+                ]
+            });
+        }
+
+        if (state) {
+            andConditions.push({
+                $or: [
+                    { state: { $exists: false } },
+                    { state: '' },
+                    { state: { $regex: new RegExp(`^${escapeRegex(state)}$`, 'i') } }
+                ]
+            });
+        } else {
+            andConditions.push({
+                $or: [
+                    { state: { $exists: false } },
+                    { state: '' }
+                ]
+            });
+        }
+
+        const filter = { $and: andConditions };
+
+        const docs = await FoodDiningBanner.find(filter)
+            .sort({ sortOrder: 1, createdAt: -1 })
+            .lean();
+
+        const banners = (docs || []).map((b) => ({
+            ...b,
+            promoText: b.ctaText || '',
+            promo: b.ctaText || '',
+            tagline: b.title || ''
+        }));
+
+        return sendResponse(res, 200, 'Dining banners fetched', { banners });
     } catch (error) {
         next(error);
     }
@@ -72,7 +143,6 @@ export const getPublicExploreIconsController = async (req, res, next) => {
         next(error);
     }
 };
-
 
 export const getPublicGourmetController = async (req, res, next) => {
     try {
@@ -110,4 +180,3 @@ export const getPublicLandingSettingsController = async (req, res, next) => {
         next(error);
     }
 };
-

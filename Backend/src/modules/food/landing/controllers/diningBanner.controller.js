@@ -3,7 +3,8 @@ import {
     createDiningBannersFromFiles,
     deleteDiningBanner,
     updateDiningBannerOrder,
-    toggleDiningBannerStatus
+    toggleDiningBannerStatus,
+    updateDiningBanner
 } from '../services/diningBanner.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
@@ -28,6 +29,9 @@ export const uploadDiningBannersController = async (req, res, next) => {
             ctaText: req.body.ctaText,
             ctaLink: req.body.ctaLink,
             diningType: req.body.diningType,
+            zoneId: req.body.zoneId,
+            city: req.body.city,
+            state: req.body.state,
         };
 
         const results = await createDiningBannersFromFiles(req.files, meta);
@@ -78,6 +82,32 @@ export const toggleDiningBannerStatusController = async (req, res, next) => {
         }
         const updated = await toggleDiningBannerStatus(id, !banner.isActive);
         return sendResponse(res, 200, 'Dining banner status updated', updated);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateDiningBannerController = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        if (!id) {
+            throw new ValidationError('Banner id is required');
+        }
+
+        const file = req.file || (req.files && req.files[0]);
+
+        const meta = {
+            title: req.body.title,
+            ctaText: req.body.ctaText,
+            ctaLink: req.body.ctaLink,
+            diningType: req.body.diningType,
+            zoneId: req.body.zoneId,
+            city: req.body.city,
+            state: req.body.state,
+        };
+
+        const updated = await updateDiningBanner(id, file, meta);
+        return sendResponse(res, 200, 'Dining banner updated successfully', { banner: updated });
     } catch (error) {
         next(error);
     }

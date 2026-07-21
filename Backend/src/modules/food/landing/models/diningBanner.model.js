@@ -22,6 +22,22 @@ const foodDiningBannerSchema = new mongoose.Schema(
         diningType: {
             type: String
         },
+        zoneId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'FoodZone',
+            default: undefined,
+            index: true
+        },
+        city: {
+            type: String,
+            default: '',
+            trim: true
+        },
+        state: {
+            type: String,
+            default: '',
+            trim: true
+        },
         sortOrder: {
             type: Number,
             default: 0,
@@ -39,7 +55,7 @@ const foodDiningBannerSchema = new mongoose.Schema(
     }
 );
 
-foodDiningBannerSchema.index({ isActive: 1, sortOrder: 1 });
+foodDiningBannerSchema.index({ isActive: 1, sortOrder: 1, zoneId: 1, city: 1, state: 1 });
 
 export const FoodDiningBanner = mongoose.model('FoodDiningBanner', foodDiningBannerSchema);
 

@@ -302,7 +302,11 @@ export default function Dining() {
         const shouldFetchRestaurants = Boolean(zoneId) && !isOutOfService
         const restaurantParams = shouldFetchRestaurants ? { zoneId, _ts: Date.now() } : null
         const [bannerResponse, cats, rests] = await Promise.all([
-          diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
+          diningAPI.getHeroBanners({
+            zoneId: zoneId || "",
+            city: activeLocation?.city || "",
+            state: activeLocation?.state || ""
+          }).catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
           shouldFetchRestaurants
             ? diningAPI.getRestaurants(restaurantParams)
@@ -809,6 +813,20 @@ export default function Dining() {
                         priority={index === 0}
                         sizes="100vw"
                       />
+                      {(banner.promoCode || banner.tagline) && (
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex flex-col justify-end p-6 pb-10 text-white">
+                          {banner.promoCode && (
+                            <div className="bg-amber-500 text-slate-900 text-[11px] font-extrabold px-2 py-0.5 rounded w-fit mb-1 shadow">
+                              {banner.promoCode}
+                            </div>
+                          )}
+                          {banner.tagline && (
+                            <p className="text-base font-bold leading-snug drop-shadow">
+                              {banner.tagline}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

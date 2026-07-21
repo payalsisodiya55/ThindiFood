@@ -32,6 +32,9 @@ export const createDiningBannersFromFiles = async (files, meta = {}) => {
                 ctaText: meta.ctaText,
                 ctaLink: meta.ctaLink,
                 diningType: meta.diningType,
+                zoneId: meta.zoneId || undefined,
+                city: String(meta.city || '').trim(),
+                state: String(meta.state || '').trim(),
                 sortOrder: meta.sortOrder ?? 0,
                 isActive: true,
             });
@@ -79,5 +82,47 @@ export const toggleDiningBannerStatus = async (id, isActive) => {
         { new: true }
     ).lean();
     return updated;
+};
+
+export const updateDiningBanner = async (id, file, meta = {}) => {
+    const doc = await FoodDiningBanner.findById(id);
+    if (!doc) {
+        throw new Error('Dining banner not found');
+    }
+
+    if (file) {
+        const uploadResult = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+                { folder: 'food/dining-banners', resource_type: 'image' },
+                (error, result) => {
+                    if (error) return reject(error);
+                    return resolve(result);
+                }
+            );
+            stream.end(file.buffer);
+        });
+
+        if (doc.publicId) {
+            try {
+                await cloudinary.uploader.destroy(doc.publicId);
+            } catch {
+                // ignore
+            }
+        }
+
+        doc.imageUrl = uploadResult.secure_url;
+        doc.publicId = uploadResult.public_id;
+    }
+
+    if (meta.title !== undefined) doc.title = meta.title;
+    if (meta.ctaText !== undefined) doc.ctaText = meta.ctaText;
+    if (meta.ctaLink !== undefined) doc.ctaLink = meta.ctaLink;
+    if (meta.diningType !== undefined) doc.diningType = meta.diningType;
+    if (meta.zoneId !== undefined) doc.zoneId = meta.zoneId || undefined;
+    if (meta.city !== undefined) doc.city = String(meta.city || '').trim();
+    if (meta.state !== undefined) doc.state = String(meta.state || '').trim();
+
+    await doc.save();
+    return doc.toObject();
 };
 

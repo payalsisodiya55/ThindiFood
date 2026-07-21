@@ -2938,7 +2938,7 @@ export const diningAPI = {
       params: normalizedParams,
     });
   },
-  getHeroBanners: () => apiClient.get("/food/hero-banners/dining/public"),
+  getHeroBanners: (params = {}) => apiClient.get("/food/hero-banners/dining/public", { params }),
     getRestaurantBySlug: (slug) =>
       apiClient.get(`/food/restaurant/restaurants/${String(slug)}`),
     getRestaurantOverallOffer: (restaurantId) =>

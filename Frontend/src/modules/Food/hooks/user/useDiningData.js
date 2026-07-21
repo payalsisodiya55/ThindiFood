@@ -20,7 +20,13 @@ export const useDiningData = (location) => {
         diningAPI.getStories(),
         diningAPI.getRestaurants(location?.city ? { city: location.city } : {}),
         diningAPI.getBankOffers(),
-        api.get('/food/hero-banners/dining/public').catch(() => ({ data: { success: false } }))
+        api.get('/food/hero-banners/dining/public', {
+          params: {
+            zoneId: location?.zoneId || '',
+            city: location?.city || '',
+            state: location?.state || ''
+          }
+        }).catch(() => ({ data: { success: false } }))
       ]);
 
       if (cats.data?.success) setCategories(cats.data.data);

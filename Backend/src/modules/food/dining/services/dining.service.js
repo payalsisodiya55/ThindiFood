@@ -233,6 +233,9 @@ export async function createDiningCategory(body = {}) {
     if (!name) {
         throw new ValidationError('Category name is required');
     }
+    if (name.length > 20) {
+        throw new ValidationError('Category name cannot exceed 20 characters');
+    }
 
     const slug = slugify(body.slug || name);
     if (!slug) {
@@ -262,7 +265,11 @@ export async function updateDiningCategory(id, body = {}) {
     if (!doc) return null;
 
     if (body.name !== undefined) {
-        doc.name = String(body.name || '').trim();
+        const nextName = String(body.name || '').trim();
+        if (nextName.length > 20) {
+            throw new ValidationError('Category name cannot exceed 20 characters');
+        }
+        doc.name = nextName;
     }
     if (body.slug !== undefined || body.name !== undefined) {
         const nextSlug = slugify(body.slug || doc.name);

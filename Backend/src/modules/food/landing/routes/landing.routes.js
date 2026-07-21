@@ -21,7 +21,8 @@ import {
     uploadDiningBannersController,
     deleteDiningBannerController,
     updateDiningBannerOrderController,
-    toggleDiningBannerStatusController
+    toggleDiningBannerStatusController,
+    updateDiningBannerController
 } from '../controllers/diningBanner.controller.js';
 import {
     getAdminLandingSettingsController,
@@ -99,6 +100,7 @@ router.post(
     uploadDiningBannersController
 );
 router.delete('/hero-banners/dining/:id', deleteDiningBannerController);
+router.patch('/hero-banners/dining/:id', upload.single('files'), updateDiningBannerController);
 router.patch('/hero-banners/dining/:id/order', updateDiningBannerOrderController);
 router.patch('/hero-banners/dining/:id/status', toggleDiningBannerStatusController);
 
