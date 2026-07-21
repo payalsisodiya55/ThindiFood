@@ -1270,11 +1270,17 @@ const parseDiningDateRange = (query = {}) => {
     const createdAt = {};
     if (fromRaw) {
         const from = new Date(fromRaw);
-        if (!Number.isNaN(from.getTime())) createdAt.$gte = from;
+        if (!Number.isNaN(from.getTime())) {
+            from.setUTCHours(0, 0, 0, 0);
+            createdAt.$gte = from;
+        }
     }
     if (toRaw) {
         const to = new Date(toRaw);
-        if (!Number.isNaN(to.getTime())) createdAt.$lte = to;
+        if (!Number.isNaN(to.getTime())) {
+            to.setUTCHours(23, 59, 59, 999);
+            createdAt.$lte = to;
+        }
     }
     return Object.keys(createdAt).length > 0 ? createdAt : null;
 };
@@ -1356,22 +1362,20 @@ export async function getDiningOrdersAdmin(query = {}) {
         }
         if (paymentTypeFilter === 'online') {
             andConditions.push({
-                $or: [{ isPaid: true }, { paymentStatus: 'PAID' }],
-            });
-            andConditions.push({
-                $nor: [
-                    { paymentMethod: { $in: ['cash', 'counter'] } },
-                    { paymentMode: 'COUNTER' },
+                $or: [
+                    { paymentMethod: { $in: ['online', 'upi', ''] } },
+                    { paymentMethod: { $exists: false } },
+                    { paymentMode: { $in: ['ONLINE', ''] } },
+                    { paymentMode: { $exists: false } }
                 ],
             });
         } else if (paymentTypeFilter === 'cod') {
             andConditions.push({
-                $or: [{ isPaid: true }, { paymentStatus: 'PAID' }],
-            });
-            andConditions.push({
                 $or: [
-                    { paymentMethod: { $in: ['cash', 'counter'] } },
-                    { paymentMode: 'COUNTER' },
+                    { paymentMethod: { $in: ['cash', 'counter', ''] } },
+                    { paymentMethod: { $exists: false } },
+                    { paymentMode: { $in: ['COUNTER', ''] } },
+                    { paymentMode: { $exists: false } }
                 ],
             });
         }
@@ -1384,9 +1388,15 @@ export async function getDiningOrdersAdmin(query = {}) {
 
         const sessionIds = await FoodTableSession.find(sessionMatch).distinct('_id');
         if (!sessionIds.length) {
-            return { orders: [], total: 0, page, limit };
+            if (orderTypeFilter === 'walk-in' || paymentTypeFilter === 'online') {
+                // If filtering by walk-in or online and no sessions exist, let the query proceed
+                // so orphan orders (which default to walk-in/online) can still be displayed.
+            } else {
+                return { orders: [], total: 0, page, limit };
+            }
+        } else {
+            orderMatch.sessionId = { $in: sessionIds };
         }
-        orderMatch.sessionId = { $in: sessionIds };
     }
 
     const allOrders = await FoodDineInOrder.find(orderMatch)

@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue } from
 "@food/components/ui/select";
+import Pagination from "@shared/components/ui/Pagination";
 
 const currency = (value) => `\u20B9 ${Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -45,7 +46,15 @@ export default function DiningOrders() {
     restaurantId: "all",
     paymentType: "all",
     orderType: "all",
-    search: ""
+    search: "",
+    page: 1,
+    limit: 10
+  });
+  const [totalCount, setTotalCount] = useState(0);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 10,
+    totalPages: 1
   });
 
   useEffect(() => {
@@ -62,7 +71,14 @@ export default function DiningOrders() {
         adminAPI.getDiningOrders(queryFilters),
         adminAPI.getDiningRestaurants()]
         );
-        setRows(ordersRes?.data?.data?.orders || []);
+        const data = ordersRes?.data?.data || {};
+        setRows(data.orders || []);
+        setTotalCount(data.total || 0);
+        setPagination({
+          page: Number(data.page || 1),
+          limit: Number(data.limit || 10),
+          totalPages: Math.ceil((data.total || 0) / (data.limit || 10)) || 1
+        });
         setRestaurants(restaurantsRes?.data?.data?.restaurants || []);
       } catch (err) {
         console.error("Error loading dining orders:", err);
@@ -86,7 +102,7 @@ export default function DiningOrders() {
   }, [rows]);
 
   const getTopRestaurantDetails = () => {
-    if (rows.length === 0) return "N/A";
+    if (rows.length === 0) return { name: "N/A", id: "" };
     
     const frequency = {};
     let maxCount = 0;
@@ -102,7 +118,7 @@ export default function DiningOrders() {
       }
     });
     
-    if (!topResName) return "N/A";
+    if (!topResName) return { name: "N/A", id: "" };
     
     const found = restaurants.find(res => 
       (res.name || res.restaurantName) === topResName || 
@@ -110,12 +126,12 @@ export default function DiningOrders() {
     );
     
     if (found) {
-      return `${found.name || found.restaurantName} (ID: ${found._id})`;
+      return { name: found.name || found.restaurantName, id: found._id };
     }
     
     const matchingOrder = rows.find(r => r.restaurant === topResName);
     const resId = matchingOrder?.restaurantId || matchingOrder?.restaurant_id || "";
-    return resId ? `${topResName} (ID: ${resId})` : topResName;
+    return { name: topResName, id: resId };
   };
 
   const getStatusColor = (status) => {
@@ -235,9 +251,21 @@ export default function DiningOrders() {
           </div>
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Top Restaurant</p>
-            <p className="text-sm font-bold text-slate-900 break-words text-wrap">
-              {getTopRestaurantDetails()}
-            </p>
+            {(() => {
+              const details = getTopRestaurantDetails();
+              return (
+                <>
+                  <p className="text-sm font-bold text-slate-900 break-words text-wrap">
+                    {details.name}
+                  </p>
+                  {details.id && (
+                    <p className="text-[10px] text-slate-500 font-medium break-all mt-0.5">
+                      (ID: {details.id})
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </Card>
       </div>
@@ -257,7 +285,9 @@ export default function DiningOrders() {
                 restaurantId: "all",
                 paymentType: "all",
                 orderType: "all",
-                search: ""
+                search: "",
+                page: 1,
+                limit: 10
               })}
               className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer transition-colors"
             >
@@ -272,7 +302,7 @@ export default function DiningOrders() {
               className="w-full text-xs h-9 bg-white border border-slate-200"
               type="date"
               value={filters.fromDate}
-              onChange={(e) => setFilters((p) => ({ ...p, fromDate: e.target.value }))}
+              onChange={(e) => setFilters((p) => ({ ...p, page: 1, fromDate: e.target.value }))}
             />
           </div>
 
@@ -282,13 +312,13 @@ export default function DiningOrders() {
               className="w-full text-xs h-9 bg-white border border-slate-200"
               type="date"
               value={filters.toDate}
-              onChange={(e) => setFilters((p) => ({ ...p, toDate: e.target.value }))}
+              onChange={(e) => setFilters((p) => ({ ...p, page: 1, toDate: e.target.value }))}
             />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Restaurant</label>
-            <Select value={filters.restaurantId} onValueChange={(v) => setFilters((p) => ({ ...p, restaurantId: v }))}>
+            <Select value={filters.restaurantId} onValueChange={(v) => setFilters((p) => ({ ...p, page: 1, restaurantId: v }))}>
               <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="All Restaurants" />
               </SelectTrigger>
@@ -303,7 +333,7 @@ export default function DiningOrders() {
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Payment</label>
-            <Select value={filters.paymentType} onValueChange={(v) => setFilters((p) => ({ ...p, paymentType: v }))}>
+            <Select value={filters.paymentType} onValueChange={(v) => setFilters((p) => ({ ...p, page: 1, paymentType: v }))}>
               <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="All Payments" />
               </SelectTrigger>
@@ -317,7 +347,7 @@ export default function DiningOrders() {
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Order Type</label>
-            <Select value={filters.orderType} onValueChange={(v) => setFilters((p) => ({ ...p, orderType: v }))}>
+            <Select value={filters.orderType} onValueChange={(v) => setFilters((p) => ({ ...p, page: 1, orderType: v }))}>
               <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
@@ -337,7 +367,7 @@ export default function DiningOrders() {
                 className="w-full pl-8 text-xs h-9 bg-white border border-slate-200"
                 placeholder="ID, User..."
                 value={filters.search}
-                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
+                onChange={(e) => setFilters((p) => ({ ...p, page: 1, search: e.target.value }))}
               />
             </div>
           </div>
@@ -353,12 +383,13 @@ export default function DiningOrders() {
               <p className="text-sm font-medium">Fetching dining orders...</p>
             </div> :
 
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[1200px] text-sm">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Order Details</th>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Restaurant & Table</th>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Customer</th>
+                  <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Items</th>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Amount</th>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payment & Type</th>
                   <th className="px-4 py-3 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
@@ -371,8 +402,6 @@ export default function DiningOrders() {
               rows.map((row) => {
                 const paymentBadge = getPaymentBadge(row.paymentType);
                 const items = Array.isArray(row.items) ? row.items : [];
-                const visibleItems = items.slice(0, 2);
-                const remainingItems = Math.max(items.length - visibleItems.length, 0);
                 return (
                   <tr key={row.id} className="hover:bg-slate-50 transition-colors group">
                       <td className="px-4 py-3">
@@ -412,21 +441,16 @@ export default function DiningOrders() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-slate-900">{currency(row.amount)}</span>
-                          {visibleItems.length > 0 &&
-                        <div className="mt-1.5 flex flex-col gap-0.5">
-                              {visibleItems.map((item, idx) =>
-                          <span key={`${item.name}-${idx}`} className="text-[10px] text-slate-500">
-                                  {Number(item?.quantity || 0)}x {item?.name || "Item"}
-                                </span>
-                          )}
-                              {remainingItems > 0 &&
-                          <span className="text-[10px] text-slate-400">+{remainingItems} more</span>
-                          }
-                            </div>
-                        }
+                        <div className="flex flex-col gap-0.5 max-w-[220px]">
+                          {items.map((item, idx) => (
+                            <span key={`${item.name}-${idx}`} className="text-xs text-slate-600 leading-tight">
+                              {Number(item?.quantity || 0)}x {item?.name || "Item"}
+                            </span>
+                          ))}
                         </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-bold text-slate-900">{currency(row.amount)}</span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
@@ -478,7 +502,7 @@ export default function DiningOrders() {
               }) :
 
               <tr>
-                    <td className="px-4 py-20 text-center" colSpan={8}>
+                    <td className="px-4 py-20 text-center" colSpan={9}>
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
                           <AlertCircle className="w-8 h-8 text-slate-300" />
@@ -492,6 +516,18 @@ export default function DiningOrders() {
               </tbody>
             </table>
           }
+        </div>
+
+        {/* Pagination Section */}
+        <div className="p-4 bg-white border-t border-slate-200">
+          <Pagination
+            page={pagination.page}
+            totalPages={pagination.totalPages}
+            total={totalCount}
+            pageSize={pagination.limit}
+            onPageChange={(p) => setFilters((prev) => ({ ...prev, page: p }))}
+            onPageSizeChange={(size) => setFilters((prev) => ({ ...prev, page: 1, limit: size }))}
+          />
         </div>
       </Card>
 
