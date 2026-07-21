@@ -14,7 +14,8 @@ import {
   ThumbsUp,
   ChevronLeft,
   ChevronRight,
-  Loader2 } from
+  Loader2,
+  AlertCircle } from
 "lucide-react";
 import { Switch } from "@food/components/ui/switch";
 // Removed getAllFoods and saveFood - now using menu API
@@ -196,6 +197,21 @@ export default function ItemDetailsPage() {
     hasFoodTypeMismatch ||
     (variants.length === 0 ? basePriceError : hasIncompleteVariant)
   );
+
+  const getDisabledReason = () => {
+    if (categoryError) return categoryError;
+    if (imageError) return imageError;
+    if (nameError) return nameError;
+    if (descriptionError) return descriptionError;
+    if (hasFoodTypeMismatch) return `This ${matchedCategory?.foodTypeScope} category cannot accept ${foodType} food`;
+    if (variants.length === 0 ? basePriceError : hasIncompleteVariant) {
+      return variants.length === 0 ? basePriceError : "Please complete variant details";
+    }
+    if (preparationTimeError) return preparationTimeError;
+    return null;
+  };
+
+  const disabledReason = getDisabledReason();
 
   const validateMandatoryFieldsForUpload = () => {
     setTouchedFields((prev) => ({
@@ -1203,6 +1219,9 @@ export default function ItemDetailsPage() {
               </div>
               <span>Add Image</span>
             </button>
+            {imageError ? (
+              <p className="mt-2 text-xs text-red-500 font-medium text-center">{imageError}</p>
+            ) : null}
           </div>
         </div>
 
@@ -1215,16 +1234,18 @@ export default function ItemDetailsPage() {
             </label>
             <button
               onClick={() => setIsCategoryPopupOpen(true)}
-              className={`w-full px-4 py-3 border rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors ${shouldShowFieldError("category", Boolean(selectedCategoryId)) && categoryError ? "border-red-500" : "border-gray-300"}`}>
+              className={`w-full px-4 py-3 border rounded-lg text-left flex items-center justify-between bg-white hover:bg-gray-50 transition-colors ${categoryError || hasFoodTypeMismatch ? "border-red-500" : "border-gray-300"}`}>
               
               <span className="text-sm text-gray-900">
                 {category || "Select Category"}
               </span>
               <ChevronDown className="w-5 h-5 text-gray-500" />
             </button>
-            {shouldShowFieldError("category", Boolean(selectedCategoryId)) && categoryError ?
-            <p className="mt-1 text-xs text-red-500">{categoryError}</p> :
-            null}
+            {categoryError ? (
+              <p className="mt-1 text-xs text-red-500">{categoryError}</p>
+            ) : hasFoodTypeMismatch ? (
+              <p className="mt-1 text-xs text-red-500">This {matchedCategory?.foodTypeScope} category cannot accept {foodType} food</p>
+            ) : null}
           </div>
 
           {/* Item Name */}
@@ -1518,7 +1539,7 @@ export default function ItemDetailsPage() {
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
                 </div>
-                {shouldShowFieldError("preparationTime", Boolean(preparationTime)) && preparationTimeError ? (
+                {preparationTimeError ? (
                   <p className="mt-1 text-xs text-red-500">{preparationTimeError}</p>
                 ) : null}
               </div>
@@ -1727,12 +1748,12 @@ export default function ItemDetailsPage() {
           }
           <button
             onClick={handleSave}
-            disabled={uploadingImages || loadingItem}
-            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!(uploadingImages || loadingItem) ?
+            disabled={uploadingImages || hasValidationErrors}
+            className={`${isNewItem ? 'w-full' : 'flex-1'} py-3 px-4 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${!(uploadingImages || hasValidationErrors) ?
             "text-white hover:opacity-90 cursor-pointer" :
             "bg-gray-300 text-gray-500 cursor-not-allowed"}`
             }
-            style={!(uploadingImages || loadingItem) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
+            style={!(uploadingImages || hasValidationErrors) ? { backgroundColor: RESTAURANT_THEME.brand } : undefined}>
             
             {uploadingImages ?
             <>
