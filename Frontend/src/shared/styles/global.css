@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: 'Poppins', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Poppins', 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
   --font-poppins: 'Poppins', sans-serif;
   --font-outfit: 'Outfit', sans-serif;
   line-height: 1.5;
@@ -45,6 +45,10 @@
   --sidebar-accent-foreground: oklch(0.3 0.08 60);
   --sidebar-border: oklch(0.9 0.02 85);
   --sidebar-ring: oklch(0.7 0.15 85);
+}
+
+body, button, input, select, textarea {
+  font-family: 'Poppins', 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 @theme inline {

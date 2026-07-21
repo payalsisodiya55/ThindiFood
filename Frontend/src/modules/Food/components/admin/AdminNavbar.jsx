@@ -280,24 +280,24 @@ export default function AdminNavbar({ onMenuClick }) {
   return (
     <>
       <header className="sticky top-0 z-50 bg-white border-b border-neutral-200 shadow-sm">
-        <div className="flex items-center justify-between px-6 py-3">
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3">
           {/* Left: Logo and Mobile Menu */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             <button
               onClick={onMenuClick}
-              className="lg:hidden p-2 rounded-md text-neutral-700 hover:bg-neutral-100 hover:text-black transition-colors"
+              className="lg:hidden p-1.5 rounded-md text-neutral-700 hover:bg-neutral-100 hover:text-black transition-colors shrink-0"
               aria-label="Toggle menu"
             >
               <Menu className="w-5 h-5" />
             </button>
             {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-12 rounded-lg bg-white flex items-center justify-center ring-neutral-200">
+            <div className="flex items-center">
+              <div className="h-10 rounded-lg bg-white flex items-center justify-center">
                 {businessSettings?.logo?.url ? (
                   <img
                     src={businessSettings.logo.url}
                     alt={businessSettings.companyName || "Company"}
-                    className="w-24 h-10 object-contain"
+                    className="w-20 sm:w-24 h-9 sm:h-10 object-contain"
                     loading="lazy"
                     onError={(e) => {
                       // Fallback to default logo if company logo fails to load
@@ -306,11 +306,11 @@ export default function AdminNavbar({ onMenuClick }) {
                   />
                 ) : (
                   businessSettings?.companyName ? (
-                    <span className="text-sm font-semibold text-neutral-700 px-2 truncate">
+                    <span className="text-sm font-semibold text-neutral-700 px-1 truncate">
                       {businessSettings.companyName}
                     </span>
                   ) : (
-                    <img src={quickSpicyLogo} alt={businessSettings?.companyName || "Company"} className="w-24 h-10 object-contain" loading="lazy" />
+                    <img src={quickSpicyLogo} alt={businessSettings?.companyName || "Company"} className="w-20 sm:w-24 h-9 sm:h-10 object-contain" loading="lazy" />
                   )
                 )}
               </div>
