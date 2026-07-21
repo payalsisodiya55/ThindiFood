@@ -139,6 +139,30 @@ export default function OutletTimings() {
   const hasChanges = initialDays ? JSON.stringify(days) !== JSON.stringify(initialDays) : false
 
   const handleSave = async () => {
+    // Validate timings
+    for (const [day, data] of Object.entries(days)) {
+      if (data.isOpen) {
+        if (!data.openingTime || !data.closingTime) {
+          toast.error(`Please set both opening and closing times for ${day}.`);
+          return;
+        }
+        if (data.openingTime === data.closingTime) {
+          toast.error(`Opening and closing times cannot be the same for ${day}.`);
+          return;
+        }
+        
+        const [openH, openM] = data.openingTime.split(":").map(Number);
+        const [closeH, closeM] = data.closingTime.split(":").map(Number);
+        const openVal = openH * 60 + openM;
+        const closeVal = closeH * 60 + closeM;
+        
+        if (closeVal < openVal) {
+          toast.error(`Closing time must be after opening time for ${day}.`);
+          return;
+        }
+      }
+    }
+
     try {
       setSaving(true)
       await persistOutletTimings(days)
@@ -388,9 +412,6 @@ export default function OutletTimings() {
                                     format="hh:mm a"
                                   />
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                  Current: {formatTime12Hour(dayData.openingTime)}
-                                </p>
                               </div>
 
                               {/* Closing Time */}
@@ -459,9 +480,6 @@ export default function OutletTimings() {
                                     format="hh:mm a"
                                   />
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                  Current: {formatTime12Hour(dayData.closingTime)}
-                                </p>
                               </div>
                             </>
                           ) : (
