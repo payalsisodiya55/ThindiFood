@@ -445,10 +445,75 @@ export default function FoodApproval() {
                    <p className="text-sm font-semibold text-gray-900 break-all">{selectedRequest.restaurantName || '-'}</p>
                    <p className="text-xs text-gray-500 break-all">ID: {selectedRequest.restaurantId || '-'}</p>
                 </div>
-                <div className="px-3 py-1 bg-white rounded-full border border-blue-100 text-[10px] font-bold text-blue-600">
-                    {selectedRequest.entityType?.toUpperCase()}
+                <div className="flex items-center gap-2">
+                    {selectedRequest.previousVersion && (
+                      <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold border border-amber-200">
+                        Modified Item Update
+                      </span>
+                    )}
+                    <div className="px-3 py-1 bg-white rounded-full border border-blue-100 text-[10px] font-bold text-blue-600">
+                        {selectedRequest.entityType?.toUpperCase()}
+                    </div>
                 </div>
               </div>
+
+              {/* Previous vs New Changes Comparison if modified */}
+              {selectedRequest.previousVersion && (
+                <div className="p-4 bg-amber-50/60 rounded-xl border border-amber-200/80 space-y-3">
+                  <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                    <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider">Requested Changes vs Previous Version</h4>
+                    <span className="text-[11px] font-semibold text-amber-700 bg-amber-200/50 px-2 py-0.5 rounded">Resubmitted for approval</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-2 bg-white/80 p-3 rounded-lg border border-amber-100">
+                      <p className="font-bold text-slate-500 uppercase tracking-wider text-[10px]">Previous Approved Version</p>
+                      <div className="space-y-1 text-slate-700">
+                        <p><span className="font-semibold">Name:</span> {selectedRequest.previousVersion.name || '-'}</p>
+                        <p><span className="font-semibold">Price:</span> {selectedRequest.previousVersion.price !== undefined ? `₹${selectedRequest.previousVersion.price}` : '-'}</p>
+                        <p><span className="font-semibold">Category:</span> {selectedRequest.previousVersion.categoryName || '-'}</p>
+                        <p><span className="font-semibold">Type:</span> {selectedRequest.previousVersion.foodType || '-'}</p>
+                        {selectedRequest.previousVersion.variants && selectedRequest.previousVersion.variants.length > 0 && (
+                          <div className="mt-1">
+                            <span className="font-semibold">Variants:</span>
+                            <div className="mt-0.5 space-y-0.5 pl-2 text-[11px] text-slate-600">
+                              {selectedRequest.previousVersion.variants.map((v, i) => (
+                                <div key={i}>• {v.name}: ₹{v.price}</div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-2 bg-emerald-50/70 p-3 rounded-lg border border-emerald-200/60">
+                      <p className="font-bold text-emerald-800 uppercase tracking-wider text-[10px]">New Requested Version</p>
+                      <div className="space-y-1 text-emerald-950">
+                        <p className={selectedRequest.previousVersion.name !== selectedRequest.itemName ? "font-bold text-emerald-700" : ""}>
+                          <span className="font-semibold">Name:</span> {selectedRequest.itemName || '-'}
+                        </p>
+                        <p className={selectedRequest.previousVersion.price !== selectedRequest.price ? "font-bold text-emerald-700" : ""}>
+                          <span className="font-semibold">Price:</span> {selectedRequest.price !== undefined && selectedRequest.price !== null ? `₹${selectedRequest.price}` : '-'}
+                        </p>
+                        <p className={selectedRequest.previousVersion.categoryName !== selectedRequest.category ? "font-bold text-emerald-700" : ""}>
+                          <span className="font-semibold">Category:</span> {selectedRequest.category || '-'}
+                        </p>
+                        <p className={selectedRequest.previousVersion.foodType !== selectedRequest.foodType ? "font-bold text-emerald-700" : ""}>
+                          <span className="font-semibold">Type:</span> {selectedRequest.foodType || '-'}
+                        </p>
+                        {selectedRequest.variants && selectedRequest.variants.length > 0 && (
+                          <div className="mt-1">
+                            <span className="font-semibold">Variants:</span>
+                            <div className="mt-0.5 space-y-0.5 pl-2 text-[11px]">
+                              {selectedRequest.variants.map((v, i) => (
+                                <div key={i}>• {v.name}: ₹{v.price}</div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Item Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

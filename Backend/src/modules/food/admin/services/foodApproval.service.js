@@ -83,7 +83,7 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
         .sort({ requestedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .select('restaurantId categoryName name price variants image foodType description approvalStatus rejectionReason requestedAt createdAt')
+        .select('restaurantId categoryName name price variants image foodType description approvalStatus rejectionReason requestedAt createdAt previousVersion')
         .lean();
 
     const addonFilter = {};
@@ -137,7 +137,8 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
         image: f.image || '',
         images: f.image ? [f.image] : [],
         requestedAt: f.requestedAt || f.createdAt,
-        isActionable: (f.approvalStatus || 'pending') === 'pending'
+        isActionable: (f.approvalStatus || 'pending') === 'pending',
+        previousVersion: f.previousVersion || null
         };
     });
 

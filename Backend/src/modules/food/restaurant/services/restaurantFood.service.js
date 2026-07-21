@@ -292,6 +292,16 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         update.rejectionReason = '';
         update.approvedAt = null;
         update.rejectedAt = null;
+        update.previousVersion = {
+            name: existing.name,
+            description: existing.description,
+            price: existing.price,
+            variants: existing.variants ? JSON.parse(JSON.stringify(existing.variants)) : [],
+            image: existing.image,
+            foodType: existing.foodType,
+            categoryName: existing.categoryName,
+            preparationTime: existing.preparationTime
+        };
     }
 
     const updated = await FoodItem.findOneAndUpdate(
