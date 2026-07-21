@@ -85,6 +85,39 @@ export default function DiningOrders() {
     );
   }, [rows]);
 
+  const getTopRestaurantDetails = () => {
+    if (rows.length === 0) return "N/A";
+    
+    const frequency = {};
+    let maxCount = 0;
+    let topResName = "";
+    
+    rows.forEach(r => {
+      if (r.restaurant) {
+        frequency[r.restaurant] = (frequency[r.restaurant] || 0) + 1;
+        if (frequency[r.restaurant] > maxCount) {
+          maxCount = frequency[r.restaurant];
+          topResName = r.restaurant;
+        }
+      }
+    });
+    
+    if (!topResName) return "N/A";
+    
+    const found = restaurants.find(res => 
+      (res.name || res.restaurantName) === topResName || 
+      res._id === rows.find(r => r.restaurant === topResName)?.restaurantId
+    );
+    
+    if (found) {
+      return `${found.name || found.restaurantName} (ID: ${found._id})`;
+    }
+    
+    const matchingOrder = rows.find(r => r.restaurant === topResName);
+    const resId = matchingOrder?.restaurantId || matchingOrder?.restaurant_id || "";
+    return resId ? `${topResName} (ID: ${resId})` : topResName;
+  };
+
   const getStatusColor = (status) => {
     const s = String(status || "").toLowerCase();
     if (s.includes("complete") || s.includes("paid")) return "bg-emerald-100 text-emerald-700 border-emerald-200";
@@ -161,7 +194,7 @@ export default function DiningOrders() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="p-4 bg-white shadow-sm border-slate-200 flex items-center gap-4">
+        <Card className="p-4 bg-white shadow-sm border-slate-200 flex flex-col items-center text-center justify-center gap-2">
           <div className="p-3 bg-blue-50 rounded-full">
             <LayoutDashboard className="w-6 h-6 text-blue-600" />
           </div>
@@ -171,7 +204,7 @@ export default function DiningOrders() {
           </div>
         </Card>
 
-        <Card className="p-4 bg-white shadow-sm border-slate-200 flex items-center gap-4">
+        <Card className="p-4 bg-white shadow-sm border-slate-200 flex flex-col items-center text-center justify-center gap-2">
           <div className="p-3 bg-emerald-50 rounded-full">
             <CreditCard className="w-6 h-6 text-emerald-600" />
           </div>
@@ -181,7 +214,7 @@ export default function DiningOrders() {
           </div>
         </Card>
 
-        <Card className="p-4 bg-white shadow-sm border-slate-200 flex items-center gap-4">
+        <Card className="p-4 bg-white shadow-sm border-slate-200 flex flex-col items-center text-center justify-center gap-2">
           <div className="p-3 bg-amber-50 rounded-full">
             <Clock className="w-6 h-6 text-amber-600" />
           </div>
@@ -196,14 +229,14 @@ export default function DiningOrders() {
           </div>
         </Card>
 
-        <Card className="p-4 bg-white shadow-sm border-slate-200 flex items-center gap-4">
+        <Card className="p-4 bg-white shadow-sm border-slate-200 flex flex-col items-center text-center justify-center gap-2">
           <div className="p-3 bg-purple-50 rounded-full">
             <Store className="w-6 h-6 text-purple-600" />
           </div>
           <div>
             <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">Top Restaurant</p>
-            <p className="text-sm font-bold text-slate-900 truncate max-w-[120px]">
-              {rows.length > 0 ? [...new Set(rows.map((r) => r.restaurant))][0] : "N/A"}
+            <p className="text-sm font-bold text-slate-900 break-words text-wrap">
+              {getTopRestaurantDetails()}
             </p>
           </div>
         </Card>
@@ -211,41 +244,52 @@ export default function DiningOrders() {
 
       {/* Filters Section */}
       <Card className="p-4 mb-6 bg-white shadow-sm border-slate-200">
-        <div className="flex items-center gap-2 mb-4 text-slate-700">
-          <Filter className="w-4 h-4" />
-          <h2 className="font-semibold text-sm">Filter Results</h2>
+        <div className="flex items-center justify-between mb-4 text-slate-700">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4" />
+            <h2 className="font-semibold text-sm">Filter Results</h2>
+          </div>
+          {(filters.fromDate || filters.toDate || filters.restaurantId !== "all" || filters.paymentType !== "all" || filters.orderType !== "all" || filters.search) && (
+            <button
+              onClick={() => setFilters({
+                fromDate: "",
+                toDate: "",
+                restaurantId: "all",
+                paymentType: "all",
+                orderType: "all",
+                search: ""
+              })}
+              className="text-xs font-semibold text-blue-600 hover:text-blue-700 cursor-pointer transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">From Date</label>
-            <div className="relative">
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input
-                className="pl-8 text-xs h-9"
-                type="date"
-                value={filters.fromDate}
-                onChange={(e) => setFilters((p) => ({ ...p, fromDate: e.target.value }))} />
-              
-            </div>
+            <Input
+              className="w-full text-xs h-9 bg-white border border-slate-200"
+              type="date"
+              value={filters.fromDate}
+              onChange={(e) => setFilters((p) => ({ ...p, fromDate: e.target.value }))}
+            />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">To Date</label>
-            <div className="relative">
-              <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <Input
-                className="pl-8 text-xs h-9"
-                type="date"
-                value={filters.toDate}
-                onChange={(e) => setFilters((p) => ({ ...p, toDate: e.target.value }))} />
-              
-            </div>
+            <Input
+              className="w-full text-xs h-9 bg-white border border-slate-200"
+              type="date"
+              value={filters.toDate}
+              onChange={(e) => setFilters((p) => ({ ...p, toDate: e.target.value }))}
+            />
           </div>
 
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Restaurant</label>
             <Select value={filters.restaurantId} onValueChange={(v) => setFilters((p) => ({ ...p, restaurantId: v }))}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="All Restaurants" />
               </SelectTrigger>
               <SelectContent>
@@ -260,13 +304,13 @@ export default function DiningOrders() {
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Payment</label>
             <Select value={filters.paymentType} onValueChange={(v) => setFilters((p) => ({ ...p, paymentType: v }))}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="All Payments" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Payments</SelectItem>
                 <SelectItem value="online">Online</SelectItem>
-                <SelectItem value="cod">COD</SelectItem>
+                <SelectItem value="cod">Pay at Counter</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -274,7 +318,7 @@ export default function DiningOrders() {
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Order Type</label>
             <Select value={filters.orderType} onValueChange={(v) => setFilters((p) => ({ ...p, orderType: v }))}>
-              <SelectTrigger className="h-9 text-xs">
+              <SelectTrigger className="w-full h-9 text-xs">
                 <SelectValue placeholder="All Types" />
               </SelectTrigger>
               <SelectContent>
@@ -290,11 +334,11 @@ export default function DiningOrders() {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
               <Input
-                className="pl-8 text-xs h-9"
+                className="w-full pl-8 text-xs h-9 bg-white border border-slate-200"
                 placeholder="ID, User..."
                 value={filters.search}
-                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))} />
-              
+                onChange={(e) => setFilters((p) => ({ ...p, search: e.target.value }))}
+              />
             </div>
           </div>
         </div>
@@ -370,7 +414,6 @@ export default function DiningOrders() {
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-900">{currency(row.amount)}</span>
-                          <span className="text-[10px] text-slate-400">{row.itemCount || 0} Items</span>
                           {visibleItems.length > 0 &&
                         <div className="mt-1.5 flex flex-col gap-0.5">
                               {visibleItems.map((item, idx) =>
