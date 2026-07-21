@@ -246,36 +246,34 @@ export default function DeliveryApproval() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            {activeTab === "pending" &&
-                          <>
+                            <button
+                              onClick={() => {
+                                setSelectedRequest(request);
+                                setShowDetailsModal(true);
+                              }}
+                              className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
+                              title="View Details">
+                              <Info className="w-4 h-4" />
+                            </button>
+
+                            {activeTab === "pending" && (
+                              <>
                                 <button
-                              onClick={() => handleApprove(request)}
-                              disabled={processing}
-                              className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-all"
-                              title="Approve">
-                              
+                                  onClick={() => handleApprove(request)}
+                                  disabled={processing}
+                                  className="p-2 rounded-lg bg-green-50 text-green-600 hover:bg-green-100 transition-all"
+                                  title="Approve">
                                   <Check className="w-4 h-4" />
                                 </button>
                                 <button
-                              onClick={() => handleReject(request)}
-                              disabled={processing}
-                              className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all"
-                              title="Reject">
-                              
+                                  onClick={() => handleReject(request)}
+                                  disabled={processing}
+                                  className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all"
+                                  title="Reject">
                                   <X className="w-4 h-4" />
                                 </button>
                               </>
-                          }
-                            <button
-                            onClick={() => {
-                              setSelectedRequest(request);
-                              setShowDetailsModal(true);
-                            }}
-                            className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-all"
-                            title="View Details">
-                            
-                              <Info className="w-4 h-4" />
-                            </button>
+                            )}
                           </div>
                         </td>
                       </tr>);

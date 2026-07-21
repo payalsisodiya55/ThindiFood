@@ -72,10 +72,22 @@ export default function ZoneSetup() {
     }
   };
 
-  const filteredZones = zones.filter((zone) =>
-  zone.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  zone.serviceLocation?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [selectedZoneFilter, setSelectedZoneFilter] = useState("all");
+
+  const filteredZones = zones.filter((zone) => {
+    const matchesSearch =
+      !searchQuery.trim() ||
+      zone.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      zone.serviceLocation?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      zone.city?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      zone.state?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesZone =
+      selectedZoneFilter === "all" ||
+      (zone._id || zone.id) === selectedZoneFilter;
+
+    return matchesSearch && matchesZone;
+  });
 
   return (
     <div className="p-2 lg:p-3 bg-slate-50 min-h-screen">
@@ -95,31 +107,45 @@ export default function ZoneSetup() {
             <button
               onClick={() => navigate("/admin/food/zone-setup/map")}
               className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-              
               <Map className="w-5 h-5" />
               <span>View Map</span>
             </button>
             <button
               onClick={() => navigate("/admin/food/zone-setup/add")}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-              
               <Plus className="w-5 h-5" />
               <span>Add Zone</span>
             </button>
           </div>
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar & Zone Filter */}
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search zones by name or location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search zones by name or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" />
+            </div>
+
+            <div className="w-full sm:w-64">
+              <select
+                value={selectedZoneFilter}
+                onChange={(e) => setSelectedZoneFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm font-medium text-slate-700"
+              >
+                <option value="all">All Zones</option>
+                {zones.map((z) => (
+                  <option key={z._id || z.id} value={z._id || z.id}>
+                    {z.name || z.zoneName}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
