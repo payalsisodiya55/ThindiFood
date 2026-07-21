@@ -428,7 +428,7 @@ export default function OutletInfo() {
           <p className="text-sm font-medium text-gray-900 break-words">{isLoading ? "Loading..." : value || "N/A"}</p>
         </div>
         {onEdit && (
-          <button onClick={onEdit} className="text-blue-600 text-sm font-normal cursor-pointer ml-2 shrink-0">Edit</button>
+          <button onClick={onEdit} className="px-3 py-1 text-xs font-semibold text-blue-600 bg-white hover:bg-blue-50 border border-blue-300 rounded-md transition-colors cursor-pointer ml-2 shrink-0 shadow-sm">Edit</button>
         )}
       </div>
     </div>
@@ -443,7 +443,7 @@ export default function OutletInfo() {
           <p className="text-sm font-medium text-gray-900 break-words">{isLoading ? "Loading..." : value || "N/A"}</p>
         </div>
         <div className="flex items-center gap-2 ml-2 shrink-0">
-          <button onClick={() => handleOpenDocEdit(fieldKey, label, value)} className="text-blue-600 text-sm font-normal cursor-pointer">Edit</button>
+          <button onClick={() => handleOpenDocEdit(fieldKey, label, value)} className="px-3 py-1 text-xs font-semibold text-blue-600 bg-white hover:bg-blue-50 border border-blue-300 rounded-md transition-colors cursor-pointer shadow-sm">Edit</button>
         </div>
       </div>
       {imageUrl && (
@@ -554,7 +554,7 @@ export default function OutletInfo() {
                   <span className="text-white text-sm font-bold">{averageRating}</span>
                   <Star className="w-3.5 h-3.5 text-white fill-white" />
                 </div>
-                <span className="text-gray-800 text-sm font-normal">{totalRatingsCount} DELIVERY REVIEWS</span>
+                <span className="text-gray-800 text-sm font-normal">{totalRatingsCount} CUSTOMER REVIEWS</span>
                 <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 ml-auto" />
               </button>
             </div>

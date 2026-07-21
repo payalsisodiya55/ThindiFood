@@ -1379,18 +1379,6 @@ export default function ExploreMore() {
                   >
                     Privacy Policy
                   </a>
-                  <span className="text-gray-400">|</span>
-                  <a
-                    href="#"
-                    className="hover:text-gray-700 transition-colors border-b border-dotted border-gray-400"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      // Navigate to code of conduct
-                      debugLog("Code of Conduct clicked")
-                    }}
-                  >
-                    Code of Conduct
-                  </a>
                 </div>
               </div>
             </motion.div>
