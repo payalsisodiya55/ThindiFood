@@ -1819,10 +1819,26 @@ export default function RestaurantsList() {
                           <div className="flex items-start gap-3">
                             <Clock className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs text-slate-500">Opening / Closing</p>
-                              <p className="text-sm font-medium text-slate-900 break-words">
-                                {formatTime12Hour(openingTimeVal)} – {formatTime12Hour(closingTimeVal)}
-                              </p>
+                              <p className="text-xs text-slate-500 mb-1.5 font-medium">Daily Operating Hours</p>
+                              {Array.isArray(openDaysVal) && openDaysVal.length > 0 ? (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/60">
+                                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+                                    const isOpen = openDaysVal.some(d => String(d).toLowerCase().startsWith(day.toLowerCase()))
+                                    return (
+                                      <div key={day} className="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-white border border-slate-100 shadow-2xs">
+                                        <span className="font-semibold text-slate-800">{day}</span>
+                                        <span className={isOpen ? "font-bold text-emerald-600" : "text-slate-400 font-medium"}>
+                                          {isOpen ? `${formatTime12Hour(openingTimeVal)} – ${formatTime12Hour(closingTimeVal)}` : 'Closed'}
+                                        </span>
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-sm font-medium text-slate-900 break-words">
+                                  {formatTime12Hour(openingTimeVal)} – {formatTime12Hour(closingTimeVal)}
+                                </p>
+                              )}
                             </div>
                           </div>
                         )}
@@ -1834,10 +1850,10 @@ export default function RestaurantsList() {
                         )}
                         {openDaysVal && (
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-slate-500 mb-1">Open Days</p>
+                            <p className="text-xs text-slate-500 mb-1">Active Operating Days</p>
                             <div className="flex flex-wrap gap-2">
                               {openDaysVal.map((day, idx) => (
-                                <span key={idx} className="px-2 py-1 bg-slate-100 text-slate-700 rounded text-xs font-medium capitalize">{day}</span>
+                                <span key={idx} className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-lg text-xs font-semibold capitalize">{day}</span>
                               ))}
                             </div>
                           </div>

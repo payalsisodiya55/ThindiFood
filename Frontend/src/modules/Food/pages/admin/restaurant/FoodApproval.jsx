@@ -20,6 +20,7 @@ export default function FoodApproval() {
   const [foodRequests, setFoodRequests] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [selectedStatus, setSelectedStatus] = useState("pending")
   const [selectedZone, setSelectedZone] = useState("all")
   const [zones, setZones] = useState([])
   const [selectedRequest, setSelectedRequest] = useState(null)
@@ -56,13 +57,16 @@ export default function FoodApproval() {
     fetchZones()
   }, [])
 
-  // Fetch pending food approval requests
+  // Fetch food approval requests
   const fetchFoodRequests = useCallback(async ({ silent = false } = {}) => {
     try {
       if (!silent) {
         setLoading(true)
       }
-      const params = selectedZone !== 'all' ? { zoneId: selectedZone } : {}
+      const params = {}
+      if (selectedZone !== 'all') params.zoneId = selectedZone
+      if (selectedStatus !== 'all') params.status = selectedStatus
+      
       const response = await adminAPI.getPendingFoodApprovals(params)
       const data = response?.data?.data?.requests || response?.data?.requests || []
       if (!isMountedRef.current) return
@@ -79,7 +83,7 @@ export default function FoodApproval() {
         setLoading(false)
       }
     }
-  }, [selectedZone])
+  }, [selectedZone, selectedStatus])
 
   useEffect(() => {
     isMountedRef.current = true
@@ -110,15 +114,18 @@ export default function FoodApproval() {
       window.removeEventListener("pageshow", onPageShow)
       document.removeEventListener("visibilitychange", onVisibility)
     }
-  }, [fetchFoodRequests, selectedZone])
+  }, [fetchFoodRequests, selectedZone, selectedStatus])
 
-  // Filter requests based on search query and zone
+  // Filter requests based on search query, zone, and status
   const filteredRequests = useMemo(() => {
     let results = foodRequests
 
-    // Client-side zone filter (fallback if backend doesn't filter)
     if (selectedZone !== 'all') {
       results = results.filter((request) => getRequestZoneId(request) === selectedZone)
+    }
+
+    if (selectedStatus !== 'all') {
+      results = results.filter((request) => String(request.approvalStatus || 'pending').toLowerCase() === selectedStatus)
     }
 
     if (!searchQuery.trim()) {
@@ -133,7 +140,7 @@ export default function FoodApproval() {
       request.approvalStatus?.toLowerCase().includes(query) ||
       request.entityType?.toLowerCase().includes(query)
     )
-  }, [foodRequests, getRequestZoneId, searchQuery, selectedZone])
+  }, [foodRequests, getRequestZoneId, searchQuery, selectedZone, selectedStatus])
 
   const totalRequests = filteredRequests.length
 
@@ -237,7 +244,7 @@ export default function FoodApproval() {
             </div>
           </div>
 
-          {/* Search Bar + Zone Filter */}
+          {/* Search Bar + Filters */}
           <div className="mb-4 flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
               <span className="absolute inset-y-0 left-2.5 flex items-center text-gray-400">
@@ -251,6 +258,25 @@ export default function FoodApproval() {
                 className="w-full rounded-md border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm focus:outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd]"
               />
             </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <select
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus(e.target.value)}
+                className="rounded-md border border-gray-300 bg-white py-1.5 px-3 pr-8 text-sm font-medium text-gray-700 focus:outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd] appearance-none min-w-[140px] cursor-pointer"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+              <span className="absolute inset-y-0 right-2.5 flex items-center text-gray-400 pointer-events-none">
+                <ChevronDown className="w-4 h-4" />
+              </span>
+            </div>
+
+            {/* Zone Filter */}
             <div className="relative">
               <span className="absolute inset-y-0 left-2.5 flex items-center text-gray-400 pointer-events-none">
                 <MapPin className="w-4 h-4" />
@@ -258,7 +284,7 @@ export default function FoodApproval() {
               <select
                 value={selectedZone}
                 onChange={(e) => setSelectedZone(e.target.value)}
-                className="rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-8 text-sm font-medium text-gray-700 focus:outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd] appearance-none min-w-[160px] cursor-pointer"
+                className="rounded-md border border-gray-300 bg-white py-1.5 pl-8 pr-8 text-sm font-medium text-gray-700 focus:outline-none focus:border-[#006fbd] focus:ring-1 focus:ring-[#006fbd] appearance-none min-w-[150px] cursor-pointer"
               >
                 <option value="all">All Zones</option>
                 {zones.map((zone) => (
@@ -464,6 +490,13 @@ export default function FoodApproval() {
                   <div className="col-span-full">
                     <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description</label>
                     <p className="text-sm text-gray-700 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100 break-all">{selectedRequest.description}</p>
+                  </div>
+                )}
+
+                {selectedRequest.rejectionReason && (
+                  <div className="col-span-full">
+                    <label className="block text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1">Rejection Reason</label>
+                    <p className="text-sm text-red-700 leading-relaxed bg-red-50 p-3 rounded-lg border border-red-200 font-medium break-all">{selectedRequest.rejectionReason}</p>
                   </div>
                 )}
 

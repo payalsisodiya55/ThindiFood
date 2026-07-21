@@ -44,7 +44,11 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
         restaurantFilter.zoneId = { $in: effectiveZoneIds.map((id) => new mongoose.Types.ObjectId(id)) };
     }
 
-    const filter = { approvalStatus: 'pending' };
+    const statusQuery = String(query.status || 'pending').toLowerCase();
+    const filter = {};
+    if (statusQuery !== 'all') {
+        filter.approvalStatus = statusQuery;
+    }
     if (query.restaurantId && mongoose.Types.ObjectId.isValid(String(query.restaurantId))) {
         filter.restaurantId = query.restaurantId;
     }
@@ -79,10 +83,13 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
         .sort({ requestedAt: -1, createdAt: -1 })
         .skip(skip)
         .limit(limit)
-        .select('restaurantId categoryName name price variants image foodType approvalStatus requestedAt createdAt')
+        .select('restaurantId categoryName name price variants image foodType description approvalStatus rejectionReason requestedAt createdAt')
         .lean();
 
-    const addonFilter = { approvalStatus: 'pending' };
+    const addonFilter = {};
+    if (statusQuery !== 'all') {
+        addonFilter.approvalStatus = statusQuery;
+    }
     if (Object.keys(restaurantFilter).length > 0) {
         addonFilter.restaurantId = { $in: zoneScopedRestaurantIds };
     }
@@ -90,7 +97,7 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
     const addonList = await FoodAddon.find(addonFilter)
         .sort({ requestedAt: -1, createdAt: -1 })
         .limit(limit)
-        .select('restaurantId draft isAvailable requestedAt createdAt')
+        .select('restaurantId draft isAvailable approvalStatus rejectionReason requestedAt createdAt')
         .lean();
 
     const restaurantIds = Array.from(new Set([
@@ -120,9 +127,11 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
         category: f.categoryName || '',
         itemName: f.name,
         foodType: f.foodType || 'Non-Veg',
+        description: f.description || '',
         sectionName: f.categoryName || '',
         subsectionName: '',
         approvalStatus: f.approvalStatus || 'pending',
+        rejectionReason: f.rejectionReason || '',
         price: getFoodDisplayPrice(f),
         variants: serializeFoodVariants(f.variants),
         image: f.image || '',
@@ -148,12 +157,13 @@ export async function listPendingFoodApprovals(query = {}, scope = {}) {
         foodType: 'Add-on',
         sectionName: 'Add-on',
         subsectionName: '',
-        approvalStatus: 'pending',
+        approvalStatus: a.approvalStatus || 'pending',
+        rejectionReason: a.rejectionReason || '',
         price: a.draft?.price ?? 0,
         image: a.draft?.image || (a.draft?.images && a.draft.images[0]) || '',
         images: a.draft?.images || (a.draft?.image ? [a.draft.image] : []),
         requestedAt: a.requestedAt || a.createdAt,
-        isActionable: true,
+        isActionable: (a.approvalStatus || 'pending') === 'pending',
         description: a.draft?.description || ''
         };
     });
@@ -175,7 +185,6 @@ export async function approveFoodItem(id) {
         { new: true }
     ).lean();
     if (updated?.restaurantId) {
-        // Single DB update; makes user-facing menu reflect approval immediately.
         await syncMenuItemApprovalStatus(updated.restaurantId, updated._id, 'approved', '');
         await createInboxNotifications({
             notifications: [{
@@ -269,7 +278,7 @@ export async function rejectFoodItem(id, reason) {
                 reason: r
             });
         }
-        
+
         try {
             const { notifyOwnersSafely } = await import('../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
@@ -292,4 +301,3 @@ export async function rejectFoodItem(id, reason) {
     }
     return updated;
 }
-
