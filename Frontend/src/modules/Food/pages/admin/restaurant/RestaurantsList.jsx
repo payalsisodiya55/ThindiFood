@@ -1525,28 +1525,46 @@ export default function RestaurantsList() {
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">Pure Veg</label>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-3">
                         <button
                           type="button"
                           onClick={() => setDetailsForm((prev) => ({ ...prev, pureVegRestaurant: true }))}
-                          className={`px-3 py-1.5 text-xs rounded-full border ${
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
                             detailsForm.pureVegRestaurant === true
-                              ? "bg-green-600 text-white border-green-600"
-                              : "bg-white text-slate-700 border-slate-300"
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm ring-1 ring-emerald-500"
+                              : "bg-white border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50"
                           }`}
                         >
-                          Yes
+                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+                            detailsForm.pureVegRestaurant === true
+                              ? "border-emerald-600 bg-emerald-600"
+                              : "border-slate-400 bg-white"
+                          }`}>
+                            {detailsForm.pureVegRestaurant === true && (
+                              <div className="w-1 h-1 rounded-full bg-white" />
+                            )}
+                          </div>
+                          <span>Yes, Pure Veg</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setDetailsForm((prev) => ({ ...prev, pureVegRestaurant: false }))}
-                          className={`px-3 py-1.5 text-xs rounded-full border ${
+                          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
                             detailsForm.pureVegRestaurant === false
-                              ? "bg-slate-900 text-white border-slate-900"
-                              : "bg-white text-slate-700 border-slate-300"
+                              ? "bg-rose-50 border-rose-500 text-rose-800 shadow-sm ring-1 ring-rose-500"
+                              : "bg-white border-slate-300 text-slate-700 hover:border-slate-400 hover:bg-slate-50"
                           }`}
                         >
-                          No
+                          <div className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+                            detailsForm.pureVegRestaurant === false
+                              ? "border-rose-600 bg-rose-600"
+                              : "border-slate-400 bg-white"
+                          }`}>
+                            {detailsForm.pureVegRestaurant === false && (
+                              <div className="w-1 h-1 rounded-full bg-white" />
+                            )}
+                          </div>
+                          <span>No, Mixed Menu</span>
                         </button>
                       </div>
                     </div>

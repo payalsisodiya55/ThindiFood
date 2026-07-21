@@ -20,7 +20,7 @@ const normalizeDay = (value) => {
   return abbreviatedMatch || null
 }
 
-const parseTimeToMinutes = (timeValue) => {
+export const parseTimeToMinutes = (timeValue) => {
   if (!timeValue || typeof timeValue !== "string") return null
   const raw = timeValue.trim()
   if (!raw) return null
@@ -51,6 +51,70 @@ const parseTimeToMinutes = (timeValue) => {
 
   return hour * 60 + minute
 }
+
+export const validateDeliveryAgainstOperationalTimings = (openingTime, closingTime, deliveryStart, deliveryEnd) => {
+  if (!openingTime || !closingTime || !deliveryStart || !deliveryEnd) return { isValid: true }
+
+  const openMins = parseTimeToMinutes(openingTime)
+  const closeMins = parseTimeToMinutes(closingTime)
+  const startMins = parseTimeToMinutes(deliveryStart)
+  const endMins = parseTimeToMinutes(deliveryEnd)
+
+  if (openMins === null || closeMins === null || startMins === null || endMins === null) {
+    return { isValid: true }
+  }
+
+  if (startMins === endMins) {
+    return { isValid: false, message: "Delivery start time and end time cannot be the same" }
+  }
+
+  const isMinuteWithinOp = (mins) => {
+    if (openMins === closeMins) return true
+    if (closeMins > openMins) {
+      return mins >= openMins && mins <= closeMins
+    }
+    return mins >= openMins || mins <= closeMins
+  }
+
+  const formatMinsTo12H = (mins) => {
+    const h = Math.floor(mins / 60)
+    const m = mins % 60
+    const period = h >= 12 ? "PM" : "AM"
+    const h12 = h % 12 || 12
+    return `${h12}:${m < 10 ? "0" : ""}${m} ${period}`
+  }
+
+  const opLabel = `${formatMinsTo12H(openMins)} - ${formatMinsTo12H(closeMins)}`
+
+  if (!isMinuteWithinOp(startMins)) {
+    return {
+      isValid: false,
+      message: `Delivery start time (${formatMinsTo12H(startMins)}) cannot be outside restaurant operational hours (${opLabel})`,
+    }
+  }
+
+  if (!isMinuteWithinOp(endMins)) {
+    return {
+      isValid: false,
+      message: `Delivery end time (${formatMinsTo12H(endMins)}) cannot be outside restaurant operational hours (${opLabel})`,
+    }
+  }
+
+  if (openMins < closeMins) {
+    if (startMins > endMins) {
+      return { isValid: false, message: "Delivery start time must be before delivery end time" }
+    }
+  } else if (openMins > closeMins) {
+    if (startMins > endMins) {
+      if (startMins < openMins || endMins > closeMins) {
+        return { isValid: false, message: `Delivery window cannot extend outside restaurant operational hours (${opLabel})` }
+      }
+    }
+  }
+
+  return { isValid: true }
+}
+
 
 const getTodayTiming = (restaurant, dayName) => {
   const outletTimingsArray = restaurant?.outletTimings?.timings

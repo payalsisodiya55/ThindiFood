@@ -19,6 +19,7 @@ import { MobileTimePicker } from "@mui/x-date-pickers/MobileTimePicker"
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
 import { determineStepToShow } from "@food/utils/onboardingUtils"
+import { validateDeliveryAgainstOperationalTimings } from "@food/utils/restaurantAvailability"
 import { toast } from "sonner"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getGoogleMapsApiKey } from "@food/utils/googleMapsApiKey"
@@ -1389,7 +1390,7 @@ export default function RestaurantOnboarding() {
           // Map Step 1
           setStep1((prev) => ({
             restaurantName: data.name || data.restaurantName || "",
-            pureVegRestaurant: typeof data.pureVegRestaurant === "boolean" ? data.pureVegRestaurant : null,
+            pureVegRestaurant: typeof data.pureVegRestaurant === "boolean" ? data.pureVegRestaurant : false,
             ownerName: data.ownerName || "",
             ownerEmail: data.ownerEmail || "",
             ownerPhone: data.ownerPhone || "",
@@ -1528,6 +1529,9 @@ export default function RestaurantOnboarding() {
     if (!step1.zoneId?.trim()) {
       errors.push("Service zone is required")
     }
+    if (!step1.location?.formattedAddress?.trim() && !locationSearchInputRef.current?.value?.trim()) {
+      errors.push("Restaurant address is required")
+    }
     if (!step1.location?.area?.trim()) {
       errors.push("Area/Sector/Locality is required")
     }
@@ -1623,11 +1627,6 @@ export default function RestaurantOnboarding() {
     if (!step4.estimatedDeliveryTime || !step4.estimatedDeliveryTime.trim()) {
       errors.push("Estimated preparation time is required")
     }
-    if (!step4.featuredDish || !step4.featuredDish.trim()) {
-      errors.push("Featured dish name is required")
-    } else if (!FEATURED_DISH_NAME_REGEX.test(step4.featuredDish.trim())) {
-      errors.push("Featured dish name must contain only letters")
-    }
 
     if (step4.selfDeliveryEnabled) {
       if (!step4.selfDeliveryRadius || !String(step4.selfDeliveryRadius).trim()) {
@@ -1648,33 +1647,14 @@ export default function RestaurantOnboarding() {
         errors.push("Self delivery end time is required")
       }
       if (start && end) {
-        if (start === end) {
-          errors.push("Self delivery start and end time cannot be the same")
-        } else {
-          // Validate start time is before end time
-          const [startH, startM] = start.split(":").map(Number)
-          const [endH, endM] = end.split(":").map(Number)
-          const startMins = startH * 60 + startM
-          const endMins = endH * 60 + endM
-          if (startMins >= endMins) {
-            errors.push("Self delivery start time must be before end time")
-          } else {
-            // Validate delivery window is within restaurant operational hours
-            const openingNorm = normalizeTimeValue(step2.openingTime)
-            const closingNorm = normalizeTimeValue(step2.closingTime)
-            if (openingNorm && closingNorm) {
-              const [openH, openM] = openingNorm.split(":").map(Number)
-              const [closeH, closeM] = closingNorm.split(":").map(Number)
-              const openMins = openH * 60 + openM
-              const closeMins = closeH * 60 + closeM
-              if (startMins < openMins) {
-                errors.push("Self delivery start time cannot be before restaurant opening time")
-              }
-              if (endMins > closeMins) {
-                errors.push("Self delivery end time cannot be after restaurant closing time")
-              }
-            }
-          }
+        const timeCheck = validateDeliveryAgainstOperationalTimings(
+          step2.openingTime,
+          step2.closingTime,
+          start,
+          end
+        )
+        if (!timeCheck.isValid) {
+          errors.push(timeCheck.message)
         }
       }
     }
@@ -2039,28 +2019,48 @@ export default function RestaurantOnboarding() {
           </div>
           <div>
             <Label className="text-xs font-bold text-gray-700 block mb-1">Pure Veg Restaurant?<span className="text-rose-500 ml-0.5">*</span></Label>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: true })}
-                className={`px-4 py-2 text-xs font-bold rounded-full border transition-all cursor-pointer ${
+                disabled={!isEditing}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
                   step1.pureVegRestaurant === true
-                    ? "bg-[#00c87e] text-white border-[#00c87e] shadow-sm"
-                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                    ? "bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm ring-1 ring-emerald-500"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 } ${!isEditing ? "opacity-70 !cursor-not-allowed" : ""}`}
               >
-                Yes, Pure Veg
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                  step1.pureVegRestaurant === true
+                    ? "border-emerald-600 bg-emerald-600"
+                    : "border-gray-400 bg-white"
+                }`}>
+                  {step1.pureVegRestaurant === true && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  )}
+                </div>
+                <span>Yes, Pure Veg</span>
               </button>
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: false })}
-                className={`px-4 py-2 text-xs font-bold rounded-full border transition-all cursor-pointer ${
+                disabled={!isEditing}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
                   step1.pureVegRestaurant === false
-                    ? "bg-red-500 text-white border-red-500 shadow-sm"
-                    : "bg-white text-gray-500 border-gray-200 hover:border-gray-300"
+                    ? "bg-rose-50 border-rose-500 text-rose-800 shadow-sm ring-1 ring-rose-500"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 } ${!isEditing ? "opacity-70 !cursor-not-allowed" : ""}`}
               >
-                No, Mixed Menu
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                  step1.pureVegRestaurant === false
+                    ? "border-rose-600 bg-rose-600"
+                    : "border-gray-400 bg-white"
+                }`}>
+                  {step1.pureVegRestaurant === false && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  )}
+                </div>
+                <span>No, Mixed Menu</span>
               </button>
             </div>
             <p className="text-[11px] text-gray-500 mt-1">
@@ -2265,9 +2265,48 @@ export default function RestaurantOnboarding() {
             </p>
           </div>
           <div>
-             <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Address</Label>
+            <Label className="text-xs font-bold text-gray-700 block mb-1">Restaurant Address<span className="text-rose-500 ml-0.5">*</span></Label>
             <Input
               ref={locationSearchInputRef}
+              onChange={(e) => {
+                const val = e.target.value
+                if (!val.trim()) {
+                  const nextStep1 = {
+                    ...step1,
+                    location: {
+                      ...step1.location,
+                      formattedAddress: "",
+                      addressLine1: "",
+                      area: "",
+                      city: "",
+                      state: "",
+                      pincode: "",
+                      latitude: "",
+                      longitude: "",
+                    },
+                  }
+                  setStep1(nextStep1)
+                  revalidateTouchedField("location.area", { step1: nextStep1 })
+                  revalidateTouchedField("location.city", { step1: nextStep1 })
+                  revalidateTouchedField("location.state", { step1: nextStep1 })
+                  revalidateTouchedField("location.pincode", { step1: nextStep1 })
+                } else if (step1.location?.formattedAddress && val.trim() !== step1.location.formattedAddress.trim()) {
+                  const nextStep1 = {
+                    ...step1,
+                    location: {
+                      ...step1.location,
+                      formattedAddress: val,
+                      latitude: "",
+                      longitude: "",
+                      area: "",
+                      city: "",
+                      state: "",
+                      pincode: "",
+                    },
+                  }
+                  setStep1(nextStep1)
+                }
+              }}
               className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
               placeholder="Start typing your restaurant address..."
             />
@@ -2659,6 +2698,12 @@ export default function RestaurantOnboarding() {
       placesAutocompleteRef.current = null
     }
   }, [step, step1.zoneId, zones])
+
+  useEffect(() => {
+    if (step === 1 && locationSearchInputRef.current) {
+      locationSearchInputRef.current.value = step1.location?.formattedAddress || step1.location?.addressLine1 || ""
+    }
+  }, [step, step1.location?.formattedAddress])
 
   // Load zones for onboarding dropdown (public endpoint).
   useEffect(() => {
@@ -3514,41 +3559,6 @@ export default function RestaurantOnboarding() {
           <p className="text-[11px] text-gray-500 mt-1">Average time to prepare an order</p>
         </div>
 
-        <div>
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Featured Dish Name<span className="text-rose-500 ml-0.5">*</span></Label>
-          <Input
-            value={step4.featuredDish || ""}
-            onChange={(e) => {
-              const nextStep4 = {
-                ...step4,
-                featuredDish: e.target.value.replace(/[^A-Za-z ]/g, "").slice(0, 30),
-              }
-              setStep4(nextStep4)
-              revalidateTouchedField("featuredDish", { step4: nextStep4 })
-            }}
-            onBlur={() => handleFieldBlur("featuredDish")}
-            className={getFieldClassName("featuredDish", "mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400")}
-            placeholder="e.g., Butter Chicken Special"
-            maxLength={30}
-          />
-          {renderFieldMessage("featuredDish")}
-          <p className="text-[11px] text-gray-500 mt-1">Max 30 characters</p>
-        </div>
-
-        <div>
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Special Offer/Promotion (Optional)</Label>
-          <Input
-            value={step4.offer || ""}
-            onChange={(e) => setStep4({ ...step4, offer: e.target.value.slice(0, 80) })}
-            className="mt-1 bg-white text-sm text-gray-900 placeholder:text-gray-400"
-            placeholder="e.g., Flat 50 Rs. OFF on Order Above Rs.199"
-            maxLength={80}
-          />
-          <p className="text-[11px] text-gray-500 mt-1">
-            Max 80 characters. Optional. Leave blank if you do not want to highlight an offer.
-          </p>
-        </div>
-
         <div className="border-t border-gray-200 pt-4 space-y-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -3757,17 +3767,19 @@ export default function RestaurantOnboarding() {
                </Button>
              )}
              <div className="flex items-center gap-2 sm:gap-3">
-               <Button
-                 onClick={handleLogout}
-                 disabled={isLoggingOut}
-                 variant="ghost"
-                 size="icon"
-                 className="h-9 w-9 text-red-600 hover:text-red-700 hover:bg-red-50 cursor-pointer flex items-center justify-center"
-                 title="Logout"
-               >
-                 <LogOut className="w-4 h-4" />
-               </Button>
-             </div>
+                <Button
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 px-2.5 sm:px-3 text-xs font-bold text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 cursor-pointer flex items-center gap-1.5 transition-colors rounded-lg"
+                  title="Logout"
+                  aria-label="Logout"
+                >
+                  <LogOut className="w-4 h-4 shrink-0 stroke-[2.2]" />
+                  <span className="font-semibold">{isLoggingOut ? "Logging out..." : "Logout"}</span>
+                </Button>
+              </div>
            </div>
 
          </header>

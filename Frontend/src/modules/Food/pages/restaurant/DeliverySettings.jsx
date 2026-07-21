@@ -8,6 +8,7 @@ import { ArrowLeft, Truck, Users, X, CheckCircle, AlertCircle, Clock, Pencil } f
 import { Switch } from "@food/components/ui/switch"
 import { Card, CardContent } from "@food/components/ui/card"
 import { restaurantAPI } from "@food/api"
+import { validateDeliveryAgainstOperationalTimings } from "@food/utils/restaurantAvailability"
 import { ModernTimePicker } from "@food/components/ui/modern-time-picker"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -52,6 +53,7 @@ export default function DeliverySettings() {
     minOrderAmount: 0,
     timings: { start: "10:00", end: "22:00" },
   })
+  const [restaurantTimings, setRestaurantTimings] = useState({ openingTime: "", closingTime: "" })
   const [savingSelfDelivery, setSavingSelfDelivery] = useState(false)
   const [timeError, setTimeError] = useState("")
   const [isEditingPendingSelfDelivery, setIsEditingPendingSelfDelivery] = useState(false)
@@ -110,6 +112,10 @@ export default function DeliverySettings() {
         const nextSelfDelivery = restaurant?.selfDelivery || {}
         const normalizedApprovalStatus = normalizeSelfDeliveryApprovalStatus(restaurant)
         if (!cancelled) {
+          setRestaurantTimings({
+            openingTime: restaurant?.openingTime || restaurant?.deliveryTimings?.openingTime || "",
+            closingTime: restaurant?.closingTime || restaurant?.deliveryTimings?.closingTime || "",
+          })
           setDeliveryStatus(nextStatus)
           setSelfDelivery({
             enabled: nextSelfDelivery?.enabled === true,
@@ -198,49 +204,28 @@ export default function DeliverySettings() {
 
     // If turning ON and outside outlet timings, show warning
     if (checked && !canEnableDelivery) {
-      setPendingStatus(checked)
-      setShowConfirmDialog(true)
-      return
-    }
-
-    // If turning OFF, show confirmation
-    if (!checked && deliveryStatus) {
-      setPendingStatus(checked)
-      setShowConfirmDialog(true)
-      return
-    }
-
-    // Otherwise, update directly
-    void saveDeliveryStatusToBackend(checked)
-  }
-
-  const saveDeliveryStatusToBackend = async (status) => {
-    const previousStatus = deliveryStatus
-    const nextStatus = Boolean(status)
-
-    try {
-      setSavingStatus(true)
-      saveDeliveryStatus(nextStatus)
-      await restaurantAPI.updateAcceptingOrders(nextStatus)
-    } catch (error) {
-      setDeliveryStatus(previousStatus)
-      syncStatusLocally(previousStatus)
-      debugError("Error updating delivery status:", error)
-      showToast(error?.response?.data?.message || "Error updating delivery status")
-      return
-    } finally {
-      setSavingStatus(false)
-    }
-  }
-
-  const handleConfirmStatusChange = () => {
-    void saveDeliveryStatusToBackend(pendingStatus)
-    setShowConfirmDialog(false)
-    
-    // Show warning if enabled outside timings
-    if (pendingStatus && !canEnableDelivery) {
       setShowWarning(true)
       setTimeout(() => setShowWarning(false), 5000)
+    }
+
+    setPendingStatus(checked)
+    setShowConfirmDialog(true)
+  }
+
+  const handleConfirmStatusChange = async () => {
+    setShowConfirmDialog(false)
+    const previousStatus = deliveryStatus
+    try {
+      setSavingStatus(true)
+      saveDeliveryStatus(pendingStatus)
+      await restaurantAPI.updateAcceptingOrders(pendingStatus)
+    } catch (error) {
+      debugError("Error updating delivery status:", error)
+      setDeliveryStatus(previousStatus)
+      syncStatusLocally(previousStatus)
+      showToast(error?.response?.data?.message || "Failed to update delivery status")
+    } finally {
+      setSavingStatus(false)
     }
   }
 
@@ -264,19 +249,19 @@ export default function DeliverySettings() {
   const validateTimings = () => {
     const start = selfDelivery.timings?.start || "10:00"
     const end = selfDelivery.timings?.end || "22:00"
-    
-    const [startH, startM] = start.split(':').map(Number)
-    const [endH, endM] = end.split(':').map(Number)
-    
-    const startVal = startH * 60 + startM
-    const endVal = endH * 60 + endM
-    
-    // Allow overnight windows like 10:00 -> 00:00.
-    // Only block identical values because that creates a zero-length window.
-    if (endVal === startVal) {
-      setTimeError("Start time and end time cannot be the same")
+
+    const timeCheck = validateDeliveryAgainstOperationalTimings(
+      restaurantTimings.openingTime,
+      restaurantTimings.closingTime,
+      start,
+      end
+    )
+
+    if (!timeCheck.isValid) {
+      setTimeError(timeCheck.message)
       return false
     }
+
     setTimeError("")
     return true
   }

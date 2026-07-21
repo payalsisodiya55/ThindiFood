@@ -181,7 +181,7 @@ export default function AddRestaurant() {
   // Step 1: Basic Info
   const [step1, setStep1] = useState({
     restaurantName: "",
-    pureVegRestaurant: null,
+    pureVegRestaurant: false,
     ownerName: "",
     ownerEmail: "",
     ownerPhone: "",
@@ -897,28 +897,46 @@ export default function AddRestaurant() {
           </div>
           <div>
             <Label className="text-xs text-gray-700">Pure veg restaurant?*</Label>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="mt-2 flex flex-wrap items-center gap-3">
               <button
                 type="button"
                 onClick={() => setStep1({ ...step1, pureVegRestaurant: true })}
-                className={`px-3 py-1.5 text-xs rounded-full border ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
                   step1.pureVegRestaurant === true
-                    ? "bg-green-600 text-white border-green-600"
-                    : "bg-white text-gray-700 border-gray-200"
+                    ? "bg-emerald-50 border-emerald-500 text-emerald-800 shadow-sm ring-1 ring-emerald-500"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
-                Yes, Pure Veg
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                  step1.pureVegRestaurant === true
+                    ? "border-emerald-600 bg-emerald-600"
+                    : "border-gray-400 bg-white"
+                }`}>
+                  {step1.pureVegRestaurant === true && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  )}
+                </div>
+                <span>Yes, Pure Veg</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStep1({ ...step1, pureVegRestaurant: false })}
-                className={`px-3 py-1.5 text-xs rounded-full border ${
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer select-none ${
                   step1.pureVegRestaurant === false
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : "bg-white text-gray-700 border-gray-200"
+                    ? "bg-rose-50 border-rose-500 text-rose-800 shadow-sm ring-1 ring-rose-500"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                 }`}
               >
-                No, Mixed Menu
+                <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                  step1.pureVegRestaurant === false
+                    ? "border-rose-600 bg-rose-600"
+                    : "border-gray-400 bg-white"
+                }`}>
+                  {step1.pureVegRestaurant === false && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  )}
+                </div>
+                <span>No, Mixed Menu</span>
               </button>
             </div>
             <p className="text-[11px] text-gray-500 mt-1">
