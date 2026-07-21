@@ -10,6 +10,13 @@ import * as diningAdminController from '../../dining/controllers/diningAdmin.con
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
 import {
+  listFaqsAdminController,
+  createFaqController,
+  reorderFaqsController,
+  updateFaqController,
+  deleteFaqController,
+} from '../controllers/restaurantFaq.controller.js';
+import {
     getAllRestaurantOffersAdminController,
     approveRestaurantOfferAdminController,
     rejectRestaurantOfferAdminController,
@@ -275,6 +282,13 @@ router.post('/orders/:orderId/refund', adminController.processRefund);
 // ----- CMS Pages (About + legal) -----
 router.get('/pages-social-media/:key', getAdminPageController);
 router.put('/pages-social-media/:key', upsertAdminPageController);
+
+// ----- Restaurant Rating FAQs -----
+router.get('/restaurant-faqs', listFaqsAdminController);
+router.post('/restaurant-faqs', createFaqController);
+router.put('/restaurant-faqs/reorder', reorderFaqsController);
+router.put('/restaurant-faqs/:id', updateFaqController);
+router.delete('/restaurant-faqs/:id', deleteFaqController);
 
 router.get('/sidebar-badges', adminController.getSidebarBadges);
 router.get('/notifications/fssai-expired', adminController.getExpiredFssaiNotifications);

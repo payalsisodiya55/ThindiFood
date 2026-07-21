@@ -55,12 +55,15 @@ import {
     toggleGourmetStatusAdmin
 } from '../controllers/top10GourmetAdmin.controller.js';
 import { getPublicPageController } from '../../admin/controllers/pageContent.controller.js';
+import { listActiveFaqsController } from '../../admin/controllers/restaurantFaq.controller.js';
 import { getPublicReferralSettingsController } from '../controllers/publicReferralSettings.controller.js';
 
 const router = express.Router();
 
 // Public CMS pages (About + legal). No auth required.
 router.get('/pages/:key', getPublicPageController);
+// Public Restaurant Rating FAQs (no auth required).
+router.get('/restaurant/rating-faqs', listActiveFaqsController);
 // Public referral settings (no auth required).
 router.get('/referral-settings', getPublicReferralSettingsController);
 
@@ -140,4 +143,3 @@ router.post('/hero-banners/landing/settings/header-video', upload.single('video'
 router.delete('/hero-banners/landing/settings/header-video', deleteAdminLandingHeaderVideoController);
 
 export default router;
-

@@ -21,47 +21,18 @@ const debugError = (...args) => {}
 // Using placeholder for restaurant review banner
 const restaurantReviewBanner = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&h=400&fit=crop"
 
-const accordionItems = [
-  {
-    id: 1,
-    question: "How is my restaurant's rating calculated",
-    answer: "Your restaurant's rating is calculated based on customer reviews and ratings from delivery and dining orders. The system takes an average of all ratings received, with more recent reviews having slightly more weight."
-  },
-  {
-    id: 2,
-    question: "Why am I not getting rating on all orders",
-    answer: "Not all customers leave ratings after their orders. Some customers may skip the rating step, while others may not have the option to rate depending on the order type or platform. Typically, about 30-40% of customers provide ratings."
-  },
-  {
-    id: 3,
-    question: "Can I call customer to discuss rating",
-    answer: "Yes, you can contact customers through the order details page if they have provided a phone number. However, please be respectful and professional when discussing ratings."
-  },
-  {
-    id: 4,
-    question: "How to raise a concern if I think rating was bad due to delivery partner",
-    answer: "If you believe a low rating was due to delivery partner issues, you can raise a concern through the order details page. Navigate to the specific order, click on 'Raise Concern', and select 'Delivery Partner Issue'."
-  },
-  {
-    id: 5,
-    question: "What if I don't agree with the rating",
-    answer: "If you disagree with a customer's rating, you can reply to the review publicly to address concerns professionally. You can also raise a concern if you believe the rating violates our guidelines."
-  },
-  {
-    id: 6,
-    question: "How can I reply on a customer review",
-    answer: "To reply to a customer review, go to the Reviews section in your restaurant dashboard. Find the review you want to respond to and click the 'Reply' button. Write a professional, courteous response."
-  }
-]
+
 
 export default function RatingsReviews() {
   const navigate = useNavigate()
   const goBack = useRestaurantBackNavigation()
-  const [expandedItems, setExpandedItems] = useState(new Set())
+  const [expandedId, setExpandedId] = useState(null)
   const [showThankYouPopup, setShowThankYouPopup] = useState(false)
   const [showNotHelpfulPopup, setShowNotHelpfulPopup] = useState(false)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
   const [rating, setRating] = useState("0.0")
+  const [faqs, setFaqs] = useState([])
+  const [faqsLoading, setFaqsLoading] = useState(true)
 
   useEffect(() => {
     const fetchRating = async () => {
@@ -122,6 +93,24 @@ export default function RatingsReviews() {
     fetchRating()
   }, [])
 
+  // Fetch dynamic FAQs from backend
+  useEffect(() => {
+    const fetchFaqs = async () => {
+      try {
+        setFaqsLoading(true)
+        const res = await restaurantAPI.getPublicRatingFaqs()
+        if (res.data?.success && Array.isArray(res.data.data)) {
+          setFaqs(res.data.data)
+        }
+      } catch (err) {
+        debugError("Error fetching rating FAQs:", err)
+      } finally {
+        setFaqsLoading(false)
+      }
+    }
+    fetchFaqs()
+  }, [])
+
   // Lenis smooth scrolling
   useEffect(() => {
     const lenis = new Lenis({
@@ -143,15 +132,7 @@ export default function RatingsReviews() {
   }, [])
 
   const toggleAccordion = (itemId) => {
-    setExpandedItems(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId)
-      } else {
-        newSet.add(itemId)
-      }
-      return newSet
-    })
+    setExpandedId(prevId => prevId === itemId ? null : itemId)
   }
 
   const handleThankYou = () => {
@@ -218,53 +199,63 @@ export default function RatingsReviews() {
 
       {/* Select Your Concern Section */}
       <div className="px-4 py-4">
-        <div className="border  border-gray-100 rounded-lg p-4">
-          <h3 className="text-base font-bold  text-gray-900 mb-4">Select your concern</h3>
-          
-          <div className="space-y-0">
-            {accordionItems.map((item, index) => {
-              const isExpanded = expandedItems.has(item.id)
-              return (
-                <div key={item.id}>
-                  <button
-                    onClick={() => toggleAccordion(item.id)}
-                    className="w-full flex items-center justify-between py-3 text-left cursor-pointer"
-                  >
-                    <span className="text-sm text-gray-900 font-normal pr-4">
-                      {item.question}
-                    </span>
-                    <ChevronDown
-                      className={`w-5 h-5 text-gray-900 shrink-0 transition-transform ${
-                        isExpanded ? "rotate-180" : ""
-                      }`}
-                    />
-                  </button>
-                  
-                  {index < accordionItems.length - 1 && (
-                    <div className="border-b border-gray-300" />
-                  )}
+        <div className="border border-gray-100 rounded-lg p-4">
+          <h3 className="text-base font-bold text-gray-900 mb-4">Select your concern</h3>
 
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="pb-3 pt-1">
-                          <p className="text-sm text-gray-700 font-normal leading-relaxed break-words whitespace-normal">
-                            {item.answer}
-                          </p>
-                        </div>
-                      </motion.div>
+          {faqsLoading ? (
+            <div className="flex justify-center py-6">
+              <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-500 rounded-full animate-spin" />
+            </div>
+          ) : faqs.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">
+              No FAQs available at the moment.
+            </p>
+          ) : (
+            <div className="space-y-0">
+              {faqs.map((item, index) => {
+                const isExpanded = expandedId === item._id
+                return (
+                  <div key={item._id}>
+                    <button
+                      onClick={() => toggleAccordion(item._id)}
+                      className="w-full flex items-center justify-between py-3 text-left cursor-pointer"
+                    >
+                      <span className="text-sm text-gray-900 font-normal pr-4">
+                        {item.question}
+                      </span>
+                      <ChevronDown
+                        className={`w-5 h-5 text-gray-900 shrink-0 transition-transform ${
+                          isExpanded ? "rotate-180" : ""
+                        }`}
+                      />
+                    </button>
+
+                    {index < faqs.length - 1 && (
+                      <div className="border-b border-gray-300" />
                     )}
-                  </AnimatePresence>
-                </div>
-              )
-            })}
-          </div>
+
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="pb-3 pt-1">
+                            <p className="text-sm text-gray-700 font-normal leading-relaxed break-words whitespace-normal">
+                              {item.answer}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
 

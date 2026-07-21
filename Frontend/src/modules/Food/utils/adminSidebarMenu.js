@@ -237,6 +237,7 @@ export const adminSidebarMenu = [
       { type: "link", label: "Refund Policy", path: "/admin/food/pages-social-media/refund", icon: "Receipt", permissionKey: "pages" },
       { type: "link", label: "Shipping Policy", path: "/admin/food/pages-social-media/shipping", icon: "Truck", permissionKey: "pages" },
       { type: "link", label: "Cancellation Policy", path: "/admin/food/pages-social-media/cancellation", icon: "X", permissionKey: "pages" },
+      { type: "link", label: "Restaurant Rating FAQ", path: "/admin/food/pages-social-media/restaurant-rating-faq", icon: "MessageCircleQuestion", permissionKey: "pages" },
     ],
   },
 ];

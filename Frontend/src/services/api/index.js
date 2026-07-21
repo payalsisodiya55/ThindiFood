@@ -1103,6 +1103,18 @@ export const adminAPI = {
     apiClient.patch(`/food/admin/product-offers/${String(id)}/approve`, {}, { contextModule: "admin" }),
   rejectProductOffer: (id, reason) =>
     apiClient.patch(`/food/admin/product-offers/${String(id)}/reject`, { reason: String(reason || "") }, { contextModule: "admin" }),
+
+  /** Restaurant Rating FAQs (admin) */
+  getRestaurantFaqs: () =>
+    apiClient.get("/food/admin/restaurant-faqs", { contextModule: "admin" }),
+  createRestaurantFaq: (body) =>
+    apiClient.post("/food/admin/restaurant-faqs", body ?? {}, { contextModule: "admin" }),
+  updateRestaurantFaq: (id, body) =>
+    apiClient.put(`/food/admin/restaurant-faqs/${String(id)}`, body ?? {}, { contextModule: "admin" }),
+  deleteRestaurantFaq: (id) =>
+    apiClient.delete(`/food/admin/restaurant-faqs/${String(id)}`, { contextModule: "admin" }),
+  reorderRestaurantFaqs: (items) =>
+    apiClient.put("/food/admin/restaurant-faqs/reorder", { items }, { contextModule: "admin" }),
 };
 
 /** Restaurant API - OTP login via new backend; no email/password. */
@@ -1120,6 +1132,9 @@ export const restaurantAPI = {
   getMe: () => authService.getMe("restaurant"),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
+  /** Fetch active Restaurant Rating FAQs (public, no auth required). */
+  getPublicRatingFaqs: () =>
+    apiClient.get("/food/restaurant/rating-faqs", { contextModule: "restaurant" }),
   /** Finance dashboard for `hub-finance`. */
   getFinance: (params = {}) =>
     apiClient.get("/food/restaurant/finance", {
