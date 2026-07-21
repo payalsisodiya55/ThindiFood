@@ -254,7 +254,7 @@ export default function RatingsReviews() {
                         className="overflow-hidden"
                       >
                         <div className="pb-3 pt-1">
-                          <p className="text-sm text-gray-700 font-normal leading-relaxed break-all whitespace-normal">
+                          <p className="text-sm text-gray-700 font-normal leading-relaxed break-words whitespace-normal">
                             {item.answer}
                           </p>
                         </div>
