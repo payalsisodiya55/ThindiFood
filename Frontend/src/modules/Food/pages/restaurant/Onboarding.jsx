@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import { Label } from "@food/components/ui/label"
-import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut, Eye, EyeOff, HelpCircle } from "lucide-react"
+import { Image as ImageIcon, Upload, Clock, Calendar as CalendarIcon, Sparkles, X, LogOut, Eye, EyeOff, HelpCircle, Plus, Star, ChevronLeft, ChevronRight } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@food/components/ui/popover"
 import { Calendar } from "@food/components/ui/calendar"
 import {
@@ -678,6 +678,7 @@ export default function RestaurantOnboarding() {
   const [zones, setZones] = useState([])
   const [zonesLoading, setZonesLoading] = useState(false)
   const [currentRestaurantRejectionReason, setCurrentRestaurantRejectionReason] = useState("")
+  const [menuImageError, setMenuImageError] = useState("")
 
   const [step1, setStep1] = useState({
     restaurantName: "",
@@ -2736,7 +2737,22 @@ export default function RestaurantOnboarding() {
 
         {/* Menu images */}
         <div className="space-y-2">
-          <Label className="text-xs font-bold text-gray-700 block mb-1">Menu Images<span className="text-rose-500 ml-0.5">*</span></Label>
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold text-gray-700 block">
+              Menu Images<span className="text-rose-500 ml-0.5">*</span>
+            </Label>
+            <span
+              className={`text-xs font-bold px-2.5 py-0.5 rounded-full transition-all ${
+                step2.menuImages.length > 0
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-gray-100 text-gray-600 border border-gray-200"
+              }`}
+            >
+              {step2.menuImages.length > 0
+                ? `${step2.menuImages.length} of ${MAX_MENU_IMAGES_COUNT} images uploaded`
+                : `Max ${MAX_MENU_IMAGES_COUNT} images`}
+            </span>
+          </div>
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -2745,17 +2761,32 @@ export default function RestaurantOnboarding() {
               <div className="flex flex-col">
                 <span className="text-sm font-semibold text-gray-900 mb-1">Menu Images</span>
                 <span className="text-[11px] text-gray-500">JPG, PNG, WebP (Max 5MB each)</span>
-                <span className="text-[11px] text-gray-500">Upload up to {MAX_MENU_IMAGES_COUNT} images</span>
+                <span className="text-[11px] font-semibold text-emerald-700 mt-0.5">
+                  Limit: Maximum {MAX_MENU_IMAGES_COUNT} images ({step2.menuImages.length} of {MAX_MENU_IMAGES_COUNT} uploaded)
+                </span>
               </div>
             </div>
             <Button
               type="button"
               variant="outline"
-              className="w-full text-xs h-9 cursor-pointer"
-              onClick={() => menuImagesInputRef.current?.click()}
+              disabled={step2.menuImages.length >= MAX_MENU_IMAGES_COUNT}
+              className={`w-full text-xs h-9 cursor-pointer transition-all ${
+                step2.menuImages.length >= MAX_MENU_IMAGES_COUNT
+                  ? "opacity-50 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200"
+                  : ""
+              }`}
+              onClick={() => {
+                if (step2.menuImages.length >= MAX_MENU_IMAGES_COUNT) {
+                  setMenuImageError(`Maximum ${MAX_MENU_IMAGES_COUNT} menu images allowed. You have reached the limit.`)
+                  return
+                }
+                menuImagesInputRef.current?.click()
+              }}
             >
               <Upload className="w-4 h-4 mr-1.5" />
-              Upload
+              {step2.menuImages.length >= MAX_MENU_IMAGES_COUNT
+                ? `Limit Reached (${MAX_MENU_IMAGES_COUNT}/${MAX_MENU_IMAGES_COUNT})`
+                : "Upload"}
             </Button>
           </div>
           <input
@@ -2766,55 +2797,66 @@ export default function RestaurantOnboarding() {
             className="hidden"
             ref={menuImagesInputRef}
             onChange={(e) => {
-                const files = Array.from(e.target.files || [])
-                if (!files.length) return
-                
-                const currentCount = step2.menuImages.length
-                const validFiles = []
-                
-                for (const file of files) {
-                  if (validateFile(file)) {
-                    validFiles.push(file)
-                  }
-                }
-                
-                if (validFiles.length + currentCount > MAX_MENU_IMAGES_COUNT) {
-                  toast.error("Cannot upload more than 10 menu images.")
-                  const remaining = MAX_MENU_IMAGES_COUNT - currentCount
-                  if (remaining <= 0) {
-                    e.target.value = ''
-                    return
-                  }
-                  validFiles.splice(remaining)
-                }
-                
-                if (validFiles.length > 0) {
-                  debugLog('?? Valid menu images selected:', validFiles.length)
-                  setStep2((prev) => ({
-                    ...prev,
-                    menuImages: [...(prev.menuImages || []), ...validFiles],
-                  }))
-                }
-                // Reset input to allow selecting same file again
+              const files = Array.from(e.target.files || [])
+              if (!files.length) return
+
+              const currentCount = step2.menuImages.length
+
+              if (currentCount >= MAX_MENU_IMAGES_COUNT) {
+                setMenuImageError(`Maximum ${MAX_MENU_IMAGES_COUNT} menu images allowed. You have reached the limit.`)
                 e.target.value = ''
-              }}
-            />
-          
+                return
+              }
+
+              const validFiles = []
+              for (const file of files) {
+                if (validateFile(file)) {
+                  validFiles.push(file)
+                }
+              }
+
+              if (validFiles.length + currentCount > MAX_MENU_IMAGES_COUNT) {
+                const remaining = MAX_MENU_IMAGES_COUNT - currentCount
+                setMenuImageError(
+                  `Maximum ${MAX_MENU_IMAGES_COUNT} menu images allowed. You selected ${validFiles.length} images, but can only add ${remaining} more.`
+                )
+                e.target.value = ''
+                return
+              }
+
+              setMenuImageError("")
+              if (validFiles.length > 0) {
+                debugLog('Valid menu images selected:', validFiles.length)
+                setStep2((prev) => ({
+                  ...prev,
+                  menuImages: [...(prev.menuImages || []), ...validFiles],
+                }))
+              }
+              // Reset input to allow selecting same file again
+              e.target.value = ''
+            }}
+          />
+
+          {menuImageError && (
+            <div className="text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-200 rounded-md px-3 py-2 flex items-center gap-1.5 mt-2">
+              <span className="shrink-0">⚠️</span>
+              <span>{menuImageError}</span>
+            </div>
+          )}
+
           {/* Menu image previews */}
           {!!step2.menuImages.length && (
             <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
               {step2.menuImages.map((file, idx) => {
                 // Handle both File objects and URL objects
                 let imageUrl = null
-                let imageName = `Image ${idx + 1}`
+                const imageName = `Menu Image ${idx + 1}`
 
                 if (isUploadableFile(file)) {
                   imageUrl = getPreviewImageUrl(file)
-                  imageName = file.name || imageName
                 } else if (file?.url) {
                   // If it's an object with url property (from backend)
                   imageUrl = file.url
-                  imageName = file.name || `Image ${idx + 1}`
                 } else if (typeof file === 'string') {
                   // If it's a direct URL string
                   imageUrl = file
@@ -2823,28 +2865,121 @@ export default function RestaurantOnboarding() {
                 return (
                   <div
                     key={idx}
-                    className="relative w-full h-32 sm:h-48 rounded-md overflow-hidden bg-gray-100 border border-gray-200"
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("text/plain", String(idx))}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const fromIdx = Number(e.dataTransfer.getData("text/plain"))
+                      if (!isNaN(fromIdx) && fromIdx !== idx) {
+                        setStep2((prev) => {
+                          const list = [...prev.menuImages]
+                          const [moved] = list.splice(fromIdx, 1)
+                          list.splice(idx, 0, moved)
+                          return { ...prev, menuImages: list }
+                        })
+                      }
+                    }}
+                    className="relative w-full h-32 sm:h-48 rounded-md overflow-hidden bg-gray-100 border border-gray-200 shadow-2xs group select-none transition-all"
                   >
-                    <div className="absolute top-1 right-1 z-30">
+                    {/* Cover Image badge for index 0 */}
+                    {idx === 0 ? (
+                      <div className="absolute top-1.5 left-1.5 z-30 bg-emerald-600 text-white text-[10px] font-extrabold px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-white" />
+                        <span>Cover Image</span>
+                      </div>
+                    ) : (
+                      /* Set as Cover button for index > 0 */
                       <button
                         type="button"
                         onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setStep2((prev) => ({
-                            ...prev,
-                            menuImages: prev.menuImages.filter((_, i) => i !== idx),
-                          }));
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setStep2((prev) => {
+                            const list = [...prev.menuImages]
+                            const [selected] = list.splice(idx, 1)
+                            return { ...prev, menuImages: [selected, ...list] }
+                          })
+                          toast.success("Set as primary Cover Image!")
+                        }}
+                        className="absolute top-1.5 left-1.5 z-30 bg-black/60 hover:bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full backdrop-blur-xs transition-all cursor-pointer flex items-center gap-1 shadow-sm opacity-90 hover:opacity-100"
+                        title="Set as main cover image"
+                      >
+                        <Star className="w-2.5 h-2.5" />
+                        <span>Set as Cover</span>
+                      </button>
+                    )}
+
+                    {/* Reorder Left/Right & Delete actions */}
+                    <div className="absolute top-1.5 right-1.5 z-30 flex items-center gap-1">
+                      {idx > 0 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setStep2((prev) => {
+                              const list = [...prev.menuImages]
+                              const [moved] = list.splice(idx, 1)
+                              list.splice(idx - 1, 0, moved)
+                              return { ...prev, menuImages: list }
+                            })
+                          }}
+                          className="bg-black/60 hover:bg-black/80 text-white rounded-full p-1 border border-white/40 shadow-sm backdrop-blur-xs transition-colors cursor-pointer flex items-center justify-center"
+                          title="Move left"
+                          aria-label="Move left"
+                        >
+                          <ChevronLeft className="w-3 h-3" />
+                        </button>
+                      )}
+                      {idx < step2.menuImages.length - 1 && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setStep2((prev) => {
+                              const list = [...prev.menuImages]
+                              const [moved] = list.splice(idx, 1)
+                              list.splice(idx + 1, 0, moved)
+                              return { ...prev, menuImages: list }
+                            })
+                          }}
+                          className="bg-black/60 hover:bg-black/80 text-white rounded-full p-1 border border-white/40 shadow-sm backdrop-blur-xs transition-colors cursor-pointer flex items-center justify-center"
+                          title="Move right"
+                          aria-label="Move right"
+                        >
+                          <ChevronRight className="w-3 h-3" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setStep2((prev) => {
+                            const nextMenuImages = prev.menuImages.filter((_, i) => i !== idx)
+                            if (nextMenuImages.length < MAX_MENU_IMAGES_COUNT) {
+                              setMenuImageError("")
+                            }
+                            return {
+                              ...prev,
+                              menuImages: nextMenuImages,
+                            }
+                          })
                         }}
                         className="bg-red-500 text-white rounded-full p-1 border border-white shadow-md hover:bg-red-600 transition-colors cursor-pointer flex items-center justify-center"
+                        title="Remove image"
+                        aria-label="Remove image"
                       >
                         <X className="w-3 h-3" />
                       </button>
                     </div>
+
                     {imageUrl ? (
                       <img
                         src={imageUrl}
-                        alt={`Menu ${idx + 1}`}
+                        alt={`Menu Image ${idx + 1}`}
                         className="w-full h-full object-contain bg-gray-50"
                       />
                     ) : (
@@ -2852,14 +2987,36 @@ export default function RestaurantOnboarding() {
                         Preview unavailable
                       </div>
                     )}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 px-2 py-1">
-                      <p className="text-[10px] text-white truncate">
+                    <div className="absolute bottom-0 inset-x-0 bg-black/65 px-2 py-1.5 backdrop-blur-[2px]">
+                      <p className="text-[11px] font-bold text-white truncate text-center">
                         {imageName}
                       </p>
                     </div>
                   </div>
                 )
               })}
+
+              {/* "+ Add More" tile as last item in grid when count < 10 */}
+              {step2.menuImages.length < MAX_MENU_IMAGES_COUNT && (
+                <div
+                  onClick={() => {
+                    if (step2.menuImages.length >= MAX_MENU_IMAGES_COUNT) {
+                      setMenuImageError(`Maximum ${MAX_MENU_IMAGES_COUNT} menu images allowed. You have reached the limit.`)
+                      return
+                    }
+                    menuImagesInputRef.current?.click()
+                  }}
+                  className="h-32 sm:h-48 rounded-md border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/40 hover:bg-emerald-50 flex flex-col items-center justify-center cursor-pointer text-emerald-700 transition-all p-3 text-center shadow-2xs group"
+                >
+                  <div className="w-9 h-9 rounded-full bg-emerald-100 group-hover:bg-emerald-200 text-emerald-700 flex items-center justify-center mb-1.5 transition-colors shadow-2xs">
+                    <Plus className="w-5 h-5 stroke-[2.5]" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-800 group-hover:text-emerald-800">+ Add More</span>
+                  <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+                    ({step2.menuImages.length}/{MAX_MENU_IMAGES_COUNT})
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -2870,7 +3027,7 @@ export default function RestaurantOnboarding() {
           <div className="mt-1 border border-dashed border-gray-300 rounded-md bg-gray-50/50 p-4 space-y-4">
             <div className="flex items-center gap-4">
               <div className="relative flex-shrink-0">
-                <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center overflow-hidden border border-gray-100 shadow-sm">
+                <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center overflow-hidden border border-gray-200 shadow-sm">
                   {step2.profileImage ? (
                     (() => {
                       const imageSrc = getPreviewImageUrl(step2.profileImage)
@@ -2879,7 +3036,7 @@ export default function RestaurantOnboarding() {
                         <img
                           src={imageSrc}
                           alt="Restaurant profile"
-                          className="w-full h-full object-contain bg-gray-50"
+                          className="w-full h-full object-cover"
                         />
                       ) : (
                         <ImageIcon className="w-5 h-5 text-gray-500" />
