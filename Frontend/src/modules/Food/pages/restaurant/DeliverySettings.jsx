@@ -779,7 +779,7 @@ export default function DeliverySettings() {
                       <>You will start receiving delivery orders. Make sure you're ready to accept orders.</>
                     )
                   ) : (
-                    <>When off, customers can't place delivery orders from your restaurant.</>
+                    <>You are currently outside your order acceptance hours. Update your order acceptance timings to start receiving online orders.</>
                   )}
                 </p>
                 
