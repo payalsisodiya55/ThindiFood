@@ -364,7 +364,11 @@ export default function FoodsList() {
       const list = res?.data?.data?.categories || [];
       const options = Array.isArray(list) ?
       list.
-      map((c) => ({ id: String(c.id || c._id || c.name), name: String(c.name || "").trim() })).
+      map((c) => ({
+        id: String(c.id || c._id || c.name),
+        name: String(c.name || "").trim(),
+        foodType: c.foodTypeScope || c.foodType || "Both"
+      })).
       filter((c) => c.name) :
       [];
       setCategoryOptions(options);
@@ -521,7 +525,11 @@ export default function FoodsList() {
         const list = res?.data?.data?.categories || [];
         const options = Array.isArray(list) ?
         list.
-        map((c) => ({ id: String(c.id || c._id || c.name), name: String(c.name || "").trim() })).
+        map((c) => ({
+          id: String(c.id || c._id || c.name),
+          name: String(c.name || "").trim(),
+          foodType: c.foodTypeScope || c.foodType || "Both"
+        })).
         filter((c) => c.name) :
         [];
         if (!cancelled) setCategoryOptions(options);
@@ -682,7 +690,12 @@ export default function FoodsList() {
       await fetchAllFoods();
     } catch (error) {
       debugError("Error saving food:", error);
-      toast.error(error?.response?.data?.message || "Failed to save food");
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to save food";
+      toast.error(errorMessage);
     } finally {
       setSubmittingFood(false);
     }
@@ -1313,7 +1326,7 @@ export default function FoodsList() {
                   <option value="">Select category</option>
                   {categoryOptions.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.name} {c.foodType ? `(${c.foodType})` : ''}
                     </option>
                   ))}
                 </select>
