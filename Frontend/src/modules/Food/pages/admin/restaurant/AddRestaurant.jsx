@@ -460,7 +460,7 @@ export default function AddRestaurant() {
         errors.push("Opening time and closing time cannot be same")
       }
     }
-    if (!step2.openDays || step2.openDays.length === 0) errors.push("Please select at least one open day")
+    if (!step2.openDays || step2.openDays.length === 0) errors.push("Please select at least one operational day")
     return errors
   }
 

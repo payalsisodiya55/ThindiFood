@@ -1617,7 +1617,7 @@ export default function RestaurantOnboarding() {
       }
     }
     if (!step2.openDays || step2.openDays.length === 0) {
-      errors.push("Please select at least one open day")
+      errors.push("Please select at least one operational day")
     }
 
     return errors
