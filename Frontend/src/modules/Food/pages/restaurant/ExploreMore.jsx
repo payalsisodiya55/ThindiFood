@@ -802,7 +802,7 @@ export default function ExploreMore() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, delay: delay + 0.05 }}
-        className="text-base font-bold text-gray-900 mb-4"
+        className="text-lg font-bold text-gray-900 mb-4"
       >
         {title}
       </motion.h2>
