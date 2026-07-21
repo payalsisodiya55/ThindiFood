@@ -1297,55 +1297,26 @@ export default function FoodsList() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
-                <Popover open={categoryPopoverOpen} onOpenChange={setCategoryPopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-left flex items-center justify-between">
-                      
-                      <span className={foodForm.categoryName ? "text-slate-900" : "text-slate-400"}>
-                        {foodForm.categoryName || "Select category"}
-                      </span>
-                      <ChevronDown className="w-4 h-4 text-slate-500" />
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2 !z-[100]" align="start">
-                    <input
-                      type="text"
-                      value={categorySearch}
-                      onChange={(e) => setCategorySearch(e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-white mb-2"
-                      placeholder="Search category..."
-                      autoFocus />
-                    
-                    <div ref={scrollContainerRef} className="max-h-56 overflow-y-auto">
-                      {categoryOptions.
-                      filter((c) => {
-                        const q = String(categorySearch || "").trim().toLowerCase();
-                        if (!q) return true;
-                        return String(c.name || "").toLowerCase().includes(q);
-                      }).
-                      map((c) =>
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => {
-                          setFoodForm((prev) => ({ ...prev, categoryId: c.id, categoryName: c.name }));
-                          setCategoryPopoverOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 ${
-                        String(foodForm.categoryName || "") === String(c.name) ? "bg-slate-100 font-medium" : ""}`
-                        }>
-                        
-                            {c.name}
-                          </button>
-                      )}
-                      {categoryOptions.length === 0 &&
-                      <div className="px-3 py-2 text-sm text-slate-500">No categories found</div>
-                      }
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <select
+                  value={foodForm.categoryId}
+                  onChange={(e) => {
+                    const selectedId = e.target.value;
+                    const selectedCategory = categoryOptions.find((c) => String(c.id) === String(selectedId));
+                    setFoodForm((prev) => ({
+                      ...prev,
+                      categoryId: selectedId,
+                      categoryName: selectedCategory ? selectedCategory.name : ""
+                    }));
+                  }}
+                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select category</option>
+                  {categoryOptions.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Food Name</label>
