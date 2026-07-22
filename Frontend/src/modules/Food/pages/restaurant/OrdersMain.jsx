@@ -5811,7 +5811,7 @@ export default function OrdersMain() {
                         className={`font-medium ${isCod ? "text-amber-700" : "text-black"}`}>
                         {isCod ? (
                           (selectedOrder?.fulfillmentType === 'takeaway' || selectedOrder?.type === 'Takeaway') 
-                            ? "Pay At Restaurant" 
+                            ? "Pay At Counter" 
                             : "Cash on Delivery"
                         ) : "Paid online"}
                       </span>
@@ -5839,7 +5839,7 @@ export default function OrdersMain() {
                       </p>
                     </div>
                     <span className="inline-flex items-center rounded-md bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-800 border border-amber-200 uppercase tracking-wider">
-                      Pay on Counter
+                      Pay At Counter
                     </span>
                   </div>
                 );

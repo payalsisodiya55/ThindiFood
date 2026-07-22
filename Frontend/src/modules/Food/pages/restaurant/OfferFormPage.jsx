@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useRef } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, CalendarDays, X, ChevronDown, AlertCircle } from "lucide-react"
+import { ArrowLeft, CalendarDays, X, ChevronDown, AlertCircle, Sparkles } from "lucide-react"
 import { AnimatePresence, motion } from "framer-motion"
 import { restaurantAPI } from "@food/api"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
@@ -11,6 +11,15 @@ import { Calendar } from "@food/components/ui/calendar"
 import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
 import { toast } from "sonner"
 import { confirmApp } from "@shared/lib/appDialog"
+
+const randomOfferTitle = () => {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+  let out = ""
+  for (let i = 0; i < 8; i += 1) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)]
+  }
+  return out
+}
 
 const toInputDate = (value) => {
   if (!value) return ""
@@ -521,15 +530,26 @@ export default function OfferFormPage({ mode = "create" }) {
                   Title <span className="text-red-500 font-bold">*</span>
                   {isFieldModified("title") && <span className="ml-1.5 text-[10px] font-bold text-amber-500 uppercase tracking-wider">(Modified)</span>}
                 </label>
-                <Input
-                  ref={titleRef}
-                  value={form.title}
-                  onChange={(e) => setField("title", e.target.value)}
-                  placeholder="E.g., Combo Saver"
-                  className={`h-12 ${showErrors && validationErrors.title ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("title") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
-                  disabled={submitting}
-                  maxLength={30}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    ref={titleRef}
+                    value={form.title}
+                    onChange={(e) => setField("title", e.target.value)}
+                    placeholder="E.g., Combo Saver"
+                    className={`h-12 flex-1 ${showErrors && validationErrors.title ? "border-red-500 focus-visible:ring-red-500 focus-visible:border-red-500 focus:border-red-500" : isFieldModified("title") ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                    disabled={submitting}
+                    maxLength={30}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setField("title", randomOfferTitle())}
+                    disabled={submitting}
+                    className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#00c87e] text-white transition hover:bg-[#00b06f] shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Generate code"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                  </button>
+                </div>
                 {showErrors && validationErrors.title ? (
                   <p className="mt-1 text-xs text-red-500 font-medium flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 shrink-0" />

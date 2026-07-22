@@ -657,7 +657,7 @@ export default function DiningList() {
                                 <input
                                     type="number"
                                     min="1"
-                                    max="100"
+                                    max="999"
                                     value={editingRestaurant.diningSettings?.maxGuests}
                                     onChange={(e) => setEditingRestaurant(prev => ({
                                         ...prev,

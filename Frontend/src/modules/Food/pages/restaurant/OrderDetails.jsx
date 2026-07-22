@@ -901,7 +901,7 @@ export default function OrderDetails() {
                 </p>
               </div>
               <div className="bg-amber-100 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-800 border border-amber-200 uppercase tracking-wider">
-                Pay on Counter
+                Pay At Counter
               </div>
             </div>
           );

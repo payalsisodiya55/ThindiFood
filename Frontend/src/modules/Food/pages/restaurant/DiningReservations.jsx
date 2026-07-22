@@ -332,8 +332,8 @@ export default function DiningReservations() {
     const handleSaveDiningSettings = async () => {
         if (!restaurant || savingDiningSettings) return
         const parsedLimit = diningEnabled ? parseInt(maxGuestsLimit, 10) : 0
-        if (diningEnabled && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 99)) {
-            setDiningSettingsError("Please enter a valid sitting capacity between 1 and 99")
+        if (diningEnabled && (isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 999)) {
+            setDiningSettingsError("Please enter a valid sitting capacity between 1 and 999")
             toast.error("Invalid sitting capacity")
             return
         }
@@ -504,24 +504,24 @@ export default function DiningReservations() {
                             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <ChevronDown className="h-3.5 w-3.5" />
-                        </button>
-                        <input
+                        </button>                        <input
                             type="number"
                             value={maxGuestsLimit}
                             min={diningEnabled ? "1" : "0"}
+                            max="999"
                             disabled={!diningEnabled}
                             onInput={(e) => {
-                                if (e.target.value.length > 2) {
-                                    e.target.value = e.target.value.slice(0, 2)
+                                if (e.target.value.length > 3) {
+                                    e.target.value = e.target.value.slice(0, 3)
                                 }
                             }}
                             onChange={(e) => setMaxGuestsLimit(e.target.value)}
-                            className={`w-14 bg-transparent text-center text-base font-black text-slate-900 outline-none ${!diningEnabled ? "cursor-not-allowed text-slate-400" : ""}`}
+                            className={`w-16 bg-transparent text-center text-base font-black text-slate-900 outline-none ${!diningEnabled ? "cursor-not-allowed text-slate-400" : ""}`}
                         />
                         <button
                             type="button"
                             disabled={!diningEnabled}
-                            onClick={() => setMaxGuestsLimit((prev) => Math.min(99, (parseInt(prev, 10) || 0) + 1))}
+                            onClick={() => setMaxGuestsLimit((prev) => Math.min(999, (parseInt(prev, 10) || 0) + 1))}
                             className="flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
                         >
                             <ChevronUp className="h-3.5 w-3.5" />
