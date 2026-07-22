@@ -2391,19 +2391,19 @@ function RestaurantDetailsContent() {
       <div className="px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 pt-3 md:pt-4 lg:pt-5 pb-2 md:pb-3 bg-white dark:bg-[#1a1a1a]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Back Button */}
-          {!showSearch && (
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a] flex-shrink-0"
-              onClick={goBack}
-            >
-              <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
-            </Button>
-          )}
+          <Button
+            variant="outline"
+            size="icon"
+            className={`rounded-full h-10 w-10 border-gray-200 dark:border-gray-800 shadow-sm bg-white dark:bg-[#1a1a1a] flex-shrink-0 ${
+              showSearch ? 'hidden md:flex' : 'flex'
+            }`}
+            onClick={goBack}
+          >
+            <ArrowLeft className="h-5 w-5 text-gray-900 dark:text-white" />
+          </Button>
 
           {/* Right side: Search pill + menu */}
-          <div className={`flex items-center gap-3 ${showSearch ? 'flex-1' : ''} ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : ''}`}>
+          <div className={`flex items-center gap-3 ${showSearch ? 'flex-1 md:flex-initial' : ''} ${shouldShowGrayscale ? 'pointer-events-none opacity-50' : ''}`}>
             {!showSearch ? (
               <Button
                 variant="outline"
@@ -2414,7 +2414,7 @@ function RestaurantDetailsContent() {
                 <span className="text-sm font-medium">Search</span>
               </Button>
             ) : (
-              <div className="flex items-center gap-2 flex-1 max-w-md">
+              <div className="flex items-center gap-2 flex-1 md:flex-initial transition-all duration-300 w-full md:w-64 md:focus-within:w-96">
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <input
