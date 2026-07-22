@@ -45,10 +45,43 @@ import { adminAPI } from "@food/api";
 import { clearModuleAuth } from "@food/utils/auth";
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings";
 import useAdminNotifications from "@food/hooks/useAdminNotifications";
+import { adminSidebarMenu } from "@food/utils/adminSidebarMenu";
+
+const getSearchablePages = (menuItems) => {
+  const pages = [];
+  const traverse = (items) => {
+    if (!Array.isArray(items)) return;
+    items.forEach(item => {
+      if (item.type === "link" && item.path) {
+        pages.push({
+          type: "Page",
+          title: item.label,
+          path: item.path,
+          description: "Navigation Page"
+        });
+      } else if (item.type === "section" && item.items) {
+        traverse(item.items);
+      } else if (item.type === "expandable" && item.subItems) {
+        item.subItems.forEach(sub => {
+          if (sub.path) {
+            pages.push({
+              type: "Page",
+              title: `${item.label} > ${sub.label}`,
+              path: sub.path,
+              description: "Navigation Page"
+            });
+          }
+        });
+      }
+    });
+  };
+  traverse(menuItems);
+  return pages;
+};
+
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
-
 
 export default function AdminNavbar({ onMenuClick }) {
   const navigate = useNavigate();
@@ -112,13 +145,28 @@ export default function AdminNavbar({ onMenuClick }) {
   // Universal Search logic
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery.trim().length > 1) {
+      const query = searchQuery.trim().toLowerCase();
+      if (query.length > 1) {
         setIsSearching(true);
         try {
-          const response = await adminAPI.globalSearch(searchQuery);
-          if (response?.data?.success) {
-            setSearchResults(response.data.data || []);
+          // 1. Search local sidebar pages
+          const allPages = getSearchablePages(adminSidebarMenu);
+          const matchedPages = allPages.filter(p => 
+            p.title.toLowerCase().includes(query)
+          );
+
+          // 2. Search database via API
+          let apiResults = [];
+          try {
+            const response = await adminAPI.globalSearch(searchQuery);
+            if (response?.data?.success) {
+              apiResults = response.data.data || [];
+            }
+          } catch (apiErr) {
+            debugError('Error searching API:', apiErr);
           }
+
+          setSearchResults([...matchedPages, ...apiResults]);
         } catch (error) {
           debugError('Error searching:', error);
           setSearchResults([]);
@@ -612,6 +660,7 @@ export default function AdminNavbar({ onMenuClick }) {
                                 {result.type === 'Product' && <Utensils className="w-5 h-5" />}
                                 {result.type === 'Category' && <Grid className="w-5 h-5" />}
                                 {result.type === 'Addon' && <PlusCircle className="w-5 h-5" />}
+                                {result.type === 'Page' && <FileText className="w-5 h-5" />}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-semibold text-neutral-900 truncate">
