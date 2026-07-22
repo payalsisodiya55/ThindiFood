@@ -126,7 +126,7 @@ export default function DiningOrders() {
     );
     
     if (found) {
-      return { name: found.name || found.restaurantName, id: found._id };
+      return { name: found.name || found.restaurantName, id: found.restaurantId || found._id };
     }
     
     const matchingOrder = rows.find(r => r.restaurant === topResName);

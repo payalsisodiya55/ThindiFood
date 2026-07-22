@@ -3,6 +3,7 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import { RestaurantOffer } from '../models/restaurantOffer.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
+import { getSequentialRestaurantId } from './restaurant.service.js';
 
 const ensureObjectId = (value, message) => {
     if (!value || !mongoose.Types.ObjectId.isValid(String(value))) {
@@ -16,20 +17,23 @@ const normalizeOffer = (doc) => {
     const obj = doc.toObject ? doc.toObject() : { ...doc };
     
     // Handle populated restaurantId
-    let restaurantId = obj.restaurantId;
+    let rawRestaurantId = obj.restaurantId;
     let restaurantName = obj.restaurantName || '';
     
     if (obj.restaurantId && typeof obj.restaurantId === 'object' && obj.restaurantId._id) {
-        restaurantId = String(obj.restaurantId._id);
+        rawRestaurantId = String(obj.restaurantId._id);
         restaurantName = obj.restaurantId.restaurantName || '';
     } else {
-        restaurantId = obj.restaurantId ? String(obj.restaurantId) : null;
+        rawRestaurantId = obj.restaurantId ? String(obj.restaurantId) : null;
     }
+
+    const restaurantId = rawRestaurantId ? getSequentialRestaurantId(rawRestaurantId) : '';
 
     return {
         ...obj,
         id: String(obj._id),
         _id: String(obj._id),
+        rawRestaurantId,
         restaurantId,
         restaurantName,
     };

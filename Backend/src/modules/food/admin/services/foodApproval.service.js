@@ -8,6 +8,8 @@ import { getFoodDisplayPrice, serializeFoodVariants } from './foodVariant.servic
 import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 
+import { getSequentialRestaurantId } from '../../restaurant/services/restaurant.service.js';
+
 const normalizeAllowedZoneIds = (scope = {}) => {
     if (!Array.isArray(scope?.allowedZoneIds) || scope.allowedZoneIds.length === 0) return [];
     return scope.allowedZoneIds
@@ -16,8 +18,7 @@ const normalizeAllowedZoneIds = (scope = {}) => {
 };
 
 const toRestaurantDisplayId = (mongoId) => {
-    const s = String(mongoId || '');
-    return s.length >= 5 ? s.slice(-5) : s;
+    return getSequentialRestaurantId(mongoId);
 };
 
 export async function listPendingFoodApprovals(query = {}, scope = {}) {

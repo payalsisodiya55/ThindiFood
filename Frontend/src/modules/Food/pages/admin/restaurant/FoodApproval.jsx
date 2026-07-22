@@ -30,6 +30,21 @@ export default function FoodApproval() {
   const [processing, setProcessing] = useState(false)
   const isMountedRef = useRef(true)
 
+  const formatRestaurantId = (id) => {
+    if (!id) return "-"
+    const idString = String(id)
+    if (idString.startsWith("REST")) return idString
+    const restMatch = idString.match(/^#?REST(\d+)$/i)
+    if (restMatch) return `REST${restMatch[1]}`
+    let hash = 0
+    for (let i = 0; i < idString.length; i++) {
+      hash = (hash << 5) - hash + idString.charCodeAt(i)
+      hash = hash & hash
+    }
+    const offset = Math.abs(hash) % 90000
+    return `REST${10000 + offset}`
+  }
+
   const getRequestZoneId = useCallback((request) => {
     const rawZoneId =
       request?.zoneId?._id ||
@@ -355,7 +370,7 @@ export default function FoodApproval() {
                           <td className="px-3 py-3 whitespace-normal break-words min-w-[180px]">
                             <div className="text-sm">
                               <div className="font-semibold text-gray-900">{request.restaurantName || '-'}</div>
-                              <div className="text-gray-500 text-xs">{request.restaurantId || '-'}</div>
+                              <div className="text-gray-500 text-xs">{formatRestaurantId(request.restaurantId)}</div>
                             </div>
                           </td>
                           <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700">
@@ -443,7 +458,7 @@ export default function FoodApproval() {
                 <div>
                    <h3 className="font-bold text-xs text-blue-700 uppercase tracking-wider mb-1">Restaurant</h3>
                    <p className="text-sm font-semibold text-gray-900 break-all">{selectedRequest.restaurantName || '-'}</p>
-                   <p className="text-xs text-gray-500 break-all">ID: {selectedRequest.restaurantId || '-'}</p>
+                   <p className="text-xs text-gray-500 break-all">ID: {formatRestaurantId(selectedRequest.restaurantId)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                     {selectedRequest.previousVersion && (

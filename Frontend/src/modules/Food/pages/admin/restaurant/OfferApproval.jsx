@@ -36,6 +36,21 @@ export default function OfferApproval() {
   const [processing, setProcessing] = useState(false)
   const isMountedRef = useRef(true)
 
+  const formatRestaurantId = (id) => {
+    if (!id) return ""
+    const idString = String(id)
+    if (idString.startsWith("REST")) return idString
+    const restMatch = idString.match(/^#?REST(\d+)$/i)
+    if (restMatch) return `REST${restMatch[1]}`
+    let hash = 0
+    for (let i = 0; i < idString.length; i++) {
+      hash = (hash << 5) - hash + idString.charCodeAt(i)
+      hash = hash & hash
+    }
+    const offset = Math.abs(hash) % 90000
+    return `REST${10000 + offset}`
+  }
+
   const getApprovalStatus = (offer) => String(offer?.approvalStatus || "pending").toLowerCase()
   const toInputDate = (value) => {
     if (!value) return ""
@@ -279,12 +294,13 @@ export default function OfferApproval() {
                   ) : (
                     filteredOffers.map((offer, index) => {
                       const approvalStatus = getApprovalStatus(offer)
+                      const displayResId = formatRestaurantId(offer.restaurantId || offer.rawRestaurantId)
                       return (
                       <tr key={offer._id || offer.id} className="hover:bg-gray-50">
                         <td className="px-3 py-3 font-semibold">{index + 1}</td>
                         <td className="px-3 py-3">
                           <div className="font-semibold text-gray-900 break-words max-w-[160px]">{offer.restaurantName || "Restaurant"}</div>
-                          <div className="text-gray-500 text-[10px] break-all">{offer.restaurantId}</div>
+                          <div className="text-gray-500 text-[10px] break-all">{displayResId}</div>
                         </td>
                         <td className="px-3 py-3 font-semibold break-words max-w-[160px]">{offer.title}</td>
                         <td className="px-3 py-3 whitespace-nowrap">
