@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, X, MapPin, Phone, Mail, Clock, Star, Building2, User, FileText, CreditCard, Calendar, Image as ImageIcon, ExternalLink, ShieldX, AlertTriangle, Trash2, Plus, XCircle } from "lucide-react"
 import { adminAPI, restaurantAPI, uploadAPI } from "@food/api"
 import { clearModuleAuth } from "@food/utils/auth"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
@@ -431,6 +431,8 @@ export default function RestaurantsList() {
         result = result.filter(restaurant => restaurant.isActive === true)
       } else if (filters.all === "Inactive") {
         result = result.filter(restaurant => restaurant.isActive !== true)
+      } else if (filters.all === "Rejected") {
+        result = result.filter(restaurant => restaurant.approvalStatus === "rejected")
       }
     }
 
@@ -494,8 +496,9 @@ export default function RestaurantsList() {
   }
 
   const totalRestaurants = restaurants.length
-  const activeRestaurants = restaurants.filter(r => r.isActive === true).length
-  const inactiveRestaurants = restaurants.filter(r => r.isActive !== true).length
+  const activeRestaurants = restaurants.filter(r => r.approvalStatus === "approved" && r.isActive === true).length
+  const inactiveRestaurants = restaurants.filter(r => r.approvalStatus === "approved" && r.isActive !== true).length
+  const rejectedRestaurants = restaurants.filter(r => r.approvalStatus === "rejected").length
 
   // Show full phone number without masking
   const formatPhone = (phone) => {
@@ -1131,9 +1134,14 @@ export default function RestaurantsList() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {/* Total Restaurants */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div 
+            onClick={() => setFilters(prev => ({ ...prev, all: "All" }))}
+            className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all duration-200 ${
+              filters.all === "All" ? "border-blue-500 ring-2 ring-blue-100 bg-blue-50/20" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600 mb-1">Total restaurants</p>
@@ -1146,7 +1154,12 @@ export default function RestaurantsList() {
           </div>
 
           {/* Active Restaurants */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div 
+            onClick={() => setFilters(prev => ({ ...prev, all: "Active" }))}
+            className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all duration-200 ${
+              filters.all === "Active" ? "border-green-500 ring-2 ring-green-100 bg-green-50/20" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600 mb-1">Active restaurants</p>
@@ -1159,7 +1172,12 @@ export default function RestaurantsList() {
           </div>
 
           {/* Inactive Restaurants */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+          <div 
+            onClick={() => setFilters(prev => ({ ...prev, all: "Inactive" }))}
+            className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all duration-200 ${
+              filters.all === "Inactive" ? "border-red-500 ring-2 ring-red-100 bg-red-50/20" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600 mb-1">Inactive restaurants</p>
@@ -1167,6 +1185,24 @@ export default function RestaurantsList() {
               </div>
               <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
                 <img src={inactiveIcon} alt="Inactive" className="w-8 h-8" />
+              </div>
+            </div>
+          </div>
+
+          {/* Rejected Restaurants */}
+          <div 
+            onClick={() => setFilters(prev => ({ ...prev, all: "Rejected" }))}
+            className={`bg-white rounded-xl shadow-sm border p-6 cursor-pointer transition-all duration-200 ${
+              filters.all === "Rejected" ? "border-rose-500 ring-2 ring-rose-100 bg-rose-50/20" : "border-slate-200 hover:border-slate-300"
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-1">Rejected restaurants</p>
+                <p className="text-2xl font-bold text-slate-900">{rejectedRestaurants}</p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-rose-100 flex items-center justify-center">
+                <XCircle className="w-8 h-8 text-rose-600" />
               </div>
             </div>
           </div>
@@ -1195,6 +1231,8 @@ export default function RestaurantsList() {
                 />
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               </div>
+
+
 
               <div className="relative flex-1 sm:flex-initial min-w-[150px]">
                 <select
@@ -1378,14 +1416,9 @@ export default function RestaurantsList() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex flex-col gap-1">
-                            <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${approvalStatusBadgeClass(restaurant.approvalStatus)}`}>
-                              {approvalStatusLabel(restaurant.approvalStatus)}
-                            </span>
-                            <span className="text-[11px] text-slate-500">
-                              Outlet: {restaurant.isActive ? "Active" : "Inactive"}
-                            </span>
-                          </div>
+                          <span className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 text-xs font-semibold ${approvalStatusBadgeClass(restaurant.approvalStatus)}`}>
+                            {approvalStatusLabel(restaurant.approvalStatus)}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">
