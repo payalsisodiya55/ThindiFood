@@ -398,20 +398,20 @@ export default function QuickSharedCart() {
               <div className="mt-4 space-y-3 text-sm text-white/80">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>{RUPEE_SYMBOL}{subtotal.toFixed(0)}</span>
+                  <span>{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Platform fee</span>
-                  <span>{RUPEE_SYMBOL}{platformFee.toFixed(0)}</span>
+                  <span>{RUPEE_SYMBOL}{platformFee.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Taxes</span>
-                  <span>{RUPEE_SYMBOL}{tax.toFixed(0)}</span>
+                  <span>{RUPEE_SYMBOL}{tax.toFixed(2)}</span>
                 </div>
                 <div className="border-t border-white/10 pt-3 text-base font-black text-white">
                   <div className="flex justify-between">
                     <span>Total</span>
-                    <span>{RUPEE_SYMBOL}{total.toFixed(0)}</span>
+                    <span>{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                   </div>
                 </div>
               </div>

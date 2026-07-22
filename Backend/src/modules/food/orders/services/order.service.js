@@ -1206,7 +1206,7 @@ async function getRiderEarning(distanceKm) {
   }
 
   if (!Number.isFinite(earning) || earning <= 0) return 0;
-  return Math.round(earning);
+  return roundMoney(earning);
 }
 
 /** Append-only food_order_payments row; never blocks main flow on failure */
@@ -1404,7 +1404,7 @@ export async function updateDispatchSettings(dispatchMode, adminId) {
 
 function roundMoney(value) {
   const n = Number(value) || 0;
-  return Math.round(n);
+  return Math.floor(n * 100) / 100;
 }
 
 function emptyCouponBreakdown(codeRaw = "") {
@@ -1642,7 +1642,7 @@ async function buildFoodPricingBreakdown(userId, dto, context = {}) {
   const gstRate = Number(feeSettings.gstRate || 0);
   const tax =
     Number.isFinite(gstRate) && gstRate > 0
-      ? Math.round(originalSubtotal * (gstRate / 100))
+      ? roundMoney(originalSubtotal * (gstRate / 100))
       : 0;
 
   const couponBreakdown = await resolveCouponBreakdown({
@@ -1796,7 +1796,7 @@ export async function calculateOrder(userId, dto) {
     const gstRate = Number(feeSettings.gstRate || 0);
     const tax =
       Number.isFinite(gstRate) && gstRate > 0
-        ? Math.round(subtotal * (gstRate / 100))
+        ? roundMoney(subtotal * (gstRate / 100))
         : 0;
     const discount = 0;
     const total = Math.max(

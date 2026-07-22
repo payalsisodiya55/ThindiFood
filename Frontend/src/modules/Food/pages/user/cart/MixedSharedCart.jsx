@@ -39,7 +39,7 @@ function CartSection({ title, subtitle, items, accentClass, onIncrement, onDecre
               <p className="truncate text-xs text-slate-500">{item.restaurant || item.quickStoreName || "Store"}</p>
               <p className="mt-1 text-sm font-bold text-slate-900">
                 {RUPEE_SYMBOL}
-                {Number(item.price || 0).toFixed(0)}
+                {Number(item.price || 0).toFixed(2)}
               </p>
             </div>
             <div className="flex items-center gap-2 rounded-full border border-slate-200 px-2 py-1">
@@ -59,7 +59,7 @@ function CartSection({ title, subtitle, items, accentClass, onIncrement, onDecre
         <span className="text-sm font-semibold text-slate-500">Section subtotal</span>
         <span className="text-base font-black text-slate-900">
           {RUPEE_SYMBOL}
-          {sectionTotal.toFixed(0)}
+          {sectionTotal.toFixed(2)}
         </span>
       </div>
     </section>
@@ -149,7 +149,7 @@ export default function MixedSharedCart() {
               </div>
               <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-base font-black text-slate-900">
                 <span>Combined subtotal</span>
-                <span>{RUPEE_SYMBOL}{grandTotal.toFixed(0)}</span>
+                <span>{RUPEE_SYMBOL}{grandTotal.toFixed(2)}</span>
               </div>
             </div>
 

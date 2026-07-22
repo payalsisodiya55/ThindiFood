@@ -13,6 +13,7 @@ import { useZone } from "@food/hooks/useZone";
 import { restaurantAPI } from "@food/api";
 import { toast } from "sonner";
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation";
+import { formatPrice } from "@food/utils/foodVariants";
 
 function calcDistance(lat1, lng1, lat2, lng2) {
   const R = 6371; // Radius of the earth in km
@@ -356,7 +357,7 @@ export default function Favorites() {
                               <span className="text-muted-foreground dark:text-gray-400 font-medium text-xs">{dish.foodType || "N/A"}</span>
                             </div>
                             <div className="text-sm font-bold text-primary-orange">
-                              {"\u20B9"}{Math.round(dish.price || 0)}
+                              {"\u20B9"}{formatPrice(dish.price || 0)}
                             </div>
                           </div>
                           <Button className="w-full mt-1 bg-green-600 hover:bg-green-700 text-white text-[13px] font-bold h-9 rounded-xl shadow-sm transition-all active:scale-[0.98]">

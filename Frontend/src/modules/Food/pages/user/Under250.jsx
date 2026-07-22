@@ -22,6 +22,7 @@ import { calculateDistance, formatDistance } from "@food/utils/common"
 import { RED } from "@food/constants/color"
 import { useLoginRequired } from "@food/context/LoginRequiredContext"
 import { getCachedSettings } from "@food/utils/businessSettings"
+import { formatPrice } from "@food/utils/foodVariants"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -1176,7 +1177,7 @@ export default function Under250() {
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="text-base md:text-lg lg:text-xl xl:text-2xl font-bold text-gray-900 dark:text-white">
-                                    {RUPEE_SYMBOL}{Math.round(item.price)}
+                                    {RUPEE_SYMBOL}{formatPrice(item.price)}
                                   </p>
                                   {item.bestPrice && (
                                     <p className="text-xs md:text-sm lg:text-base text-gray-500 dark:text-gray-400">Best price</p>
@@ -1540,11 +1541,11 @@ export default function Under250() {
                     <div className="flex items-center gap-1 md:gap-2">
                       {selectedItem.originalPrice && selectedItem.originalPrice > selectedItem.price && (
                         <span className="text-sm md:text-base lg:text-lg line-through text-red-200">
-                          {RUPEE_SYMBOL}{Math.round(selectedItem.originalPrice)}
+                          {RUPEE_SYMBOL}{formatPrice(selectedItem.originalPrice)}
                         </span>
                       )}
                       <span className="text-base md:text-lg lg:text-xl font-bold">
-                        {RUPEE_SYMBOL}{Math.round(selectedItem.price)}
+                        {RUPEE_SYMBOL}{formatPrice(selectedItem.price)}
                       </span>
                     </div>
                   </Button>

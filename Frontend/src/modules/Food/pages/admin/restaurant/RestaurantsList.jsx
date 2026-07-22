@@ -1911,11 +1911,11 @@ export default function RestaurantsList() {
                               </div>
                               <div>
                                 <p className="text-xs text-slate-500">Delivery Fee</p>
-                                <p className="text-sm font-medium text-slate-900">₹{Number(selfDeliveryVal.fee || 0).toFixed(0)}</p>
+                                <p className="text-sm font-medium text-slate-900">₹{Number(selfDeliveryVal.fee || 0).toFixed(2)}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-slate-500">Minimum Order</p>
-                                <p className="text-sm font-medium text-slate-900">₹{Number(selfDeliveryVal.minOrderAmount || 0).toFixed(0)}</p>
+                                <p className="text-sm font-medium text-slate-900">₹{Number(selfDeliveryVal.minOrderAmount || 0).toFixed(2)}</p>
                               </div>
                               <div>
                                 <p className="text-xs text-slate-500">Timings</p>

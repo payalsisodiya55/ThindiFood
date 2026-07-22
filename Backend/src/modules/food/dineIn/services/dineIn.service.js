@@ -27,7 +27,7 @@ const roundMoney = (value) => Number((Number(value) || 0).toFixed(2));
 // 19.0 -> 19, 19.5 -> 20, 19.9 -> 20
 const roundStandard = (value) => {
     const n = Number(value) || 0;
-    return Math.round(n + Number.EPSILON);
+    return Math.floor((n + Number.EPSILON) * 100) / 100;
 };
 const createHttpError = (message, statusCode = 400) => {
     const error = new Error(message);

@@ -25,6 +25,7 @@ import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailabil
 import { flattenMenuItems, getMenuFromResponse } from "@food/utils/menuItems"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import zoopSound from "@food/assets/audio/zomato_sms.mp3"
+import { formatPrice } from "@food/utils/foodVariants"
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
@@ -2043,13 +2044,13 @@ export default function Cart() {
   }, [])
 
   // Use backend pricing if available, otherwise fallback to database fee settings
-  const subtotal = Math.round(pricing?.subtotal || cart.reduce((sum, item) => sum + (item.price || 0) * (item.quantity || 1), 0))
-  const deliveryFee = Math.round(pricing?.deliveryFee || 0)
-  const platformFee = Math.round(pricing?.platformFee || feeSettings.platformFee)
-  const gstCharges = Math.round(pricing?.tax || Math.round(subtotal * (feeSettings.gstRate / 100)))
-  const discount = Math.round(pricing?.discount || (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0))
-  const totalBeforeDiscount = Math.round(subtotal + deliveryFee + platformFee + gstCharges)
-  const total = Math.round(pricing?.total || (totalBeforeDiscount - discount))
+  const subtotal = pricing?.subtotal !== undefined ? Number(pricing.subtotal) : cart.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1), 0)
+  const deliveryFee = Number(pricing?.deliveryFee) || 0
+  const platformFee = pricing?.platformFee !== undefined ? Number(pricing.platformFee) : Number(feeSettings.platformFee || 0)
+  const gstCharges = pricing?.tax !== undefined ? Number(pricing.tax) : (Math.floor((subtotal * (Number(feeSettings.gstRate || 0) / 100)) * 100) / 100)
+  const discount = pricing?.discount !== undefined ? Number(pricing.discount) : (appliedCoupon ? Math.min(appliedCoupon.discount, subtotal * 0.5) : 0)
+  const totalBeforeDiscount = subtotal + deliveryFee + platformFee + gstCharges
+  const total = pricing?.total !== undefined ? Number(pricing.total) : (totalBeforeDiscount - discount)
   const paymentOptions = [
     {
       id: 'razorpay',
@@ -2067,7 +2068,7 @@ export default function Cart() {
       icon: <Wallet className="w-5 h-5" />,
       color: 'bg-blue-50 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
       selectedColor: 'bg-blue-500 text-white',
-      subInfo: `Bal: ${RUPEE_SYMBOL}${walletBalance.toFixed(0)}`,
+      subInfo: `Bal: ${RUPEE_SYMBOL}${walletBalance.toFixed(2)}`,
       disabled: walletBalance < total,
       disabledText: 'Low Balance'
     },
@@ -2082,7 +2083,7 @@ export default function Cart() {
       }]
       : [])
   ]
-  const savings = Math.round(pricing?.savings ?? Math.max(0, totalBeforeDiscount - total))
+  const savings = pricing?.savings !== undefined ? Number(pricing.savings) : Math.max(0, totalBeforeDiscount - total)
   const selectedPaymentLabel =
     selectedPaymentMethod === "wallet"
       ? "Wallet"
@@ -2139,7 +2140,7 @@ export default function Cart() {
       return `${percentageValue}% OFF with '${coupon.code}'`
     }
 
-    return `${RUPEE_SYMBOL}${Math.round(Number(coupon.discount || 0))} OFF with '${coupon.code}'`
+    return `${RUPEE_SYMBOL}${Number(coupon.discount || 0).toFixed(2)} OFF with '${coupon.code}'`
   }
 
   const getCouponIcon = (coupon, className) => {
@@ -2964,7 +2965,7 @@ export default function Cart() {
 
       // Check wallet balance if wallet payment selected
       if (selectedPaymentMethod === "wallet" && walletBalance < total) {
-        toast.error(`Insufficient wallet balance. Required: ${RUPEE_SYMBOL}${total.toFixed(0)}, Available: ${RUPEE_SYMBOL}${walletBalance.toFixed(0)}`)
+        toast.error(`Insufficient wallet balance. Required: ${RUPEE_SYMBOL}${total.toFixed(2)}, Available: ${RUPEE_SYMBOL}${walletBalance.toFixed(2)}`)
         setIsPlacingOrder(false)
         return
       }
@@ -3289,7 +3290,7 @@ export default function Cart() {
           <div className="bg-blue-100 dark:bg-blue-900/20 px-4 md:px-6 py-2 md:py-3 flex-shrink-0">
             <div className="max-w-7xl mx-auto">
               <p className="text-sm md:text-base font-medium text-blue-800 dark:text-blue-200">
-                Saved {RUPEE_SYMBOL}{Math.round(savings)} on this order
+                Saved {RUPEE_SYMBOL}{savings.toFixed(2)} on this order
               </p>
             </div>
           </div>
@@ -3359,7 +3360,7 @@ export default function Cart() {
                             </div>
 
                             <p className="text-sm md:text-base font-medium text-gray-800 dark:text-gray-200 text-right pr-1">
-                              {RUPEE_SYMBOL}{((item.price || 0) * (item.quantity || 1)).toFixed(0)}
+                              {RUPEE_SYMBOL}{formatPrice((item.price || 0) * (item.quantity || 1))}
                             </p>
                           </div>
                         </div>
@@ -3479,14 +3480,14 @@ export default function Cart() {
                               }}
                               className="absolute bottom-1 md:bottom-2 right-1 md:right-2 w-6 h-6 md:w-7 md:h-7 bg-white border border-[#00c87e] rounded flex items-center justify-center shadow-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                             >
-                              <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 text-[#00c87e]" />
+                              <Plus className="h-3.5 w-3.5 md:h-4 md:h-4 text-[#00c87e]" />
                             </button>
                           </div>
                           <p className="text-xs md:text-sm font-medium text-gray-800 dark:text-gray-200 mt-1.5 md:mt-2 line-clamp-2 leading-tight">{addon.name}</p>
                           {addon.description && (
                             <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{addon.description}</p>
                           )}
-                          <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">{RUPEE_SYMBOL}{Number(addon.price || 0).toFixed(2).replace(/\.?0+$/, '') || '0'}</p>
+                          <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">{RUPEE_SYMBOL}{Number(addon.price || 0).toFixed(2)}</p>
                         </div>
                       ))}
                     </div>
@@ -3526,7 +3527,7 @@ export default function Cart() {
                         </p>
                       ) : restaurantOfferInfo.appliedAmount > 0 ? (
                         <p className="mt-0.5 text-xs font-medium text-[#00c87e]">
-                          Applied automatically. You saved {RUPEE_SYMBOL}{restaurantOfferInfo.appliedAmount.toFixed(0)}.
+                          Applied automatically. You saved {RUPEE_SYMBOL}{restaurantOfferInfo.appliedAmount.toFixed(2)}.
                         </p>
                       ) : (
                         <p className="mt-0.5 text-xs font-medium text-gray-500">
@@ -3549,7 +3550,7 @@ export default function Cart() {
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">'{appliedCoupon.code}' applied</p>
-                        <p className="text-xs text-[#00c87e] font-medium mt-0.5">You saved {RUPEE_SYMBOL}{discount}</p>
+                        <p className="text-xs text-[#00c87e] font-medium mt-0.5">You saved {RUPEE_SYMBOL}{discount.toFixed(2)}</p>
                       </div>
                     </div>
                     <button onClick={handleRemoveCoupon} className="text-[#00c87e] text-xs font-semibold px-2 hover:underline">Remove</button>
@@ -3572,7 +3573,7 @@ export default function Cart() {
                             {availableCoupons[0].customerGroup === "new" ? (
                               <p className="text-[11px] text-[#00c87e] mb-1">First-time users only</p>
                             ) : subtotal < availableCoupons[0].minOrder ? (
-                              <p className="text-xs text-blue-600 font-medium mb-1">Add items worth {RUPEE_SYMBOL}{(availableCoupons[0].minOrder - subtotal).toFixed(0)} more to unlock</p>
+                              <p className="text-xs text-blue-600 font-medium mb-1">Add items worth {RUPEE_SYMBOL}{(availableCoupons[0].minOrder - subtotal).toFixed(2)} more to unlock</p>
                             ) : hasActiveRestaurantOfferDiscount() ? (
                               <p className="text-xs text-amber-600 font-medium mb-1">Applying this coupon will replace the restaurant offer.</p>
                             ) : null}
@@ -3631,7 +3632,7 @@ export default function Cart() {
                                 {coupon.customerGroup === "new" ? (
                                   <p className="text-[11px] text-[#00c87e] mb-1">First-time users only</p>
                                 ) : subtotal < coupon.minOrder ? (
-                                  <p className="text-xs text-blue-600 font-medium mb-1 line-clamp-1">Add items worth {RUPEE_SYMBOL}{(coupon.minOrder - subtotal).toFixed(0)} more to unlock</p>
+                                  <p className="text-xs text-blue-600 font-medium mb-1 line-clamp-1">Add items worth {RUPEE_SYMBOL}{(coupon.minOrder - subtotal).toFixed(2)} more to unlock</p>
                                 ) : hasActiveRestaurantOfferDiscount() ? (
                                   <p className="text-xs text-amber-600 font-medium mb-1 line-clamp-1">Applying this coupon will replace the restaurant offer.</p>
                                 ) : (
@@ -3850,7 +3851,7 @@ export default function Cart() {
                             ) : (
                               deliveryFee > 0 && (
                                 <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] md:text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                  Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(0)}
+                                  Fee {RUPEE_SYMBOL}{deliveryFee.toFixed(2)}
                                 </span>
                               )
                             )}
@@ -3969,7 +3970,7 @@ export default function Cart() {
                   <div className="mt-4 pt-4 border-t border-dashed border-gray-200 dark:border-gray-800 space-y-3 pl-11 md:pl-12">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Item Total</span>
-                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{subtotal.toFixed(2)}</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{formatPrice(subtotal)}</span>
                     </div>
                     {fulfillmentMode === "delivery" && (
                       <div className="flex justify-between text-sm items-center">
@@ -3980,13 +3981,13 @@ export default function Cart() {
                           )}
                         </span>
                         <span className="font-medium text-gray-800 dark:text-gray-200">
-                          {RUPEE_SYMBOL}{deliveryFee.toFixed(2)}
+                          {RUPEE_SYMBOL}{formatPrice(deliveryFee)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
-                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{platformFee.toFixed(2)}</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{formatPrice(platformFee)}</span>
                     </div>
                     <div className="flex justify-between text-sm items-center">
                       <div className="flex items-center gap-1">
@@ -4000,29 +4001,29 @@ export default function Cart() {
                           <Info className="h-3.5 w-3.5" />
                         </button>
                       </div>
-                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{formatPrice(gstCharges)}</span>
                     </div>
                     {pricing?.restaurantDiscount > 0 && (
                       <div className="flex justify-between text-sm text-[#00c87e] font-medium">
                         <span>Offer Discount</span>
-                        <span>-{RUPEE_SYMBOL}{pricing.restaurantDiscount.toFixed(2)}</span>
+                        <span>-{RUPEE_SYMBOL}{formatPrice(pricing.restaurantDiscount)}</span>
                       </div>
                     )}
                     {pricing?.couponDiscount > 0 && (
                       <div className="flex justify-between text-sm text-[#00c87e] font-medium">
                         <span>Coupon Discount</span>
-                        <span>-{RUPEE_SYMBOL}{pricing.couponDiscount.toFixed(2)}</span>
+                        <span>-{RUPEE_SYMBOL}{formatPrice(pricing.couponDiscount)}</span>
                       </div>
                     )}
                     {(!pricing && discount > 0) && (
                       <div className="flex justify-between text-sm text-[#00c87e] font-medium">
                         <span>Coupon Discount</span>
-                        <span>-{RUPEE_SYMBOL}{discount.toFixed(2)}</span>
+                        <span>-{RUPEE_SYMBOL}{formatPrice(discount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-base font-bold pt-3 mt-1 border-t border-gray-100 dark:border-gray-800 text-gray-900 dark:text-white">
                       <span>To Pay</span>
-                      <span>{RUPEE_SYMBOL}{total.toFixed(2)}</span>
+                      <span>{RUPEE_SYMBOL}{formatPrice(total)}</span>
                     </div>
                   </div>
                 )}
@@ -4083,7 +4084,7 @@ export default function Cart() {
                     </p>
                     {selectedPaymentMethod === "wallet" && (
                       <p className="text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-1 rounded">
-                        {RUPEE_SYMBOL}{walletBalance.toFixed(0)}
+                        {RUPEE_SYMBOL}{walletBalance.toFixed(2)}
                       </p>
                     )}
                   </div>
@@ -4443,7 +4444,7 @@ export default function Cart() {
                 >
                   <div className="flex-shrink-0">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total Pay</p>
-                    <p className="text-xl font-black text-[#00c87e] tabular-nums">{RUPEE_SYMBOL}{total.toFixed(0)}</p>
+                    <p className="text-xl font-black text-[#00c87e] tabular-nums">{RUPEE_SYMBOL}{formatPrice(total)}</p>
                   </div>
                   <Button
                     onClick={() => setShowPaymentSheet(false)}

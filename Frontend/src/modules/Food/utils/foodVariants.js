@@ -34,9 +34,17 @@ export const getFoodDisplayPrice = (item = {}) => {
   return Number.isFinite(price) ? price : 0
 }
 
+export const formatPrice = (amount) => {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return "0"
+  if (Number.isInteger(n) || n % 1 === 0) return String(Math.round(n))
+  const formatted = n.toFixed(2)
+  return formatted.endsWith(".00") ? String(Math.round(n)) : formatted
+}
+
 export const getFoodPriceLabel = (item = {}) => {
   const price = getFoodDisplayPrice(item)
-  return hasFoodVariants(item) ? `Starting from ₹${Math.round(price)}` : `₹${Math.round(price)}`
+  return hasFoodVariants(item) ? `Starting from ₹${formatPrice(price)}` : `₹${formatPrice(price)}`
 }
 
 export const buildCartLineId = (itemId, variantId = "", itemType = "food") => {

@@ -66,7 +66,7 @@ const STATUS_META = {
 };
 
 
-const formatMoney = (value) => `₹${Number(value || 0).toFixed(0)}`;
+const formatMoney = (value) => `₹${Number(value || 0).toFixed(2)}`;
 
 const formatAddress = (address) => {
   if (!address) return "No address available";

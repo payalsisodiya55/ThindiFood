@@ -525,7 +525,7 @@ export const calculateDiningOfferDiscount = (offer, subtotal) => {
         }
     }
     const normalizedDiscount = Math.max(0, Math.min(baseAmount, discountAmount));
-    return Math.round(normalizedDiscount);
+    return roundMoney(normalizedDiscount);
 };
 
 const buildUsageLimitFilter = () => ({

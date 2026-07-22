@@ -571,7 +571,7 @@ export default function Delivery() {
                                 <>
                                   <span className={!availability.isOpen ? "text-white/60" : "text-white/40"}>|</span>
                                   <IndianRupee className="h-3 w-3 flex-shrink-0" strokeWidth={2} />
-                                  <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(0)}</span>
+                                  <span>Fee {Number(restaurant.selfDelivery.fee || 0).toFixed(2)}</span>
                                 </>
                               )}
                               {restaurant.offer && (

@@ -6,6 +6,8 @@ import { FoodOffer } from '../../admin/models/offer.model.js';
 import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 
+const roundMoney = (val) => Math.floor((Number(val) || 0) * 100) / 100;
+
 export async function calculateOrderPricing(userId, dto) {
   const restaurant = await FoodRestaurant.findById(dto.restaurantId)
     .select("status")
@@ -38,7 +40,7 @@ export async function calculateOrderPricing(userId, dto) {
   const gstRate = Number(feeSettings.gstRate || 0);
   const tax =
     Number.isFinite(gstRate) && gstRate > 0
-      ? Math.round(subtotal * (gstRate / 100))
+      ? roundMoney(subtotal * (gstRate / 100))
       : 0;
 
   let discount = 0;
@@ -107,11 +109,11 @@ export async function calculateOrderPricing(userId, dto) {
           const capped = Number(offer.maxDiscount)
             ? Math.min(raw, Number(offer.maxDiscount))
             : raw;
-          discount = Math.max(0, Math.min(subtotal, Math.round(capped)));
+          discount = Math.max(0, Math.min(subtotal, roundMoney(capped)));
         } else {
           discount = Math.max(
             0,
-            Math.min(subtotal, Math.round(Number(offer.discountValue) || 0)),
+            Math.min(subtotal, roundMoney(Number(offer.discountValue) || 0)),
           );
         }
         appliedCoupon = { code: codeRaw, discount };
@@ -121,7 +123,7 @@ export async function calculateOrderPricing(userId, dto) {
 
   const total = Math.max(
     0,
-    subtotal + packagingFee + deliveryFee + platformFee + tax - discount,
+    roundMoney(subtotal + packagingFee + deliveryFee + platformFee + tax - discount),
   );
 
   return {

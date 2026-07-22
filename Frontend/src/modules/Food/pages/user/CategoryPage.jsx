@@ -760,7 +760,7 @@ export default function CategoryPage() {
             const originalPrice = item.originalPrice || item.price || 0
             const discountPercent = item.discountPercent || 0
             const finalPrice = discountPercent > 0
-              ? Math.round(originalPrice * (1 - discountPercent / 100))
+              ? Number((originalPrice * (1 - discountPercent / 100)).toFixed(2))
               : originalPrice
 
             // Get dish image (prioritize item image, then section image)
@@ -796,7 +796,7 @@ export default function CategoryPage() {
               const originalPrice = item?.originalPrice || item?.price || 0
               const discountPercent = item?.discountPercent || 0
               const finalPrice = discountPercent > 0
-                ? Math.round(originalPrice * (1 - discountPercent / 100))
+                ? Number((originalPrice * (1 - discountPercent / 100)).toFixed(2))
                 : originalPrice
 
               const dishImage = normalizeImageUrl(
@@ -1008,7 +1008,7 @@ export default function CategoryPage() {
                                 const originalPrice = firstItem.originalPrice || firstItem.price || 0
                                 const discountPercent = firstItem.discountPercent || 0
                                 featuredPrice = discountPercent > 0
-                                  ? Math.round(originalPrice * (1 - discountPercent / 100))
+                                  ? Number((originalPrice * (1 - discountPercent / 100)).toFixed(2))
                                   : originalPrice
                               }
                               break

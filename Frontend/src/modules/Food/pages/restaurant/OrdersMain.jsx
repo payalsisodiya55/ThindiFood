@@ -4833,11 +4833,11 @@ export default function OrdersMain() {
                                       </div>
                                       {itemPricing.hasRestaurantOffer ? (
                                         <p className="text-[11px] text-gray-400 line-through">
-                                          ₹{Math.round(itemPricing.originalTotal)}
+                                          ₹{Number(itemPricing.originalTotal).toFixed(2)}
                                         </p>
                                       ) : null}
                                       <p className="text-xs font-semibold text-gray-700">
-                                        ₹{Math.round(getPopupOrderItemDisplayTotal(item, popupOrder || newOrder))}
+                                        ₹{Number(getPopupOrderItemDisplayTotal(item, popupOrder || newOrder)).toFixed(2)}
                                       </p>
                                     </div>
                                   </div>

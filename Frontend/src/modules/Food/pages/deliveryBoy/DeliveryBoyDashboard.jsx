@@ -67,7 +67,7 @@ const formatAddress = (address) => {
     .join(", ");
 };
 
-const formatMoney = (value) => `₹${Number(value || 0).toFixed(0)}`;
+const formatMoney = (value) => `₹${Number(value || 0).toFixed(2)}`;
 
 export default function DeliveryBoyDashboard() {
   const navigate = useNavigate();

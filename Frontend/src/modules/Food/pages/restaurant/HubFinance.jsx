@@ -10,7 +10,7 @@ const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 const formatRoundedCurrency = (amount) => {
   const n = Number(amount) || 0
-  return Number(Math.round(n + Number.EPSILON)).toLocaleString('en-IN')
+  return n.toFixed(2)
 }
 
 const getRestaurantItemAmount = (order) => {

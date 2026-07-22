@@ -54,6 +54,7 @@ import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import { useLoginRequired } from "@food/context/LoginRequiredContext"
 import {
   buildCartLineId,
+  formatPrice,
   getDefaultFoodVariant,
   getFoodDisplayPrice,
   getFoodPriceLabel,
@@ -2858,7 +2859,7 @@ function RestaurantDetailsContent() {
                                             </span>
                                           )}
                                           <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
-                                            ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
+                                            ₹{formatPrice(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
                                           </span>
                                         </>
                                       ) : (
@@ -2869,7 +2870,7 @@ function RestaurantDetailsContent() {
                                     </div>
                                     {item.offer && (
                                       <p className="text-xs md:text-sm text-gray-400 line-through">
-                                        ₹{Math.round(getFoodDisplayPrice(item))}
+                                        ₹{formatPrice(getFoodDisplayPrice(item))}
                                       </p>
                                     )}
                                   </div>
@@ -3130,7 +3131,7 @@ function RestaurantDetailsContent() {
                                                       </span>
                                                     )}
                                                     <span className="font-extrabold text-gray-900 dark:text-white text-sm md:text-base">
-                                                      ₹{Math.round(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
+                                                      ₹{formatPrice(getDiscountedPrice(getFoodDisplayPrice(item), item.offer))}
                                                     </span>
                                                   </>
                                                 ) : (
@@ -3141,7 +3142,7 @@ function RestaurantDetailsContent() {
                                               </div>
                                               {item.offer && (
                                                 <p className="text-xs md:text-sm text-gray-400 line-through">
-                                                  ₹{Math.round(getFoodDisplayPrice(item))}
+                                                  ₹{formatPrice(getFoodDisplayPrice(item))}
                                                 </p>
                                               )}
                                             </div>
@@ -3874,10 +3875,10 @@ function RestaurantDetailsContent() {
                                     : "border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-[#2a2a2a] dark:text-gray-300"
                                 }`}
                               >
-                                {variant.name} · {RUPEE_SYMBOL}{Math.round(currentDiscountedPrice)}
+                                {variant.name} · {RUPEE_SYMBOL}{formatPrice(currentDiscountedPrice)}
                                 {selectedItem.offer && (
                                   <span className="ml-1 text-[10px] line-through text-gray-400">
-                                    {RUPEE_SYMBOL}{Math.round(originalVariantPrice)}
+                                    {RUPEE_SYMBOL}{formatPrice(originalVariantPrice)}
                                   </span>
                                 )}
                               </button>
@@ -3957,14 +3958,14 @@ function RestaurantDetailsContent() {
                             <span className="text-sm line-through text-red-100 opacity-70">
                               {RUPEE_SYMBOL}
                               {hasFoodVariants(selectedItem)
-                                ? Math.round(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price)
-                                : Math.round(selectedItem.price)}
+                                ? formatPrice(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price)
+                                : formatPrice(selectedItem.price)}
                             </span>
                           )}
                           <span className="text-base font-bold">
                             {hasFoodVariants(selectedItem)
-                              ? `${getVariantForDish(selectedItem, selectedVariantId)?.name || "Default"} · ${RUPEE_SYMBOL}${Math.round(getDiscountedPrice(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price, selectedItem.offer))}`
-                              : `${RUPEE_SYMBOL}${Math.round(getDiscountedPrice(selectedItem.price, selectedItem.offer))}`}
+                              ? `${getVariantForDish(selectedItem, selectedVariantId)?.name || "Default"} · ${RUPEE_SYMBOL}${formatPrice(getDiscountedPrice(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price, selectedItem.offer))}`
+                              : `${RUPEE_SYMBOL}${formatPrice(getDiscountedPrice(selectedItem.price, selectedItem.offer))}`}
                           </span>
                         </div>
                       </Button>

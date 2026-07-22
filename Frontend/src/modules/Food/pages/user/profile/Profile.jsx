@@ -547,7 +547,7 @@ export default function Profile() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300">
-                        {"\u20B9"}{Number(walletBalance || 0).toFixed(0)}
+                        {"\u20B9"}{Number(walletBalance || 0).toFixed(2)}
                       </span>
                       <motion.div
                         whileHover={{ x: 4 }}
