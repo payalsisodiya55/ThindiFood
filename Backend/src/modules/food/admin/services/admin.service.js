@@ -3405,6 +3405,8 @@ export async function getRestaurantAnalytics(restaurantId, scope = {}) {
         averageRating: Number(restaurant.rating || 0),
         totalRatings: Number(restaurant.totalRatings || 0),
         commissionPercentage: computedCommissionPercent,
+        commissionType: commissionType,
+        commissionValue: commissionValue,
         monthlyProfit,
         yearlyProfit,
         averageOrderValue: avgOrderValue,

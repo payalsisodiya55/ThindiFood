@@ -69,6 +69,8 @@ export default function PointOfSale() {
     averageRating: 0,
     totalRatings: 0,
     commissionPercentage: 0,
+    commissionType: 'percentage',
+    commissionValue: 0,
     monthlyProfit: 0,
     yearlyProfit: 0,
     averageOrderValue: 0,
@@ -107,6 +109,8 @@ export default function PointOfSale() {
         averageRating: 0,
         totalRatings: 0,
         commissionPercentage: 0,
+        commissionType: 'percentage',
+        commissionValue: 0,
         monthlyProfit: 0,
         yearlyProfit: 0,
         averageOrderValue: 0,
@@ -186,6 +190,8 @@ export default function PointOfSale() {
           averageRating: Number(analytics.averageRating) || 0,
           totalRatings: Number(analytics.totalRatings) || 0,
           commissionPercentage: commissionPercentage,
+          commissionType: analytics.commissionType || 'percentage',
+          commissionValue: analytics.commissionValue !== undefined ? Number(analytics.commissionValue) : 0,
           monthlyProfit: analytics.monthlyProfit || 0,
           yearlyProfit: analytics.yearlyProfit || 0,
           averageOrderValue: analytics.averageOrderValue || 0,
@@ -214,6 +220,8 @@ export default function PointOfSale() {
           averageRating: 0,
           totalRatings: 0,
           commissionPercentage: 0,
+          commissionType: 'percentage',
+          commissionValue: 0,
           monthlyProfit: 0,
           yearlyProfit: 0,
           averageOrderValue: 0,
@@ -260,6 +268,8 @@ export default function PointOfSale() {
         averageRating: 0,
         totalRatings: 0,
         commissionPercentage: 0,
+        commissionType: 'percentage',
+        commissionValue: 0,
         monthlyProfit: 0,
         yearlyProfit: 0,
         averageOrderValue: 0,
@@ -504,12 +514,22 @@ export default function PointOfSale() {
                   <div className="p-3 bg-purple-100 rounded-lg">
                     <Award className="w-6 h-6 text-purple-600" />
                   </div>
-                  <span className="text-sm font-semibold text-purple-600">{analyticsData.commissionPercentage}%</span>
-                  </div>
-                <h3 className="text-sm font-medium text-[#8a94aa] mb-1">Commission Rate</h3>
-                <p className="text-2xl font-bold text-[#334257]">{analyticsData.commissionPercentage}%</p>
+                  <span className="text-sm font-semibold text-purple-600">
+                    {analyticsData.commissionType === 'amount'
+                      ? formatCurrency(analyticsData.commissionValue)
+                      : `${analyticsData.commissionPercentage}%`}
+                  </span>
+                </div>
+                <h3 className="text-sm font-medium text-[#8a94aa] mb-1">
+                  {analyticsData.commissionType === 'amount' ? 'Commission (Flat)' : 'Commission Rate'}
+                </h3>
+                <p className="text-2xl font-bold text-[#334257]">
+                  {analyticsData.commissionType === 'amount'
+                    ? formatCurrency(analyticsData.commissionValue)
+                    : `${analyticsData.commissionPercentage}%`}
+                </p>
                 <p className="text-xs text-[#8a94aa] mt-2">Set Commission</p>
-                  </div>
+              </div>
                   </div>
 
             {/* Profit & Revenue Section */}
@@ -608,12 +628,14 @@ export default function PointOfSale() {
                     <span className="text-sm text-[#8a94aa]">Completion Rate</span>
                     <span className="text-base font-semibold text-green-600">{analyticsData.completionRate.toFixed(1)}%</span>
                   </div>
-                  <div className="flex justify-between items-center py-3 border-b border-[#e3e6ef]">
-                    <span className="text-sm text-[#8a94aa]">Commission Percentage</span>
+                   <div className="flex justify-between items-center py-3 border-b border-[#e3e6ef]">
+                    <span className="text-sm text-[#8a94aa]">
+                      {analyticsData.commissionType === 'amount' ? 'Commission Amount' : 'Commission Percentage'}
+                    </span>
                     <span className="text-base font-semibold text-[#334257]">
-                      {analyticsData.commissionPercentage !== undefined && analyticsData.commissionPercentage !== null
-                        ? `${analyticsData.commissionPercentage}%`
-                        : '0%'}
+                      {analyticsData.commissionType === 'amount'
+                        ? formatCurrency(analyticsData.commissionValue)
+                        : `${analyticsData.commissionPercentage}%`}
                     </span>
                   </div>
                 </div>
