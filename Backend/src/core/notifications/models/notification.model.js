@@ -72,6 +72,17 @@ const notificationSchema = new mongoose.Schema(
 
 notificationSchema.index({ ownerType: 1, ownerId: 1, createdAt: -1 });
 notificationSchema.index({ ownerType: 1, ownerId: 1, isRead: 1, dismissedAt: 1 });
-notificationSchema.index({ broadcastId: 1, ownerType: 1, ownerId: 1 }, { unique: true, sparse: true });
+notificationSchema.index(
+    { broadcastId: 1, ownerType: 1, ownerId: 1 },
+    {
+        unique: true,
+        partialFilterExpression: {
+            broadcastId: { $type: "objectId" }
+        }
+    }
+);
 
 export const FoodNotification = mongoose.model('FoodNotification', notificationSchema);
+
+// Drop the legacy unique index that allowed only a single null broadcastId per owner
+FoodNotification.collection.dropIndex('broadcastId_1_ownerType_1_ownerId_1').catch(() => {});
