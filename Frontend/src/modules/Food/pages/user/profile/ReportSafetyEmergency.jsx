@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom"
-import { ArrowLeft, AlertTriangle, Phone, Loader2, Clock, Upload, X, Film, Image as ImageIcon, RefreshCw } from "lucide-react"
+import { ArrowLeft, AlertTriangle, Phone, Loader2, Clock, Upload, X, Film, Image as ImageIcon, RefreshCw, ChevronDown } from "lucide-react"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
 import { Card, CardContent } from "@food/components/ui/card"
@@ -14,6 +14,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@food/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@food/components/ui/select"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -318,6 +325,9 @@ export default function ReportSafetyEmergency() {
                     <p className="text-sm md:text-base text-gray-600 dark:text-gray-400">
                       Report any safety concerns, incidents, or emergencies related to your order or delivery experience.
                     </p>
+                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">
+                      Our safety team reviews every report within 15 minutes and will follow up with you directly.
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -329,25 +339,18 @@ export default function ReportSafetyEmergency() {
                 <label className="block text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-2 md:mb-3">
                   Select Concern Category
                 </label>
-                <div className="flex flex-wrap gap-2 md:gap-3">
-                  {categories.map((cat) => {
-                    const isSelected = selectedCategory === cat
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`text-xs md:text-sm font-semibold px-4 py-2.5 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-                          isSelected
-                            ? "bg-red-600 border-red-600 text-white shadow-sm shadow-red-500/20"
-                            : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        }`}
-                      >
+                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                  <SelectTrigger className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl h-12 px-4 text-sm md:text-base focus:ring-1 focus:ring-[#00c87e] focus:border-[#00c87e] dark:focus:ring-[#00c87e] dark:focus:border-[#00c87e] outline-none">
+                    <SelectValue placeholder="Select concern category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl z-[9999]">
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat} className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-[#00c87e]/10 focus:text-[#00c87e] dark:focus:bg-[#00c87e]/20 text-gray-900 dark:text-white font-medium">
                         {cat}
-                      </button>
-                    )
-                  })}
-                </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </CardContent>
             </Card>
 
@@ -358,17 +361,19 @@ export default function ReportSafetyEmergency() {
                   <label className="block text-sm md:text-base font-semibold text-gray-900 dark:text-white mb-2 md:mb-3">
                     Related Order <span className="text-gray-400 dark:text-gray-500 font-normal text-xs">(Optional)</span>
                   </label>
-                  {initialOrderId ? (
-                    <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Order #{initialOrderId}
-                    </div>
-                  ) : (
-                    <select
-                      value={selectedOrderId}
-                      onChange={(e) => setSelectedOrderId(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl px-4 py-3 text-sm md:text-base focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none transition-all"
-                    >
-                      <option value="">Select an order (Optional)</option>
+                  <Select value={selectedOrderId || "none"} onValueChange={(val) => setSelectedOrderId(val === "none" ? "" : val)}>
+                    <SelectTrigger className="w-full bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-gray-900 dark:text-white rounded-xl h-12 px-4 text-sm md:text-base focus:ring-1 focus:ring-[#00c87e] focus:border-[#00c87e] dark:focus:ring-[#00c87e] dark:focus:border-[#00c87e] outline-none">
+                      <SelectValue placeholder="Select an order (Optional)" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl z-[9999]">
+                      <SelectItem value="none" className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-[#00c87e]/10 focus:text-[#00c87e] text-gray-500 dark:text-gray-400">
+                        Select an order (Optional)
+                      </SelectItem>
+                      {initialOrderId && !recentOrders.some(o => (o.id || o._id) === initialOrderId) && (
+                        <SelectItem value={initialOrderId} className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-[#00c87e]/10 focus:text-[#00c87e] text-gray-900 dark:text-white font-medium">
+                          Order #{initialOrderId.length > 8 ? initialOrderId.slice(-6) : initialOrderId}
+                        </SelectItem>
+                      )}
                       {recentOrders.map(order => {
                         const restName = order?.restaurant?.name || order?.restaurantId?.name || order?.restaurantName || "";
                         const orderIdText = order?.shortId || order?.id?.slice(-6) || order?._id?.slice(-6) || "Unknown";
@@ -386,13 +391,13 @@ export default function ReportSafetyEmergency() {
                         if (dateText) parts.push(dateText);
 
                         return (
-                          <option key={order.id || order._id} value={order.id || order._id}>
+                          <SelectItem key={order.id || order._id} value={order.id || order._id} className="cursor-pointer py-2.5 px-3 rounded-lg focus:bg-[#00c87e]/10 focus:text-[#00c87e] text-gray-900 dark:text-white font-medium">
                             {parts.join(" • ")}
-                          </option>
+                          </SelectItem>
                         );
                       })}
-                    </select>
-                  )}
+                    </SelectContent>
+                  </Select>
                 </CardContent>
               </Card>
             )}
@@ -423,7 +428,7 @@ export default function ReportSafetyEmergency() {
                   {report.length} / 500 characters {report.length > 0 && report.length < 30 && "(minimum 30 required)"}
                 </p>
                 <p className="text-xs md:text-sm mt-3 text-neutral-500 dark:text-neutral-400 bg-neutral-50 dark:bg-neutral-900/40 p-3 rounded-xl border border-neutral-200/50 dark:border-neutral-800/50">
-                  Describe what happened. Our safety team reviews every report within 15 minutes and will follow up with you directly.
+                  Describe what happened.
                 </p>
 
                 {/* Media Uploader */}
