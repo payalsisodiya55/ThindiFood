@@ -108,6 +108,8 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
   const rawRest = booking.restaurantId && typeof booking.restaurantId === 'object' ? booking.restaurantId : (booking.restaurantRef || booking.restaurant || {})
   const restaurantName = rawRest.restaurantName || rawRest.name || "Restaurant"
   const restaurantAddress = formatAddress(rawRest)
+  const restaurantPhone = String(rawRest.primaryContactNumber || rawRest.ownerPhone || rawRest.phone || rawRest.contactNumber || booking.restaurantPhone || "").trim()
+  const bookingDisplayId = booking.bookingId || (booking._id ? `TBK-${String(booking._id).slice(-6).toUpperCase()}` : "--")
   const guestName = getBookingGuestName(booking)
   const guestPhone = getBookingGuestPhone(booking)
 
@@ -125,14 +127,14 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
         </div>
 
         <div className="p-5 space-y-4 flex-1 overflow-y-auto">
-          <div className="flex items-start justify-between gap-3">
+          <div className="rounded-2xl bg-slate-50 dark:bg-gray-800/50 p-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-slate-500 mb-1">Status</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Status</p>
               <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
             </div>
-            <div className="text-left">
-              <p className="text-sm font-semibold text-slate-500 mb-1">Booking ID</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white py-0.5">{booking.bookingId || "--"}</p>
+            <div className="text-right">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Booking ID</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white font-mono">{bookingDisplayId}</p>
             </div>
           </div>
 
@@ -161,9 +163,27 @@ function BookingDetailsModal({ booking, onClose, onCancel }) {
             <p className="mt-1 text-sm text-slate-600 dark:text-gray-300">{guestPhone || "Phone not available"}</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-100 p-4 dark:border-gray-800">
-            <p className="text-sm font-semibold text-slate-500">Restaurant address</p>
-            <p className="mt-2 text-sm text-slate-700 dark:text-gray-300">{restaurantAddress}</p>
+          <div className="rounded-2xl border border-slate-100 p-4 dark:border-gray-800 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-slate-500">Restaurant address</p>
+              <p className="mt-1 text-sm text-slate-700 dark:text-gray-300">{restaurantAddress}</p>
+            </div>
+
+            {restaurantPhone && (
+              <div className="pt-2.5 border-t border-slate-100 dark:border-gray-800 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-medium text-slate-400 dark:text-gray-400">Restaurant Phone</p>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{restaurantPhone}</p>
+                </div>
+                <a
+                  href={`tel:${restaurantPhone}`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#00c87e] hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs font-bold transition-all active:scale-95 shadow-sm"
+                >
+                  <Phone className="h-3.5 w-3.5" />
+                  <span>Call</span>
+                </a>
+              </div>
+            )}
           </div>
         </div>
 
@@ -277,7 +297,20 @@ export default function DiningCategory() {
                 price: `Booking ID: ${booking.bookingId || "N/A"}`,
                 offer: `${booking.timeSlot} • ${new Date(booking.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`,
                 rating: booking.status,
-                contactNumber: restaurant.contactNumber || restaurant.phone || restaurant.mobile || booking.restaurant?.contactNumber || "",
+                contactNumber:
+                  restaurant.primaryContactNumber ||
+                  restaurant.ownerPhone ||
+                  restaurant.phone ||
+                  restaurant.phoneNumber ||
+                  restaurant.contactNumber ||
+                  booking.restaurant?.primaryContactNumber ||
+                  booking.restaurant?.ownerPhone ||
+                  booking.restaurant?.phone ||
+                  booking.restaurant?.contactNumber ||
+                  booking.restaurantId?.primaryContactNumber ||
+                  booking.restaurantId?.ownerPhone ||
+                  booking.restaurantId?.phone ||
+                  "",
                 isBooking: true,
                 originalData: booking
               }
@@ -515,24 +548,26 @@ export default function DiningCategory() {
                         )}
                       </div>
 
-                      <div className="absolute bottom-4 left-4 right-4">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
-                          {isBookings ? "Reserved For" : "Reserve Your Table"}
-                        </p>
-                        <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
-                      </div>
+                      {!isBookings && (
+                        <div className="absolute bottom-4 left-4 right-4">
+                          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/80">
+                            Reserve Your Table
+                          </p>
+                          <p className="max-w-[85%] text-2xl font-black leading-tight text-white">{restaurant.offer}</p>
+                        </div>
+                      )}
                     </div>
 
                     <CardContent className="space-y-4 p-5">
                       {isBookings ? (
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-3">
-                            <h2 className="truncate text-[22px] font-black leading-tight text-[#23180f] dark:text-white">{restaurant.name}</h2>
-                            {restaurant.status === "PENDING" && (
+                          <div className="flex items-start justify-between gap-3">
+                            <h2 className="text-[20px] md:text-[22px] font-black leading-tight text-[#23180f] dark:text-white break-words flex-1 min-w-0">{restaurant.name}</h2>
+                            {restaurant.contactNumber && (
                               <a 
                                 href={`tel:${restaurant.contactNumber}`}
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors shadow-sm"
                               >
                                 <Phone className="h-3.5 w-3.5" />
                                 <span>Call</span>

@@ -198,14 +198,14 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                 </div>
 
                 <div className="p-5 space-y-4 flex-1 overflow-y-auto">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="rounded-2xl bg-slate-50 dark:bg-[#252525] p-4 flex flex-wrap items-center justify-between gap-3">
                         <div>
-                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8] mb-1">Status</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#808080] mb-1">Status</p>
                             <Badge className={getStatusBadgeClass(booking.status)}>{getStatusLabel(booking.status)}</Badge>
                         </div>
-                        <div className="text-left">
-                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8] mb-1">Booking ID</p>
-                            <p className="text-sm font-bold text-slate-900 dark:text-white py-0.5">{booking.bookingId || "--"}</p>
+                        <div className="text-right">
+                            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-[#808080] mb-1">Booking ID</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white font-mono">{getBookingDisplayId(booking)}</p>
                         </div>
                     </div>
 
@@ -234,9 +234,27 @@ function BookingDetailsModal({ booking, onClose, onCancel, onReview }) {
                         <p className="mt-1 text-sm text-slate-600 dark:text-[#a0a5b8]">{guestPhone || "Phone not available"}</p>
                     </div>
 
-                    <div className="rounded-2xl border border-slate-100 dark:border-[#222222] p-4">
-                        <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8]">Restaurant address</p>
-                        <p className="mt-2 text-sm text-slate-700 dark:text-[#c0c5d0]">{getRestaurantAddress(booking) || "Address not available"}</p>
+                    <div className="rounded-2xl border border-slate-100 dark:border-[#222222] p-4 space-y-3">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-500 dark:text-[#a0a5b8]">Restaurant address</p>
+                            <p className="mt-1 text-sm text-slate-700 dark:text-[#c0c5d0]">{getRestaurantAddress(booking) || "Address not available"}</p>
+                        </div>
+
+                        {getRestaurantPhone(booking) && (
+                            <div className="pt-2.5 border-t border-slate-100 dark:border-[#222222] flex items-center justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-medium text-slate-400 dark:text-[#808080]">Restaurant Phone</p>
+                                    <p className="text-sm font-bold text-slate-900 dark:text-white">{getRestaurantPhone(booking)}</p>
+                                </div>
+                                <a
+                                    href={`tel:${getRestaurantPhone(booking)}`}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#00c87e] hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-xs font-bold transition-all active:scale-95 shadow-sm"
+                                >
+                                    <Phone className="h-3.5 w-3.5" />
+                                    <span>Call</span>
+                                </a>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -434,15 +452,15 @@ export default function MyBookings() {
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-3">
-                                    <h3 className="font-bold text-gray-900 dark:text-white truncate">{booking.restaurant?.name}</h3>
-                                    {normalizeStatus(booking.status) === "PENDING" && (
+                                <div className="flex items-start justify-between gap-3">
+                                    <h3 className="font-bold text-gray-900 dark:text-white break-words flex-1 min-w-0">{booking.restaurant?.name || booking.restaurantId?.restaurantName || booking.restaurantId?.name || "Restaurant"}</h3>
+                                    {getRestaurantPhone(booking) && (
                                         <a
-                                            href={`tel:${booking.restaurant?.contactNumber || booking.restaurantId?.contactNumber || ""}`}
+                                            href={`tel:${getRestaurantPhone(booking)}`}
                                             onClick={(e) => e.stopPropagation()}
-                                            className="flex-shrink-0 flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+                                            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors shadow-sm"
                                         >
-                                            <Phone className="w-3 h-3" />
+                                            <Phone className="w-3.5 h-3.5" />
                                             <span>Call</span>
                                         </a>
                                     )}

@@ -877,7 +877,6 @@ export default function Dining() {
                 <p className="text-xs text-gray-500 mt-0.5">Scan table QR and start dine-in instantly</p>
               </div>
             </div>
-            <div className="text-[#00c87e] text-xs font-black uppercase tracking-wider self-center">Open</div>
           </button>
         </motion.div>
 
